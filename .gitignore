@@ -1,0 +1,17 @@
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+!frontend/.vscode/
+
+.claude/settings.local.json
+
+.DS_Store
+Thumbs.db
+
+.env
+.env.*

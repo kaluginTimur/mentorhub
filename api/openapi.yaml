@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: MentorHub API
+  version: 0.1.0
+  description: |
+    MentorHub API contract. This is the source of truth:
+    backend controller interfaces and the frontend client are generated from it.
+servers:
+  - url: /
+tags:
+  - name: System
+    description: Application service information
+paths:
+  /api/v1/system/info:
+    get:
+      tags: [System]
+      operationId: getSystemInfo
+      summary: Application name and version
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfo'
+components:
+  schemas:
+    SystemInfo:
+      type: object
+      required: [name, version]
+      properties:
+        name:
+          type: string
+          examples: [MentorHub]
+        version:
+          type: string
+          examples: [0.0.1-SNAPSHOT]

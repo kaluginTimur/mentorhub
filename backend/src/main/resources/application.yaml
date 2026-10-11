@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: MentorHub
+  docker:
+    compose:
+      file: ../infra/compose.yaml
+      lifecycle-management: start-only
+  jpa:
+    open-in-view: false
+  flyway:
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,modulith
+
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
