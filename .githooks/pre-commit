@@ -1,0 +1,8 @@
+#!/bin/sh
+# Commits from an IDE run a non-interactive shell, which does not load nvm.
+command -v node >/dev/null 2>&1 || { [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1; }
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found, documentation check skipped" >&2
+  exit 0
+fi
+exec node "$(git rev-parse --show-toplevel)/scripts/check-docs.mjs" --staged

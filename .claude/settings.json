@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw verify *)",
+      "Bash(./mvnw -B verify *)",
+      "Bash(./mvnw -B -q verify *)",
+      "Bash(./mvnw spotless:apply *)",
+      "Bash(./mvnw generate-sources *)",
+      "Bash(./mvnw -q generate-sources *)",
+      "Bash(./mvnw test *)",
+      "Bash(./mvnw -q dependency:build-classpath *)",
+      "Bash(unzip -l *)",
+      "Bash(javap *)",
+      "Bash(npm ci *)",
+      "Bash(npm test *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run test *)",
+      "Bash(npm run build *)",
+      "Bash(npm run format *)",
+      "Bash(npm run format:check *)",
+      "Bash(npm run generate:api *)",
+      "Bash(~/.nvm/nvm-exec npm ci *)",
+      "Bash(~/.nvm/nvm-exec npm test *)",
+      "Bash(~/.nvm/nvm-exec npm run lint *)",
+      "Bash(~/.nvm/nvm-exec npm run build *)",
+      "Bash(~/.nvm/nvm-exec npm run format *)",
+      "Bash(~/.nvm/nvm-exec npm run format:check *)",
+      "Bash(~/.nvm/nvm-exec npm run generate:api *)",
+      "Bash(node scripts/check-docs.mjs *)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(docker compose down *)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-files.mjs"
+            ],
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-bash.mjs"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-frontend.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

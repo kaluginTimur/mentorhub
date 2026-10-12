@@ -1,0 +1,4 @@
+#!/bin/sh
+command -v node >/dev/null 2>&1 || { [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1; }
+command -v node >/dev/null 2>&1 || exit 0
+exec node "$(git rev-parse --show-toplevel)/scripts/check-docs.mjs" --mark-if-checked

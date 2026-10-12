@@ -31,6 +31,8 @@ cd frontend && npm ci && npm start
 | `frontend/` | Angular 22 + Angular Material |
 | `infra/` | Docker Compose for the local environment |
 | `docs/adr/` | Architecture decision records |
+| `docs/architecture/` | Domain model and invariants |
+| `docs/development/` | Development guides (backend, frontend, documentation): conventions, commands, verification |
 | `docs/features/` | Feature specifications |
 
 ## Checks (same as CI)
@@ -38,4 +40,13 @@ cd frontend && npm ci && npm start
 ```bash
 cd backend && ./mvnw verify
 cd frontend && npm ci && npm run lint && npm test -- --watch=false && npm run build
+node scripts/check-docs.mjs
+```
+
+## Setup
+
+Enable the repository's git hooks once per clone; they check that documentation still matches the code on every commit (see `docs/development/docs.md`):
+
+```bash
+git config core.hooksPath .githooks
 ```
