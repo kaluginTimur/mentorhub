@@ -4,11 +4,11 @@ import { APPLIED_MIGRATION_REASON, MIGRATION_DIR, deny, isAppliedMigration, read
 
 const MANUAL = 'If it is really needed, ask the user to run it manually with the `!` prefix.';
 
+// Fixed-prefix commands (docker volume rm, dropdb, git rebase, ...) are denied in .claude/settings.json;
+// these depend on flags in any position or on the command's content.
 const DATA_LOSS = [
-  /\bdocker\s+volume\s+(rm|remove|prune)\b/,
   /\bdocker\s+system\s+prune\b.*--volumes\b/,
   /\bdocker(-compose|\s+compose)\b.*\bdown\b.*\s(-[a-zA-Z]*v[a-zA-Z]*|--volumes)\b/,
-  /\bdropdb\b/,
   /\bflyway(:|\s+)clean\b/,
 ];
 
@@ -21,11 +21,9 @@ const GIT_DESTRUCTIVE = [
   /\bgit\b.*\bclean\b.*\s-[a-zA-Z]*f/,
   /\bgit\b.*\bcheckout\b.*\s(--\s+)?\.(\s|$)/,
   /\bgit\b.*\brestore\b(?!.*--staged)(?=.*\s\.(\s|$))/,
-  /\bgit\b.*\b(rebase|filter-branch|filter-repo)\b/,
+  /\bgit\b.*\bpull\b.*--rebase\b/,
   /\bgit\b.*\bcommit\b.*--amend\b/,
-  /\bgit\b.*\bstash\s+(drop|clear)\b/,
   /\bgit\b.*\bbranch\b.*\s-D\b/,
-  /\bgit\b.*\b(reflog\s+expire|update-ref\s+-d)\b/,
 ];
 
 const COMMIT_ATTRIBUTION = /co-authored-by:|claude-session:|generated with|noreply@anthropic\.com|claude\.ai\/code/i;
@@ -52,9 +50,9 @@ if (SQL_CLIENT.test(command) && DESTRUCTIVE_SQL.test(command)) {
   deny(`Blocked: destructive SQL against a database. ${MANUAL}`);
 }
 
-if (/\bgit\b.*\bcommit\b/.test(command)) {
+if (/\bgit\b.*\bcommit\b|\bgh\s+pr\s+(create|edit)\b/.test(command)) {
   let message = command;
-  const file = command.match(/\bgit\b.*\bcommit\b.*\s(?:-F|--file)[=\s]+(\S+)/)?.[1];
+  const file = command.match(/\b(?:git\b.*\bcommit|gh\s+pr\s+(?:create|edit))\b.*\s(?:-F|--file|--body-file)[=\s]+(\S+)/)?.[1];
   if (file) {
     try {
       message += readFileSync(path.resolve(cwd, file.replace(/^['"]|['"]$/g, '')), 'utf8');
@@ -62,8 +60,8 @@ if (/\bgit\b.*\bcommit\b/.test(command)) {
   }
   if (COMMIT_ATTRIBUTION.test(message)) {
     deny(
-      'Commit messages in this project are plain English text with no trailers (Co-Authored-By, Claude-Session), ' +
-        'no "Generated with" lines and no mention of AI agents or models. Remove them and commit again.',
+      'Commit messages and pull request descriptions in this project are plain English text with no trailers (Co-Authored-By, Claude-Session), ' +
+        'no "Generated with" lines and no mention of AI agents or models. Remove them and try again.',
     );
   }
 }

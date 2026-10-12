@@ -26,6 +26,7 @@ cd frontend && npm ci && npm start
 
 | Path | Contents |
 |---|---|
+| `AGENTS.md` | Instructions for AI coding agents (Claude Code reads it through `CLAUDE.md`) |
 | `api/openapi.yaml` | API contract; backend interfaces and the frontend client are generated from it |
 | `backend/` | Spring Boot 4 + Spring Modulith |
 | `frontend/` | Angular 22 + Angular Material |

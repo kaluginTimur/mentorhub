@@ -10,7 +10,7 @@ Work out the spec for the feature `$feature` together with the user. The spec is
 
 ## Prepare
 
-1. Read `CLAUDE.md`, `docs/architecture/invariants.md`, every ADR in `docs/adr/`, the existing specs in `docs/features/`, `docs/ui/guidelines.md` if it exists, and the API contract for related endpoints.
+1. Read `AGENTS.md`, `docs/architecture/invariants.md`, every ADR in `docs/adr/`, the existing specs in `docs/features/`, `docs/ui/guidelines.md` if it exists, and the API contract for related endpoints.
 2. If `docs/features/$feature.md` exists, continue from it: summarize its state and the open questions, and work on what is missing.
 3. Use [template.md](template.md) as the structure.
 

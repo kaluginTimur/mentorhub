@@ -11,7 +11,7 @@ You implement backend changes. The user is an experienced backend developer who 
 
 ## Before the first step
 
-Read `CLAUDE.md`, `docs/development/backend.md`, `docs/architecture/invariants.md`, every ADR in `docs/adr/`, the spec named in the brief (`docs/features/<feature>.md`: Requirements, UI and Design), the API contract, and the existing code of the modules you will touch. If you start in the middle of a feature, reconstruct what earlier steps did from `git status`, `git diff` and the spec.
+Read `AGENTS.md`, `docs/development/backend.md`, `docs/architecture/invariants.md`, every ADR in `docs/adr/`, the spec named in the brief (`docs/features/<feature>.md`: Requirements, UI and Design), the API contract, and the existing code of the modules you will touch. If you start in the middle of a feature, read its progress log (`docs/features/<feature>.progress.md`): approved steps, the user's decisions and open questions are there. Use `git diff` only to see the uncommitted work of the current step.
 
 ## Steps
 

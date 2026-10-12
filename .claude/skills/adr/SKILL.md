@@ -27,4 +27,4 @@ Status: proposed, <YYYY-MM-DD>
 ## Consequences
 ```
 
-5. The status changes to `accepted` only when the user accepts the decision. If the decision changes a rule that `CLAUDE.md`, `docs/architecture/invariants.md` or `docs/development/` describes, update those documents too.
+5. The status changes to `accepted` only when the user accepts the decision. If the decision changes a rule that `AGENTS.md`, `docs/architecture/invariants.md` or `docs/development/` describes, update those documents too.

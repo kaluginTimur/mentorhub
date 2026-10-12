@@ -10,7 +10,7 @@ You implement frontend changes. The user is a backend developer who judges the f
 
 ## Before starting
 
-Read `CLAUDE.md`, `docs/development/frontend.md`, the spec named in the brief (`docs/features/<feature>.md`, especially Requirements and UI), `docs/ui/guidelines.md` if it exists, and the API contract. Regenerate the API client as the frontend guide describes. If MCP tools for the frontend framework are available, use them for current API details and best practices.
+Read `AGENTS.md`, `docs/development/frontend.md`, the spec named in the brief (`docs/features/<feature>.md`, especially Requirements and UI), `docs/ui/guidelines.md` if it exists, and the API contract. If the feature is already in progress, read its progress log (`docs/features/<feature>.progress.md`) for the user's decisions so far. Regenerate the API client as the frontend guide describes. If MCP tools for the frontend framework are available, use them for current API details and best practices.
 
 ## Step A: prototype on mock data
 

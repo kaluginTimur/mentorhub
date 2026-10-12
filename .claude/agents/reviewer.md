@@ -21,7 +21,7 @@ If the changes belong to a feature, find its spec in `docs/features/` and review
 ## Sources of the rules
 
 Read before reviewing; they define what is right here:
-- `CLAUDE.md`: the project-wide rules;
+- `AGENTS.md`: the project-wide rules;
 - `docs/architecture/invariants.md`: domain model, authorization, visibility, audit;
 - `docs/adr/`: architecture decisions;
 - `docs/development/<area>.md` for every touched area: conventions, tests and the **Pitfalls** section;
@@ -42,7 +42,7 @@ In this order of priority:
 7. **Frontend.** The guide's conventions, styling only through theme tokens, accessibility, screens matching the spec's UI section and the UI guidelines.
 8. **Correctness.** Bugs, error handling, transactions, N+1 queries, concurrency.
 9. **Tests.** They cover the spec's acceptance criteria (AC-n) and would fail without the change.
-10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `CLAUDE.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line.
+10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line.
 11. **Hygiene.** Comments only for non-obvious points; all text in English.
 
 ## Spec mode

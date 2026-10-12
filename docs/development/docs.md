@@ -6,10 +6,10 @@ How project knowledge is kept consistent with the code. Paths in this document a
 
 | Place | Contents |
 |---|---|
-| `CLAUDE.md` | Map and project-wide rules; loaded into every Claude Code session, so it stays short |
+| `AGENTS.md` | Map and project-wide rules for any AI client; Claude Code loads it into every session through the one-line `CLAUDE.md`, so it stays short |
 | `docs/development/` | One guide per area (`backend.md`, `frontend.md`, this file): stack, conventions, commands, verification, pitfalls |
 | `docs/architecture/invariants.md` | Domain model, authorization, visibility |
-| `docs/adr/`, `docs/features/` | Architecture decisions and feature specs |
+| `docs/adr/`, `docs/features/` | Architecture decisions, feature specs and their progress logs (`<feature>.progress.md`: step statuses, decisions at checkpoints, step commits) |
 | `.claude/` | The Claude Code workflow: agents and skills describe roles and processes and point to the documents above; hooks and settings enforce rules (see `.claude/README.md`) |
 
 ## Conventions
@@ -29,8 +29,8 @@ node scripts/check-docs.mjs
 ```
 
 It fails (exit code 1) on broken references:
-- a path in `CLAUDE.md`, `README.md`, `docs/` or `.claude/` that does not exist and is not gitignored;
-- an `@` import in a `CLAUDE.md` that does not resolve;
+- a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` or `.claude/` that does not exist and is not gitignored;
+- an `@` import in an `AGENTS.md` or `CLAUDE.md` that does not resolve;
 - a section that an agent or skill refers to but no guide has;
 - a Verification or Checking an API command that matches no allow rule;
 - a repository path in `.claude/hooks/` that no longer exists.

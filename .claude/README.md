@@ -14,15 +14,15 @@ The main session designs and coordinates. Feature code is written by subagents, 
 | `verifier` | Runs the verification and reports pass/fail; never fixes | sonnet |
 | `api-lookup` | Checks that a class, method or export exists in the exact dependency versions the project uses | haiku |
 
-Definitions are in `agents/`. Subagents cannot ask you questions directly: they stop with a report, the main session shows it to you and passes your answer back to the same agent.
+Definitions are in `agents/`. Subagents cannot ask you questions directly: they stop with a report, the main session shows it to you and passes your answer back to the same agent. The `permissionMode: acceptEdits` of `backend-dev` and `frontend-dev` applies only in Manual mode; in `auto` mode the classifier reviews subagent actions like any others and ignores that field.
 
 ## Feature flow
 
 ```
 /spec <feature>     main session + you: docs/features/<feature>.md (requirements, UI, design)
                     reviewer checks the spec; you approve it
-/feature <feature>
-  backend-dev   1 contract → you approve
+/feature <feature>  progress log docs/features/<feature>.progress.md, branch feature/<feature>
+  backend-dev   1 contract → you approve (→ commit the step, if you agree)
   frontend-dev  A prototype on mock data → you approve the screens (skipped until mock mode exists)
                 B finishes on its own → reviewer → fixes
   backend-dev   2 migration → you approve
@@ -31,27 +31,29 @@ Definitions are in `agents/`. Subagents cannot ask you questions directly: they 
   reviewer on the whole feature → you decide what to fix
   verifier → summary, AC coverage, proposed commit message
   on acceptance: the spec's Design section is synced with the final contract and schema, status → implemented
+/pr                 description from the spec and the final report → you approve → push, pull request
 ```
 
-You review each backend step's diff in your IDE. Nothing is committed unless you ask.
+`/feature` works on a branch `feature/<feature>` and keeps a progress log next to the spec: step statuses, your decisions at each checkpoint, open questions and step commits. When you resume in a new session, the log, not the conversation or `git diff`, tells where the work stopped; if the log is on another branch, `/feature` says so instead of starting over. You review each backend step's diff in your IDE; after you approve a step, it offers to commit it. Nothing is committed or pushed unless you agree. Do not switch branches while agents are running: background agents write to the same working tree.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `/spec <feature>` | Work out a feature spec with Claude |
-| `/feature <feature> [step]` | Implement an approved spec; `step` resumes after an interruption (`contract`, `migration`, `domain`, `api`, `frontend`, `review`, `verify`) |
+| `/feature <feature> [step]` | Implement an approved spec; resumes from the progress log, `step` overrides where to continue (`contract`, `migration`, `domain`, `api`, `frontend`, `review`, `verify`) |
 | `/review [git-ref \| spec path \| focus]` | Independent review of current changes, or of a spec |
 | `/verify [backend\|frontend\|docs\|all] [git-ref]` | Run the verification and get a pass/fail table; `docs` with a ref lists documents to recheck since that ref |
 | `/adr <title>` | Record an architecture decision in `docs/adr/` |
+| `/pr [base-branch]` | Open a GitHub pull request: checks, a generated description for your approval, push and `gh pr create` |
 
-Bugs, refactoring and small changes need no spec. Do quick fixes directly in the main session; for larger ones, ask the main session to brief `backend-dev` or `frontend-dev`. Finish with `/review` and `/verify`.
+Bugs, refactoring and small changes need no spec. Do quick fixes directly in the main session; for larger ones, ask the main session to brief `backend-dev` or `frontend-dev`. Finish with `/review` and `/verify`, and `/pr` when the change should go through a pull request.
 
 ## Where knowledge lives
 
 | Place | Contents |
 |---|---|
-| `CLAUDE.md` | Map and project-wide rules; loaded into every session, so keep it short |
+| `AGENTS.md` | Map and project-wide rules, shared with other AI clients; `CLAUDE.md` only imports it. Loaded into every session, so keep it short |
 | `docs/development/<area>.md` | Stack, conventions, commands, verification, pitfalls; loaded when Claude works in `backend/` or `frontend/` (through the one-line `CLAUDE.md` there) |
 | `docs/architecture/invariants.md` | Domain model, authorization, visibility |
 | `docs/adr/`, `docs/features/` | Decisions and feature specs |
@@ -63,25 +65,46 @@ When the stack changes, update `docs/development/`; agents and skills stay as th
 
 ## Guardrails
 
-Hooks run in the main session and in every subagent. A blocked action can only be run by you, manually, with the `!` prefix in the prompt.
+Hooks run in the main session and in every subagent. If a blocked action is really needed, run it yourself with the `!` prefix in the prompt: Claude Code runs that line for you, outside the model's tools, and the model has no way to type into your prompt. Inside the model's Bash tool a leading `!` is ordinary shell negation (`! cmd` still runs `cmd`), and hooks and deny rules still apply to it.
+
+An action passes these layers in order:
+
+1. **Hooks and deny/ask rules**, in every permission mode. They are deterministic but check the command text, so they stop mistakes, not a deliberate workaround: a wrapped command (`bash -c '...'`, a subprocess call) is still caught by the hook because the destructive text is in it, an obfuscated one (a decoded script piped into `sh`) is not.
+2. **Allow rules** run without a further check, and so do reads; in `auto` mode, also file edits inside the repository except protected paths such as `.git` and `.claude`.
+3. **Everything else** is decided by the permission mode:
+   - `auto`, the default for interactive sessions since Claude Code 2.1.283: a separate classifier model reviews the action. By default it blocks discarding uncommitted work, force pushes, running downloaded or decoded code and similar actions. After 3 blocks in a row or 20 in a session it pauses and Claude Code asks you instead. This is a model's judgment, not a rule.
+   - `default` (Manual): Claude Code asks you.
+   - `bypassPermissions`: nothing checks it.
+
+What must hold regardless of mode belongs in a hook or a deny/ask rule.
 
 | Hook | Blocks or reports |
 |---|---|
 | `guard-files.mjs` | Edits to generated code (`frontend/src/app/core/api/`, `backend/target/`) and to migrations that are committed or recorded in the dev database |
-| `guard-bash.mjs` | Removing Docker volumes, `docker compose down -v`, destructive SQL, `flyway clean`, `git reset --hard`, force push, `git clean -f`, discarding all changes, rebase, amend, deleting branches or stashes, mutating applied migrations, commit messages with trailers or AI attributions |
+| `guard-bash.mjs` | What a prefix rule cannot express: `docker compose down -v`, `docker system prune --volumes`, `flyway clean`, destructive SQL in any case, `git reset --hard`, force push, `git clean -f`, discarding all changes, `git pull --rebase`, amend, deleting branches (flags in any position), mutating applied migrations, commit messages and pull request descriptions with trailers or AI attributions |
 | `check-frontend.mjs` | Reports `provideApiConfiguration('/')` and literal colors or fonts in components |
 
 A hook is added only for an error that is silent (build and tests miss it), irreversible, or a project policy. Local machine quirks and compiler errors are not hook material.
 
-Permissions in `settings.json`: the verification commands run without prompts; `git commit`, `git push` and `docker compose down` always ask; reading `.env` files is denied.
+Permissions in `settings.json`: the verification commands run without prompts; `git commit`, `git push` and `docker compose down` always ask; reading `.env` files is denied. Destructive commands with a fixed prefix (`docker volume rm`/`prune`, `dropdb`, `git rebase`, `git filter-branch`, `git stash drop`/`clear`, `git reflog expire`, `git update-ref -d`) are denied there too: they need no code and hold even when a hook cannot run. Prefix rules only match the command as written, so everything that depends on flags or content stays in `guard-bash.mjs`.
 
 ## Setup for a new developer
 
 - Enable the git hooks: `git config core.hooksPath .githooks`.
-- Start Claude Code in the repository root and accept the workspace trust dialog once. Until the folder is trusted, Claude Code ignores the allow rules in `settings.json`, and agents stall on approvals.
+- Start Claude Code in the repository root and accept the workspace trust dialog once. Until the folder is trusted, Claude Code ignores the allow rules in `settings.json`: in `auto` mode the classifier then reviews even the verification commands, and in Manual mode or `-p` runs agents stall on approvals.
 - Requirements from `README.md` (JDK 25, Docker, Node via nvm). The hooks need `node` on `PATH`.
 - Make the default Node satisfy `frontend/.nvmrc` (`nvm alias default 24`): Claude Code starts the Angular CLI MCP server from `.mcp.json` with the default Node, and it needs ^24.15.
 - Personal overrides go into `settings.local.json` (gitignored).
+
+## Other AI clients
+
+Everything in `.claude/` (agents, skills, hooks, permissions, MCP config) is written for Claude Code. What other clients share without copying:
+
+- `AGENTS.md`: the project rules; Cursor, OpenCode and Codex read it directly;
+- `docs/`: stack, conventions, verification, invariants, decisions and specs;
+- the git hooks in `.githooks/` and `scripts/check-docs.mjs`.
+
+To bring the workflow to another client, port the processes from `agents/` and `skills/` to that client's mechanisms (subagents, commands, hooks). They are short descriptions of roles and steps; the knowledge they rely on stays in `docs/` and `AGENTS.md`.
 
 ## Changing the workflow
 

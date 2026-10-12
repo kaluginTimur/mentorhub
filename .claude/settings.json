@@ -27,7 +27,10 @@
       "Bash(~/.nvm/nvm-exec npm run format *)",
       "Bash(~/.nvm/nvm-exec npm run format:check *)",
       "Bash(~/.nvm/nvm-exec npm run generate:api *)",
-      "Bash(node scripts/check-docs.mjs *)"
+      "Bash(node scripts/check-docs.mjs *)",
+      "Bash(gh auth status *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)"
     ],
     "ask": [
       "Bash(git commit *)",
@@ -36,7 +39,18 @@
     ],
     "deny": [
       "Read(**/.env)",
-      "Read(**/.env.*)"
+      "Read(**/.env.*)",
+      "Bash(docker volume rm *)",
+      "Bash(docker volume remove *)",
+      "Bash(docker volume prune *)",
+      "Bash(dropdb *)",
+      "Bash(git rebase *)",
+      "Bash(git filter-branch *)",
+      "Bash(git filter-repo *)",
+      "Bash(git stash drop *)",
+      "Bash(git stash clear *)",
+      "Bash(git reflog expire *)",
+      "Bash(git update-ref -d *)"
     ]
   },
   "hooks": {

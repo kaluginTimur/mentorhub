@@ -28,6 +28,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Migrations: `backend/src/main/resources/db/migration/V<n>__<description>.sql`. The schema is created by migrations only (no `ddl-auto`).
 - Never edit, rename or delete an applied migration; add a new one. Flyway validates a CRC32 checksum over the file's lines, so even a comment change breaks startup on every existing database. Tests start from an empty Testcontainers database and do not catch this; only a persistent database does. A project hook blocks edits to committed migrations and to migrations recorded in the dev database.
 - Running the application (`./mvnw spring-boot:run` or `TestMentorHubApplication`) applies pending migrations to the dev database in `infra/compose.yaml`, which freezes them. Do not run it with a migration that is still under review.
+- Parallel branches can pick the same version number for a new migration, and Flyway rejects duplicate versions. Before merging, rename your own **unapplied** migration to the next free number; never rename an applied one.
 - Primary keys are `uuid` (`gen_random_uuid()`), timestamps are `timestamptz`.
 
 ## Tests

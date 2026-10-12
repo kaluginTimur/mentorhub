@@ -60,7 +60,7 @@ const isIgnored = (rel) =>
 const knowledgeFiles = git(['ls-files', '--cached', '--others', '--exclude-standard', '--', '*.md'])
   .split('\n')
   .filter(Boolean)
-  .filter((f) => /(^|\/)(CLAUDE|README)\.md$/.test(f) || f.startsWith('docs/') || f.startsWith('.claude/'))
+  .filter((f) => /(^|\/)(AGENTS|CLAUDE|README)\.md$/.test(f) || f.startsWith('docs/') || f.startsWith('.claude/'))
   .filter((f) => existsSync(path.join(root, f)));
 
 const broken = [];
@@ -127,7 +127,7 @@ for (const doc of knowledgeFiles) {
       docHeadings.push(heading[1].trim());
       if (line.startsWith('## ')) section = heading[1].trim();
     }
-    const imported = /(^|\/)CLAUDE\.md$/.test(doc) && line.match(/^@(\S+)/);
+    const imported = /(^|\/)(AGENTS|CLAUDE)\.md$/.test(doc) && line.match(/^@(\S+)/);
     if (imported) {
       if (!existsSync(path.join(root, path.posix.dirname(doc), imported[1]))) {
         broken.push(`${doc}:${lineNo}: import \`${imported[1]}\` does not exist`);
