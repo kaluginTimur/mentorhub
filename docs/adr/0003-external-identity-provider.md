@@ -1,6 +1,6 @@
 # 0003. Authentication through an external IdP (Keycloak)
 
-Status: accepted, implementation in a separate step, 2026-10-11
+Status: accepted, implementation in a separate step, 2026-10-11; role model refined by 0004
 
 ## Context
 
