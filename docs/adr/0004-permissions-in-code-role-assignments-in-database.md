@@ -1,6 +1,6 @@
 # 0004. Permissions in code, role assignments in the database
 
-Status: accepted, 2026-10-15
+Status: accepted, 2026-10-15; refined in `docs/architecture/invariants.md` (an inaccessible resource responds 404) and `docs/features/identity-foundation.md` (`GET /api/v1/me` answers refused callers with their status)
 
 ## Context
 
