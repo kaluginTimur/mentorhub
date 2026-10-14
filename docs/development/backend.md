@@ -14,6 +14,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 
 - `openapi-generator-maven-plugin` generates the `*Api` interfaces and DTOs (`com.mentorhub.api.model`) from `api/openapi.yaml` into `backend/target/generated-sources/openapi`, with `interfaceOnly`, `useTags` and `skipDefaultInterface`.
 - A controller is a package-private `@RestController` class that `implements` the generated `*Api`.
+- Nullability in generated DTOs: an optional property is a `@Nullable` field (`org.springframework.lang.Nullable`) outside the required-args constructor. A required nullable property (`type: [string, 'null']`) is a field without `@NotNull` and without `@Nullable`, and it is a parameter of the required-args constructor, so pass `null` explicitly.
 - Because of `skipDefaultInterface`, a contract change can break compilation of existing code: a new operation in a tag that already has a controller needs an implementation, and a new required property changes the generated DTO constructor. Keep the build green with the smallest temporary change (a stub throwing `new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED)`, or a placeholder value) until the real implementation lands.
 
 ## Code

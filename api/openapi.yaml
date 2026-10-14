@@ -5,17 +5,25 @@ info:
   description: |
     MentorHub API contract. This is the source of truth:
     backend controller interfaces and the frontend client are generated from it.
+
+    Every operation requires a bearer access token unless it declares `security: []`.
+    Errors use RFC 9457 Problem Details (`application/problem+json`, schema `Problem`).
 servers:
   - url: /
+security:
+  - bearerAuth: []
 tags:
   - name: System
     description: Application service information
+  - name: Users
+    description: Users and the current caller
 paths:
   /api/v1/system/info:
     get:
       tags: [System]
       operationId: getSystemInfo
       summary: Application name and version
+      security: []
       responses:
         '200':
           description: OK
@@ -23,7 +31,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemInfo'
+  /api/v1/system/client-config:
+    get:
+      tags: [System]
+      operationId: getClientConfig
+      summary: OIDC settings for the frontend
+      description: |
+        Issuer, client id and scope the frontend needs to start sign-in.
+        Only values that are public by nature; never a secret.
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientConfig'
+  /api/v1/me:
+    get:
+      tags: [Users]
+      operationId: getMe
+      summary: The caller's access status and, for an active user, the user
+      description: |
+        Responds 200 for every signed-in caller, including callers that are not invited or disabled.
+        For `ACTIVE` the response contains `user`; for the other statuses `user` is absent.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token issued by a trusted OIDC identity provider.
+  responses:
+    Unauthorized:
+      description: |
+        No valid access token. Problem type `urn:mentorhub:problem:unauthorized`.
+      headers:
+        WWW-Authenticate:
+          description: Always `Bearer`, with error details when a token was sent.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: |
+        The caller may not perform the action. Problem type is one of:
+        - `urn:mentorhub:problem:not-invited`: the identity is not linked to a user;
+        - `urn:mentorhub:problem:access-ended`: the user is disabled;
+        - `urn:mentorhub:problem:forbidden`: the user lacks the permission for the action.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
     SystemInfo:
       type: object
@@ -35,3 +105,90 @@ components:
         version:
           type: string
           examples: [0.0.1-SNAPSHOT]
+    ClientConfig:
+      type: object
+      required: [issuer, clientId, scope]
+      properties:
+        issuer:
+          type: string
+          format: uri
+          examples: ['http://localhost:8180/realms/mentorhub']
+        clientId:
+          type: string
+          examples: [mentorhub-web]
+        scope:
+          type: string
+          description: Space-separated OIDC scopes to request.
+          examples: [openid profile email]
+    AccessStatus:
+      type: string
+      description: |
+        - `ACTIVE`: a linked, active user;
+        - `DISABLED`: a linked user whose access has ended;
+        - `NOT_INVITED`: the identity is not linked to any user.
+      enum: [ACTIVE, DISABLED, NOT_INVITED]
+    Me:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/AccessStatus'
+        user:
+          $ref: '#/components/schemas/MeUser'
+          description: Present only when `status` is `ACTIVE`; absent (not `null`) otherwise.
+    MeUser:
+      type: object
+      required: [id, email, firstName, lastName, roles, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          examples: [anna@example.com]
+        firstName:
+          type: [string, 'null']
+          examples: [Anna]
+        lastName:
+          type: [string, 'null']
+          examples: [Petrova]
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        permissions:
+          type: array
+          description: The union of the permissions of all roles.
+          items:
+            $ref: '#/components/schemas/Permission'
+    Role:
+      type: string
+      description: Must equal the `Role` enum in the backend code.
+      enum: [ADMIN, COORDINATOR, MENTOR, STUDENT, OBSERVER]
+    Permission:
+      type: string
+      description: Must equal the `Permission` enum in the backend code.
+      enum: [USERS_READ, USERS_MANAGE]
+    Problem:
+      type: object
+      description: |
+        RFC 9457 Problem Details. MentorHub problem types:
+        `urn:mentorhub:problem:unauthorized`, `urn:mentorhub:problem:not-invited`,
+        `urn:mentorhub:problem:access-ended`, `urn:mentorhub:problem:forbidden`,
+        `urn:mentorhub:problem:not-found`. Other errors use `about:blank`.
+        Other RFC 9457 members (such as `instance`) may be present.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          examples: ['urn:mentorhub:problem:forbidden']
+        title:
+          type: string
+          examples: [Forbidden]
+        status:
+          type: integer
+          format: int32
+          examples: [403]
+        detail:
+          type: string
