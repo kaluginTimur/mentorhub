@@ -39,6 +39,11 @@ Alternatives considered:
 - Who can do what is in the code, reviewed and versioned in git. Tests define role behavior deterministically.
 - A new role or a change of rights needs a release.
 - The role enum and the stored assignments must stay consistent. Removing or renaming a role ships together with a migration of its assignments. A stored role the code does not know (for example after a release rollback) grants nothing and never fails a request.
+- Stored roles are `text` values in a `roles` reference table, referenced by a foreign key from `user_roles.role`, not a PostgreSQL `enum` type:
+  - removing or renaming a role is a plain `UPDATE` or `DELETE` in the migration's transaction; an enum value cannot be dropped without recreating the type, and `ALTER TYPE ... ADD VALUE` has transaction restrictions under Flyway;
+  - the foreign key gives the same integrity as an enum type, and a test keeps the table equal to the Java enum;
+  - plain text maps to the Java enum without custom JDBC or Hibernate type configuration, like `users.status` (text with a check constraint);
+  - the table leaves room for the deferred roles-as-data alternative.
 - One database lookup per request: disabling a user or changing their roles takes effect on the next request, without waiting for a token refresh.
 - Automatic provisioning of corporate SSO users with roles mapped from the corporate identity provider stays possible. Keycloak identity provider mappers translate external groups into a token claim, and the JWT converter maps that claim to our roles from configuration. It is an exception to invitation-only registration and needs its own ADR.
 - The identity foundation spec defines the initial permissions and their mapping to roles; the tracking core spec defines observer rights.
