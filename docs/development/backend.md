@@ -5,6 +5,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 ## Modules (ADR 0001)
 
 - A module is a direct subpackage of `com.mentorhub` (e.g. `com.mentorhub.cohorts`). Its public API is the types in its root package; the implementation lives in `<module>.internal`.
+- Internal code is split into layer subpackages: `domain` (domain types and rules), `persistence` (repositories and their row types), `service`, `web` (controllers), plus module-specific technical ones such as `security`. A type is `public` only when another subpackage uses it; controllers are `public` only if the split requires it. Dependencies between the subpackages stay acyclic. Tests sit in the package of the class they test.
 - Other modules use only public types or events (`ApplicationEventPublisher` + `@ApplicationModuleListener`).
 - `com.mentorhub.api` is the generated contract, an open module. No hand-written code there except `package-info.java`.
 - Every module has a `package-info.java` with `@NullMarked` (JSpecify). Mark nullable values with `@org.jspecify.annotations.Nullable`.
@@ -16,6 +17,19 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - A controller is a package-private `@RestController` class that `implements` the generated `*Api`.
 - Nullability in generated DTOs: an optional property is a `@Nullable` field (`org.springframework.lang.Nullable`) outside the required-args constructor. A required nullable property (`type: [string, 'null']`) is a field without `@NotNull` and without `@Nullable`, and it is a parameter of the required-args constructor, so pass `null` explicitly.
 - Because of `skipDefaultInterface`, a contract change can break compilation of existing code: a new operation in a tag that already has a controller needs an implementation, and a new required property changes the generated DTO constructor. Keep the build green with the smallest temporary change (a stub throwing `new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED)`, or a placeholder value) until the real implementation lands.
+
+## Security (ADR 0003, ADR 0004)
+
+- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. Configuration and the filter chains are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`.
+- Every `/api/v1/**` controller method carries `@RequirePermission(Permission.X)` or `@NoPermissionRequired` (both in `com.mentorhub.users`). Permission names never appear in strings; checks never use role names.
+- The gate refuses callers that are not invited or disabled with 403 before any controller runs, except `GET /api/v1/me`. Services therefore only see active users: get the caller with `CurrentUserProvider.currentUser()` (`users.id` and permissions), never from the token.
+- Resource-level checks are explicit service code. A single resource the caller may not access throws `com.mentorhub.web.NotFoundException`, exactly like a missing one; lists leave inaccessible items out. A missing permission is Spring Security's `AccessDeniedException`.
+- A new public endpoint is listed in `SecurityConfiguration` and declares `security: []` in the contract.
+
+## Errors
+
+- Errors are RFC 9457 Problem Details (`application/problem+json`). MentorHub types are in `backend/src/main/java/com/mentorhub/web/Problems.java`: `unauthorized` (401), `not-invited`, `access-ended`, `forbidden` (403) and `not-found` (404). Other errors use `about:blank`, written explicitly: the contract makes `type` required, but Spring 7 leaves it `null` and omits it from the JSON, so every problem passes through `Problems.withDefaultType`.
+- `ProblemDetailsAdvice` in `com.mentorhub.web` renders Spring MVC exceptions, `NotFoundException` and unexpected exceptions; the security entry point and access-denied handler write the 401 and 403 problems through `ProblemResponseWriter`.
 
 ## Code
 
@@ -35,7 +49,8 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 ## Tests
 
 - Integration: `@SpringBootTest` + `@Import(TestcontainersConfiguration.class)` (real PostgreSQL 18, needs Docker).
-- Web layer: `@WebMvcTest(Controller.class)` + `MockMvcTester`.
+- Web layer: `@WebMvcTest(Controller.class)` + `@Import(WebSliceSecurity.class)` + `MockMvcTester`. The import adds the application's filter chains, gate and method security. Authenticate requests with `TestAuthentications.activeUser(userId, permissions...)`, `notInvited()` or `disabledUser(userId)` (in `backend/src/test/java/com/mentorhub/users/internal/security/`, with the other shared test support: `TestIssuer`, `TestIssuerConfiguration`, `TestUsers`, `ProblemAssertions`).
+- Authentication through real tokens: `@SpringBootTest` + `@AutoConfigureMockMvc` + `@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})`, with tokens signed by `TestIssuer`, which the application trusts through `jwk-set-uri`. Use this for the gate, the bootstrap and permissions.
 - Per module: `@ApplicationModuleTest`.
 
 ## Pitfalls: Spring Boot 4 is not Boot 3
@@ -49,8 +64,15 @@ Models and older examples tend to produce Boot 3 code. Most of it fails to compi
 | `org.springframework.test.context.bean.override.mockito.MockitoBean` | `@MockBean` (removed) |
 | Jackson 3: `tools.jackson.*`; annotations stay in `com.fasterxml.jackson.annotation` | `com.fasterxml.jackson.databind.*` |
 | `org.testcontainers.postgresql.PostgreSQLContainer`, artifacts `testcontainers-*` | `org.testcontainers.containers.PostgreSQLContainer` |
+| `spring-boot-starter-security-oauth2-resource-server` and its paired `-test` starter | `spring-boot-starter-oauth2-resource-server` (no paired test starter) |
+| `ProblemDetail.getType()` is `null` by default and omitted from the JSON; `Problems.withDefaultType` sets `about:blank` | Assuming `about:blank` is serialized |
 
 Jackson 2 (`com.fasterxml.jackson.databind` 2.x) is on the classpath transitively (springdoc → swagger-core), so Jackson 2 imports compile and run with a mapper the application does not configure. Always use the Jackson 3 types.
+
+Security pitfalls:
+
+- `SecurityMockMvcRequestPostProcessors.jwt()` bypasses the application's converter: no gate, no bootstrap, no permissions from the database. Do not use it; use `TestAuthentications` or `TestIssuer`.
+- A catch-all `@ExceptionHandler(Exception.class)` turns method security's `AccessDeniedException` into a 500. `ProblemDetailsAdvice` rethrows security exceptions so Spring Security answers them; no other module declares a catch-all handler.
 
 When unsure whether a class, annotation or method exists, check the real artifacts (see [Checking an API](#checking-an-api)) instead of relying on examples.
 

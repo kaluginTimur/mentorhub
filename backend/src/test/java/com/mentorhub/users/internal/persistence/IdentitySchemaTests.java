@@ -1,9 +1,11 @@
-package com.mentorhub.users;
+package com.mentorhub.users.internal.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.users.Role;
+import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +24,12 @@ class IdentitySchemaTests {
     @Autowired
     JdbcTemplate jdbc;
 
+    // AC-21
     @Test
-    void seedsAllRoles() {
+    void rolesTableEqualsRoleEnum() {
         assertThat(jdbc.queryForList("select name from roles", String.class))
-                .containsExactlyInAnyOrder("ADMIN", "COORDINATOR", "MENTOR", "STUDENT", "OBSERVER");
+                .containsExactlyInAnyOrderElementsOf(
+                        Arrays.stream(Role.values()).map(Role::name).toList());
     }
 
     @Test
