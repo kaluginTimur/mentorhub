@@ -11,12 +11,15 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -33,9 +36,19 @@ public final class TestIssuer implements AutoCloseable {
     public static final String AUDIENCE = "mentorhub-api";
     public static final String BOOTSTRAP_EMAIL = "bootstrap@mentorhub.test";
 
+    /** A second trusted issuer whose keys cannot be loaded: its JWK set URI refuses connections. */
+    public static final String UNREACHABLE_ISSUER = "https://unreachable.test/realms/mentorhub";
+
+    public static final String UNREACHABLE_JWK_SET_URI = "http://127.0.0.1:9/jwks";
+
+    /** A third trusted issuer whose JWK set endpoint accepts connections and never answers. */
+    public static final String HANGING_ISSUER = "https://hanging.test/realms/mentorhub";
+
     private final RSAKey key = generateKey("test-key");
     private final RSAKey unknownKey = generateKey("unknown-key");
     private final HttpServer server;
+    private final ServerSocket hangingServer;
+    private final List<Socket> heldConnections = new CopyOnWriteArrayList<>();
 
     TestIssuer() {
         try {
@@ -52,6 +65,24 @@ public final class TestIssuer implements AutoCloseable {
             }
         });
         server.start();
+        try {
+            hangingServer = new ServerSocket(0, 50, InetAddress.getLoopbackAddress());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        Thread.ofPlatform().daemon().name("hanging-jwks").start(() -> {
+            while (!hangingServer.isClosed()) {
+                try {
+                    heldConnections.add(hangingServer.accept());
+                } catch (IOException e) {
+                    return;
+                }
+            }
+        });
+    }
+
+    public String hangingJwkSetUri() {
+        return "http://127.0.0.1:" + hangingServer.getLocalPort() + "/jwks";
     }
 
     public String jwkSetUri() {
@@ -67,6 +98,14 @@ public final class TestIssuer implements AutoCloseable {
     @Override
     public void close() {
         server.stop(0);
+        try {
+            hangingServer.close();
+            for (Socket connection : heldConnections) {
+                connection.close();
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static RSAKey generateKey(String keyId) {

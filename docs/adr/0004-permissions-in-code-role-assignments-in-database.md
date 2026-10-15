@@ -22,7 +22,7 @@ Access to a student's data depends on relations that change over time: a mentor 
   - unknown and disabled users are rejected with 403;
   - roles are loaded from `user_roles` and expanded into permissions as granted authorities.
 - **Capability checks** use method security through a typed annotation, so permission names never appear in strings.
-- **Resource-level checks** are explicit service calls that throw `AccessDeniedException`.
+- **Resource-level checks** are explicit service calls that throw `AccessDeniedException`. (Refined: an inaccessible resource throws `NotFoundException` and responds 404, exactly like a missing one; see `docs/architecture/invariants.md`.)
 - Roles and groups in the token are not used for authorization.
 - `GET /api/v1/me` returns the user's roles and effective permissions. The frontend uses them only to hide what the user cannot do; the backend enforces.
 

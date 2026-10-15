@@ -116,6 +116,23 @@ class AdministratorBootstrapTests {
         assertThat(output.getOut()).contains(APPLIED + userId);
     }
 
+    // AC-12
+    @Test
+    void enablesTheLinkedDisabledUser(CapturedOutput output) {
+        UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.DISABLED);
+        users.link(userId, "disabled-admin");
+        String token = issuer.token("disabled-admin")
+                .email(TestIssuer.BOOTSTRAP_EMAIL, true)
+                .bearer();
+
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+
+        assertThat(users.status(userId)).isEqualTo("ACTIVE");
+        assertThat(users.roles(userId)).containsExactly("ADMIN");
+        assertThat(users.count("user_identities")).isEqualTo(1);
+        assertThat(output.getOut()).containsOnlyOnce(APPLIED + userId);
+    }
+
     // AC-13
     @Test
     void neverMovesAnIdentityLinkedToAnotherUser(CapturedOutput output) {

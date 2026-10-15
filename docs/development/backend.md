@@ -20,7 +20,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 
 ## Security (ADR 0003, ADR 0004)
 
-- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. Configuration and the filter chains are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`.
+- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. The filter chains and the gate are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`; token validation per trusted issuer is in `backend/src/main/java/com/mentorhub/users/internal/security/JwtAuthenticationConfiguration.java` and `backend/src/main/java/com/mentorhub/users/internal/security/TrustedIssuers.java`.
 - Every `/api/v1/**` controller method carries `@RequirePermission(Permission.X)` or `@NoPermissionRequired` (both in `com.mentorhub.users`). Permission names never appear in strings; checks never use role names. `PermissionDeclarationTests` fails the build on an operation with neither or both.
 - The gate refuses callers that are not invited or disabled with 403 before any controller runs, except `GET /api/v1/me`. Services therefore only see active users: get the caller with `CurrentUserProvider.currentUser()` (`users.id` and permissions), never from the token.
 - Resource-level checks are explicit service code. A single resource the caller may not access throws `com.mentorhub.web.NotFoundException`, exactly like a missing one; lists leave inaccessible items out. A missing permission is Spring Security's `AccessDeniedException`.
@@ -31,13 +31,15 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Startup fails, naming the property, without `mentorhub.security.trusted-issuers` (owned by `users`) or `mentorhub.security.client.issuer-uri` and `client-id` (owned by `system`).
 - `backend/src/main/resources/application.yaml` holds the production defaults: actuator exposes only health, without details; springdoc's API docs and Swagger UI are disabled; security denies `/openapi.yaml`.
 - The `dev` profile (`backend/src/main/resources/application-dev.yaml`) serves Swagger UI, the API docs, `/openapi.yaml` and the actuator `info` and `modulith` endpoints, without sign-in. It trusts the local Keycloak (`http://localhost:8180/realms/mentorhub`) and sets the bootstrap email to `admin@mentorhub.local`.
-- Only `./mvnw spring-boot:run` (the `spring-boot-maven-plugin` configuration) and `TestMentorHubApplication` activate `dev`; `application.yaml` never does.
+- Only `./mvnw spring-boot:run` and `TestMentorHubApplication` activate `dev`; `application.yaml` never does. For Maven it is the `spring-boot.run.profiles` property in `backend/pom.xml`, which covers `spring-boot:run` (and `start`, `test-run`) but not packaging or `process-aot`; `-Dspring-boot.run.profiles=...` overrides it.
+- Each trusted issuer's OIDC discovery and JWK set requests use `mentorhub.security.issuer-connect-timeout` (default 2s) and `mentorhub.security.issuer-read-timeout` (default 5s). An unreachable or hung identity provider fails the request with a 500 Problem after them instead of holding the request thread.
 - In `dev`, `DevelopmentUserRunner` (`backend/src/main/java/com/mentorhub/users/internal/dev/`) creates or updates the development users of `mentorhub.development-users` on every start: identity link, status and exactly the configured roles. They match the realm users of `infra/keycloak/mentorhub-realm.json` by fixed ids. Development users are never a Flyway migration.
 
 ## Errors
 
 - Errors are RFC 9457 Problem Details (`application/problem+json`). MentorHub types are in `backend/src/main/java/com/mentorhub/web/Problems.java`: `unauthorized` (401), `not-invited`, `access-ended`, `forbidden` (403) and `not-found` (404). Other errors use `about:blank`, written explicitly: the contract makes `type` required, but Spring 7 leaves it `null` and omits it from the JSON, so every problem passes through `Problems.withDefaultType`.
 - `ProblemDetailsAdvice` in `com.mentorhub.web` renders Spring MVC exceptions, `NotFoundException` and unexpected exceptions; the security entry point and access-denied handler write the 401 and 403 problems through `ProblemResponseWriter`.
+- `ProblemErrorController` in `com.mentorhub.web` replaces Boot's `BasicErrorController`. Errors from servlet filters (for example the security filter chain when an issuer's keys cannot be loaded) and from the container go through the error dispatch and are rendered as Problem Details: `about:blank`, the original status, the original path as `instance`, no exception text.
 
 ## Code
 
@@ -83,6 +85,7 @@ Jackson pitfall: a global `spring.jackson.default-property-inclusion: non_null` 
 Security pitfalls:
 
 - `SecurityMockMvcRequestPostProcessors.jwt()` bypasses the application's converter: no gate, no bootstrap, no permissions from the database. Do not use it; use `TestAuthentications` or `TestIssuer`.
+- MockMvc does not perform the servlet container's error dispatch: an exception from a filter reaches the test as an exception instead of the `ProblemErrorController` response. Test filter-level failures with a `RANDOM_PORT` server, as `IssuerFailureTests` does.
 - A catch-all `@ExceptionHandler(Exception.class)` turns method security's `AccessDeniedException` into a 500. `ProblemDetailsAdvice` rethrows security exceptions so Spring Security answers them; no other module declares a catch-all handler.
 
 When unsure whether a class, annotation or method exists, check the real artifacts (see [Checking an API](#checking-an-api)) instead of relying on examples.

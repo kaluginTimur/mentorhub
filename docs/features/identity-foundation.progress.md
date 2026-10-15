@@ -12,11 +12,11 @@ Started: 2026-10-15
 | 2 migration | approved | b3cc411 | 2026-10-15 |
 | 3 domain | approved | 6f6e0f5 | 2026-10-15 |
 | 4 api | approved | 849b74d | 2026-10-15 |
-| 4b local environment | approved | | 2026-10-15 |
+| 4b local environment | approved | ecd85fc | 2026-10-15 |
 | frontend A (prototype) | skipped | | 2026-10-15 |
 | frontend B | approved | 84f1007 | 2026-10-15 |
-| review | in progress | | 2026-10-15 |
-| verify | pending | | |
+| review | approved | | 2026-10-15 |
+| verify | done | | 2026-10-15 |
 
 Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`.
 
@@ -41,6 +41,17 @@ Frontend A is skipped because mock mode is not implemented (`docs/development/fr
 - 2026-10-15, step 4: "approve step 4, accept stricter validation, commit and go 4b": required security settings fail startup in every profile (accepted deviation from "outside `dev`"); `spring-boot:run` is fixed in step 4b.
 - 2026-10-15, step 4b: user ran `spring-boot:run` and `npm start` and reported the manual checks (AC-1, AC-8, AC-30 and the frontend screens): "I've done manual testing, seems ok".
 - 2026-10-15, step 4b: "approve 4b, commit".
+- 2026-10-15, review: final review non-blocking, 4 minors (plugin-level `dev` profile leaks into AOT; filter-chain errors not rendered as Problem; AC-12 linked+disabled untested; spec drift) and 5 nits; waiting for the user.
+- 2026-10-15, review: "go with your recommendation": backend-dev fixes 1, 2, 3, 5, 6, 7, 8; frontend-dev fixes 9; the coordinator updates the spec (4) after the feature is accepted; then verifier.
+- 2026-10-15, review: fixes reported done (91 backend tests). Item 2 done with a Problem-rendering `ErrorController` instead of a filter failure handler (covers non-authentication errors too); item 5 bound only Keycloak to 127.0.0.1 (changing Postgres ports would recreate the dev DB container). Focused review of the fix diff and verifier started.
+- 2026-10-15, verify: all PASS (backend verify, frontend format/lint/test 67/build, docs check). The verifier counted 143 backend tests from surefire reports, which include stale reports from before the package moves; backend-dev counts 91 in the current run.
+- 2026-10-15, verify: user asked "run clean verify": `./mvnw clean verify` PASS, 21 suites, 91 tests, 0 failures, 0 errors, 0 skipped.
+- 2026-10-15, review: focused review of the fix diff non-blocking, 6 minors (error path property renamed in Boot 4.1; `title` not asserted; backend.md drift on the `dev` activation and on `ProblemErrorController`; Postgres binding rationale; no timeout on JWKS fetch). Waiting for the user.
+- 2026-10-15, review: "fix 1-4 and 6, bind postgres to localhost too": error path property, `title` assertion, backend.md drift (dev activation, `ProblemErrorController`), connect/read timeouts on the JWKS/discovery fetch (production and test), Postgres bound to 127.0.0.1 (next `up` recreates the container; the `postgres-data` volume is kept). Correction: the earlier note that recreating the container was a reason not to bind Postgres was wrong; the volume survives.
+- 2026-10-15, review: fixes reported done (92 tests, clean verify): Boot 4.1 error path property, `title` asserted, backend.md updated, `issuer-connect-timeout` 2 s and `issuer-read-timeout` 5 s for discovery and JWKS (tests 1 s, hanging-issuer test), Postgres on 127.0.0.1. Final verifier started.
+- 2026-10-15, verify: final verifier all PASS (backend clean verify 92/92, frontend format/lint/test 67/67/build, docs check).
+- 2026-10-15, feature: "go on": the user accepted the feature; the spec's Design section was updated to match the implementation and its status set to `implemented`.
+- 2026-10-15, feature: "Commit review fixes and spec".
 
 ## Open questions
 
@@ -58,3 +69,6 @@ Frontend A is skipped because mock mode is not implemented (`docs/development/fr
 | reviewer (frontend round 2) | ae497cee9ce40b05e | 2026-10-15 (cd96bb6a) |
 | reviewer (frontend round 3) | acdbde34aea9ee9bb | 2026-10-15 (cd96bb6a) |
 | reviewer (final) | a4d438dd9785e1ff1 | 2026-10-15 (cd96bb6a) |
+| verifier (all) | a24e569aba5c1186c | 2026-10-15 (cd96bb6a) |
+| reviewer (fix diff) | a6819c2d017c781e5 | 2026-10-15 (cd96bb6a) |
+| verifier (final) | a00eb783c7732d240 | 2026-10-15 (cd96bb6a) |

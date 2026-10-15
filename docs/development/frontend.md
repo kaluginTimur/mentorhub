@@ -51,7 +51,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client` 22.
 - Tokens are renewed 30 s before they expire (`renewTimeBeforeTokenExpiresInSeconds`). The client configuration is cached after the first load, so sign-out also works while the API is down (the local session is ended even if the Keycloak logout fails).
 - Sign-out ends the Keycloak session; if the library has no end-session URL it ends the local session and returns to `/`. `authorize()` reports discovery failures nowhere, so a 15 s watchdog turns a missing redirect into the startup error.
 - The current user is `CurrentUserService` (`me`, `user`, `name`). Build names with `displayName()` from `frontend/src/app/core/auth/user-name.ts`.
-- Keycloak must have the client `mentorhub-web` (public, PKCE S256) with redirect and post-logout URIs `http://localhost:4200/*`.
+- The local Keycloak client comes from `infra/keycloak/mentorhub-realm.json`. The frontend relies on it being a public client with PKCE S256, with `http://localhost:4200/*` as redirect and post-logout URI.
 
 ## Styling
 

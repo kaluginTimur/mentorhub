@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: mentorhub
       POSTGRES_PASSWORD: mentorhub
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       # Postgres 18+ keeps data in a versioned subdirectory, so mount the parent
       - postgres-data:/var/lib/postgresql
@@ -29,7 +29,7 @@ services:
       # Fixed so the token issuer is always http://localhost:8180/realms/mentorhub
       KC_HOSTNAME: http://localhost:8180
     ports:
-      - "8180:8080"
+      - "127.0.0.1:8180:8080"
     volumes:
       - ./keycloak/mentorhub-realm.json:/opt/keycloak/data/import/mentorhub-realm.json:ro
     labels:

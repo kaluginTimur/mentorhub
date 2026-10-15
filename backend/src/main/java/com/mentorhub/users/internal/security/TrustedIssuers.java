@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
+import org.springframework.web.client.RestOperations;
 
 /**
  * Resolves the authentication manager for a token's issuer: {@code null} (401) for an untrusted issuer. Decoders are
@@ -26,15 +27,19 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 final class TrustedIssuers implements AuthenticationManagerResolver<String> {
 
     private final Map<String, SecurityProperties.TrustedIssuer> trusted;
+    private final RestOperations rest;
     private final Converter<Jwt, ? extends AbstractAuthenticationToken> converter;
     private final Map<String, AuthenticationManager> managers = new ConcurrentHashMap<>();
 
+    /** @param rest the client for OIDC discovery and JWK set requests; it carries the timeouts */
     TrustedIssuers(
             List<SecurityProperties.TrustedIssuer> trusted,
+            RestOperations rest,
             Converter<Jwt, ? extends AbstractAuthenticationToken> converter) {
         this.trusted = trusted.stream()
                 .collect(
                         Collectors.toUnmodifiableMap(SecurityProperties.TrustedIssuer::issuerUri, Function.identity()));
+        this.rest = rest;
         this.converter = converter;
     }
 
@@ -53,12 +58,15 @@ final class TrustedIssuers implements AuthenticationManagerResolver<String> {
         return provider::authenticate;
     }
 
-    private static NimbusJwtDecoder decoder(SecurityProperties.TrustedIssuer config) {
+    private NimbusJwtDecoder decoder(SecurityProperties.TrustedIssuer config) {
         NimbusJwtDecoder decoder;
         try {
-            decoder = config.jwkSetUri() != null
-                    ? NimbusJwtDecoder.withJwkSetUri(config.jwkSetUri()).build()
-                    : NimbusJwtDecoder.withIssuerLocation(config.issuerUri()).build();
+            // Both builders fetch through rest: discovery as well as the JWK set.
+            decoder = (config.jwkSetUri() != null
+                            ? NimbusJwtDecoder.withJwkSetUri(config.jwkSetUri())
+                            : NimbusJwtDecoder.withIssuerLocation(config.issuerUri()))
+                    .restOperations(rest)
+                    .build();
         } catch (RuntimeException e) {
             throw new AuthenticationServiceException(
                     "Cannot load the configuration of issuer " + config.issuerUri(), e);

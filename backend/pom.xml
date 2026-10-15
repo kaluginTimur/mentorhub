@@ -21,6 +21,8 @@
 		<openapi-generator.version>7.26.0</openapi-generator.version>
 		<spotless.version>3.10.4</spotless.version>
 		<api.spec>${project.basedir}/../api/openapi.yaml</api.spec>
+		<!-- Only spring-boot:run (and start, test-run) use this property; process-aot and packaging never see dev -->
+		<spring-boot.run.profiles>dev</spring-boot.run.profiles>
 	</properties>
 
 	<dependencies>
@@ -166,12 +168,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<!-- ./mvnw spring-boot:run is the local environment; application.yaml never activates dev -->
-					<profiles>
-						<profile>dev</profile>
-					</profiles>
-				</configuration>
 				<executions>
 					<execution>
 						<goals>
