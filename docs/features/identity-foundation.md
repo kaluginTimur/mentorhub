@@ -1,6 +1,6 @@
 # Identity foundation
 
-Status: approved
+Status: implemented
 Stage: tracking core (users, roles)
 Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005
 
@@ -99,7 +99,7 @@ Enforcement building blocks:
 - AC-23 (auto): Given a token signed by an untrusted issuer, or a trusted issuer's token without the MentorHub audience, then the request responds 401.
 - AC-24 (auto): Given a stale or invalid token, when a public endpoint is called with it, then the endpoint responds as without a token.
 - AC-25 (auto): Given the production profile (no `dev`), then Swagger UI, the API docs, `/openapi.yaml` and the actuator endpoints other than health are not served, and health shows no details.
-- AC-26 (auto): Given the production profile, when trusted issuers or the client configuration are missing, then the application fails to start with a message naming the property.
+- AC-26 (auto): Given any profile, when trusted issuers or the client configuration are missing, then the application fails to start with a message naming the property. (Implemented for every profile, not only production: bean validation cannot depend on the profile, and `dev` supplies the values; user decision.)
 
 Frontend behavior:
 
@@ -158,7 +158,7 @@ None in this feature. The administrator bootstrap is written to the application 
 
 ## 2. UI
 
-This feature creates `docs/ui/guidelines.md` (planned) with the application shell, the access screen pattern and the startup error screen below.
+This feature creates `docs/ui/guidelines.md` with the application shell, the access screen pattern and the startup error screen below.
 
 ### Application shell and home
 
@@ -241,12 +241,19 @@ Text: "MentorHub is unavailable. Try again later." The "Retry" action reloads th
   - `CurrentUser` (user id and permissions) and a way to get it in services. The gate guarantees that services other than `GET /api/v1/me` only ever see an active user;
   - the typed permission annotation and the "no permission required" marker.
 
-  Security configuration, the JWT converter, the gate, the bootstrap and the development user runner live in its `internal` package.
-- `com.mentorhub.web` (new, open module like `com.mentorhub.api`) holds what every module with endpoints shares: Problem Details error handling and `NotFoundException` for missing and inaccessible resources.
-- `com.mentorhub.system` gains the client configuration endpoint and owns its own `@ConfigurationProperties` class for `mentorhub.security.client.*`, so it does not depend on `users` internals.
+  Its `internal` package is split into layer subpackages (user decision, now the backend convention in `docs/development/backend.md`), with one-way dependencies `web` → `service` → `security` → `bootstrap` → `persistence` → `domain`:
+  - `domain`: `UserStatus`, `AccessStatus`, `Caller`, `StoredRoles`;
+  - `persistence`: `UserRepository` (JdbcClient) and its records;
+  - `security`: the filter chains and the gate, token validation per trusted issuer, the user resolution, the 401 and 403 handlers, `CurrentCaller`;
+  - `bootstrap`: the administrator bootstrap (ADR 0005);
+  - `service` and `web`: `MeService` and `MeController`;
+  - `dev`: the development user runner, created only in the `dev` profile.
+- `com.mentorhub.web` (new, open module like `com.mentorhub.api`) holds what every module with endpoints shares: Problem Details error handling (`ProblemDetailsAdvice`, `ProblemErrorController`, `ProblemResponseWriter`) and `NotFoundException` for missing and inaccessible resources.
+- `com.mentorhub.system` gains the client configuration endpoint and owns its own `@ConfigurationProperties` class for `mentorhub.security.client.*`, so it does not depend on `users` internals. Its controller moved to `system/internal/web/SystemController`.
 - Frontend:
-  - `frontend/src/app/core/auth/` (planned): OIDC setup, the token interceptor, the error interceptor, the guard and the current user service;
-  - `frontend/src/app/features/shell/` and `frontend/src/app/features/access/` (planned): the shell and the access screens.
+  - `frontend/src/app/core/auth/`: OIDC setup, the token interceptor, the error interceptor, the guard and the current user service;
+  - `frontend/src/app/features/shell/` and `frontend/src/app/features/access/`: the shell, the access screens and the unavailable page;
+  - `frontend/src/app/shared/`: the loading state and the unavailable card, loaded lazily.
 
 ### Data model
 
@@ -254,20 +261,23 @@ The migration adds:
 
 - `users`:
   - `id uuid` PK default `gen_random_uuid()`;
-  - `email text not null`, stored as received, unique index on `lower(email)`; lookups compare `lower(email)`;
+  - `email text not null check (email <> '')`, stored as received, unique index `users_email_lower_uq` on `lower(email)`; lookups compare `lower(email)`;
   - `first_name text null`, `last_name text null`;
   - `status text not null` with a check constraint (`ACTIVE`, `DISABLED`);
-  - `created_at`, `updated_at timestamptz not null`.
+  - `created_at`, `updated_at timestamptz not null default now()`; the application sets `updated_at` on change.
 - `user_identities`:
   - `id uuid` PK default `gen_random_uuid()`;
   - `user_id uuid not null` FK → `users`, on delete restrict, indexed;
-  - `issuer text not null`, `subject text not null`, unique (`issuer`, `subject`);
-  - `created_at timestamptz not null`.
+  - `issuer text not null`, `subject text not null`, unique constraint `user_identities_issuer_subject_uq` (`issuer`, `subject`);
+  - `created_at timestamptz not null default now()`.
 - `roles`: `name text` PK, a reference table seeded with ADMIN, COORDINATOR, MENTOR, STUDENT, OBSERVER.
 - `user_roles`:
   - `user_id uuid not null` FK → `users`, on delete restrict;
   - `role text not null` FK → `roles`, on delete restrict;
-  - PK (`user_id`, `role`), `created_at timestamptz not null`.
+  - PK (`user_id`, `role`), `created_at timestamptz not null default now()`;
+  - index `user_roles_role_idx` on `role`, for the bootstrap's "is there an active ADMIN" check.
+
+The `roles` table is a `text` reference table with a foreign key rather than a PostgreSQL `enum` type; the rationale is in ADR 0004 (user decision).
 
 Users are never deleted in this feature, so foreign keys restrict deletion. An unknown identity creates no rows. Only the bootstrap rule and the development user runner link identities; invitations follow in the next feature.
 
@@ -281,16 +291,17 @@ Users are never deleted in this feature, so foreign keys restrict deletion. An u
 Schemas:
 
 - `AccessStatus`: string enum `ACTIVE`, `DISABLED`, `NOT_INVITED`.
-- `Me`: `status` (`AccessStatus`, required) and `user` (`MeUser`, optional). For `ACTIVE` the user is present; for the other statuses the property is absent from the JSON, not `null`. Every status responds 200.
+- `Me`: `status` (`AccessStatus`, required) and `user` (`MeUser`, optional). For `ACTIVE` the user is present; for the other statuses the property is absent from the JSON, not `null` (a `NON_NULL` Jackson mixin on `Me` only, so the nullable names stay explicit `null`; user decision). Every status responds 200.
 - `MeUser`: all properties required:
   - `id` (uuid), `email`;
-  - `firstName`, `lastName`, nullable (`type: [string, 'null']`). The backend and frontend agents check how both generators handle it and record the result in their guide;
+  - `firstName`, `lastName`, nullable (`type: [string, 'null']`). Both generators produce a required nullable property (Java: a constructor parameter without `@NotNull`; TypeScript: `string | null`); recorded in both guides;
   - `roles` (array of `Role`), `permissions` (array of `Permission`).
 - `Role` and `Permission`: string enums in the contract, equal to the code enums (AC-21). A new permission is a contract change, which every feature that adds one makes anyway.
-- `ClientConfig`: `issuer`, `clientId`, `scope` (`openid profile email`), all required. It carries only values that are public by nature (the browser sees them in the sign-in redirect anyway), never a secret.
+- `ClientConfig`: `issuer` (`format: uri`, user decision), `clientId`, `scope` (`openid profile email`), all required. It carries only values that are public by nature (the browser sees them in the sign-in redirect anyway), never a secret.
 - `Problem` (RFC 9457, `application/problem+json`):
   - `type`, `title` and `status` are required, `detail` is optional;
-  - this feature's `type` values are `urn:mentorhub:problem:unauthorized`, `...:not-invited`, `...:access-ended`, `...:forbidden` and `...:not-found`; other errors (400, 405, 500) keep Spring's `about:blank`;
+  - this feature's `type` values are `urn:mentorhub:problem:unauthorized`, `...:not-invited`, `...:access-ended`, `...:forbidden` and `...:not-found`; other errors (400, 405, 500) use `about:blank`, written explicitly because Spring 7 leaves `type` null and drops it from the JSON while the contract requires it (user decision);
+  - errors raised in servlet filters or the container (for example an unreachable identity provider) go through the error dispatch and are rendered by `ProblemErrorController` (`about:blank`, the original status, the path as `instance`, no exception text);
   - the 401 and 403 responses reference it and are reused by every later endpoint;
   - the authentication entry point, the access-denied handler and the gate all produce it. The entry point keeps the `WWW-Authenticate: Bearer` header.
 
@@ -298,24 +309,25 @@ Schemas:
 
 - **URL rules**, in two security filter chains:
   - **public**: the public endpoints from the access matrix (plus the development-only paths in the `dev` profile), without bearer token processing, so a stale token cannot fail them;
-  - **API**: `/api/v1/**` requires authentication through the OAuth2 resource server;
+  - **API**: `/api/v1/**` requires authentication through the OAuth2 resource server; error dispatches are permitted, so a failure is not turned into a 401;
   - every other path is denied.
 - **Method rules**: every `/api/v1/**` operation carries either the typed permission annotation (for example `@RequirePermission(Permission.USERS_MANAGE)`) or the "no permission required" marker. A test scans the handler methods and fails on an operation with neither (AC-18).
   - Permission names never appear in strings.
-  - The way to build the annotation on Spring Security 7 method security is checked with `api-lookup`.
+  - `@RequirePermission` is a meta-annotation over `@PreAuthorize("hasAuthority('{value}')")`, filled from the enum constant by an `AnnotationTemplateExpressionDefaults` bean; permissions are granted as authorities named after the `Permission` constants.
   - The test-only endpoint for AC-17 lives under `/api/v1/test/**` in test sources only.
 - **Issuers**:
   - trusted issuers are configuration, each with its required audience (`aud` must contain it);
   - `JwtIssuerAuthenticationManagerResolver` is built with a custom `AuthenticationManagerResolver<String>`, so every trusted issuer uses our converter;
   - decoders are created lazily on the first token of each issuer, so the application starts while Keycloak is still importing the realm;
-  - a decoder uses OIDC discovery by default, or a configured `jwk-set-uri` when one is given (tests use this).
+  - a decoder uses OIDC discovery by default, or a configured `jwk-set-uri` when one is given (tests use this);
+  - discovery and JWK set requests use a connect and a read timeout, so an unreachable or hung identity provider fails the request with a 500 Problem instead of holding the request thread.
 - **The JWT converter** resolves the caller on every request:
   - `(iss, sub)` → `user_identities` → `users`;
   - the bootstrap rule (ADR 0005, AC-11 to AC-16) runs before the status check;
   - roles from `user_roles` are expanded into permissions as granted authorities; unknown stored roles are skipped (AC-20);
   - the resulting authentication carries the access status and, for a linked user, the `CurrentUser`. For a caller that is not invited it has no user id.
 - **Bootstrap writes** are one transaction and idempotent: inserts use `on conflict do nothing` and re-read. The warning is logged only when the transaction changed rows (AC-16).
-- **The gate**, after authentication, refuses every request from a caller that is not invited or disabled with 403 (`not-invited`, `access-ended`), except `GET /api/v1/me`.
+- **The gate** is an `AuthorizationManager` on `/api/v1/**` that admits only active users; the access-denied handler maps a refused caller's status to 403 `not-invited` or `access-ended`. `GET /api/v1/me` only requires authentication, and reads the caller in any status through `CurrentCaller`; every other service sees only active users through `CurrentUserProvider`.
 - **Token claims**: only `iss`, `sub`, `aud`, `email`, `email_verified`, `given_name` and `family_name` are read. Roles and groups in the token are ignored (AC-22).
 - **Resource-level checks** in services:
   - a single resource the caller may not access throws `NotFoundException`, the same as a missing one (404);
@@ -333,15 +345,17 @@ Schemas:
 | `mentorhub.security.trusted-issuers[].issuer-uri` | A trusted issuer |
 | `mentorhub.security.trusted-issuers[].audience` | The audience its tokens must carry |
 | `mentorhub.security.trusted-issuers[].jwk-set-uri` | Optional; skips discovery (tests) |
+| `mentorhub.security.issuer-connect-timeout`, `issuer-read-timeout` | Timeouts for discovery and JWK set requests (default 2s and 5s) |
 | `mentorhub.security.bootstrap-admin-email` | ADR 0005; empty disables the rule |
 | `mentorhub.security.client.issuer-uri`, `client-id` | Returned by `GET /api/v1/system/client-config` (owned by `system`) |
+| `mentorhub.development-users.issuer-uri`, `.users[]` (subject, email, names, status, roles) | `dev` only: the development users the runner keeps in sync |
 
-Outside `dev`, a missing trusted issuer list or client configuration fails startup (AC-26).
+In every profile, a missing trusted issuer list or client configuration fails startup (AC-26).
 
 ### Development profile
 
-- The profile is `dev`. It is activated only by the run configuration of `spring-boot-maven-plugin` (`./mvnw spring-boot:run`) and by `TestMentorHubApplication`, never by `application.yaml`. `application-dev.yaml` holds the local Keycloak issuer, the bootstrap email and the development users.
-- The backend agent checks that `TestMentorHubApplication` also starts Keycloak; if it does not, the README says that the development users need `./mvnw spring-boot:run`.
+- The profile is `dev`. It is activated only by the `spring-boot.run.profiles` property in `backend/pom.xml` (read by `./mvnw spring-boot:run`, not by packaging or the AOT build) and by `TestMentorHubApplication`, never by `application.yaml`. `application-dev.yaml` holds the local Keycloak issuer, the bootstrap email and the development users.
+- `TestMentorHubApplication` runs with a throwaway Testcontainers database and Docker Compose turned off, so it does not start Keycloak; the README says to start it with `docker compose -f infra/compose.yaml up -d keycloak`.
 - In `dev`:
   - `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`, `/openapi.yaml` and the actuator `info` and `modulith` endpoints are served;
   - a runner creates or updates the development users (identity, status and roles) idempotently on start.
@@ -355,8 +369,9 @@ Outside `dev`, a missing trusted issuer list or client configuration fails start
 ### Local environment
 
 - Keycloak 26.8.1 in `infra/compose.yaml` on port 8180, in development mode:
-  - it imports the realm from `infra/keycloak/mentorhub-realm.json` (planned) on start. Import skips an existing realm, so a changed realm file needs the container recreated; the README says how;
-  - the hostname is fixed to `http://localhost:8180`, so `iss` is always `http://localhost:8180/realms/mentorhub`.
+  - it imports the realm from `infra/keycloak/mentorhub-realm.json` on start. Import skips an existing realm, so a changed realm file needs the container recreated; the README says how;
+  - the hostname is fixed to `http://localhost:8180`, so `iss` is always `http://localhost:8180/realms/mentorhub`;
+  - Keycloak and Postgres are published on `127.0.0.1` only (user decision).
 - Realm `mentorhub`:
   - client `mentorhub-web`:
     - public, standard flow only, PKCE S256 required, no implicit flow, no direct access grants;
@@ -381,13 +396,14 @@ Outside `dev`, a missing trusted issuer list or client configuration fails start
 
 - The OIDC client library is `angular-auth-oidc-client` 22.x (peer dependency `@angular/core >=20`; it supports Authorization Code + PKCE, refresh tokens and configuration loaded at runtime). The frontend agent confirms it works with the zoneless setup.
 - At startup the application loads `GET /api/v1/system/client-config`, then configures the OIDC client; on failure it shows the startup error.
-- The token interceptor attaches the access token only to non-public `/api/` requests (AC-27).
-- The guard signs the visitor in when needed, re-loads `GET /api/v1/me` on every navigation, and routes by status.
+- The client configuration is cached after the first successful load, so sign-out works while the API is down. Before redirecting to sign-in, the application loads Keycloak's discovery document; a failure, or no redirect within 15 s, shows the startup error. The library's own post-sign-in navigation is off (`triggerAuthorizationResultEvent: true`) so the guard decides where the user lands, and `autoUserInfo` is off because the profile comes from `/me`.
+- The token interceptor attaches the access token only to same-origin, non-public `/api/` requests (AC-27); the public paths come from the generated `PATH` constants.
+- The guard signs the visitor in when needed, re-loads `GET /api/v1/me` once per navigation that activates a route, and routes by status. When that load fails, it shows the unavailable state without changing the address (`skipLocationChange`), and Retry repeats the failed target with the sign-in callback parameters removed.
 - The error interceptor:
   - on 401, starts sign-in again once, keeping the current route; a 401 right after a fresh sign-in shows the startup error (AC-28);
   - on 403 `not-invited` or `access-ended`, re-loads `GET /api/v1/me` and routes to the access screen;
   - on 403 `forbidden`, shows the snackbar.
-- Tokens are refreshed with refresh tokens. Sign-out is RP-initiated logout at Keycloak with the application origin as the post-logout redirect (AC-8).
+- Tokens are refreshed with refresh tokens, 30 s before they expire. Sign-out is RP-initiated logout at Keycloak with the application origin as the post-logout redirect (AC-8); if no redirect happens, or the logout fails, the local session is still ended.
 
 ### Tests
 
@@ -395,7 +411,9 @@ Outside `dev`, a missing trusted issuer list or client configuration fails start
   - A test issuer with a locally generated RSA key is trusted in the test configuration through `jwk-set-uri`, served by the test.
   - Tests sign their own JWTs with any claims they need.
   - `SecurityMockMvcRequestPostProcessors.jwt()` bypasses the converter, so it must not be used for gate, bootstrap or permission tests.
-- `@WebMvcTest` slices import the security configuration and use a test helper (`RequestPostProcessor`) that sets our authentication with a given status and permissions. The existing `SystemInfoControllerTest` keeps passing.
+- `@WebMvcTest` slices import the security configuration (`WebSliceSecurity`) and use `TestAuthentications`, which sets our authentication with a given status and permissions. `SystemInfoControllerTest` became `system/internal/web/SystemControllerTest`.
+- MockMvc does not perform the error dispatch, so filter-level failures (an unreachable or hung issuer) are tested with a real server (`IssuerFailureTests`).
+- `DevelopmentRealmConsistencyTests` keeps the development users in `application-dev.yaml` equal to the realm users.
 - The concurrency test for AC-16 sends parallel first requests against Testcontainers Postgres.
 - Frontend: unit tests with the OIDC service and the API replaced, covering the guard routing, both interceptors, the 401 loop guard and every screen state.
 
@@ -414,9 +432,9 @@ Outside `dev`, a missing trusted issuer list or client configuration fails start
   - the pitfall that a catch-all `@ExceptionHandler` in `com.mentorhub.web` turns method security's `AccessDeniedException` into a 500.
 - `docs/development/frontend.md`:
   - authentication, both interceptors, 401 and 403 handling;
-  - the `resource()` example reference once `frontend/src/app/app.ts` becomes the shell.
+  - the `resource()` example reference, now `frontend/src/app/features/shell/home.ts`.
 - `README.md`: Keycloak, the development users and password, the profile, Swagger being development-only, recreating the Keycloak container after realm changes.
-- `docs/ui/guidelines.md` (planned): shell, access screens, startup error.
+- `docs/ui/guidelines.md`: shell, access screens, startup error.
 - ADR 0003: status implemented.
 
 ### Events
@@ -436,6 +454,11 @@ None.
 - Errors use RFC 9457 Problem Details with fixed `type` values.
 - The frontend reads its OIDC configuration from the backend at runtime, so the issuer can change without a rebuild.
 - Development users come from a `dev`-profile runner, not from migrations.
+- Stored roles are a `text` reference table, not a PostgreSQL `enum`; the rationale is in ADR 0004 (user decision).
+- Internal code is split into layer subpackages; this is now the backend convention (user decision).
+- Required settings fail startup in every profile, not only outside `dev` (accepted deviation).
+- `about:blank` is written explicitly for problems without a specific type (user decision).
+- Frontend follow-ups: `/unavailable` sits outside the guard, and routes have no per-route document titles.
 
 ## 4. Open questions
 

@@ -15,7 +15,7 @@ Started: 2026-10-15
 | 4b local environment | approved | ecd85fc | 2026-10-15 |
 | frontend A (prototype) | skipped | | 2026-10-15 |
 | frontend B | approved | 84f1007 | 2026-10-15 |
-| review | approved | | 2026-10-15 |
+| review | approved | 177b8fb | 2026-10-15 |
 | verify | done | | 2026-10-15 |
 
 Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`.
