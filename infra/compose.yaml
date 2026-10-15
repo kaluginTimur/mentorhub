@@ -18,5 +18,23 @@ services:
       timeout: 3s
       retries: 10
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    # Development mode keeps its data inside the container. --import-realm skips a realm that already exists, so a
+    # changed realm file takes effect only in a recreated container.
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Fixed so the token issuer is always http://localhost:8180/realms/mentorhub
+      KC_HOSTNAME: http://localhost:8180
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./keycloak/mentorhub-realm.json:/opt/keycloak/data/import/mentorhub-realm.json:ro
+    labels:
+      # The backend creates token decoders on the first token, so it does not wait for Keycloak at startup.
+      org.springframework.boot.readiness-check.disable: "true"
+
 volumes:
   postgres-data:

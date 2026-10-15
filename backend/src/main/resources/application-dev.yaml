@@ -10,3 +10,47 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+# The local Keycloak from infra/compose.yaml. Its hostname is fixed, so tokens always carry this issuer.
+mentorhub:
+  security:
+    trusted-issuers:
+      - issuer-uri: http://localhost:8180/realms/mentorhub
+        audience: mentorhub-api
+    bootstrap-admin-email: admin@mentorhub.local
+    client:
+      issuer-uri: http://localhost:8180/realms/mentorhub
+      client-id: mentorhub-web
+  # Linked to the realm users of infra/keycloak/mentorhub-realm.json by their fixed ids. The password of all of them
+  # is in README.md. stranger@mentorhub.local exists only in Keycloak (not invited).
+  development-users:
+    issuer-uri: http://localhost:8180/realms/mentorhub
+    users:
+      - subject: 00000000-0000-4000-8000-000000000001
+        email: admin@mentorhub.local
+        first-name: Ada
+        last-name: Admin
+        status: ACTIVE
+        roles: [ADMIN]
+      - subject: 00000000-0000-4000-8000-000000000002
+        email: mentor@mentorhub.local
+        first-name: Mark
+        last-name: Mentor
+        status: ACTIVE
+        roles: [MENTOR]
+      - subject: 00000000-0000-4000-8000-000000000003
+        email: student@mentorhub.local
+        first-name: Sofia
+        last-name: Student
+        status: ACTIVE
+        roles: [STUDENT]
+      - subject: 00000000-0000-4000-8000-000000000004
+        email: noroles@mentorhub.local
+        first-name: Nora
+        last-name: Noroles
+        status: ACTIVE
+      - subject: 00000000-0000-4000-8000-000000000005
+        email: disabled@mentorhub.local
+        first-name: Dan
+        last-name: Disabled
+        status: DISABLED

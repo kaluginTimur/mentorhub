@@ -3,6 +3,7 @@ package com.mentorhub.users.internal.persistence;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import java.sql.Types;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -104,15 +105,17 @@ public class UserRepository {
     }
 
     /** @return the number of inserted rows: 0 when a user with this email (ignoring case) exists */
-    public int insertActiveUserIfAbsent(String email, @Nullable String firstName, @Nullable String lastName) {
+    public int insertUserIfAbsent(
+            String email, @Nullable String firstName, @Nullable String lastName, UserStatus status) {
         return jdbc.sql("""
                         insert into users (email, first_name, last_name, status)
-                        values (:email, :firstName, :lastName, 'ACTIVE')
+                        values (:email, :firstName, :lastName, :status)
                         on conflict ((lower(email))) do nothing
                         """)
                 .param("email", email)
                 .param("firstName", firstName, Types.VARCHAR)
                 .param("lastName", lastName, Types.VARCHAR)
+                .param("status", status.name())
                 .update();
     }
 
@@ -136,10 +139,24 @@ public class UserRepository {
                 .update();
     }
 
-    /** @return the number of updated rows: 0 when the user is already active */
-    public int activate(UUID userId) {
-        return jdbc.sql("update users set status = 'ACTIVE', updated_at = now() where id = :id and status <> 'ACTIVE'")
+    /** @return the number of updated rows: 0 when the user already has the status */
+    public int setStatus(UUID userId, UserStatus status) {
+        return jdbc.sql("update users set status = :status, updated_at = now() where id = :id and status <> :status")
                 .param("id", userId)
+                .param("status", status.name())
+                .update();
+    }
+
+    /** Removes every stored role assignment of the user except {@code kept}, including roles the code does not know. */
+    public int removeRolesOtherThan(UUID userId, Collection<Role> kept) {
+        if (kept.isEmpty()) {
+            return jdbc.sql("delete from user_roles where user_id = :userId")
+                    .param("userId", userId)
+                    .update();
+        }
+        return jdbc.sql("delete from user_roles where user_id = :userId and role not in (:kept)")
+                .param("userId", userId)
+                .param("kept", kept.stream().map(Role::name).toList())
                 .update();
     }
 

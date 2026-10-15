@@ -1,6 +1,7 @@
 package com.mentorhub.users.internal.bootstrap;
 
 import com.mentorhub.users.Role;
+import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.persistence.LinkedUser;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import java.util.Optional;
@@ -60,7 +61,7 @@ public class AdministratorBootstrap {
             }
             userId = linked.get().userId();
         } else {
-            changedRows += users.insertActiveUserIfAbsent(email, claims.givenName(), claims.familyName());
+            changedRows += users.insertUserIfAbsent(email, claims.givenName(), claims.familyName(), UserStatus.ACTIVE);
             userId = users.findUserIdByEmail(email).orElseThrow();
             changedRows += users.linkIdentityIfAbsent(userId, claims.issuer(), claims.subject());
             UUID linkedUserId = users.findLinkedUser(claims.issuer(), claims.subject())
@@ -76,7 +77,7 @@ public class AdministratorBootstrap {
                 return;
             }
         }
-        changedRows += users.activate(userId);
+        changedRows += users.setStatus(userId, UserStatus.ACTIVE);
         changedRows += users.assignRoleIfAbsent(userId, Role.ADMIN);
         if (changedRows > 0) {
             log.warn("Administrator bootstrap applied to user {}", userId);

@@ -30,7 +30,9 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 
 - Startup fails, naming the property, without `mentorhub.security.trusted-issuers` (owned by `users`) or `mentorhub.security.client.issuer-uri` and `client-id` (owned by `system`).
 - `backend/src/main/resources/application.yaml` holds the production defaults: actuator exposes only health, without details; springdoc's API docs and Swagger UI are disabled; security denies `/openapi.yaml`.
-- The `dev` profile (`backend/src/main/resources/application-dev.yaml`) serves Swagger UI, the API docs, `/openapi.yaml` and the actuator `info` and `modulith` endpoints, without sign-in.
+- The `dev` profile (`backend/src/main/resources/application-dev.yaml`) serves Swagger UI, the API docs, `/openapi.yaml` and the actuator `info` and `modulith` endpoints, without sign-in. It trusts the local Keycloak (`http://localhost:8180/realms/mentorhub`) and sets the bootstrap email to `admin@mentorhub.local`.
+- Only `./mvnw spring-boot:run` (the `spring-boot-maven-plugin` configuration) and `TestMentorHubApplication` activate `dev`; `application.yaml` never does.
+- In `dev`, `DevelopmentUserRunner` (`backend/src/main/java/com/mentorhub/users/internal/dev/`) creates or updates the development users of `mentorhub.development-users` on every start: identity link, status and exactly the configured roles. They match the realm users of `infra/keycloak/mentorhub-realm.json` by fixed ids. Development users are never a Flyway migration.
 
 ## Errors
 
@@ -48,7 +50,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 
 - Migrations: `backend/src/main/resources/db/migration/V<n>__<description>.sql`. The schema is created by migrations only (no `ddl-auto`).
 - Never edit, rename or delete an applied migration; add a new one. Flyway validates a CRC32 checksum over the file's lines, so even a comment change breaks startup on every existing database. Tests start from an empty Testcontainers database and do not catch this; only a persistent database does. A project hook blocks edits to committed migrations and to migrations recorded in the dev database.
-- Running the application (`./mvnw spring-boot:run` or `TestMentorHubApplication`) applies pending migrations to the dev database in `infra/compose.yaml`, which freezes them. Do not run it with a migration that is still under review.
+- Running the application with `./mvnw spring-boot:run` applies pending migrations to the dev database in `infra/compose.yaml`, which freezes them. Do not run it with a migration that is still under review. `TestMentorHubApplication` uses a throwaway Testcontainers database instead.
 - Parallel branches can pick the same version number for a new migration, and Flyway rejects duplicate versions. Before merging, rename your own **unapplied** migration to the next free number; never rename an applied one.
 - Primary keys are `uuid` (`gen_random_uuid()`), timestamps are `timestamptz`.
 
@@ -92,8 +94,8 @@ When unsure whether a class, annotation or method exists, check the real artifac
 | Build, tests, formatting, module checks | `./mvnw verify` |
 | Format | `./mvnw spotless:apply` |
 | Regenerate API interfaces | `./mvnw -q generate-sources` |
-| Run on :8080 (starts Postgres from `infra/compose.yaml`) | `./mvnw spring-boot:run` |
-| Run with Postgres from Testcontainers | `TestMentorHubApplication` in `backend/src/test` |
+| Run on :8080 in the `dev` profile (starts Postgres and Keycloak from `infra/compose.yaml`) | `./mvnw spring-boot:run` |
+| Run in the `dev` profile with Postgres from Testcontainers; no Keycloak (start it with `docker compose -f infra/compose.yaml up -d keycloak` to sign in) | `TestMentorHubApplication` in `backend/src/test` |
 
 ## Verification
 

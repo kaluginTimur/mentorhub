@@ -1,6 +1,6 @@
 # 0003. Authentication through an external IdP (Keycloak)
 
-Status: accepted, implementation in a separate step, 2026-10-11; role model refined by 0004
+Status: accepted 2026-10-11, implemented 2026-10-15 (`docs/features/identity-foundation.md`); role model refined by 0004
 
 ## Context
 

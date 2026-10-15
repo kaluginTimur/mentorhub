@@ -11,11 +11,11 @@ Started: 2026-10-15
 | 1 contract | approved | cc86c7f | 2026-10-15 |
 | 2 migration | approved | b3cc411 | 2026-10-15 |
 | 3 domain | approved | 6f6e0f5 | 2026-10-15 |
-| 4 api | approved | | 2026-10-15 |
-| 4b local environment | pending | | |
+| 4 api | approved | 849b74d | 2026-10-15 |
+| 4b local environment | approved | | 2026-10-15 |
 | frontend A (prototype) | skipped | | 2026-10-15 |
 | frontend B | approved | 84f1007 | 2026-10-15 |
-| review | pending | | |
+| review | in progress | | 2026-10-15 |
 | verify | pending | | |
 
 Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`.
@@ -39,6 +39,8 @@ Frontend A is skipped because mock mode is not implemented (`docs/development/fr
 - 2026-10-15, step 3: restructure reported done (57 tests). Agent moved `SignInClaims` to `bootstrap/` and creates `AdministratorBootstrap` as a `@Bean` in `security/` to avoid a package cycle; shared test support stays in `users/internal/security/` (test sources) so security internals stay package-private.
 - 2026-10-15, step 3 and frontend B: "approve both, commit both".
 - 2026-10-15, step 4: "approve step 4, accept stricter validation, commit and go 4b": required security settings fail startup in every profile (accepted deviation from "outside `dev`"); `spring-boot:run` is fixed in step 4b.
+- 2026-10-15, step 4b: user ran `spring-boot:run` and `npm start` and reported the manual checks (AC-1, AC-8, AC-30 and the frontend screens): "I've done manual testing, seems ok".
+- 2026-10-15, step 4b: "approve 4b, commit".
 
 ## Open questions
 
@@ -55,3 +57,4 @@ Frontend A is skipped because mock mode is not implemented (`docs/development/fr
 | reviewer (frontend) | abe411b7ef761b487 | 2026-10-15 (cd96bb6a) |
 | reviewer (frontend round 2) | ae497cee9ce40b05e | 2026-10-15 (cd96bb6a) |
 | reviewer (frontend round 3) | acdbde34aea9ee9bb | 2026-10-15 (cd96bb6a) |
+| reviewer (final) | a4d438dd9785e1ff1 | 2026-10-15 (cd96bb6a) |

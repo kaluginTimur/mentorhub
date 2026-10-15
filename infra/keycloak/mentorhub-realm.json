@@ -1,0 +1,164 @@
+{
+  "realm": "mentorhub",
+  "displayName": "MentorHub",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "clientId": "mentorhub-web",
+      "name": "MentorHub web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*",
+        "use.refresh.tokens": "true",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "mentorhub-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "mentorhub-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "username": "admin@mentorhub.local",
+      "email": "admin@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "username": "mentor@mentorhub.local",
+      "email": "mentor@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Mark",
+      "lastName": "Mentor",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "username": "student@mentorhub.local",
+      "email": "student@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Sofia",
+      "lastName": "Student",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "username": "noroles@mentorhub.local",
+      "email": "noroles@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Nora",
+      "lastName": "Noroles",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "username": "disabled@mentorhub.local",
+      "email": "disabled@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Dan",
+      "lastName": "Disabled",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "username": "stranger@mentorhub.local",
+      "email": "stranger@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Sam",
+      "lastName": "Stranger",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
