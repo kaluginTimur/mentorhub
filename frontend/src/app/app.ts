@@ -1,20 +1,43 @@
-import { Component, inject, resource } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { RouterOutlet } from '@angular/router';
-import { Api } from './core/api/api';
-import { getSystemInfo } from './core/api/fn/system/get-system-info';
+import { Component, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
+import { AuthService } from './core/auth/auth.service';
+import { stripCallbackParams } from './core/auth/api-urls';
+import { Loading } from './shared/loading/loading';
+import { Unavailable } from './shared/unavailable/unavailable';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatToolbarModule, MatCardModule],
+  imports: [RouterOutlet, Loading, Unavailable],
   templateUrl: './app.html',
-  styleUrl: './app.scss',
+  host: { '(window:pageshow)': 'onPageShow($event)' },
 })
 export class App {
-  private readonly api = inject(Api);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly initialNavigationDone = signal(false);
 
-  protected readonly systemInfo = resource({
-    loader: () => this.api.invoke(getSystemInfo),
-  });
+  protected readonly startupError = this.auth.startupError;
+  protected readonly loading = computed(
+    () => this.auth.redirecting() || !this.initialNavigationDone(),
+  );
+
+  constructor() {
+    this.router.events.subscribe((event) => {
+      if (event instanceof NavigationEnd || event instanceof NavigationError) {
+        this.initialNavigationDone.set(true);
+      }
+    });
+  }
+
+  protected onPageShow(event: PageTransitionEvent): void {
+    // restored from the back/forward cache, for example after Back from the sign-in page
+    if (event.persisted) {
+      this.auth.redirecting.set(false);
+    }
+  }
+
+  protected reload(): void {
+    // a leftover callback URL would be processed, and fail, again
+    globalThis.location.assign(stripCallbackParams(globalThis.location.href));
+  }
 }

@@ -1,0 +1,18 @@
+:host {
+  display: block;
+}
+
+main {
+  padding: 24px 16px;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+  margin: 0;
+}
+
+footer {
+  padding: 16px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
