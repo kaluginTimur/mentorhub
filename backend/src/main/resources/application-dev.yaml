@@ -1,0 +1,12 @@
+# Development only: Swagger UI, the API docs and the actuator info and modulith endpoints.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,modulith
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

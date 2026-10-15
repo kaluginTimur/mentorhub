@@ -10,12 +10,19 @@ spring:
   flyway:
     locations: classpath:db/migration
 
+# Production defaults: only health, without details, and no API docs. The dev profile serves the rest.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,modulith
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 springdoc:
+  api-docs:
+    enabled: false
   swagger-ui:
+    enabled: false
     url: /openapi.yaml

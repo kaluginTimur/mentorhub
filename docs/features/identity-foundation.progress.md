@@ -11,10 +11,10 @@ Started: 2026-10-15
 | 1 contract | approved | cc86c7f | 2026-10-15 |
 | 2 migration | approved | b3cc411 | 2026-10-15 |
 | 3 domain | approved | 6f6e0f5 | 2026-10-15 |
-| 4 api | pending | | |
+| 4 api | approved | | 2026-10-15 |
 | 4b local environment | pending | | |
 | frontend A (prototype) | skipped | | 2026-10-15 |
-| frontend B | approved | | 2026-10-15 |
+| frontend B | approved | 84f1007 | 2026-10-15 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -38,6 +38,7 @@ Frontend A is skipped because mock mode is not implemented (`docs/development/fr
 - 2026-10-15, frontend B: round 3 fixes reported done (67 tests, initial bundle 543.9 kB of 550 kB). Agent choices: renewal 30 s; logoff failure clears local tokens and shows the startup error; no `@error` on the loading defer block; guard doc reworded instead of `runGuardsAndResolvers: always`.
 - 2026-10-15, step 3: restructure reported done (57 tests). Agent moved `SignInClaims` to `bootstrap/` and creates `AdministratorBootstrap` as a `@Bean` in `security/` to avoid a package cycle; shared test support stays in `users/internal/security/` (test sources) so security internals stay package-private.
 - 2026-10-15, step 3 and frontend B: "approve both, commit both".
+- 2026-10-15, step 4: "approve step 4, accept stricter validation, commit and go 4b": required security settings fail startup in every profile (accepted deviation from "outside `dev`"); `spring-boot:run` is fixed in step 4b.
 
 ## Open questions
 

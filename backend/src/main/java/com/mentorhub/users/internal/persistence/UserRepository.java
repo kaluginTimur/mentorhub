@@ -18,6 +18,14 @@ public class UserRepository {
     private record AccessRow(
             UUID userId, String status, @Nullable String role) {}
 
+    // One row per stored role of the user; folded into a StoredProfile.
+    private record ProfileRow(
+            UUID id,
+            String email,
+            @Nullable String firstName,
+            @Nullable String lastName,
+            @Nullable String role) {}
+
     private final JdbcClient jdbc;
 
     UserRepository(JdbcClient jdbc) {
@@ -45,6 +53,31 @@ public class UserRepository {
         List<String> roleNames =
                 rows.stream().map(AccessRow::role).filter(Objects::nonNull).toList();
         return Optional.of(new UserAccess(first.userId(), UserStatus.valueOf(first.status()), roleNames));
+    }
+
+    public Optional<StoredProfile> findProfile(UUID userId) {
+        List<ProfileRow> rows = jdbc.sql("""
+                        select u.id, u.email, u.first_name, u.last_name, ur.role
+                        from users u
+                        left join user_roles ur on ur.user_id = u.id
+                        where u.id = :id
+                        """)
+                .param("id", userId)
+                .query((rs, rowNum) -> new ProfileRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("email"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("role")))
+                .list();
+        if (rows.isEmpty()) {
+            return Optional.empty();
+        }
+        ProfileRow first = rows.getFirst();
+        List<String> roleNames =
+                rows.stream().map(ProfileRow::role).filter(Objects::nonNull).toList();
+        return Optional.of(
+                new StoredProfile(first.id(), first.email(), first.firstName(), first.lastName(), roleNames));
     }
 
     public Optional<LinkedUser> findLinkedUser(String issuer, String subject) {

@@ -8,7 +8,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Internal code is split into layer subpackages: `domain` (domain types and rules), `persistence` (repositories and their row types), `service`, `web` (controllers), plus module-specific technical ones such as `security`. A type is `public` only when another subpackage uses it; controllers are `public` only if the split requires it. Dependencies between the subpackages stay acyclic. Tests sit in the package of the class they test.
 - Other modules use only public types or events (`ApplicationEventPublisher` + `@ApplicationModuleListener`).
 - `com.mentorhub.api` is the generated contract, an open module. No hand-written code there except `package-info.java`.
-- Every module has a `package-info.java` with `@NullMarked` (JSpecify). Mark nullable values with `@org.jspecify.annotations.Nullable`.
+- Every package has a `package-info.java` with `@NullMarked` (JSpecify), internal subpackages included: `@NullMarked` does not apply to subpackages. Mark nullable values with `@org.jspecify.annotations.Nullable`.
 - `ModularityTests` verifies the boundaries and must stay green.
 
 ## API (ADR 0002)
@@ -21,10 +21,16 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 ## Security (ADR 0003, ADR 0004)
 
 - `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. Configuration and the filter chains are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`.
-- Every `/api/v1/**` controller method carries `@RequirePermission(Permission.X)` or `@NoPermissionRequired` (both in `com.mentorhub.users`). Permission names never appear in strings; checks never use role names.
+- Every `/api/v1/**` controller method carries `@RequirePermission(Permission.X)` or `@NoPermissionRequired` (both in `com.mentorhub.users`). Permission names never appear in strings; checks never use role names. `PermissionDeclarationTests` fails the build on an operation with neither or both.
 - The gate refuses callers that are not invited or disabled with 403 before any controller runs, except `GET /api/v1/me`. Services therefore only see active users: get the caller with `CurrentUserProvider.currentUser()` (`users.id` and permissions), never from the token.
 - Resource-level checks are explicit service code. A single resource the caller may not access throws `com.mentorhub.web.NotFoundException`, exactly like a missing one; lists leave inaccessible items out. A missing permission is Spring Security's `AccessDeniedException`.
 - A new public endpoint is listed in `SecurityConfiguration` and declares `security: []` in the contract.
+
+## Configuration and profiles
+
+- Startup fails, naming the property, without `mentorhub.security.trusted-issuers` (owned by `users`) or `mentorhub.security.client.issuer-uri` and `client-id` (owned by `system`).
+- `backend/src/main/resources/application.yaml` holds the production defaults: actuator exposes only health, without details; springdoc's API docs and Swagger UI are disabled; security denies `/openapi.yaml`.
+- The `dev` profile (`backend/src/main/resources/application-dev.yaml`) serves Swagger UI, the API docs, `/openapi.yaml` and the actuator `info` and `modulith` endpoints, without sign-in.
 
 ## Errors
 
@@ -51,6 +57,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Integration: `@SpringBootTest` + `@Import(TestcontainersConfiguration.class)` (real PostgreSQL 18, needs Docker).
 - Web layer: `@WebMvcTest(Controller.class)` + `@Import(WebSliceSecurity.class)` + `MockMvcTester`. The import adds the application's filter chains, gate and method security. Authenticate requests with `TestAuthentications.activeUser(userId, permissions...)`, `notInvited()` or `disabledUser(userId)` (in `backend/src/test/java/com/mentorhub/users/internal/security/`, with the other shared test support: `TestIssuer`, `TestIssuerConfiguration`, `TestUsers`, `ProblemAssertions`).
 - Authentication through real tokens: `@SpringBootTest` + `@AutoConfigureMockMvc` + `@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})`, with tokens signed by `TestIssuer`, which the application trusts through `jwk-set-uri`. Use this for the gate, the bootstrap and permissions.
+- Tests get the required security settings from `backend/src/test/resources/config/application.yaml`. It is loaded in addition to the main `application.yaml` (`classpath:/config/` is a default config location); a test `application.yaml` at the classpath root would replace the main one instead.
 - Per module: `@ApplicationModuleTest`.
 
 ## Pitfalls: Spring Boot 4 is not Boot 3
@@ -68,6 +75,8 @@ Models and older examples tend to produce Boot 3 code. Most of it fails to compi
 | `ProblemDetail.getType()` is `null` by default and omitted from the JSON; `Problems.withDefaultType` sets `about:blank` | Assuming `about:blank` is serialized |
 
 Jackson 2 (`com.fasterxml.jackson.databind` 2.x) is on the classpath transitively (springdoc → swagger-core), so Jackson 2 imports compile and run with a mapper the application does not configure. Always use the Jackson 3 types.
+
+Jackson pitfall: a global `spring.jackson.default-property-inclusion: non_null` also drops required nullable properties such as `MeUser.firstName`, which the contract sends as `null`. To leave an optional property out of one DTO, add a `@JacksonMixin` with `@JsonInclude(NON_NULL)` for that type, as `MeJsonMixin` does for `Me`.
 
 Security pitfalls:
 
