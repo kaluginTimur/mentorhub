@@ -14,9 +14,18 @@ The prompt gives one of:
 - nothing: review uncommitted changes (`git diff HEAD` plus untracked files from `git status --porcelain`);
 - a git ref: review `git diff <ref>...HEAD` plus uncommitted changes;
 - a path under `docs/features/`: spec mode (see below);
-- an explicit list of files or a focus (e.g. "frontend only").
+- an explicit list of files or a focus (e.g. "frontend only");
+- a re-review: the findings of a previous review and the ref the fixes start from (see below).
 
 If the changes belong to a feature, find its spec in `docs/features/` and review against it.
+
+## Re-review
+
+A re-review checks fixes, not the whole change. Review only `git diff <ref>` plus uncommitted changes:
+- for every previous finding, say whether it is fixed, partly fixed or not fixed;
+- report new problems that the fix diff itself introduces, with the usual severities.
+
+Read the rules sources only for the areas the findings and the fix diff touch, and read only the files the fix diff changes. Do not repeat the full checklist. Report with the usual format, plus a "Previous findings" list with each finding's status before "Findings".
 
 ## Sources of the rules
 

@@ -17,7 +17,7 @@ Started: <YYYY-MM-DD>
 | review | pending | | |
 | verify | pending | | |
 
-Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`.
+Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`. Steps 1 and 2 are one checkpoint.
 
 ## Decisions
 
@@ -25,13 +25,25 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 
 - <YYYY-MM-DD>, <step>: <decision>
 
+## Handoff notes
+
+<!-- From each approved step's "Notes for the next step": what a fresh agent or session needs that the spec, decisions and diff do not show (temporary stubs, pitfalls found, conventions adopted, deferred follow-ups). Remove a note when it no longer applies. -->
+
+- none
+
+## Pending
+
+<!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
+
+- none
+
 ## Open questions
 
 - none
 
 ## Agents
 
-<!-- Agent ids can be resumed only within the session that created them. -->
+<!-- Agents can be continued only within the session that created them; a new session starts fresh agents from this log. Context is the size from the agent's last completion notification. -->
 
-| Agent | Id | Session started |
-|---|---|---|
+| Agent | Id | Session | Context |
+|---|---|---|---|
