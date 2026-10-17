@@ -1,0 +1,12 @@
+# Loaded in addition to src/main/resources/application.yaml (classpath:/config/ is a default config location), so it
+# does not replace the main file. Supplies the security settings that startup requires; TestIssuerConfiguration
+# replaces the issuer with one that signs real test tokens.
+mentorhub:
+  security:
+    trusted-issuers:
+      - issuer-uri: https://issuer.test/realms/mentorhub
+        audience: mentorhub-api
+        jwk-set-uri: http://127.0.0.1:9/jwks
+    client:
+      issuer-uri: https://issuer.test/realms/mentorhub
+      client-id: mentorhub-web

@@ -5,13 +5,15 @@ Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angul
 ## Structure
 
 - `frontend/src/app/core/`: infrastructure (API client, auth, interceptors).
-- `frontend/src/app/shared/`: reusable components (planned).
+- `frontend/src/app/shared/`: reusable components (`loading`, `unavailable`).
 - `frontend/src/app/features/<feature>/`: one lazy-loaded route tree per feature.
 
 ## API client (ADR 0002)
 
 - `ng-openapi-gen` generates the client from `api/openapi.yaml` into `frontend/src/app/core/api/` (`npm run generate:api`, run automatically before `start`, `build`, `test` and `lint`). It is gitignored; never edit or commit it.
-- Calls: `inject(Api).invoke(fn, params)` with functions from `frontend/src/app/core/api/fn/**`. Load data in components with `resource()`, as in `frontend/src/app/app.ts`.
+- Calls: `inject(Api).invoke(fn, params)` with functions from `frontend/src/app/core/api/fn/**`. Load data in components with `resource()`, as in `frontend/src/app/features/shell/home.ts`. Guard `value()` with `hasValue()` (or check `error()` first): in the error state `value()` throws.
+- Nullable properties (`type: [string, 'null']`) are generated as required `(string | null)`; an optional property that may be absent (for example `Me.user`) is generated as `user?: MeUser`. Handle absent and `null` separately.
+- Enums are generated as string unions (`Role`, `Permission`), with `*-array.ts` helpers listing the values.
 - `frontend/src/app/app.config.ts` sets `provideApiConfiguration('')` (see [Pitfalls](#pitfalls)). In dev, `/api` is proxied to `:8080` (`frontend/proxy.conf.json`).
 
 ## Angular conventions
@@ -37,16 +39,31 @@ State and services:
 Accessibility:
 - Must pass AXE checks and meet WCAG AA: focus management, color contrast, ARIA attributes.
 
+## Authentication
+
+Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client` 22.x (works zoneless: it uses rxjs and signals and needs no `zone.js`). Code is in `frontend/src/app/core/auth/`.
+
+- The OIDC settings come from `GET /api/v1/system/client-config` at runtime (`oidcConfigLoader` in `frontend/src/app/app.config.ts`); redirect and post-logout URIs are the application origin. Refresh tokens renew the session.
+- `AuthService` completes the sign-in callback, starts sign-in (remembering the route in `sessionStorage`), signs out at Keycloak and owns the `startupError` signal that makes `App` show the full-page error.
+- `accessGuard` (`canActivateChild` on the root route tree) signs the visitor in, reloads `GET /api/v1/me` whenever the router activates a route (the router does not re-run it for reused routes with unchanged parameters, for example query-only navigations; that is intended) and routes by status. Child routes declare the status they are for in `data.access` (`full`, `pending`, `ended`, `invitation-only`). The expected status is taken from the nearest ancestor route that declares `data.access`, and the guard runs once per navigation. A failed load shows the unavailable state through a redirect to `/unavailable` with `skipLocationChange`, so the address bar keeps the requested URL; "Retry" repeats the load. A browser reload repeats it only when the failure happened on the initial load (or back/forward); after an in-app navigation the address bar still shows the previous URL, and after a sign-in callback the library has rewritten the address to `/`, so a reload goes there, not to the return route. Retry always uses the remembered target. Do the same for any new failed-load redirect.
+- `authInterceptor` adds the bearer token only to non-public `/api/` requests of the same origin (public paths are listed in `frontend/src/app/core/auth/api-urls.ts`, taken from the generated `*.PATH` constants; add new public endpoints there).
+- `errorInterceptor`: 401 starts sign-in again once (a 401 after a fresh sign-in shows the startup error); 403 `not-invited` / `access-ended` reload the caller and open the access screen; 403 `forbidden` shows the snackbar "You don't have permission to do this.". Handle other errors in the component that made the call.
+- Tokens are renewed 30 s before they expire (`renewTimeBeforeTokenExpiresInSeconds`). The client configuration is cached after the first load, so sign-out also works while the API is down (the local session is ended even if the Keycloak logout fails).
+- Sign-out ends the Keycloak session; if the library has no end-session URL it ends the local session and returns to `/`. `authorize()` reports discovery failures nowhere, so a 15 s watchdog turns a missing redirect into the startup error.
+- The current user is `CurrentUserService` (`me`, `user`, `name`). Build names with `displayName()` from `frontend/src/app/core/auth/user-name.ts`.
+- The local Keycloak client comes from `infra/keycloak/mentorhub-realm.json`. The frontend relies on it being a public client with PKCE S256, with `http://localhost:4200/*` as redirect and post-logout URI.
+
 ## Styling
 
 - Angular Material M3; the theme is in `frontend/src/styles.scss`.
 - Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...). No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change. A project hook flags violations.
-- Screens follow `docs/ui/guidelines.md` once it exists.
+- Screens follow `docs/ui/guidelines.md`.
 - UI text is in English.
 
 ## Tests
 
-- Vitest. Replace the `Api` service via `providers` (see `frontend/src/app/app.spec.ts`).
+- Vitest. Replace the `Api` service via `providers` (see `frontend/src/app/features/shell/shell.spec.ts`).
+- Authentication tests replace `OidcSecurityService` (see `frontend/src/app/core/auth/auth.service.spec.ts`) or `AuthService` and `CurrentUserService` (guard, interceptors, components); no test talks to a real identity provider.
 
 ## Pitfalls
 

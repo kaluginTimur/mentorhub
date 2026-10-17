@@ -1,0 +1,24 @@
+<header>
+  <mat-toolbar>
+    <span class="brand">MentorHub</span>
+    <span class="spacer"></span>
+    <button
+      matButton
+      type="button"
+      [matMenuTriggerFor]="userMenu"
+      [attr.aria-label]="'Account menu for ' + name()"
+    >
+      {{ name() }}
+      <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
+    </button>
+    <mat-menu #userMenu="matMenu" xPosition="before" [aria-label]="name() + ', ' + email()">
+      <div class="user-info">
+        <div class="user-name">{{ name() }}</div>
+        <div class="user-email">{{ email() }}</div>
+      </div>
+      <button mat-menu-item type="button" (click)="signOut()">Sign out</button>
+    </mat-menu>
+  </mat-toolbar>
+</header>
+
+<router-outlet />

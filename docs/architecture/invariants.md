@@ -19,13 +19,16 @@ Planned order: tracking core (users, roles, cohorts, enrollments, notes and feed
 
 - The application stores no passwords and does not implement sign-in. The backend is an OAuth2 resource server; trusted issuers are configuration.
 - Domain data references `users.id`, never the token `sub`. External identities live in `user_identities(user_id, issuer, subject)`.
-- Registration is by invitation only.
+- Registration is by invitation only. The exceptions are the administrator bootstrap (ADR 0005) and development users, which exist only in the development profile.
+- Only active users pass the gate: the identity in a validated token must be linked to the user (linking happens only through an invitation or ADR 0005, both with a verified email), and a disabled user is refused on the next request.
 
 ## Authorization
 
-- Roles: admin, coordinator, mentor, student, observer. Roles and per-cohort permissions are stored in the application database, not in the identity provider.
-- Permissions depend on the cohort and change over time: a graduate can become a mentor, mentors are reassigned. Checks evaluate current assignments.
+- Permissions and roles are defined in code; role assignments are stored in the application database, not in the identity provider (ADR 0004). Roles: admin, coordinator, mentor, student, observer. A user can have several roles or none.
+- Authorization checks use permissions, never role names. Roles and groups in the token are never used for authorization.
+- Roles are global. Which students a user can access depends on domain relations that change over time: a graduate can become a mentor, mentors are reassigned. Checks evaluate current relations.
 - Every endpoint that reads or changes a student's data checks, at the resource level, that the caller is the student, a mentor assigned to that student's enrollment, a coordinator of the track, or an admin. A role check alone is not enough; IDs from the request are never trusted.
+- A single resource the caller may not access responds 404, exactly like a missing one; lists leave inaccessible items out. 403 is reserved for a missing permission for the action as a whole.
 - Observer rights are not defined yet; the tracking core spec defines them.
 - Every feature has negative authorization tests (another mentor's student, another cohort, the wrong role).
 

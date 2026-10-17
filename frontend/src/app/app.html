@@ -1,19 +1,19 @@
-<mat-toolbar>
-  <h1>MentorHub</h1>
-</mat-toolbar>
-
-<main>
-  <mat-card appearance="outlined">
-    <mat-card-content>
-      @if (systemInfo.isLoading()) {
-        <p>Connecting to the server…</p>
-      } @else if (systemInfo.error()) {
-        <p role="alert">Server is unavailable</p>
-      } @else if (systemInfo.value(); as info) {
-        <p>{{ info.name }} · version {{ info.version }}</p>
-      }
-    </mat-card-content>
-  </mat-card>
-</main>
-
-<router-outlet />
+@if (startupError()) {
+  @defer (on immediate) {
+    <app-unavailable (retry)="reload()" />
+  } @error {
+    <main role="alert">
+      <h1>MentorHub is unavailable. Try again later.</h1>
+      <button type="button" (click)="reload()">Retry</button>
+    </main>
+  }
+} @else {
+  @if (loading()) {
+    @defer (on immediate) {
+      <app-loading />
+    }
+  }
+  <div [attr.aria-busy]="loading()">
+    <router-outlet />
+  </div>
+}

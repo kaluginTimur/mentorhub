@@ -21,6 +21,8 @@
 		<openapi-generator.version>7.26.0</openapi-generator.version>
 		<spotless.version>3.10.4</spotless.version>
 		<api.spec>${project.basedir}/../api/openapi.yaml</api.spec>
+		<!-- Only spring-boot:run (and start, test-run) use this property; process-aot and packaging never see dev -->
+		<spring-boot.run.profiles>dev</spring-boot.run.profiles>
 	</properties>
 
 	<dependencies>
@@ -47,6 +49,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
@@ -103,6 +109,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

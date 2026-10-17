@@ -1,0 +1,20 @@
+main {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+mat-card {
+  max-width: 480px;
+  width: 100%;
+}
+
+h1 {
+  font: var(--mat-sys-title-large);
+  margin: 16px 0 8px;
+  outline: none;
+}
+
+p {
+  margin: 0;
+}
