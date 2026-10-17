@@ -24,6 +24,7 @@ Go section by section, one topic at a time. For each topic, propose a concrete d
 4. UI: screens per role, content, actions, all states, text wireframes, patterns from the UI guidelines.
 5. Design: modules, data model, API sketch (method, path, purpose, roles, errors), how authorization and visibility are enforced, events between modules. If a decision is architectural (a new convention, a new technology, a cross-cutting rule), propose an ADR via `/adr`.
 6. Open questions.
+7. Size. Every implementation step carries the context of the step before it, so a large feature costs more per line than two small ones. If the spec has more than about 20 acceptance criteria, adds more than one new module, or mixes application code with new local infrastructure (an identity provider, a mail server), propose a split into features that can each be implemented and reviewed on their own, and let the user decide.
 
 Write the file in English as the sections become clear, so progress is not lost. Keep the status `draft`.
 

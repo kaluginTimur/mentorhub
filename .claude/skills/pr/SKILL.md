@@ -25,7 +25,7 @@ A pull request is published outside the machine: nothing is pushed or created un
 
 ## Draft
 
-Write a title (imperative, under 70 characters) and a description following [template.md](template.md). Keep only what applies; be concrete. Follow the rules for commit messages in `AGENTS.md` for the title and description too: no trailers, no "Generated with" lines, no mention of AI agents or models.
+Write a title (imperative, under 70 characters) and a description following [template.md](template.md). Keep only what applies; be concrete.
 
 Show the user the title and the description, and ask whether to open it as a draft or ready for review. Apply their corrections.
 

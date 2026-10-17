@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { APPLIED_MIGRATION_REASON, MIGRATION_DIR, deny, isAppliedMigration, readInput, repoRoot, toPosix } from './lib.mjs';
 
@@ -26,8 +25,6 @@ const GIT_DESTRUCTIVE = [
   /\bgit\b.*\bbranch\b.*\s-D\b/,
 ];
 
-const COMMIT_ATTRIBUTION = /co-authored-by:|claude-session:|generated with|noreply@anthropic\.com|claude\.ai\/code/i;
-
 const MIGRATION_PATH = /[\w./-]*db\/migration\/[\w.-]+\.sql/g;
 const MUTATES_FILE =
   /\bsed\s+(-[a-zA-Z]*i|--in-place)|\bperl\s+-[a-zA-Z]*i|\brm\b|\bmv\b|\bgit\s+(rm|mv)\b|\btruncate\b|\btee\b|>\s*\S*db\/migration\/|\bcp\b[^;&|]*db\/migration\/\S+\.sql\s*($|[;&|])/;
@@ -48,22 +45,6 @@ for (const segment of segments) {
 
 if (SQL_CLIENT.test(command) && DESTRUCTIVE_SQL.test(command)) {
   deny(`Blocked: destructive SQL against a database. ${MANUAL}`);
-}
-
-if (/\bgit\b.*\bcommit\b|\bgh\s+pr\s+(create|edit)\b/.test(command)) {
-  let message = command;
-  const file = command.match(/\b(?:git\b.*\bcommit|gh\s+pr\s+(?:create|edit))\b.*\s(?:-F|--file|--body-file)[=\s]+(\S+)/)?.[1];
-  if (file) {
-    try {
-      message += readFileSync(path.resolve(cwd, file.replace(/^['"]|['"]$/g, '')), 'utf8');
-    } catch {}
-  }
-  if (COMMIT_ATTRIBUTION.test(message)) {
-    deny(
-      'Commit messages and pull request descriptions in this project are plain English text with no trailers (Co-Authored-By, Claude-Session), ' +
-        'no "Generated with" lines and no mention of AI agents or models. Remove them and try again.',
-    );
-  }
 }
 
 const migrations = command.match(MIGRATION_PATH) ?? [];

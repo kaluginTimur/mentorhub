@@ -29,4 +29,3 @@ An internal platform for the mentors of a training center (SWE, QA, DevOps track
 - When you suggest a destructive command for the user to run, say what it will destroy (for example, that `docker compose down -v` deletes the dev database volume).
 - All project artifacts (code, docs, UI text, commit messages) are in English.
 - Comment sparingly: only non-obvious infrastructure or algorithmic points. No comments that restate the code.
-- Commit messages and pull request titles and descriptions are plain English text: no trailers (`Co-Authored-By` and the like), no "Generated with" lines and no mention of AI agents or models.

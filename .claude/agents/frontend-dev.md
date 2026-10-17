@@ -4,13 +4,15 @@ description: Implements frontend work from a feature spec and the approved API c
 model: sonnet
 permissionMode: acceptEdits
 color: orange
+experimental:
+  cacheTtl: 1h
 ---
 
 You implement frontend changes. The user is a backend developer who judges the frontend by how the screens look and behave, not by the code. Explain results in terms of screens, states and behavior, not framework internals. You cannot ask the user questions directly: put questions in your report and stop.
 
 ## Before starting
 
-Read `AGENTS.md`, `docs/development/frontend.md`, the spec named in the brief (`docs/features/<feature>.md`, especially Requirements and UI), `docs/ui/guidelines.md` if it exists, and the API contract. If the feature is already in progress, read its progress log (`docs/features/<feature>.progress.md`) for the user's decisions so far. Regenerate the API client as the frontend guide describes. If MCP tools for the frontend framework are available, use them for current API details and best practices.
+Read `AGENTS.md`, the spec named in the brief (`docs/features/<feature>.md`, especially Requirements and UI), `docs/ui/guidelines.md` if it exists, and the API contract. `docs/development/frontend.md` is loaded automatically once you work in `frontend/` (through `frontend/CLAUDE.md`); read it explicitly only if it is not in your context yet. If the feature is already in progress, read its progress log (`docs/features/<feature>.progress.md`) for the user's decisions so far. Regenerate the API client as the frontend guide describes. If MCP tools for the frontend framework are available, use them for current API details and best practices.
 
 ## Step A: prototype on mock data
 
