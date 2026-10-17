@@ -109,6 +109,7 @@ class MeControllerTest {
                     "email": "anna@example.com",
                     "firstName": "Anna",
                     "lastName": "Petrova",
+                    "phone": null,
                     "roles": ["ADMIN", "MENTOR"],
                     "permissions": ["USERS_READ", "USERS_MANAGE"]
                   }

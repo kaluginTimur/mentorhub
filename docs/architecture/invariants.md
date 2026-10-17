@@ -39,4 +39,6 @@ Planned order: tracking core (users, roles, cohorts, enrollments, notes and feed
 
 ## Audit
 
-- State changes that a spec marks as audited write an AuditLog entry.
+- State changes that a spec marks as audited write an AuditLog entry in the same transaction as the change (ADR 0006).
+- The audit log is append-only; the database rejects updates and deletes.
+- The audit log is read only through per-subject views that apply the subject's own access rules; there is no global audit read path. Audit details never copy content that has its own visibility rules, such as a note's body.

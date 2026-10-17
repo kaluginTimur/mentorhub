@@ -32,7 +32,9 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  * everything else, where {@code /api/v1/**} requires a token and the gate, and any other path is denied.
  */
 @Configuration(proxyBeanMethods = false)
-@EnableMethodSecurity
+// Class proxies keep @RestController on controllers that implement a generated *Api interface; a JDK proxy would hide
+// it from handler mapping. Boot's AOP auto-configuration does this in the application, but not in @WebMvcTest slices.
+@EnableMethodSecurity(proxyTargetClass = true)
 class SecurityConfiguration {
 
     private static final List<String> PUBLIC_PATHS =

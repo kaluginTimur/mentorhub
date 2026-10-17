@@ -1,6 +1,7 @@
 package com.mentorhub.users.internal.dev;
 
 import com.mentorhub.users.Role;
+import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.persistence.LinkedUser;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import java.util.UUID;
@@ -38,7 +39,8 @@ class DevelopmentUserRunner implements ApplicationRunner {
     }
 
     private void apply(DevelopmentUsersProperties.DevelopmentUser user) {
-        users.insertUserIfAbsent(user.email(), user.firstName(), user.lastName(), user.status());
+        // TODO(user-administration step 3): temporary; setStatus below sets the status with its disable reason.
+        users.insertUserIfAbsent(user.email(), user.firstName(), user.lastName(), UserStatus.ACTIVE);
         UUID userId = users.findUserIdByEmail(user.email()).orElseThrow();
         users.setStatus(userId, user.status());
         users.linkIdentityIfAbsent(userId, properties.issuerUri(), user.subject());

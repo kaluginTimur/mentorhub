@@ -79,7 +79,7 @@ class DevelopmentUserRunnerTests {
     @Test
     void restoresStatusAndExactlyTheConfiguredRoles() {
         UUID mentor = userId("mentor@mentorhub.local");
-        jdbc.sql("update users set status = 'DISABLED' where id = :id")
+        jdbc.sql("update users set status = 'DISABLED', disabled_reason = 'SECURITY' where id = :id")
                 .param("id", mentor)
                 .update();
         jdbc.sql("delete from user_roles where user_id = :id")
@@ -87,7 +87,7 @@ class DevelopmentUserRunnerTests {
                 .update();
         users.assignStoredRole(mentor, "ADMIN");
         UUID disabled = userId("disabled@mentorhub.local");
-        jdbc.sql("update users set status = 'ACTIVE' where id = :id")
+        jdbc.sql("update users set status = 'ACTIVE', disabled_reason = null, disabled_comment = null where id = :id")
                 .param("id", disabled)
                 .update();
 

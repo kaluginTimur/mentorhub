@@ -140,11 +140,16 @@ public class UserRepository {
     }
 
     /** @return the number of updated rows: 0 when the user already has the status */
+    // TODO(user-administration step 3): replace with enable(userId) and disable(userId, reason, comment).
     public int setStatus(UUID userId, UserStatus status) {
-        return jdbc.sql("update users set status = :status, updated_at = now() where id = :id and status <> :status")
-                .param("id", userId)
-                .param("status", status.name())
-                .update();
+        return jdbc.sql("""
+                        update users
+                        set status = :status,
+                            disabled_reason = case when :status = 'DISABLED' then 'OTHER' end,
+                            disabled_comment = case when :status = 'DISABLED' then 'Development user' end,
+                            updated_at = now()
+                        where id = :id and status <> :status
+                        """).param("id", userId).param("status", status.name()).update();
     }
 
     /** Removes every stored role assignment of the user except {@code kept}, including roles the code does not know. */

@@ -64,6 +64,245 @@ paths:
                 $ref: '#/components/schemas/Me'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/v1/me/profile:
+    put:
+      tags: [Users]
+      operationId: updateMyProfile
+      summary: Replace the caller's own profile
+      description: |
+        Sets the caller's first name, last name and phone. The email never changes.
+        Names are trimmed (blank becomes `null`, at most 100 characters after trimming);
+        the phone is normalized to E.164 (blank becomes `null`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      responses:
+        '200':
+          description: The caller after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: Page of users
+      description: |
+        Requires `USERS_READ`. Sorted by last name, then first name, then email (case-insensitive,
+        a missing name after present ones in its column), then id.
+      parameters:
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - name: role
+          in: query
+          description: A role, or `NONE` for users without any known role.
+          schema:
+            $ref: '#/components/schemas/RoleFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/users/{id}:
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: One user
+      description: Requires `USERS_READ`.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/users/{id}/history:
+    get:
+      tags: [Users]
+      operationId: getUserHistory
+      summary: The history of changes to a user, newest first
+      description: |
+        Requires `USERS_READ`. Entries whose action the server does not know are left out.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/users/{id}/disable:
+    post:
+      tags: [Users]
+      operationId: disableUser
+      summary: Disable a user
+      description: |
+        Requires `USERS_MANAGE`. The comment is trimmed (blank becomes `null`), at most 500 characters,
+        and required when the reason is `OTHER`. Disabling a disabled user changes nothing,
+        including the stored reason and comment, and responds 200.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisableRequest'
+      responses:
+        '200':
+          description: The user after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/LockoutConflict'
+  /api/v1/users/{id}/enable:
+    post:
+      tags: [Users]
+      operationId: enableUser
+      summary: Enable a user
+      description: |
+        Requires `USERS_MANAGE`. Clears the disable reason and comment; roles are unchanged.
+        Enabling an active user changes nothing and responds 200.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: The user after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/users/{id}/roles:
+    put:
+      tags: [Users]
+      operationId: setUserRoles
+      summary: Replace a user's roles
+      description: |
+        Requires `USERS_MANAGE`. The stored roles become exactly the requested set; an empty set leaves
+        the user active without roles. Stored roles the server does not know are left untouched.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolesUpdate'
+      responses:
+        '200':
+          description: The user after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/LockoutConflict'
+  /api/v1/users/{id}/profile:
+    put:
+      tags: [Users]
+      operationId: updateUserProfile
+      summary: Replace a user's profile
+      description: |
+        Requires `USERS_MANAGE`. Same rules as `PUT /api/v1/me/profile`.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      responses:
+        '200':
+          description: The user after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -71,6 +310,33 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Access token issued by a trusted OIDC identity provider.
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      description: Zero-based page number.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Items per page.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 25
   responses:
     Unauthorized:
       description: |
@@ -90,6 +356,31 @@ components:
         - `urn:mentorhub:problem:not-invited`: the identity is not linked to a user;
         - `urn:mentorhub:problem:access-ended`: the user is disabled;
         - `urn:mentorhub:problem:forbidden`: the user lacks the permission for the action.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationFailed:
+      description: |
+        A parameter or a field of the request body is invalid. Problem type
+        `urn:mentorhub:problem:validation-failed`, with an `errors` entry for each invalid
+        parameter or field. Nothing was changed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblem'
+    NotFound:
+      description: |
+        The resource does not exist or the caller may not access it. Problem type `urn:mentorhub:problem:not-found`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    LockoutConflict:
+      description: |
+        The change would lock the installation out; nothing was changed. Problem type is one of:
+        - `urn:mentorhub:problem:self-lockout`: the caller would disable themselves or remove their own ADMIN role;
+        - `urn:mentorhub:problem:last-admin`: no other active user with the ADMIN role would remain.
       content:
         application/problem+json:
           schema:
@@ -138,7 +429,7 @@ components:
           description: Present only when `status` is `ACTIVE`; absent (not `null`) otherwise.
     MeUser:
       type: object
-      required: [id, email, firstName, lastName, roles, permissions]
+      required: [id, email, firstName, lastName, phone, roles, permissions]
       properties:
         id:
           type: string
@@ -152,6 +443,10 @@ components:
         lastName:
           type: [string, 'null']
           examples: [Petrova]
+        phone:
+          type: [string, 'null']
+          description: E.164.
+          examples: ['+77011234567']
         roles:
           type: array
           items:
@@ -175,7 +470,9 @@ components:
         RFC 9457 Problem Details. MentorHub problem types:
         `urn:mentorhub:problem:unauthorized`, `urn:mentorhub:problem:not-invited`,
         `urn:mentorhub:problem:access-ended`, `urn:mentorhub:problem:forbidden`,
-        `urn:mentorhub:problem:not-found`. Other errors use `about:blank`.
+        `urn:mentorhub:problem:not-found`, `urn:mentorhub:problem:validation-failed`
+        (schema `ValidationProblem`), `urn:mentorhub:problem:self-lockout`,
+        `urn:mentorhub:problem:last-admin`. Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       required: [type, title, status]
       properties:
@@ -192,3 +489,269 @@ components:
           examples: [403]
         detail:
           type: string
+    ValidationProblem:
+      description: A `Problem` of type `urn:mentorhub:problem:validation-failed`.
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              items:
+                $ref: '#/components/schemas/ValidationError'
+    ValidationError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: The query or path parameter name, or the request body property name.
+          examples: [size]
+        message:
+          type: string
+          examples: [must be between 1 and 100]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
+    RoleFilter:
+      type: string
+      description: |
+        A `Role`, or `NONE` for users without any role the server knows. Must equal the `Role` values plus `NONE`.
+      enum: [ADMIN, COORDINATOR, MENTOR, STUDENT, OBSERVER, NONE]
+    DisableReason:
+      type: string
+      description: |
+        Why a user was disabled. Must equal the `DisableReason` enum in the backend code.
+        - `GRADUATED`: graduated;
+        - `EXPELLED`: expelled;
+        - `LEFT_PROGRAM`: left the program;
+        - `STAFF_OFFBOARDED`: no longer on staff;
+        - `SECURITY`: security concern;
+        - `OTHER`: other; a comment is required.
+      enum: [GRADUATED, EXPELLED, LEFT_PROGRAM, STAFF_OFFBOARDED, SECURITY, OTHER]
+    UserSummary:
+      type: object
+      required: [id, email, firstName, lastName, status, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          examples: [ivan@example.com]
+        firstName:
+          type: [string, 'null']
+          examples: [Ivan]
+        lastName:
+          type: [string, 'null']
+          examples: [Sidorov]
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        roles:
+          type: array
+          description: The user's roles the server knows.
+          items:
+            $ref: '#/components/schemas/Role'
+    UserDetails:
+      type: object
+      description: '`UserSummary` with the profile, the disable reason and the creation time.'
+      required: [id, email, firstName, lastName, phone, status, roles, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          examples: [ivan@example.com]
+        firstName:
+          type: [string, 'null']
+          examples: [Ivan]
+        lastName:
+          type: [string, 'null']
+          examples: [Sidorov]
+        phone:
+          type: [string, 'null']
+          description: E.164.
+          examples: ['+77011234567']
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        disabledReason:
+          $ref: '#/components/schemas/DisableReason'
+          description: Present only when `status` is `DISABLED`; absent (not `null`) otherwise.
+        disabledComment:
+          type: string
+          description: Present only when `status` is `DISABLED` and a comment was given; absent (not `null`) otherwise.
+          examples: [Finished the spring cohort]
+        roles:
+          type: array
+          description: The user's roles the server knows.
+          items:
+            $ref: '#/components/schemas/Role'
+        createdAt:
+          type: string
+          format: date-time
+    UserPage:
+      type: object
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSummary'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
+    DisableRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          $ref: '#/components/schemas/DisableReason'
+        comment:
+          type: string
+          description: Optional except for `OTHER`. Trimmed; at most 500 characters after trimming; blank means none.
+          examples: [Finished the spring cohort]
+    RolesUpdate:
+      type: object
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          description: The complete set of roles the user should have; may be empty.
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Role'
+    ProfileUpdate:
+      type: object
+      description: The whole profile; every property must be sent, `null` or blank for none.
+      required: [firstName, lastName, phone]
+      properties:
+        firstName:
+          type: [string, 'null']
+          description: Trimmed; at most 100 characters after trimming.
+          examples: [Ivan]
+        lastName:
+          type: [string, 'null']
+          description: Trimmed; at most 100 characters after trimming.
+          examples: [Sidorov]
+        phone:
+          type: [string, 'null']
+          description: |
+            Parsed with the server's default region when written without `+`; must be a valid number.
+            Stored and returned in E.164.
+          examples: [8 701 123 45 67]
+    HistoryAction:
+      type: string
+      description: |
+        The actions a user's history shows. A feature that writes a new action about a user extends this enum
+        in the same change.
+        - `USER_DISABLED`: details `reason`, `comment`;
+        - `USER_ENABLED`: details `reason`, `comment` the user had been disabled with;
+        - `USER_ROLES_CHANGED`: details `rolesAdded`, `rolesRemoved`;
+        - `USER_PROFILE_UPDATED`: details `changes`;
+        - `USER_BOOTSTRAPPED_ADMIN`: details `bootstrap`; no actor.
+      enum: [USER_DISABLED, USER_ENABLED, USER_ROLES_CHANGED, USER_PROFILE_UPDATED, USER_BOOTSTRAPPED_ADMIN]
+    HistoryActor:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+    HistoryEntry:
+      type: object
+      description: |
+        One change to a user. Detail properties that do not apply to the action are absent (not `null`).
+      required: [id, occurredAt, action, actor]
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        action:
+          $ref: '#/components/schemas/HistoryAction'
+        actor:
+          description: Who made the change; `null` for a change made by the system.
+          oneOf:
+            - $ref: '#/components/schemas/HistoryActor'
+            - type: 'null'
+        reason:
+          $ref: '#/components/schemas/DisableReason'
+        comment:
+          type: string
+        rolesAdded:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        rolesRemoved:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfileChange'
+        bootstrap:
+          $ref: '#/components/schemas/BootstrapChanges'
+    ProfileField:
+      type: string
+      enum: [firstName, lastName, phone]
+    ProfileChange:
+      type: object
+      required: [field, oldValue, newValue]
+      properties:
+        field:
+          $ref: '#/components/schemas/ProfileField'
+        oldValue:
+          type: [string, 'null']
+        newValue:
+          type: [string, 'null']
+    BootstrapChanges:
+      type: object
+      description: What the administrator bootstrap (ADR 0005) did.
+      required: [userCreated, identityLinked, enabled, adminAdded]
+      properties:
+        userCreated:
+          type: boolean
+        identityLinked:
+          type: boolean
+        enabled:
+          type: boolean
+        adminAdded:
+          type: boolean
+    HistoryPage:
+      type: object
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of entries on all pages.
