@@ -8,9 +8,18 @@
   "verifyEmail": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "resetPasswordAllowed": false,
+  "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@mentorhub.local",
+    "fromDisplayName": "MentorHub",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
   "clients": [
     {
       "clientId": "mentorhub-web",

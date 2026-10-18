@@ -184,14 +184,12 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
 - Automatic acceptance on sign-in without the link (an email allowlist), and corporate SSO auto-provisioning (its own ADR).
 - Cleaning up old invitations; retention of invited emails (postponed personal data rules).
 - Rate limiting preview and accept: tokens have 256 bits of entropy.
-- Making registration work in the local environment: the realm requires email verification, and local email arrives with `invitation-emails`. Locally, only verified accounts can accept: `stranger@mentorhub.local`, or a user created in the Keycloak admin console with "Email verified" on.
-- Password reset in Keycloak ("Forgot password?", `resetPasswordAllowed`): it needs a mail server, so it moves to `invitation-emails` (see Known limitations).
+- Making registration work in the local environment, and password reset in Keycloak ("Forgot password?", `resetPasswordAllowed`): both need a mail server and arrived later with `local-mail` (Mailpit).
 
 ### Known limitations
 
 - **Email squatting in Keycloak.** Keycloak registration is open, and the realm forbids duplicate emails. So anyone can register an unverified Keycloak account with someone else's email, whether they learned it from a leaked invitation link (the landing page shows the invited email) or simply guessed it. The squatter gets no MentorHub access, because acceptance requires a verified email (AC-12). But the real person cannot register with their email, and while the realm has no password reset they cannot take the account over either.
-  - Until `invitation-emails` enables password reset, a Keycloak administrator deletes the unverified account in the admin console when someone reports it.
-  - With password reset, the real person recovers the account through their mailbox. `invitation-emails` must confirm that Keycloak 26 marks the email as verified after a reset by email.
+  - Since `local-mail` enabled password reset, the real person recovers the account through their mailbox with "Forgot password?". Keycloak 26.8 does not mark the email verified by the reset itself: the squatted account still has its pending email verification, so Keycloak first sends a verification email and only then asks for the new password. Both steps go through the real mailbox, and afterwards the email is verified and the squatter's password is replaced (checked manually in `local-mail`).
   - Closing self-registration, with MentorHub creating Keycloak accounts through the Admin API, is rejected: ADR 0003 keeps the identity provider replaceable.
 
 ## 2. UI
