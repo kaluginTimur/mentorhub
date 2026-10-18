@@ -80,15 +80,24 @@ public class InvitationAdministrationService {
      * AC-1 to AC-3, AC-15.
      *
      * @param email trimmed, stored as entered after trimming, compared ignoring case
-     * @throws ValidationException for {@code email}
+     * @param roles as requested; a {@code null} item is a violation reported together with the email's
+     * @throws ValidationException for {@code email} and {@code roles}
      * @throws ConflictException {@link InvitationProblems#USER_ACTIVE} with {@code userId}, or
      *     {@link InvitationProblems#INVITATION_EXISTS} with {@code invitationId}
      */
     @RequirePermission(Permission.USERS_INVITE)
     @Transactional
-    public IssuedInvitation create(@Nullable String email, Set<Role> roles) {
-        String validEmail = validEmail(email);
-        Set<Role> invitedRoles = roles.isEmpty() ? EnumSet.noneOf(Role.class) : EnumSet.copyOf(roles);
+    public IssuedInvitation create(@Nullable String email, Collection<? extends @Nullable Role> roles) {
+        List<FieldViolation> errors = new ArrayList<>();
+        String validEmail = validEmail(email, errors);
+        if (roles.stream().anyMatch(Objects::isNull)) {
+            errors.add(new FieldViolation("roles", "must not contain null"));
+        }
+        if (validEmail == null || !errors.isEmpty()) {
+            throw new ValidationException(errors);
+        }
+        Set<Role> invitedRoles = EnumSet.noneOf(Role.class);
+        roles.forEach(role -> invitedRoles.add(Objects.requireNonNull(role)));
         UUID callerId = currentUser.currentUser().id();
         Optional<UUID> activeUser = users.findActiveUserIdByEmail(validEmail);
         if (activeUser.isPresent()) {
@@ -192,16 +201,20 @@ public class InvitationAdministrationService {
         return invitations.find(invitationId).orElseThrow();
     }
 
-    private String validEmail(@Nullable String email) {
+    /** The trimmed email, or {@code null} after adding its first violation to {@code errors}. */
+    private @Nullable String validEmail(@Nullable String email, List<FieldViolation> errors) {
         String trimmed = TextInput.trimToNull(email);
         if (trimmed == null) {
-            throw ValidationException.of("email", "must not be blank");
+            errors.add(new FieldViolation("email", "must not be blank"));
+            return null;
         }
         if (TextInput.length(trimmed) > MAX_EMAIL_LENGTH) {
-            throw ValidationException.of("email", "must be at most " + MAX_EMAIL_LENGTH + " characters");
+            errors.add(new FieldViolation("email", "must be at most " + MAX_EMAIL_LENGTH + " characters"));
+            return null;
         }
         if (!validator.validateValue(EmailValue.class, "value", trimmed).isEmpty()) {
-            throw ValidationException.of("email", "must be a well-formed email address");
+            errors.add(new FieldViolation("email", "must be a well-formed email address"));
+            return null;
         }
         return trimmed;
     }

@@ -11,11 +11,11 @@ Started: 2026-10-18
 | 1 contract | approved | 5ea2a24 | 2026-10-18 |
 | 2 migration | approved | 5ea2a24 | 2026-10-18 |
 | 3 domain | approved | e3a88a6 | 2026-10-18 |
-| 4 api | approved | | 2026-10-18 |
+| 4 api | approved | 4ded0f4 | 2026-10-18 |
 | frontend A (prototype) | skipped | | 2026-10-18 |
 | frontend B | approved | b560c97 | 2026-10-18 |
-| review | pending | | |
-| verify | pending | | |
+| review | approved | | 2026-10-18 |
+| verify | approved | | 2026-10-18 |
 
 Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`. Steps 1 and 2 are one checkpoint.
 
@@ -29,6 +29,8 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-18, frontend B review: "fix frontend findings 1–8, accept the deviations". Accepted frontend deviations (record in the spec at the end): token in session storage with `/invite` redirects and auto-accept key; landing page email from ID token claims, not `/me`; "Sign out" on "Account already in use" clears the token; "Expired <date>" status line; two text row actions instead of a "..." menu; no back-link state for invitations; `login_hint`/`prompt=create` via `customParams`; invite dialog lazy-loaded from the users list. Docs finding 9 deferred to the end.
 - 2026-10-18, step 3 and frontend B: "step 3 approved, commit both and proceed to step 4". Accepted step 3 decisions (record in the spec at the end): typed 404 `invitation-invalid` via `NotFoundException(URI type, detail)`; email validity via Bean Validation `@Email`; database `now()` as the one clock; parallel creates via `insert ... on conflict do nothing` with up to 3 retries; audit field `invitedBy`; AC-14 retry returns the currently stored status; identity linked by a concurrent transaction → `identity-linked-elsewhere` with rollback; audit `expiresAt` as ISO-8601 string.
 - 2026-10-18, step 4: "step 4 approved, commit it". No deviations; web tests cover the API surface only, AC-11/15/16 details stay in the step 3 service tests.
+- 2026-10-18, final review: "fix all findings as recommended". Finding 2: fix the `null`-role case (collect roles and email errors into one `ValidationException`); an unknown role plus a bad email (Jackson fails first) is accepted as a known limitation. Findings 1–11 and 13 go to fresh `backend-dev` (1–7, 10, 11) and `frontend-dev` (8, 9, 13); finding 12 (spec Design) is done by the coordinator after acceptance.
+- 2026-10-18, final report: "feature accepted, update the spec and commit". Spec Design updated with the accepted deviations; spec status `implemented`. AC-23 manual check still to be run by the user.
 
 ## Handoff notes
 
@@ -82,7 +84,7 @@ Carried over from `user-administration` (still applicable):
 
 ## Open questions
 
-- none
+- Usage for phase `review` is not recorded: `agent-usage.mjs --record` refused this session (`e5719056-…`), linking it as a continuation of `fa223474-…` (ended before the contract record) and finding none of its agents in the Agents table. User decision: "commit without the usage record, then investigate"; record in a follow-up commit.
 
 ## Agents
 
@@ -96,3 +98,8 @@ Carried over from `user-administration` (still applicable):
 | `backend-dev` (step 4, Sonnet) | a63894ab3820f0b64 | 2026-10-18 phase implementation | 118k |
 | `reviewer` (frontend B review, Opus) | a0d4845bd1039b4b3 | 2026-10-18 phase implementation | 109k |
 | `reviewer` (frontend B re-review, Sonnet) | a57b5ae64dd871e93 | 2026-10-18 phase implementation | 18k |
+| `reviewer` (final review, Opus) | ad269b44641f2a802 | 2026-10-18 phase review | 157k |
+| `backend-dev` (review fixes, Opus) | ae30987cb72c6aed4 | 2026-10-18 phase review | 87k |
+| `reviewer` (final re-review, Sonnet) | a645dcb608aa18819 | 2026-10-18 phase review | 42k |
+| `verifier` (scope all) | a80e3a87adc686485 | 2026-10-18 phase review | 12k |
+| `frontend-dev` (review fixes, Opus) | a8c21b72fc5356627 | 2026-10-18 phase review | 46k |

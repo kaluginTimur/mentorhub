@@ -142,16 +142,17 @@ class InvitationsEndpointTests {
         assertThat(preview).bodyJson().extractingPath("$.email").isEqualTo(INVITED_EMAIL);
         assertThat(preview).bodyJson().doesNotHavePath("$.id");
 
+        assertProblem(
+                send(HttpMethod.GET, "/api/v1/users", "", "stranger"), HttpStatus.FORBIDDEN, Problems.NOT_INVITED);
+
         MvcTestResult accepted = accept(invitation.token(), "stranger", INVITED_EMAIL, true);
 
         assertThat(accepted).hasStatusOk();
         assertThat(accepted).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
         assertThat(accepted).bodyJson().extractingPath("$.user.email").isEqualTo(INVITED_EMAIL);
         assertThat(accepted).bodyJson().extractingPath("$.user.roles").asArray().containsExactly("MENTOR", "STUDENT");
-        assertThat(send(HttpMethod.GET, "/api/v1/me", "", "stranger"))
-                .bodyJson()
-                .extractingPath("$.status")
-                .isEqualTo("ACTIVE");
+        // AC-10: the next request passes the gate; the caller only lacks the permission.
+        assertProblem(send(HttpMethod.GET, "/api/v1/users", "", "stranger"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
 
         MvcTestResult list = send(HttpMethod.GET, "/api/v1/invitations?q=IVAN&status=ACCEPTED", "", "admin");
         assertThat(list).hasStatusOk();
@@ -205,16 +206,14 @@ class InvitationsEndpointTests {
         UUID former = users.create(INVITED_EMAIL, UserStatus.DISABLED, Role.STUDENT);
         users.link(former, "former");
         InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\"]");
+        assertProblem(send(HttpMethod.GET, "/api/v1/users", "", "former"), HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
 
         MvcTestResult accepted = accept(invitation.token(), "former", INVITED_EMAIL, true);
 
         assertThat(accepted).hasStatusOk();
         assertThat(accepted).bodyJson().extractingPath("$.user.roles").asArray().containsExactly("MENTOR");
         assertThat(users.status(former)).isEqualTo("ACTIVE");
-        assertThat(send(HttpMethod.GET, "/api/v1/me", "", "former"))
-                .bodyJson()
-                .extractingPath("$.status")
-                .isEqualTo("ACTIVE");
+        assertProblem(send(HttpMethod.GET, "/api/v1/users", "", "former"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
     }
 
     // AC-12
@@ -300,6 +299,13 @@ class InvitationsEndpointTests {
         assertProblem(createRequest("not-an-email", "[]"), HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
         assertProblem(createRequest(INVITED_EMAIL, "[null]"), HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
         assertProblem(createRequest(INVITED_EMAIL, "[\"BOSS\"]"), HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
+        MvcTestResult bothInvalid = createRequest("bad", "[null]");
+        assertProblem(bothInvalid, HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
+        assertThat(bothInvalid)
+                .bodyJson()
+                .extractingPath("$.errors[*].field")
+                .asArray()
+                .containsExactly("email", "roles");
         assertThat(users.count("invitations")).isZero();
     }
 

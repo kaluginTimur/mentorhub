@@ -27,11 +27,12 @@ import com.mentorhub.users.internal.service.UserProfile;
 import com.mentorhub.web.ConflictException;
 import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.Problems;
+import com.mentorhub.web.ValidationException;
 import java.net.URI;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
@@ -238,7 +239,7 @@ class InvitationsControllerTest {
         // AC-1
         @Test
         void createsAnInvitationAndReturnsItsLinkOnce() {
-            given(administration.create("ivan@example.com", Set.of(Role.MENTOR)))
+            given(administration.create("ivan@example.com", List.of(Role.MENTOR)))
                     .willReturn(issued());
 
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations", CREATE_BODY, admin());
@@ -260,9 +261,12 @@ class InvitationsControllerTest {
                     """.formatted(TOKEN));
         }
 
-        // AC-2
+        // AC-2: the service reports a null role together with the email's violations.
         @Test
-        void rolesMustNotContainNull() {
+        void nullRoleIsPassedToTheService() {
+            given(administration.create("ivan@example.com", Arrays.asList((Role) null)))
+                    .willThrow(ValidationException.of("roles", "must not contain null"));
+
             MvcTestResult result = send(
                     HttpMethod.POST,
                     "/api/v1/invitations",
@@ -270,7 +274,6 @@ class InvitationsControllerTest {
                     admin());
 
             assertValidationProblem(result, "roles");
-            verifyNoInteractions(administration);
         }
 
         // AC-2

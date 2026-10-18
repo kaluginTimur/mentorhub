@@ -24,7 +24,7 @@ mentorhub:
       issuer-uri: http://localhost:8180/realms/mentorhub
       client-id: mentorhub-web
   # Linked to the realm users of infra/keycloak/mentorhub-realm.json by their fixed ids. The password of all of them
-  # is in README.md. stranger@mentorhub.local exists only in Keycloak (not invited).
+  # is in README.md. stranger@mentorhub.local exists only in Keycloak until it accepts an invitation.
   development-users:
     issuer-uri: http://localhost:8180/realms/mentorhub
     users:

@@ -23,6 +23,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -178,6 +179,19 @@ class InvitationAdministrationServiceTests {
             assertValidationErrors(
                     () -> service.create(longEmail(255), Set.of()),
                     new FieldViolation("email", "must be at most 254 characters"));
+            assertThat(data.count("invitations")).isZero();
+        }
+
+        // AC-2: one error per invalid field.
+        @Test
+        void reportsANullRoleTogetherWithAnInvalidEmail() {
+            assertValidationErrors(
+                    () -> service.create("not-an-email", Arrays.asList(Role.MENTOR, null)),
+                    new FieldViolation("email", "must be a well-formed email address"),
+                    new FieldViolation("roles", "must not contain null"));
+            assertValidationErrors(
+                    () -> service.create("ivan@x.test", Arrays.asList((Role) null)),
+                    new FieldViolation("roles", "must not contain null"));
             assertThat(data.count("invitations")).isZero();
         }
 

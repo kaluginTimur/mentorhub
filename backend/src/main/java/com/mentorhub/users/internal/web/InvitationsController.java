@@ -9,18 +9,14 @@ import com.mentorhub.api.model.InvitationPreview;
 import com.mentorhub.api.model.InvitationStatus;
 import com.mentorhub.api.model.InvitationToken;
 import com.mentorhub.api.model.Me;
-import com.mentorhub.api.model.Role;
 import com.mentorhub.users.NoPermissionRequired;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.internal.invitation.InvitationAcceptanceService;
 import com.mentorhub.users.internal.invitation.InvitationAdministrationService;
 import com.mentorhub.users.internal.invitation.InvitationQuery;
-import com.mentorhub.web.ValidationException;
-import java.util.Objects;
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,14 +38,12 @@ class InvitationsController implements InvitationsApi {
     @Override
     @RequirePermission(Permission.USERS_INVITE)
     public CreatedInvitation createInvitation(InvitationCreate invitationCreate) {
-        Set<Role> roles = invitationCreate.getRoles();
-        // Bean validation checks the set, not its items: `[null]` binds to a set containing null.
-        if (roles.stream().anyMatch(Objects::isNull)) {
-            throw ValidationException.of("roles", "must not contain null");
-        }
-        return InvitationsMapper.created(administration.create(
-                invitationCreate.getEmail(),
-                roles.stream().map(UsersMapper::role).collect(Collectors.toUnmodifiableSet())));
+        // Bean validation checks the set, not its items: `[null]` binds to a set containing null, which the service
+        // reports together with the email's violations.
+        List<com.mentorhub.users.@Nullable Role> roles = invitationCreate.getRoles().stream()
+                .map(role -> role == null ? null : UsersMapper.role(role))
+                .toList();
+        return InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles));
     }
 
     @Override

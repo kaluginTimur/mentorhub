@@ -36,11 +36,21 @@ Every development user has the password `mentorhub`:
 | `student@mentorhub.local` | Active, STUDENT |
 | `noroles@mentorhub.local` | Active, no roles ("Your access is being set up") |
 | `disabled@mentorhub.local` | Disabled ("Your access has ended") |
-| `stranger@mentorhub.local` | Keycloak only, not invited ("Access by invitation only") |
+| `stranger@mentorhub.local` | Keycloak only, not linked until it accepts an invitation ("Access by invitation only") |
 
 - On every start in the `dev` profile, the backend creates or updates these users in its database, so no manual setup is needed.
 - `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/adr/0005-administrator-bootstrap.md`).
 - Registering new accounts at Keycloak does not work locally yet: registration requires email verification, and the local environment sends no email.
+
+### Inviting and accepting locally
+
+1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant, then copy the link from the "Invitation link" dialog: it is shown only once.
+2. Sign out, open the link and sign in with the invited email. Accepting needs an email that Keycloak has verified, so locally only verified accounts can accept:
+   - `stranger@mentorhub.local` (invite exactly this email);
+   - or a user created in the Keycloak admin console (http://localhost:8180, realm `mentorhub`, "Users", "Add user"): enter the email, turn "Email verified" on, create the user, then set a password on its "Credentials" tab with "Temporary" off.
+3. After accepting, you land on the home page with the invited roles; the user's page shows the acceptance in its history.
+
+Once `stranger@mentorhub.local` has accepted, it stays linked to its user until the dev database is reset; restarting the backend does not unlink it. Resetting the dev database means deleting the `postgres-data` volume, which deletes all local data, not only this user.
 
 ### User administration walkthrough
 
@@ -54,7 +64,7 @@ The backend restores the development users on its next start: a development user
 ### Profiles
 
 - The `dev` profile is activated only by `./mvnw spring-boot:run` and by `TestMentorHubApplication`. It trusts the local Keycloak, creates the development users and serves Swagger UI, the API docs and the actuator `info` and `modulith` endpoints.
-- Without `dev` (production), only health is served, and the application refuses to start until the trusted issuers (`mentorhub.security.trusted-issuers`) and the client configuration (`mentorhub.security.client.*`) are set.
+- Without `dev` (production), only health is served, and the application refuses to start until the trusted issuers (`mentorhub.security.trusted-issuers`), the client configuration (`mentorhub.security.client.*`) and the frontend URL for invitation links (`mentorhub.app-url`) are set.
 - `TestMentorHubApplication` (in `backend/src/test`) runs `dev` with a throwaway Postgres from Testcontainers and does not start Keycloak. To sign in, start Keycloak first: `docker compose -f infra/compose.yaml up -d keycloak`.
 
 ### Changing the realm

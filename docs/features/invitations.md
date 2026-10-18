@@ -1,6 +1,6 @@
 # Invitations
 
-Status: approved
+Status: implemented
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (Mailpit and invitation emails).
 
@@ -212,11 +212,11 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
   - a table with:
     - Email;
     - Roles: chips, or "No roles" in secondary text;
-    - Status: text "Pending", "Expired", "Accepted" or "Revoked", with a second line "Expires <date>", "Accepted by <name>" (a link to the user page) or "Revoked by <name>";
+    - Status: text "Pending", "Expired", "Accepted" or "Revoked", with a second line "Expires <date>", "Expired <date>", "Accepted by <name>" (a link to the user page) or "Revoked by <name>";
     - Invited: the date and the inviter's name;
-    - row actions: "Get a new link" and "Revoke" for pending and expired invitations;
+    - row actions: "Get a new link" and "Revoke" as two text buttons, for pending and expired invitations;
   - a paginator (25 per page);
-  - search, status and page are kept in the URL query; `?q=<email>` is also what the `invitation-exists` link opens.
+  - search, status and page are kept in the URL query; `?q=<email>` is also what the `invitation-exists` link opens. The "Accepted by" link to the user page keeps no back-link state for the invitations list.
 - "Revoke" opens a confirmation: "Revoke the invitation for <email>? The link will stop working." with "Cancel" and "Revoke". On success the snackbar shows "Invitation revoked" and the row updates.
 - "Get a new link" opens a confirmation: "Get a new link for <email>? The previous link will stop working." On success it opens the link view (below).
 - 409 `invitation-closed` shows the snackbar "This invitation is already closed." and reloads the list; 404 (an invitation that disappeared cannot happen, but is handled) does the same. Other errors of the row actions show the snackbar "Something went wrong. Try again." and leave the row as it was.
@@ -230,8 +230,9 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
 | Invitations                                                   [Invite]   |
 | [Search by email            ] [Status: All v]                            |
 | Email              Roles     Status                Invited               |
-| ivan@example.com   Mentor    Pending               18 Oct 2026  [...]    |
+| ivan@example.com   Mentor    Pending               18 Oct 2026           |
 |                              Expires 25 Oct 2026   Ada Admin             |
+|                                      [Get a new link] [Revoke]           |
 | maria@example.com  No roles  Accepted              15 Oct 2026           |
 |                              Accepted by Maria K.  Ada Admin             |
 |                                        25 per page  1-2 of 2  < >        |
@@ -267,7 +268,7 @@ Shown in the dialog after creating an invitation or getting a new link.
 
 - Route: `/invite/:token`; public, outside the access guard; uses the access screen layout (a centered card, `h1` focused on open, no account menu).
 - Flow:
-  - loading: the shared loading state while preview runs (and, when signed in, while `GET /api/v1/me` loads);
+  - loading: the shared loading state while preview runs (the signed-in account's email comes from the ID token claims, not from `GET /api/v1/me`);
   - invalid (404 `invitation-invalid`): `h1` "Invitation not valid", text "This invitation link is invalid or has expired. Ask the person who invited you for a new link.";
   - not signed in: `h1` "You're invited to MentorHub", text "This invitation is for <email>. Sign in with that email, or create an account if you don't have one." Actions:
     - "Sign in": starts sign-in with `login_hint=<email>`;
@@ -276,7 +277,7 @@ Shown in the dialog after creating an invitation or getting a new link.
   - signed in, not yet accepted: text "You're signed in as <account email>." with "Accept invitation" and "Use another account" (signs out locally and at Keycloak, then returns to this page);
   - accepting: a progress indicator; on success, navigation to `/`;
   - 409 `invitation-email-mismatch`: `h1` "Wrong account", text "This invitation is for <email>, but you're signed in as <account email>." with "Use another account". When the emails are equal but the account's email is not verified, the text reads "Verify your email in your account first, then try again.";
-  - 409 `identity-linked-elsewhere`: `h1` "Account already in use", text "This account already belongs to another MentorHub user. Contact the person who invited you.", with "Sign out";
+  - 409 `identity-linked-elsewhere`: `h1` "Account already in use", text "This account already belongs to another MentorHub user. Contact the person who invited you.", with "Sign out" (which also removes the stored token);
   - other errors: the unavailable card with "Retry".
 - The page moves the token into session storage and replaces the address with `/invite` right after reading it; the token is kept across the Keycloak round trip and removed after acceptance or an invalid answer. It never goes into a redirect URI, the OIDC `state`, the logs or analytics (see Authorization and flow). The first request for `/invite/<token>` still reaches the static host's access log; that is accepted.
 - Accessibility: the `h1` gets focus on every state change; the progress state sets `aria-busy`; errors use `role="alert"`.
@@ -311,13 +312,14 @@ Shown in the dialog after creating an invitation or getting a new link.
 - Invitations live in `com.mentorhub.users` (decision below): `users.internal.invitation` holds the domain and service, and `users.internal.persistence` gets `InvitationRepository` (`JdbcClient`, ADR 0007). No new module and no new module dependency (`users` → `audit` exists).
 - `users.internal.web`: a new contract tag `Invitations`, with `InvitationsController` implementing `InvitationsApi` and `InvitationsMapper`, following the per-tag convention. The history mapping in `UsersMapper` gains the new action.
 - `Permission` gains `USERS_INVITE`, and ADMIN gets it.
-- `com.mentorhub.web`: `ConflictException` must be able to carry Problem extensions (`userId`, `invitationId`); extend it if it can't today.
+- `com.mentorhub.web`: `ConflictException(type, detail, extensions)` carries Problem extensions (`userId`, `invitationId`), rendered as `ProblemDetail` properties; `NotFoundException(URI type, String detail)` gives a 404 its own problem type and a client-visible detail (used for `invitation-invalid`, types in `InvitationProblems`).
 - Frontend:
   - `frontend/src/app/features/invitations/`: the list, the invite dialog and the link view;
   - `frontend/src/app/features/invite/`: the landing page;
-  - the "Invite" button on the users list;
+  - the "Invite" button on the users list, which lazy-loads the invite dialog;
   - the history sentence on the user page;
-  - `AuthService` gains sign-in with `login_hint` and `prompt=create`, and a return URL.
+  - `AuthService.signIn(returnUrl, {loginHint, register})` passes `login_hint` and `prompt=create` through the OIDC client's `customParams`, and `ensureSignedIn` gains an `invitation` result;
+  - `InvitationSession` keeps the token in session storage, with a separate auto-accept key for the round trip.
 
 ### Data model
 
@@ -335,6 +337,8 @@ Migration `V4__invitations.sql`:
     - `(accepted_at is null) = (accepted_user_id is null)`;
     - `(revoked_at is null) = (revoked_by is null)`;
     - not both accepted and revoked;
+    - `email <> ''`;
+    - `token_hash ~ '^[0-9a-f]{64}$'`;
   - partial unique index `invitations_open_email_uq` on `lower(email)` where `accepted_at is null and revoked_at is null`: at most one open invitation per email (AC-3, AC-15);
   - index on (`created_at desc`, `id desc`) for the list.
 - `invitation_roles(invitation_id uuid` FK → `invitations` on delete restrict, `role text` FK → `roles`, PK both`)`.
@@ -380,12 +384,15 @@ Schemas:
   - `invitation-email-mismatch` (409);
   - `identity-linked-elsewhere` (409).
 
+  The create 409s share one schema, `InvitationConflictProblem` (`allOf` `Problem` with the optional `userId` and `invitationId`), instead of a `oneOf`: a problem with extensions gets an `allOf` schema over `Problem`.
+- `InvitationCreate.email` is checked with Bean Validation `@Email` after trimming, and the service reports the email and a `null` item in `roles` together, one error per field. An unknown role fails JSON parsing first and is reported alone (accepted limitation).
+
 ### Tokens and links
 
 - Each token is 32 bytes from `SecureRandom`, encoded base64url without padding (43 characters).
 - Only the token's SHA-256 hash is stored. Lookup is by the hash of the presented token; a token that is not 43 base64url characters is `invitation-invalid` without a query.
 - The link is `<mentorhub.app-url>/invite/<token>`.
-- Creating and issuing a new link both set `expires_at = now + mentorhub.invitations.link-lifetime`.
+- Creating and issuing a new link both set `expires_at = now() + mentorhub.invitations.link-lifetime`. The database `now()` is the one clock for expiry, status and audit.
 
 ### Authorization and flow
 
@@ -394,23 +401,25 @@ Schemas:
   - `POST /api/v1/invitations/preview` goes into the public filter chain, which ignores bearer tokens. `SecurityConfiguration` builds GET-only matchers for the public paths today, so preview needs its own POST matcher (tested with an invalid bearer token, AC-8);
   - `POST /api/v1/invitations/accept` is exempt from the gate like `GET /api/v1/me`: it only requires authentication. It carries the "no permission required" marker and reads the caller through `CurrentCaller`, which with its `Caller` record is extended with the token's issuer, subject, email, `email_verified` and names (today it returns only the status and user id).
 - Acceptance, in one transaction (AC-10 to AC-15):
-  1. look up the invitation by token hash `for update`; missing, expired, revoked → `invitation-invalid`; accepted → AC-14 if `accepted_user_id` is the user the caller's `(issuer, subject)` is linked to, read now inside the transaction (not the user resolved at authentication), else `invitation-invalid`;
+  1. look up the invitation by token hash `for no key update`; missing, expired, revoked → `invitation-invalid`; accepted → AC-14 if `accepted_user_id` is the user the caller's `(issuer, subject)` is linked to, read now inside the transaction (not the user resolved at authentication), returning that user's current state, else `invitation-invalid`;
   2. require `email_verified` and an email equal to the invitation's, ignoring case → else `invitation-email-mismatch`;
   3. read the identity's linked user and the user with the invitation's email; if the identity is linked to a user other than that one (or to any user when none has that email) → `identity-linked-elsewhere`, with a warning naming both ids (or only the linked one), before anything is written;
-  4. `insertUserIfAbsent` with the invitation's email and the token's names, then lock the user row by email (`for no key update`, as user administration does); link the identity if it is unlinked;
+  4. `insertUserIfAbsent` with the invitation's email and the token's names, then lock the user row by email (`for no key update`, as user administration does); link the identity if it is unlinked; if a concurrent transaction linked it to another user meanwhile, the answer is `identity-linked-elsewhere` and the transaction rolls back;
   5. if the user is disabled: enable it (clears the reason and comment) and set its known roles to exactly the invitation's known roles; if it is active: add the invitation's known roles (`on conflict do nothing`), removing none;
-  6. mark the invitation accepted, and write `USER_INVITATION_ACCEPTED`.
+  6. mark the invitation accepted, and write `USER_INVITATION_ACCEPTED` (details: `invitationId`, `invitedBy`, the three flags, roles added and removed).
+- The other audit entries: `INVITATION_CREATED` (email, roles), `INVITATION_LINK_REISSUED` (`expiresAt` as an ISO-8601 string), `INVITATION_REVOKED`.
 - Lock order: the invitation row, then the user row. Acceptance removes roles only from a disabled user, who does not count as an active administrator, so it needs no administrator lock and the lockout rules cannot be broken by it. Revoke and new link lock only the invitation row, so accept, revoke and new link serialize on that row (AC-15).
-- Create: check for an active user with the email, then insert. The partial unique index decides races between parallel creates, and a violation maps to `invitation-exists`.
+- Create: check for an active user with the email, then `insert ... on conflict (lower(email)) where <open> do nothing` and re-read the open invitation; the partial unique index decides races between parallel creates, a conflicting open invitation maps to `invitation-exists`, with up to 3 attempts.
 - The bootstrap (ADR 0005) and acceptance can race for the same email. Both use `on conflict do nothing` and re-read, so either order ends in one user.
 - Frontend:
   - the `/invite/:token` route sits outside `accessGuard`; the token interceptor treats preview as public (generated `PATH` constants);
   - the "Invitations" link and the route need `USERS_INVITE` through the existing permission check and `requirePermission` guard;
   - one mechanism carries the token across Keycloak, and the token never leaves the browser's session storage:
-    - the landing page stores the token in session storage under its own key and replaces the address with `/invite` (`replaceUrl`), so it leaves browser history and later navigation;
+    - the landing page stores the token in session storage under its own key (`InvitationSession`, plus an auto-accept key set before the Keycloak round trip) and replaces the address with `/invite` (`replaceUrl`), so it leaves browser history and later navigation;
     - the redirect URI and the post-logout redirect URI stay the application origin, never a path with the token, and the token is never put in the OIDC `state`;
     - after the sign-in callback, the access guard (or the initializer that handles the callback) sends the visitor to `/invite` whenever the key is present, whatever their access status. Today it honours the remembered return URL only for active users with roles, so this is a change;
-    - "Use another account" signs out and keeps the key (today sign-out clears the return URL); the page removes the key after acceptance or an invalid answer.
+    - "Use another account" signs out and keeps the key (today sign-out clears the return URL); "Sign out" on "Account already in use" removes it; the page removes the key after acceptance or an invalid answer.
+  - the landing page shows the signed-in account's email from the ID token claims (the `email` client scope); the claims are not refreshed on token renewal.
 
 ### Events
 
@@ -435,12 +444,13 @@ No infrastructure changes. Keycloak allows registration but requires email verif
   - unverified and different emails;
   - an identity linked elsewhere;
   - retry (AC-14);
-  - an unknown stored role on an invitation.
+  - an unknown stored role on reads; on acceptance it is covered by the service tests only.
 - AC-15 runs parallel requests against Testcontainers Postgres.
 - The preview test sends an invalid bearer token and still gets 200.
 - The tests check that the token never appears in the `invitations` table or in the audit details.
 - Frontend unit tests: every list state, the dialog and its 409 messages, the link view's copy fallback, each landing state, the automatic accept after the round trip, and the history sentence.
-- `prompt=create` and `login_hint` support in `angular-auth-oidc-client` 22.x and Keycloak 26.8: confirmed with the `api-lookup` agent before use. If `prompt=create` is not supported, "Create an account" opens Keycloak's registration endpoint instead.
+- `prompt=create` and `login_hint` support in `angular-auth-oidc-client` 22.x and Keycloak 26.8: confirmed with the `api-lookup` agent before use; the manual check (AC-23) confirms Keycloak opens registration with the email prefilled. If `prompt=create` is not supported, "Create an account" opens Keycloak's registration endpoint instead.
+- No automated accessibility (axe) test exists in the project; accessibility is checked by review.
 
 ### Documentation updates
 
@@ -468,6 +478,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 - Reactivating a disabled user through an invitation sets their roles to exactly the invitation's, so the invitation states everything the person gets back (user decision; refines the earlier "adds roles"). A user who became active after the invitation was created only gains the invitation's roles. "Enable user" on the user page still keeps roles (user administration AC-8).
 - Editing an invitation is not supported; revoke and create again.
 - The invitation search `q` is limited to 254 characters, the maximum email length, instead of the 100 of `/users`, so the `invitation-exists` link works for every valid email (user decision, steps 1–2).
+- Implementation choices accepted by the user at the checkpoints (steps 1–3, frontend B, final review), recorded above: the extra `email` and `token_hash` checks; `InvitationConflictProblem` as an `allOf`; the typed 404 through `NotFoundException`; `@Email`; database `now()` as the one clock; `on conflict do nothing` with up to 3 retries for parallel creates; the audit field `invitedBy` and `expiresAt` as an ISO-8601 string; an AC-14 retry returns the current state; a concurrent link ends in `identity-linked-elsewhere` with rollback; the token session with an auto-accept key; the account email from ID token claims; "Sign out" on "Account already in use" clears the token; the "Expired <date>" line; two text row actions instead of a menu; no back-link state; `customParams` for `login_hint` and `prompt=create`; the lazily loaded invite dialog; an unknown role plus an invalid email reports only the parsing error.
 
 ## 4. Open questions
 

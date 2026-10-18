@@ -77,7 +77,7 @@ export class AuthService {
     }
   }
 
-  /** The email and its verification flag from the ID token; nulls when the token has none. */
+  /** The email from the ID token; null when the token has none. */
   async accountIdentity(): Promise<AccountIdentity> {
     try {
       const data = (await firstValueFrom(this.oidc.getUserData())) as {
