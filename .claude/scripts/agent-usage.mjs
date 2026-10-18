@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // Token usage of a Claude Code session and its subagents, read from the local transcripts.
-// Usage: node .claude/scripts/agent-usage.mjs [session-id | path/to/<session>.jsonl] [--record <feature> <phase>]
+// Usage: node .claude/scripts/agent-usage.mjs [session-id | path/to/<session>.jsonl] [--record <feature> <phase> [--force]]
 //   Without a session it reads the latest session of this repository.
-//   --record appends the session to .claude/usage/<feature>.jsonl (replacing an earlier record of the same session)
-//   together with the feature's current size, and prints one line instead of the table.
+//   Claude Code can continue a conversation in a new session (a `continued-in` entry in the old transcript, whose
+//   history the new one repeats); the whole chain of such sessions is read as one, each API call counted once.
+//   --record appends the chain to .claude/usage/<feature>.jsonl (replacing an earlier record of any of its sessions)
+//   together with the feature's current size, and prints one line per session. It refuses a chain none of whose agents is listed in
+//   docs/features/<feature>.progress.md, or that ended before another recorded session of the feature; --force overrides.
 // Transcripts are local to the machine that ran the session and are deleted after cleanupPeriodDays (30 by default);
 // the records are what persists.
 // Weighted = input-token equivalents at API price ratios: input 1, cache read 0.1, 5-minute write 1.25, 1-hour write 2.
@@ -38,6 +41,9 @@ if (recordAt >= 0) {
   record = { feature, phase };
   args.splice(recordAt, 3);
 }
+const forceAt = args.indexOf('--force');
+const force = forceAt >= 0;
+if (force) args.splice(forceAt, 1);
 
 const configDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
 const projectsDir = path.join(configDir, 'projects');
@@ -73,12 +79,48 @@ function sessionFile(arg) {
   return latest;
 }
 
-function analyse(file) {
+const readLines = (file) => readFileSync(file, 'utf8').split('\n');
+const sessionIdOf = (file) => path.basename(file, '.jsonl');
+
+function continuedIn(file) {
+  for (const line of readLines(file)) {
+    if (!line.includes('"continued-in"')) continue;
+    try {
+      const e = JSON.parse(line);
+      if (e.type === 'continued-in' && e.continuedInSessionId) return e.continuedInSessionId;
+    } catch {}
+  }
+  return null;
+}
+
+// The sessions continued into or from the given one, oldest first.
+function chainOf(file) {
+  const all = projectDirs.length ? sessions() : [file];
+  const byId = new Map(all.map((f) => [sessionIdOf(f), f]));
+  byId.set(sessionIdOf(file), file);
+  const next = new Map();
+  const previous = new Map();
+  for (const f of byId.values()) {
+    const target = continuedIn(f);
+    if (target && byId.has(target)) {
+      next.set(sessionIdOf(f), target);
+      previous.set(target, sessionIdOf(f));
+    }
+  }
+  let id = sessionIdOf(file);
+  const visited = new Set([id]);
+  while (previous.has(id) && !visited.has(previous.get(id))) visited.add((id = previous.get(id)));
+  const chain = [id];
+  while (next.has(id) && !chain.includes(next.get(id))) chain.push((id = next.get(id)));
+  return chain.map((x) => byId.get(x));
+}
+
+function analyse(files) {
   const seen = new Set();
   const models = new Set();
   const s = { calls: 0, input: 0, read: 0, write5m: 0, write1h: 0, rebuilds: 0, rebuildTokens: 0, context: 0, first: null, last: null };
   let prev = null;
-  for (const line of readFileSync(file, 'utf8').split('\n')) {
+  for (const line of files.flatMap(readLines)) {
     if (!line) continue;
     let e;
     try {
@@ -116,18 +158,27 @@ function analyse(file) {
   return s;
 }
 
-const main = sessionFile(args[0]);
-const sessionId = path.basename(main, '.jsonl');
-const subDir = path.join(main.replace(/\.jsonl$/, ''), 'subagents');
-const rows = [{ agent: 'main', description: 'main session', ...analyse(main) }];
-if (existsSync(subDir)) {
+const chain = chainOf(sessionFile(args[0]));
+const chainIds = chain.map(sessionIdOf);
+const sessionId = chainIds[0];
+const rows = [{ agent: 'main', description: 'main session', ...analyse(chain) }];
+const agentIds = [];
+const perSession = chain.map((main) => ({ id: sessionIdOf(main), ...analyse([main]), agents: 0 }));
+for (const [i, main] of chain.entries()) {
+  const subDir = path.join(main.replace(/\.jsonl$/, ''), 'subagents');
+  if (!existsSync(subDir)) continue;
   for (const f of readdirSync(subDir).filter((x) => x.endsWith('.jsonl')).sort()) {
     const metaFile = path.join(subDir, f.replace(/\.jsonl$/, '.meta.json'));
     const meta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : {};
-    rows.push({ agent: meta.agentType ?? 'agent', description: meta.description ?? f, ...analyse(path.join(subDir, f)) });
+    agentIds.push(f.replace(/^agent-|\.jsonl$/g, ''));
+    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, ...analyse([path.join(subDir, f)]) };
+    rows.push(row);
+    perSession[i].agents++;
+    if (row.last && (!perSession[i].last || row.last > perSession[i].last)) perSession[i].last = row.last;
   }
 }
 rows.sort((a, b) => (a.first ?? '').localeCompare(b.first ?? ''));
+const chainLast = perSession.reduce((a, p) => (p.last && p.last > a ? p.last : a), '');
 
 function featureSize(feature) {
   const branch = `feature/${feature}`;
@@ -151,20 +202,31 @@ if (record) {
   const dir = path.join(root, '.claude', 'usage');
   const file = path.join(dir, `${record.feature}.jsonl`);
   mkdirSync(dir, { recursive: true });
-  const kept = existsSync(file)
-    ? readFileSync(file, 'utf8').split('\n').filter((l) => l && JSON.parse(l).session !== sessionId)
-    : [];
+  const existing = existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => [l, JSON.parse(l)]) : [];
+  const ofChain = (r) => (r.sessions ?? [r.session]).some((id) => chainIds.includes(id));
+  const kept = existing.filter(([, r]) => !ofChain(r)).map(([l]) => l);
+
+  const progressLog = `docs/features/${record.feature}.progress.md`;
+  const problems = [];
+  // /feature lists every agent it starts in the progress log's Agents table.
+  const log = git(['show', `${featureSize(record.feature).head}:${progressLog}`]) ?? (existsSync(path.join(root, progressLog)) ? readFileSync(path.join(root, progressLog), 'utf8') : '');
+  if (!agentIds.some((id) => log.includes(id))) problems.push(`none of its agents is in the Agents table of ${progressLog}`);
+  const later = existing.map(([, r]) => r).filter((r) => r.type === 'size' && !ofChain(r) && r.recordedAt > chainLast);
+  if (later.length) problems.push(`it ended (${chainLast}) before ${record.feature}/${later[0].phase} was recorded (${later[0].recordedAt})`);
+  if (problems.length && !force) fail(`refusing to record session ${chainIds.join(' -> ')}: ${problems.join('; ')}. Pass --force if it is right.`);
+
   const recordedAt = new Date().toISOString();
-  const base = { feature: record.feature, phase: record.phase, session: sessionId, recordedAt };
+  const base = { feature: record.feature, phase: record.phase, session: sessionId, sessions: chainIds, recordedAt };
   const lines = rows.map(({ first, last, context, ...r }) => JSON.stringify({ type: 'agent', ...base, ...r, lastContext: context, start: first, end: last }));
   lines.push(JSON.stringify({ type: 'size', ...base, ...featureSize(record.feature) }));
   writeFileSync(file, [...kept, ...lines].join('\n') + '\n');
   const total = rows.reduce((a, r) => a + r.weighted, 0);
-  console.log(`agent-usage: recorded ${rows.length} agents of session ${sessionId} (${k(total)} weighted) as ${record.feature}/${record.phase} in ${path.relative(root, file)}`);
+  console.log(`agent-usage: recorded ${rows.length} agents (${k(total)} weighted) as ${record.feature}/${record.phase} in ${path.relative(root, file)}:`);
+  for (const p of perSession) console.log(`  session ${p.id}  ${p.first ?? '-'} to ${p.last ?? '-'}  ${p.agents} subagents`);
   process.exit(0);
 }
 
-console.log(`Session ${sessionId}\n`);
+console.log(`Session ${chainIds.join(' -> ')}\n`);
 const header = ['agent', 'model', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'rebuilds'];
 const table = rows.map((r) => [
   `${r.agent}: ${r.description}`.slice(0, 48),
