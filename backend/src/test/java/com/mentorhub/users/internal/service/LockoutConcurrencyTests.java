@@ -28,7 +28,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-/** AC-15: parallel changes that can remove an administrator never leave the installation without one. */
+/**
+ * AC-15: parallel changes that can remove an administrator never leave the installation without one, and parallel
+ * changes never fail with a deadlock.
+ */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class LockoutConcurrencyTests {
@@ -83,6 +86,27 @@ class LockoutConcurrencyTests {
 
         assertThat(outcomes).containsExactly(OK, OK);
         assertThat(activeAdministrators()).isEqualTo(1);
+    }
+
+    // Each change writes an audit entry whose actor foreign key share-locks the caller's row, which the other
+    // change holds; the row lock must not conflict with that (no deadlock).
+    @RepeatedTest(10)
+    void administratorsUpdatingEachOthersProfileBothSucceed() throws Exception {
+        List<String> outcomes = inParallel(
+                as(adminA, service -> service.updateProfile(adminB, new ProfileInput("Bea", "Bright", null))),
+                as(adminB, service -> service.updateProfile(adminA, new ProfileInput("Abe", "Adams", null))));
+
+        assertThat(outcomes).containsExactly(OK, OK);
+    }
+
+    @RepeatedTest(10)
+    void administratorsSettingEachOthersRolesKeepingAdminBothSucceed() throws Exception {
+        List<String> outcomes = inParallel(
+                as(adminA, service -> service.setRoles(adminB, Set.of(Role.ADMIN, Role.MENTOR))),
+                as(adminB, service -> service.setRoles(adminA, Set.of(Role.ADMIN, Role.MENTOR))));
+
+        assertThat(outcomes).containsExactly(OK, OK);
+        assertThat(activeAdministrators()).isEqualTo(2);
     }
 
     private Callable<String> as(UUID caller, Consumer<UserAdministrationService> change) {

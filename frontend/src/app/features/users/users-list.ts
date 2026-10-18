@@ -157,10 +157,10 @@ export class UsersList {
   protected onSearch(value: string): void {
     this.searchText.set(value);
     clearTimeout(this.searchTimer);
-    this.searchTimer = setTimeout(
-      () => this.go({ q: value.trim() ? value : null, page: null }),
-      SEARCH_DELAY,
-    );
+    this.searchTimer = setTimeout(() => {
+      this.pushedSearch = value.trim() ? value : '';
+      this.go({ q: value.trim() ? value : null, page: null });
+    }, SEARCH_DELAY);
   }
 
   protected setStatus(value: UserStatus | ''): void {

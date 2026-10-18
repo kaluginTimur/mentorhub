@@ -184,11 +184,22 @@ describe('UsersList', () => {
     api.invoke.mockResolvedValue(page([summary('a')]));
     const { harness, element } = await open();
     const input = element.querySelector('input') as HTMLInputElement;
+    const router = TestBed.inject(Router);
+    const navigate = router.navigate.bind(router);
+    let typed = false;
+    vi.spyOn(router, 'navigate').mockImplementation((...args) => {
+      const result = navigate(...args);
+      if (typed) return result;
+      typed = true;
+      // Typed after the debounced navigation started, before it is applied.
+      input.value = 'ab';
+      input.dispatchEvent(new Event('input'));
+      harness.detectChanges();
+      return result;
+    });
     input.value = 'a';
     input.dispatchEvent(new Event('input'));
-    await new Promise((resolve) => setTimeout(resolve, 310));
-    input.value = 'ab';
-    input.dispatchEvent(new Event('input'));
+    await vi.waitFor(() => expect(router.url).toBe('/users?q=a'));
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(input.value).toBe('ab');

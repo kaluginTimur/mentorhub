@@ -61,6 +61,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Parallel branches can pick the same version number for a new migration, and Flyway rejects duplicate versions. Before merging, rename your own **unapplied** migration to the next free number; never rename an applied one.
 - Primary keys are `uuid` (`gen_random_uuid()`), timestamps are `timestamptz`.
 - Advisory locks (`pg_advisory_xact_lock`) use a fixed `long` key per purpose. The administrator lock of the lockout rules is `ADMINISTRATORS_LOCK` in `UserRepository`; a new lock picks a different key. Lock order is the advisory lock first, then row locks.
+- Row locks on a table that foreign keys reference use `for no key update`, unless a key column changes: `for update` conflicts with the `for key share` that every referencing insert takes, so two transactions that each lock a row the other's insert references deadlock (`UserRepository.lockUser` and the `audit_log` actor).
 
 ## Audit (ADR 0006)
 

@@ -126,12 +126,14 @@ public class UserRepository {
     }
 
     /**
-     * Locks the user's row until the end of the transaction ({@code select ... for update}).
+     * Locks the user's row until the end of the transaction, so changes to one user are serialized. {@code for no key
+     * update}, not {@code for update}: the foreign keys to {@code users} (such as the audit entry's actor) take
+     * {@code for key share}, which {@code for update} blocks, so two administrators changing each other would deadlock.
      *
      * @return {@code false} when the user does not exist
      */
     public boolean lockUser(UUID userId) {
-        return jdbc.sql("select id from users where id = :id for update")
+        return jdbc.sql("select id from users where id = :id for no key update")
                 .param("id", userId)
                 .query(UUID.class)
                 .optional()

@@ -42,6 +42,15 @@ Every development user has the password `mentorhub`:
 - `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/adr/0005-administrator-bootstrap.md`).
 - Registering new accounts at Keycloak does not work locally yet: registration requires email verification, and the local environment sends no email.
 
+### User administration walkthrough
+
+1. Sign in as `admin@mentorhub.local`. The toolbar shows "Users"; other development users do not see it.
+2. "Users" (`/users`) lists all users, with search by name or email and filters by status and role.
+3. Open a user (`/users/{id}`) to edit the profile, disable or enable the user (disabling asks for a reason), change roles, and read the change history. Your own page does not let you disable yourself or remove your own Administrator role.
+4. "Profile" in the account menu (`/profile`) edits your own name and phone; every active user with roles has it.
+
+The backend restores the development users on its next start: a development user disabled locally is enabled again, with its disable reason and comment cleared, and gets back exactly its configured roles (`DevelopmentUserRunner`). Profile changes and the change history stay.
+
 ### Profiles
 
 - The `dev` profile is activated only by `./mvnw spring-boot:run` and by `TestMentorHubApplication`. It trusts the local Keycloak, creates the development users and serves Swagger UI, the API docs and the actuator `info` and `modulith` endpoints.
