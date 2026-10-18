@@ -1,6 +1,7 @@
 package com.mentorhub.web;
 
 import java.net.URI;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -13,6 +14,7 @@ public final class Problems {
     public static final URI ACCESS_ENDED = URI.create("urn:mentorhub:problem:access-ended");
     public static final URI FORBIDDEN = URI.create("urn:mentorhub:problem:forbidden");
     public static final URI NOT_FOUND = URI.create("urn:mentorhub:problem:not-found");
+    public static final URI VALIDATION_FAILED = URI.create("urn:mentorhub:problem:validation-failed");
     public static final URI ABOUT_BLANK = URI.create("about:blank");
 
     private Problems() {}
@@ -24,6 +26,14 @@ public final class Problems {
         if (detail != null) {
             problem.setDetail(detail);
         }
+        return problem;
+    }
+
+    /** 400 {@code validation-failed} with an {@code errors} member of {@code {field, message}} objects. */
+    public static ProblemDetail validationFailed(List<FieldViolation> errors) {
+        ProblemDetail problem =
+                create(HttpStatus.BAD_REQUEST, VALIDATION_FAILED, "Validation failed", "The request is invalid.");
+        problem.setProperty("errors", List.copyOf(errors));
         return problem;
     }
 

@@ -1,6 +1,11 @@
 <header>
   <mat-toolbar>
     <span class="brand">MentorHub</span>
+    @if (canReadUsers()) {
+      <a matButton routerLink="/users" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Users</a
+      >
+    }
     <span class="spacer"></span>
     <button
       matButton
@@ -16,6 +21,7 @@
         <div class="user-name">{{ name() }}</div>
         <div class="user-email">{{ email() }}</div>
       </div>
+      <a mat-menu-item routerLink="/profile">Profile</a>
       <button mat-menu-item type="button" (click)="signOut()">Sign out</button>
     </mat-menu>
   </mat-toolbar>

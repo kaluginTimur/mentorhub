@@ -143,7 +143,7 @@ class AuthenticationChainTests {
         String token = issuer.token("anna").bearer();
         assertThat(get("/api/v1/test/current-user", token)).hasStatusOk();
 
-        jdbc.sql("update users set status = 'DISABLED' where id = :id")
+        jdbc.sql("update users set status = 'DISABLED', disabled_reason = 'SECURITY' where id = :id")
                 .param("id", userId)
                 .update();
 

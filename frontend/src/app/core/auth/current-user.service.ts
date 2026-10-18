@@ -2,6 +2,7 @@ import { Service, computed, inject, signal } from '@angular/core';
 import { Api } from '../api/api';
 import { getMe } from '../api/fn/users/get-me';
 import { Me } from '../api/models/me';
+import { Permission } from '../api/models/permission';
 import { displayName } from './user-name';
 
 export type AccessScreen = 'full' | 'pending' | 'ended' | 'invitation-only';
@@ -38,6 +39,10 @@ export class CurrentUserService {
     const user = this.user();
     return user ? displayName(user) : '';
   });
+  hasPermission(permission: Permission): boolean {
+    return this.user()?.permissions.includes(permission) ?? false;
+  }
+
   /** The page a failed load was heading for, so "Retry" can repeat it. */
   failedUrl: string | null = null;
 

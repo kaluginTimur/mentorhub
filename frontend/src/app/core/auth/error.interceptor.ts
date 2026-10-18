@@ -1,7 +1,6 @@
 import { HttpErrorResponse, HttpEventType, HttpInterceptorFn } from '@angular/common/http';
 import { Injector, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, tap, throwError } from 'rxjs';
 import { isApiRequest, isPublicApiRequest } from './api-urls';
 import { AuthService } from './auth.service';
@@ -53,6 +52,9 @@ function handleForbidden(injector: Injector, error: HttpErrorResponse): void {
         return router.navigateByUrl('/unavailable', { skipLocationChange: true });
       });
   } else if (type === FORBIDDEN) {
-    injector.get(MatSnackBar).open("You don't have permission to do this.", 'Dismiss');
+    // loaded on demand: a static import would pull the snack bar and its CDK code into the initial bundle
+    void import('@angular/material/snack-bar').then(({ MatSnackBar }) =>
+      injector.get(MatSnackBar).open("You don't have permission to do this.", 'Dismiss'),
+    );
   }
 }

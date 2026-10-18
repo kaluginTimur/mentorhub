@@ -26,6 +26,7 @@ describe('accessGuard', () => {
     lastName: null,
     roles,
     permissions: [],
+    phone: null,
   });
   const auth = { ensureSignedIn: vi.fn(), startupError: { set: vi.fn() } };
   const currentUser: { load: ReturnType<typeof vi.fn>; failedUrl: string | null } = {

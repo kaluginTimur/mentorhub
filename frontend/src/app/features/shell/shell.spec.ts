@@ -17,10 +17,12 @@ describe('shell', () => {
     lastName: 'Petrova' as string | null,
     roles: ['MENTOR'],
     permissions: [],
+    phone: null,
   });
   const currentUser = {
     user,
     name: () => displayName(user()),
+    hasPermission: (p: string) => (user().permissions as string[]).includes(p),
   };
   const api = { invoke: vi.fn() };
 
@@ -90,5 +92,32 @@ describe('shell', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('header mat-toolbar'),
     ).not.toBeNull();
+  });
+
+  it('shows the Users link only with USERS_READ (AC-22)', async () => {
+    const link = (element: HTMLElement) =>
+      [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Users');
+    const original = user();
+    user.set({ ...original, permissions: ['USERS_READ'] as never[] });
+    let fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    expect(link(fixture.nativeElement)?.getAttribute('href')).toBe('/users');
+
+    user.set({ ...original, permissions: [] });
+    fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    expect(link(fixture.nativeElement)).toBeUndefined();
+  });
+
+  it('has Profile above Sign out in the account menu (AC-27)', async () => {
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    (fixture.nativeElement as HTMLElement).querySelector('button')?.click();
+    await fixture.whenStable();
+    const items = [...document.querySelectorAll('[mat-menu-item]')].map((i) =>
+      i.textContent?.trim(),
+    );
+    expect(items).toEqual(['Profile', 'Sign out']);
+    expect(document.querySelector('a[mat-menu-item]')?.getAttribute('href')).toBe('/profile');
   });
 });

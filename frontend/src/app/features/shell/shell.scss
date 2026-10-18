@@ -19,3 +19,11 @@
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
 }
+
+.brand {
+  margin-inline-end: 16px;
+}
+
+.active {
+  background: var(--mat-sys-secondary-container);
+}

@@ -2,6 +2,7 @@ package com.mentorhub.users.internal.security;
 
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,8 @@ public final class TestUsers {
     }
 
     public void deleteAll() {
+        // The append-only trigger rejects delete but not truncate.
+        jdbc.sql("truncate audit_log").update();
         jdbc.sql("delete from user_roles").update();
         jdbc.sql("delete from user_identities").update();
         jdbc.sql("delete from users").update();
@@ -26,10 +29,11 @@ public final class TestUsers {
     }
 
     public UUID create(String email, UserStatus status, Role... roles) {
-        UUID id = jdbc.sql("insert into users (email, first_name, last_name, status) values (:email, 'Anna',"
-                        + " 'Petrova', :status) returning id")
+        UUID id = jdbc.sql("insert into users (email, first_name, last_name, status, disabled_reason) values"
+                        + " (:email, 'Anna', 'Petrova', :status, :reason) returning id")
                 .param("email", email)
                 .param("status", status.name())
+                .param("reason", status == UserStatus.DISABLED ? "SECURITY" : null, Types.VARCHAR)
                 .query(UUID.class)
                 .single();
         for (Role role : roles) {

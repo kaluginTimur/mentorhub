@@ -5,7 +5,7 @@ Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angul
 ## Structure
 
 - `frontend/src/app/core/`: infrastructure (API client, auth, interceptors).
-- `frontend/src/app/shared/`: reusable components (`loading`, `unavailable`).
+- `frontend/src/app/shared/`: reusable components (`loading`, `unavailable`, `confirm-dialog`, `profile-form`).
 - `frontend/src/app/features/<feature>/`: one lazy-loaded route tree per feature.
 
 ## API client (ADR 0002)
@@ -52,6 +52,13 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client` 22.
 - Sign-out ends the Keycloak session; if the library has no end-session URL it ends the local session and returns to `/`. `authorize()` reports discovery failures nowhere, so a 15 s watchdog turns a missing redirect into the startup error.
 - The current user is `CurrentUserService` (`me`, `user`, `name`). Build names with `displayName()` from `frontend/src/app/core/auth/user-name.ts`.
 - The local Keycloak client comes from `infra/keycloak/mentorhub-realm.json`. The frontend relies on it being a public client with PKCE S256, with `http://localhost:4200/*` as redirect and post-logout URI.
+
+## Permissions and list state
+
+- The check is `CurrentUserService.hasPermission(permission)` (typed with the generated `Permission`); use it in components instead of reading `permissions` directly.
+- A route tree that needs a permission declares `canActivateChild: [requirePermission('USERS_READ')]` (`frontend/src/app/core/auth/permission.guard.ts`); users without it are redirected to `/`. It uses `canActivateChild` so it runs again between sibling child routes. The API is still the authority: a 403 `forbidden` from a page's load sends the user to `/` (the error interceptor shows the snackbar).
+- List state (search, filters, page) lives in the URL query and the page reads it from `ActivatedRoute.queryParamMap`, so reload and back restore it (see `frontend/src/app/features/users/users-list.ts`). Write the user's text untrimmed to the URL and trim only when calling the API. Detail pages link back with the list's last query (`UsersListState`).
+- Material and CDK code reached by a static import in `app.config.ts`, interceptors or guards lands in the initial bundle together with everything lazy routes use from it. Load rarely used pieces with `import()` (for example the snack bar in `error.interceptor.ts`) and watch the initial-size budget in the build output.
 
 ## Styling
 

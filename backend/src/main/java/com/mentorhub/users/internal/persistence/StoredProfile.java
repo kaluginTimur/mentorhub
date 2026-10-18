@@ -10,4 +10,5 @@ public record StoredProfile(
         String email,
         @Nullable String firstName,
         @Nullable String lastName,
+        @Nullable String phone,
         List<String> roleNames) {}

@@ -3,6 +3,7 @@ package com.mentorhub.users.internal.bootstrap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.mentorhub.users.internal.persistence.UserAuditTrail;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,12 +19,13 @@ class AdministratorBootstrapEligibilityTests {
     @ValueSource(strings = {"  "})
     void ruleIsOffWithoutBootstrapEmail(@Nullable String configuredEmail) {
         UserRepository users = mock(UserRepository.class);
+        UserAuditTrail auditTrail = mock(UserAuditTrail.class);
         TransactionTemplate transactions = mock(TransactionTemplate.class);
-        var bootstrap = new AdministratorBootstrap(users, transactions, configuredEmail);
+        var bootstrap = new AdministratorBootstrap(users, auditTrail, transactions, configuredEmail);
 
         bootstrap.applyIfEligible(
                 new SignInClaims("https://issuer.test", "subject", "admin@example.com", true, "Anna", null));
 
-        verifyNoInteractions(users, transactions);
+        verifyNoInteractions(users, auditTrail, transactions);
     }
 }
