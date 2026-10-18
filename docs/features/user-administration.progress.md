@@ -11,9 +11,9 @@ Started: 2026-10-18
 | 1 contract | approved | 86737f0 | 2026-10-18 |
 | 2 migration | approved | 86737f0 | 2026-10-18 |
 | 3 domain | approved | 57988fc | 2026-10-18 |
-| 4 api | approved | | 2026-10-18 |
+| 4 api | approved | 28dbc51 | 2026-10-18 |
 | frontend A (prototype) | skipped | | 2026-10-18 |
-| frontend B | in review | f18d477 | 2026-10-18 |
+| frontend B | approved | f18d477 | 2026-10-18 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -34,6 +34,8 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-18, ADR 0007: "add the rules to ADR 0007, commit both": transaction rules (one transaction manager, one approach per table, flush before SQL reads and mapped constraint errors) added to Consequences; step 3 and frontend committed separately.
 - 2026-10-18, step 4: mapper naming: "rename to UsersMapper": `UsersMapper` → `UsersMapper`; convention per tag `Foo`: `FooApi`, `FooController`, `FooMapper`. Mapping stays hand-written; MapStruct may be considered per module when the tracking core is specified.
 - 2026-10-18, step 4: "approved".
+- 2026-10-18, manual checks: "all manual checks pass". Frontend step B approved.
+- 2026-10-18, roles of disabled users: "we can change roles of a disabled user and I don't remember that we discussed it. we can leave it since we may want to change roles of a disabled user before enable them." Keep it; state it in the spec at the end.
 
 ## Handoff notes
 
@@ -62,13 +64,13 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - Step 4 API facts for the manual checks: errors are `application/problem+json` with `type`, `title`, `status`, `detail`; 400 `validation-failed` adds `errors: [{field, message}]` and `detail` `The request is invalid.`; 409 details are `You can't lock yourself out.` / `MentorHub must keep at least one active administrator.`; a non-UUID `{id}` is 400 `validation-failed` field `id` (`must be a UUID`); a truncated non-JSON body is 400 `about:blank` without `errors`.
 - Controller parameter names must equal request parameter names: `@Validated` on the generated interface disables Spring MVC method validation, and the proxy's `ConstraintViolationException` reports Java parameter names (documented in `docs/development/backend.md`).
 - `docs/features/identity-foundation.md:249` still says `MeController` (past spec, left as is).
+- Final spec update: state that an administrator can change a disabled user's roles (including removing ADMIN; the last-admin rule counts active administrators only), so roles can be prepared before enabling.
 
 ## Pending
 
 <!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
 
-- Frontend step B: all review findings fixed and committed; stays in review until the manual AC checks after step 4.
-- Step 4 approved; commit offered to the user. Next: manual AC checks against the real backend (environment start offered), then final review and verification.
+- none
 
 ## Open questions
 
