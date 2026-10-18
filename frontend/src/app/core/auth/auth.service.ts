@@ -9,6 +9,10 @@ import { readSession as read, writeSession as write } from './session-store';
 const RETURN_URL_KEY = 'mentorhub.return-url';
 const REDIRECT_TIMEOUT_MS = 15_000;
 const SIGN_IN_KEY = 'mentorhub.sign-in-pending';
+const CALLBACK_RETRY_KEY = 'mentorhub.callback-retry';
+
+// OIDC errors that mean "the attempt is stale", unlike access_denied or server_error
+const RETRYABLE_ERRORS = ['temporarily_unavailable'];
 
 export type SignInResult =
   | { kind: 'signed-in'; returnUrl: string | null }
@@ -52,20 +56,45 @@ export class AuthService {
         if (isCallback) {
           write(RETURN_URL_KEY, null);
         }
+        write(CALLBACK_RETRY_KEY, null);
         return { kind: 'signed-in', returnUrl };
       }
     } catch {
-      return { kind: 'failed' };
+      // for a callback the library throws when the URL's state matches no stored state (other tab)
+      // and returns no session when the URL has no state or no code
+      if (!isCallback) {
+        return { kind: 'failed' };
+      }
     }
-    // a callback that did not produce a session is a sign-in error, not a reason to try again
     if (isCallback) {
-      return { kind: 'failed' };
+      return (await this.retryCallback(url)) ? { kind: 'redirecting' } : { kind: 'failed' };
     }
     // a visitor with an invitation in progress chooses how to sign in on the landing page
     if (this.invitation.token() !== null) {
       return { kind: 'invitation' };
     }
     return (await this.signIn(url)) ? { kind: 'redirecting' } : { kind: 'failed' };
+  }
+
+  /**
+   * A callback without a session happens when the flow was completed in another tab (no stored
+   * state here) or the identity provider reports an expired authentication session: sign-in is
+   * restarted once, which succeeds silently through the identity provider session.
+   */
+  private async retryCallback(url: string): Promise<boolean> {
+    const alreadyRetried = read(CALLBACK_RETRY_KEY) !== null;
+    write(CALLBACK_RETRY_KEY, null);
+    const error = new URL(url, globalThis.location.origin).searchParams.get('error');
+    if (alreadyRetried || (error !== null && !RETRYABLE_ERRORS.includes(error))) {
+      return false;
+    }
+    write(CALLBACK_RETRY_KEY, '1');
+    // the original tab still holds its return URL; a tab opened from a mail link has none
+    const started = await this.startSignIn(read(RETURN_URL_KEY) ?? '/');
+    if (!started) {
+      write(CALLBACK_RETRY_KEY, null);
+    }
+    return started;
   }
 
   /** Whether a session exists, without starting sign-in; false when it cannot be determined. */
@@ -102,6 +131,12 @@ export class AuthService {
 
   /** Sends the browser to the identity provider; false when its discovery document cannot be loaded. */
   async signIn(returnUrl: string, options: SignInOptions = {}): Promise<boolean> {
+    // any sign-in other than the callback retry is a fresh attempt that may be retried again
+    write(CALLBACK_RETRY_KEY, null);
+    return this.startSignIn(returnUrl, options);
+  }
+
+  private async startSignIn(returnUrl: string, options: SignInOptions = {}): Promise<boolean> {
     this.redirecting.set(true);
     try {
       await firstValueFrom(this.oidc.preloadAuthWellKnownDocument());

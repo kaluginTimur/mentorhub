@@ -227,7 +227,7 @@ One layout, three messages. Each screen is a centered card without the user menu
 Shown as a full page when sign-in cannot start or keeps failing:
 - `GET /api/v1/system/client-config` fails;
 - Keycloak's discovery document cannot be loaded;
-- the sign-in redirect returns an error;
+- the sign-in redirect returns an error. A callback without a session (for example the flow was completed in another tab) or with `temporarily_unavailable` is first retried once silently; explicit errors such as `access_denied` show the error at once, and so does a second failed callback;
 - the API rejects a freshly obtained token (AC-28).
 
 Text: "MentorHub is unavailable. Try again later." The "Retry" action reloads the page. The message is announced with `role="alert"`.

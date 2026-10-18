@@ -16,6 +16,7 @@ import { Api } from '../../core/api/api';
 import { acceptInvitation } from '../../core/api/fn/invitations/accept-invitation';
 import { previewInvitation } from '../../core/api/fn/invitations/preview-invitation';
 import { InvitationPreview } from '../../core/api/models/invitation-preview';
+import { AccessChannel } from '../../core/auth/access-channel';
 import { AccountIdentity, AuthService } from '../../core/auth/auth.service';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { InvitationSession } from '../../core/auth/invitation-session';
@@ -43,6 +44,7 @@ const LANDING_PATH = '/invite';
   styleUrl: '../access/access-screen.scss',
 })
 export class InvitePage {
+  private readonly accessChannel = inject(AccessChannel);
   private readonly api = inject(Api);
   private readonly auth = inject(AuthService);
   private readonly currentUser = inject(CurrentUserService);
@@ -105,6 +107,7 @@ export class InvitePage {
       const me = await this.api.invoke(acceptInvitation, { body: { token } });
       this.session.clear();
       this.currentUser.me.set(me);
+      this.accessChannel.notifyChanged();
       await this.router.navigateByUrl('/');
     } catch (error) {
       const type = problemOf(error)?.type;

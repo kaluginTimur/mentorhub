@@ -1,7 +1,15 @@
-import { Component, ElementRef, afterNextRender, inject, viewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  inject,
+  viewChild,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { AccessChannel } from '../../core/auth/access-channel';
 import { AuthService } from '../../core/auth/auth.service';
 import type { AccessScreen as Access } from '../../core/auth/current-user.service';
 
@@ -45,12 +53,26 @@ const MESSAGES: Record<Exclude<Access, 'full'>, Message> = {
 })
 export class AccessScreen {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   protected readonly message =
     MESSAGES[inject(ActivatedRoute).snapshot.data['access'] as Exclude<Access, 'full'>];
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
 
   constructor() {
     afterNextRender(() => this.title().nativeElement.focus());
+    // access may have changed in another tab (an accepted invitation) or meanwhile (an administrator)
+    const recheck = () => void this.router.navigateByUrl('/');
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        recheck();
+      }
+    };
+    const off = inject(AccessChannel).onChanged(recheck);
+    document.addEventListener('visibilitychange', onVisible);
+    inject(DestroyRef).onDestroy(() => {
+      off();
+      document.removeEventListener('visibilitychange', onVisible);
+    });
   }
 
   protected signOut(): void {
