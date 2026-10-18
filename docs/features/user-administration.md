@@ -1,8 +1,8 @@
 # User administration
 
-Status: approved
+Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, `docs/features/identity-foundation.md`. Followed by `invitations` (invitations with a copyable link) and `invitation-emails` (Mailpit and invitation emails).
+Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`. Followed by `invitations` (invitations with a copyable link) and `invitation-emails` (Mailpit and invitation emails).
 
 ## 1. Requirements
 
@@ -210,7 +210,7 @@ The development user runner writes no audit entries.
     - "Disabled: Graduated — <comment>" (without " — <comment>" when there is none), "Enabled",
     - "Roles changed: added Mentor; removed Student",
     - "Profile updated: phone +77011234567 → +77017654321, last name (empty) → Petrova",
-    - "Granted administrator access by bootstrap".
+    - "Granted administrator access by bootstrap (created the user, linked the sign-in identity, enabled the user)": the parentheses list only what the bootstrap did and are left out when it did none of these; the sentence starts with just "Bootstrap" when it did not add ADMIN.
 - Own page: "Disable user" is disabled with the hint "You can't disable yourself."; the Administrator checkbox is disabled with the hint "You can't remove your own administrator role."
 - Disable dialog: title "Disable <name>?", text "They lose access on their next action.", a required "Reason" select with the labels from the reason table, a "Comment" textarea (counter, 500 characters; labelled "Comment (required)" and required when "Other" is selected, otherwise optional), "Cancel" and "Disable". "Disable" shows field errors from the server under their fields.
 - After a successful change the page shows the updated user, the history reloads, and a snackbar confirms ("User disabled", "User enabled", "Roles saved", "Profile saved"). On the administrator's own page, saving the profile or roles also reloads `GET /api/v1/me`, so the toolbar name and permissions are current.
@@ -280,12 +280,13 @@ Shared by the user page and the own profile page.
 ### Modules
 
 - `com.mentorhub.audit` (new):
-  - public API: `AuditLog.record(AuditEntry)`, which joins the caller's transaction (`Propagation.MANDATORY`), and a query `AuditLog.findBySubject(subjectType, subjectId, page)`;
+  - public API: `AuditLog.record(AuditEntry)`, which joins the caller's transaction (`Propagation.MANDATORY`), and a query `AuditLog.findBySubject(subjectType, subjectId, page, size)`;
   - `AuditEntry`: actor id (nullable), action, subject type and id, details as a JSON-serializable map. The action is a `String` constant owned by the calling module, so `audit` depends on no other module;
-  - internal `persistence` with a JdbcClient repository. No endpoints: each module that shows history serves it under its own access rules.
+  - internal `persistence` with a `JdbcClient` repository (ADR 0007). No endpoints: each module that shows history serves it under its own access rules.
 - `com.mentorhub.users` gains:
   - `service`: `UserAdministrationService` (list, get, disable, enable, set roles, update profile, history) and `ProfileService` (own profile), both writing audit entries in the same transaction; the lockout rules; phone normalization;
-  - `web`: `UsersController` implementing the generated `UsersApi` operations, and the own profile operation;
+  - `web`: one contract tag `Users`, so `UsersController` implements the generated `UsersApi`: the administration operations, `getMe` (formerly `MeController`) and `updateMyProfile`; `UsersMapper` maps by hand (convention per tag `Foo`: `FooApi`, `FooController`, `FooMapper`);
+  - `persistence`: `users` stays on `JdbcClient` (ADR 0007);
   - the bootstrap writes `USER_BOOTSTRAPPED_ADMIN`;
   - `users` → `audit` is the only new module dependency.
 - `com.mentorhub.web` gains two generic exceptions next to `NotFoundException`, so it never depends on a feature module: `ConflictException(type, detail)` (409 with the given problem type) and `ValidationException(errors)` (400 `validation-failed` with field errors). `ProblemDetailsAdvice` renders them, and bean validation and parameter conversion failures also map to `validation-failed`. The `users` module throws them with its own types `self-lockout` and `last-admin`.
@@ -296,9 +297,10 @@ Shared by the user page and the own profile page.
 Migration `V3` (`V2__identity.sql` exists):
 
 - `users`:
-  - `phone text null`, check `phone ~ '^\+[1-9][0-9]{6,14}$'`;
+  - `phone text null`;
   - `disabled_reason text null`, check against the `DisableReason` values (text with a check constraint, like `status`; adding a value is a code change plus a migration of the constraint);
-  - `disabled_comment text null`, check `char_length(disabled_comment) between 1 and 500`;
+  - `disabled_comment text null`;
+  - the phone format and the comment length are not checked in the database; the service enforces them (user decision; likewise `audit_log` has no checks on `action`, `subject_type` or the shape of `details`);
   - check `users_disabled_reason_ck`: `(status = 'DISABLED') = (disabled_reason is not null)`, and `disabled_comment is null or status = 'DISABLED'`, and `disabled_reason <> 'OTHER' or disabled_comment is not null`. Rows already `DISABLED` get `OTHER` with the comment `Disabled before reasons were recorded` in the same migration.
 - `audit_log`:
   - `id uuid` PK default `gen_random_uuid()`;
@@ -342,6 +344,7 @@ Schemas:
 - `MeUser` gains `phone` (required, nullable).
 - `HistoryEntry`: `id`, `occurredAt`, `action` (`HistoryAction` enum: the five actions), `actor` (`{id, name}` or null), and optional detail properties: `reason` (`DisableReason`), `comment`, `rolesAdded`, `rolesRemoved`, `changes` (`[{field, oldValue, newValue}]`), `bootstrap` (`{userCreated, identityLinked, enabled, adminAdded}`); absent detail properties are left out of the JSON. `HistoryPage` as `UserPage`.
   - The contract's `HistoryAction` lists the actions the `users` history can show. A module that writes a new action about a user (for example the `invitations` feature) extends this enum in the same change. Entries with an action the code does not know are skipped (AC-19), as ADR 0004 does for unknown roles.
+  - Known limitation (user decision): unknown actions are filtered after paging, so such a page can hold fewer than `size` items while `totalItems` counts every entry. It happens only when the log holds actions the running code does not know, for example after rolling back a release that wrote a new action.
 - Optional properties (`disabledReason`, `disabledComment`, the `HistoryEntry` details) are left out with a `@JacksonMixin` and `@JsonInclude(NON_NULL)` per DTO, as `MeJsonMixin` does for `Me` (see the Jackson pitfall in `docs/development/backend.md`); required nullable properties stay explicit `null`.
 - The contract has no `maxLength` on names, `q`, or the comment: the service trims first and then checks the length, so surrounding whitespace never causes a rejection (AC-7, AC-18).
 - New problem types:
@@ -350,17 +353,18 @@ Schemas:
 
 ### Authorization
 
-- Every `/api/v1/users/**` operation carries `@RequirePermission`; `PUT /api/v1/me/profile` carries the "no permission required" marker and only ever changes `CurrentUser.id()`, never an id from the request.
+- Every `/api/v1/users/**` operation carries `@RequirePermission`, on the controller and on the service method; `PUT /api/v1/me/profile` carries the "no permission required" marker and only ever changes `CurrentUser.id()`, never an id from the request.
 - User ids from paths are resolved in the service; an unknown id is `NotFoundException`. No other resource-level relation applies: administrators see all users.
 - Lockout rules in `UserAdministrationService`, checked inside the changing transaction:
   - self: the target is the caller and the change disables them or removes ADMIN → `self-lockout`;
   - last admin: the change disables an active ADMIN or removes ADMIN from an active user, and no other active ADMIN would remain → `last-admin`;
+  - only active administrators count: a disabled user's roles can be changed, including removing ADMIN, so roles can be prepared before the user is enabled (user decision);
   - to make AC-15 hold, a change that can remove an active administrator takes a transaction-scoped advisory lock (`pg_advisory_xact_lock` with a fixed key) and then counts the other active administrators.
 - Lock order, always the same to rule out deadlocks (AC-15):
   1. the administrator lock: always for disable; for set roles when the requested set lacks ADMIN, which is known from the request before anything is read;
-  2. the user row (`select ... for update`), then the current state is read, so the role diff and the audit entry match what is stored.
+  2. the user row (`select ... for no key update`), then the current state is read, so the role diff and the audit entry match what is stored.
 
-  Enable, profile updates and set roles that keep ADMIN take only the row lock.
+  Enable, profile updates and set roles that keep ADMIN take only the row lock. The row lock is `for no key update`, not `for update`: the audit entry's `actor_user_id` foreign key takes `for key share` on the caller's row, which `for update` blocks, so two administrators changing each other would deadlock.
 - The ADR 0005 bootstrap runs its existing unlocked check for an active administrator first; only when none exists does it take the administrator lock and check again. Requests of an existing administrator are therefore never serialized, and a bootstrap racing a lockout change cannot see a stale count. (The bootstrap only adds an administrator, so the lock is for the re-check, not for its own safety.)
 - Frontend permission checks (convenience only; the backend enforces every rule):
   - the permissions come from `GET /api/v1/me`, which the application already reloads on every navigation, so a change of roles shows on the user's next navigation;
@@ -388,7 +392,7 @@ None. Audit entries are written synchronously in the changing transaction (AC-21
 ### Tests
 
 - Negative authorization for every `/api/v1/users/**` operation: no roles, each non-admin role, disabled caller (gate).
-- AC-15 runs parallel requests against Testcontainers Postgres, including the disable plus set-roles pair for the lock order.
+- AC-15 runs parallel requests against Testcontainers Postgres, including the disable plus set-roles pair for the lock order, and two administrators changing each other (profile with profile, set roles keeping ADMIN), which must both succeed.
 - A bootstrap test re-enables a user who was disabled with a reason and comment (AC-20).
 - A migration test checks that `UPDATE` and `DELETE` on `audit_log` fail (AC-21).
 - An `audit` module test checks that `record` outside a transaction fails, and `ModularityTests` keeps `audit` free of other module dependencies.
@@ -396,7 +400,7 @@ None. Audit entries are written synchronously in the changing transaction (AC-21
 
 ### Documentation updates
 
-- `docs/development/backend.md`: the `audit` module and how to record an entry; pagination parameters and the page schema; the `validation-failed` problem and its `errors`; the advisory lock for lockout rules.
+- `docs/development/backend.md`: the `audit` module and how to record an entry; pagination parameters and the page schema; the `validation-failed` problem and its `errors`; the advisory lock for lockout rules and `for no key update` row locks.
 - `docs/development/frontend.md`: the permission check and guard (the algorithm above); the list query in the URL.
 - `docs/ui/guidelines.md`: toolbar navigation, list page (filters, table, paginator, empty state), detail page with cards, confirmation and reason dialogs, 409 snackbar.
 - `docs/architecture/invariants.md`: already updated with the audit rules of ADR 0006 when it was accepted; no change needed.
@@ -414,6 +418,7 @@ None. Audit entries are written synchronously in the changing transaction (AC-21
 - Staff who stop working in the program and staff who leave the company share `STAFF_OFFBOARDED`. A separate value (for example for deprovisioning through a corporate identity provider) is deferred to the corporate SSO ADR; adding one is a code change and a constraint migration.
 - Phones are strict E.164, normalized with libphonenumber and a configurable default region (user decision).
 - The audit design (synchronous in the changing transaction, actions as strings owned by the calling module, append-only enforced by a trigger, no global read endpoint): ADR 0006.
+- Persistence is chosen per module; `users` and `audit` use `JdbcClient` (user decision, ADR 0007).
 - Pagination and the `validation-failed` problem are new API conventions; they are recorded in the contract and `docs/development/backend.md` rather than an ADR.
 
 ## 4. Open questions
