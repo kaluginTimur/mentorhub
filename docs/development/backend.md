@@ -116,7 +116,7 @@ When unsure whether a class, annotation or method exists, check the real artifac
 | Build, tests, formatting, module checks | `./mvnw verify` |
 | Format | `./mvnw spotless:apply` |
 | Regenerate API interfaces | `./mvnw -q generate-sources` |
-| Run on :8080 in the `dev` profile (starts Postgres and Keycloak from `infra/compose.yaml`) | `./mvnw spring-boot:run` |
+| Run on :8080 in the `dev` profile (starts Postgres, Keycloak and Mailpit from `infra/compose.yaml`) | `./mvnw spring-boot:run` |
 | Run in the `dev` profile with Postgres from Testcontainers; no Keycloak (start it with `docker compose -f infra/compose.yaml up -d keycloak` to sign in) | `TestMentorHubApplication` in `backend/src/test` |
 
 ## Verification

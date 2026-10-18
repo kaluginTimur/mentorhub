@@ -6,12 +6,12 @@ A platform for mentors of a training center: student and cohort tracking, feedba
 
 - JDK 25
 - Node 24.15+ (`nvm use` in `frontend/`)
-- Docker (Postgres and Keycloak for development, Testcontainers for tests)
+- Docker (Postgres, Keycloak and Mailpit for development, Testcontainers for tests)
 
 ## Quick start
 
 ```bash
-# Backend on :8080 in the dev profile. Postgres and Keycloak from infra/compose.yaml start automatically
+# Backend on :8080 in the dev profile. Postgres, Keycloak and Mailpit from infra/compose.yaml start automatically
 cd backend && ./mvnw spring-boot:run
 
 # Frontend on :4200, /api is proxied to the backend
@@ -22,6 +22,7 @@ cd frontend && npm ci && npm start
 - Swagger UI (API contract, `dev` profile only): http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
 - Keycloak admin console: http://localhost:8180 (user `admin`, password `admin`)
+- Mailpit (all local email, e.g. Keycloak verification and password reset): http://localhost:8025
 
 ## Sign-in and development users
 
@@ -40,14 +41,12 @@ Every development user has the password `mentorhub`:
 
 - On every start in the `dev` profile, the backend creates or updates these users in its database, so no manual setup is needed.
 - `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/adr/0005-administrator-bootstrap.md`).
-- Registering new accounts at Keycloak does not work locally yet: registration requires email verification, and the local environment sends no email.
+- New accounts can be registered at Keycloak ("Register" on the sign-in page). Registration requires email verification: open the verification email in Mailpit. "Forgot password?" also sends its email there.
 
 ### Inviting and accepting locally
 
 1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant, then copy the link from the "Invitation link" dialog: it is shown only once.
-2. Sign out, open the link and sign in with the invited email. Accepting needs an email that Keycloak has verified, so locally only verified accounts can accept:
-   - `stranger@mentorhub.local` (invite exactly this email);
-   - or a user created in the Keycloak admin console (http://localhost:8180, realm `mentorhub`, "Users", "Add user"): enter the email, turn "Email verified" on, create the user, then set a password on its "Credentials" tab with "Temporary" off.
+2. Sign out, open the link and sign in with the invited email, or choose "Create an account" and verify the email through Mailpit. Accepting needs an email that Keycloak has verified; `stranger@mentorhub.local` is already verified.
 3. After accepting, you land on the home page with the invited roles; the user's page shows the acceptance in its history.
 
 Once `stranger@mentorhub.local` has accepted, it stays linked to its user until the dev database is reset; restarting the backend does not unlink it. Resetting the dev database means deleting the `postgres-data` volume, which deletes all local data, not only this user.
