@@ -84,7 +84,7 @@ Carried over from `user-administration` (still applicable):
 
 ## Open questions
 
-- Usage for phase `review` is not recorded: `agent-usage.mjs --record` refused this session (`e5719056-…`), linking it as a continuation of `fa223474-…` (ended before the contract record) and finding none of its agents in the Agents table. User decision: "commit without the usage record, then investigate"; record in a follow-up commit.
+- none
 
 ## Agents
 
