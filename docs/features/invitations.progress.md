@@ -31,6 +31,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-18, step 4: "step 4 approved, commit it". No deviations; web tests cover the API surface only, AC-11/15/16 details stay in the step 3 service tests.
 - 2026-10-18, final review: "fix all findings as recommended". Finding 2: fix the `null`-role case (collect roles and email errors into one `ValidationException`); an unknown role plus a bad email (Jackson fails first) is accepted as a known limitation. Findings 1–11 and 13 go to fresh `backend-dev` (1–7, 10, 11) and `frontend-dev` (8, 9, 13); finding 12 (spec Design) is done by the coordinator after acceptance.
 - 2026-10-18, final report: "feature accepted, update the spec and commit". Spec Design updated with the accepted deviations; spec status `implemented`. AC-23 manual check still to be run by the user.
+- 2026-10-18, AC-23 manual check: "AC-23 passed". Run on the local environment; Keycloak 26.8 opened registration (`register.ftl`) for `prompt=create` with the email prefilled from `login_hint`, so the registration-endpoint fallback is not needed. Dev database dropped afterwards at the user's request.
 
 ## Handoff notes
 
