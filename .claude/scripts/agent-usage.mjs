@@ -10,7 +10,8 @@
 // Transcripts are local to the machine that ran the session and are deleted after cleanupPeriodDays (30 by default);
 // the records are what persists.
 // Weighted = input-token equivalents at API price ratios: input 1, cache read 0.1, 5-minute write 1.25, 1-hour write 2.
-// Output tokens are left out: subagent transcripts do not record them reliably.
+// Output tokens are left out of the weighted total: subagent transcripts do not record them reliably. The main session's
+// output is reported on its own. Effort is the reasoning effort the requests ran at (subagents inherit the session's).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -118,10 +119,13 @@ function chainOf(file) {
 function analyse(files) {
   const seen = new Set();
   const models = new Set();
+  const efforts = new Set();
+  const output = new Map();
   const s = { calls: 0, input: 0, read: 0, write5m: 0, write1h: 0, rebuilds: 0, rebuildTokens: 0, context: 0, first: null, last: null };
   let prev = null;
   for (const line of files.flatMap(readLines)) {
     if (!line) continue;
+    for (const m of line.matchAll(/"effort":"(low|medium|high|xhigh|max)"/g)) efforts.add(m[1]);
     let e;
     try {
       e = JSON.parse(line);
@@ -129,6 +133,8 @@ function analyse(files) {
       continue;
     }
     const m = e.message;
+    // A streamed message is written several times under one id; the last copy has the final output count.
+    if (e.type === 'assistant' && m?.usage) output.set(m.id, Math.max(output.get(m.id) ?? 0, m.usage.output_tokens ?? 0));
     if (e.type !== 'assistant' || !m?.usage || seen.has(m.id)) continue;
     seen.add(m.id);
     if (m.model && m.model !== '<synthetic>') models.add(m.model);
@@ -153,6 +159,8 @@ function analyse(files) {
     prev = ts;
   }
   s.model = [...models].map((x) => x.replace(/^claude-/, '')).join(',');
+  s.effort = [...efforts].sort().join(',') || null;
+  s.output = [...output.values()].reduce((a, b) => a + b, 0);
   s.avgContext = s.calls ? Math.round((s.input + s.read + s.write5m + s.write1h) / s.calls) : 0;
   s.weighted = Math.round(s.input + 0.1 * s.read + 1.25 * s.write5m + 2 * s.write1h);
   return s;
@@ -171,7 +179,7 @@ for (const [i, main] of chain.entries()) {
     const metaFile = path.join(subDir, f.replace(/\.jsonl$/, '.meta.json'));
     const meta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : {};
     agentIds.push(f.replace(/^agent-|\.jsonl$/g, ''));
-    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, ...analyse([path.join(subDir, f)]) };
+    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, ...analyse([path.join(subDir, f)]), output: null };
     rows.push(row);
     perSession[i].agents++;
     if (row.last && (!perSession[i].last || row.last > perSession[i].last)) perSession[i].last = row.last;
@@ -227,10 +235,11 @@ if (record) {
 }
 
 console.log(`Session ${chainIds.join(' -> ')}\n`);
-const header = ['agent', 'model', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'rebuilds'];
+const header = ['agent', 'model', 'effort', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'rebuilds'];
 const table = rows.map((r) => [
   `${r.agent}: ${r.description}`.slice(0, 48),
   r.model,
+  r.effort ?? '-',
   String(r.calls),
   k(r.avgContext),
   k(r.context),
@@ -241,9 +250,10 @@ const table = rows.map((r) => [
   r.rebuilds ? `${r.rebuilds}: ${k(r.rebuildTokens)} (${Math.round((100 * (r.write1h > r.write5m ? 2 : 1.25) * r.rebuildTokens) / r.weighted)}%)` : '-',
 ]);
 const widths = header.map((h, i) => Math.max(h.length, ...table.map((row) => row[i].length)));
-for (const row of [header, ...table]) console.log(row.map((c, i) => (i < 2 ? c.padEnd(widths[i]) : c.padStart(widths[i]))).join('  '));
+for (const row of [header, ...table]) console.log(row.map((c, i) => (i < 3 ? c.padEnd(widths[i]) : c.padStart(widths[i]))).join('  '));
 
 const byModel = {};
 for (const r of rows) byModel[r.model] = (byModel[r.model] ?? 0) + r.weighted;
-console.log(`\nWeighted by model: ${Object.entries(byModel).map(([m, w]) => `${m} ${k(w)}`).join(', ')}`);
+console.log(`\nMain session output: ${k(rows[0].output)} tokens (${Math.round(rows[0].output / Math.max(rows[0].calls, 1))} per call); not in the weighted totals.`);
+console.log(`Weighted by model: ${Object.entries(byModel).map(([m, w]) => `${m} ${k(w)}`).join(', ')}`);
 console.log('Rebuilds: whole-history cache writes after a pause longer than the cache lifetime (count: tokens, share of the agent\'s weighted cost).');
