@@ -11,9 +11,9 @@ Started: 2026-10-18
 | 1 contract | approved | 5ea2a24 | 2026-10-18 |
 | 2 migration | approved | 5ea2a24 | 2026-10-18 |
 | 3 domain | approved | e3a88a6 | 2026-10-18 |
-| 4 api | pending | | |
+| 4 api | approved | | 2026-10-18 |
 | frontend A (prototype) | skipped | | 2026-10-18 |
-| frontend B | approved | | 2026-10-18 |
+| frontend B | approved | b560c97 | 2026-10-18 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -28,6 +28,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-18, steps 1–2: "steps 1–2 approved". Accepted deviations: extra checks `token_hash ~ '^[0-9a-f]{64}$'` and `email <> ''`; create 409 uses one `InvitationConflictProblem` schema (`allOf` `Problem` + optional `userId`, `invitationId`) instead of a `oneOf`. Spec Design to be updated at the end.
 - 2026-10-18, frontend B review: "fix frontend findings 1–8, accept the deviations". Accepted frontend deviations (record in the spec at the end): token in session storage with `/invite` redirects and auto-accept key; landing page email from ID token claims, not `/me`; "Sign out" on "Account already in use" clears the token; "Expired <date>" status line; two text row actions instead of a "..." menu; no back-link state for invitations; `login_hint`/`prompt=create` via `customParams`; invite dialog lazy-loaded from the users list. Docs finding 9 deferred to the end.
 - 2026-10-18, step 3 and frontend B: "step 3 approved, commit both and proceed to step 4". Accepted step 3 decisions (record in the spec at the end): typed 404 `invitation-invalid` via `NotFoundException(URI type, detail)`; email validity via Bean Validation `@Email`; database `now()` as the one clock; parallel creates via `insert ... on conflict do nothing` with up to 3 retries; audit field `invitedBy`; AC-14 retry returns the currently stored status; identity linked by a concurrent transaction → `identity-linked-elsewhere` with rollback; audit `expiresAt` as ISO-8601 string.
+- 2026-10-18, step 4: "step 4 approved, commit it". No deviations; web tests cover the API surface only, AC-11/15/16 details stay in the step 3 service tests.
 
 ## Handoff notes
 
@@ -58,6 +59,11 @@ From frontend B:
 - No axe test in the project; accessibility checked by review only.
 - Frontend docs to update at the end: `docs/development/frontend.md` (public routes, `login_hint`, `prompt=create`, token session), `docs/ui/guidelines.md` (Invitations link, link view, landing page), "Access by invitation only" text in `docs/features/identity-foundation.md`.
 
+From step 4:
+
+- No further backend step. Review and verify remain, plus the end-of-feature docs: `docs/development/backend.md` also needs the POST matcher in the public chain and the gate-exempt accept rule; the spec Design needs the accepted deviations and decisions.
+- Main places for the final review: `SecurityConfiguration` (preview POST matcher, accept rule before the gate), `InvitationsEndpointTests.invitedPersonJoinsThroughTheLink`.
+
 Carried over from `user-administration` (still applicable):
 
 - Controller and mapper naming per tag `Foo`: `FooApi`, `FooController`, `FooMapper`; mapping is hand-written.
@@ -87,3 +93,6 @@ Carried over from `user-administration` (still applicable):
 | `backend-dev` (steps 1–2, Opus) | a1b9d5fd48692ed6e | 2026-10-18 phase contract | 100k |
 | `backend-dev` (step 3, Opus) | ad3d2d99f8f76fc34 | 2026-10-18 phase implementation | 228k |
 | `frontend-dev` (step B, Opus) | a18d2a8910259a001 | 2026-10-18 phase implementation | 189k |
+| `backend-dev` (step 4, Sonnet) | a63894ab3820f0b64 | 2026-10-18 phase implementation | 118k |
+| `reviewer` (frontend B review, Opus) | a0d4845bd1039b4b3 | 2026-10-18 phase implementation | 109k |
+| `reviewer` (frontend B re-review, Sonnet) | a57b5ae64dd871e93 | 2026-10-18 phase implementation | 18k |
