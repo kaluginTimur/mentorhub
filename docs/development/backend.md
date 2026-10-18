@@ -1,6 +1,6 @@
 # Backend development
 
-Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wrapper `./mvnw`), springdoc, Spotless (palantir-java-format), Testcontainers 2, JSpecify. Commands run from `backend/`; paths in this document are relative to the repository root.
+Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wrapper `./mvnw`), springdoc, Spotless (palantir-java-format), Testcontainers 2, JSpecify, libphonenumber (phone parsing and E.164 normalization). Commands run from `backend/`; paths in this document are relative to the repository root.
 
 ## Modules (ADR 0001)
 
@@ -14,13 +14,15 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 ## API (ADR 0002)
 
 - `openapi-generator-maven-plugin` generates the `*Api` interfaces and DTOs (`com.mentorhub.api.model`) from `api/openapi.yaml` into `backend/target/generated-sources/openapi`, with `interfaceOnly`, `useTags` and `skipDefaultInterface`.
-- A controller is a package-private `@RestController` class that `implements` the generated `*Api`.
+- A controller is a package-private `@RestController` class that `implements` the generated `*Api`. Per tag `Foo` there is the generated `FooApi`, the controller `FooController` and the mapper `FooMapper` (contract DTOs to and from service types), both in the module's `web` package (for example `UsersApi`, `UsersController`, `UsersMapper`).
+- Generated `*Api` interfaces are `@Validated`, so `@Min`/`@Max` on parameters are checked by a method validation proxy, which reports violations by the controller's Java parameter name. Keep controller parameter names equal to the request parameter names.
+- Pagination: query parameters `page` (zero-based, default 0) and `size` (1 to 100, default 25), never clamped; the response is a page object `{items, page, size, totalItems}` (`UserPage`, `HistoryPage`), where `size` is the requested size.
 - Nullability in generated DTOs: an optional property is a `@Nullable` field (`org.springframework.lang.Nullable`) outside the required-args constructor. A required nullable property (`type: [string, 'null']`) is a field without `@NotNull` and without `@Nullable`, and it is a parameter of the required-args constructor, so pass `null` explicitly.
 - Because of `skipDefaultInterface`, a contract change can break compilation of existing code: a new operation in a tag that already has a controller needs an implementation, and a new required property changes the generated DTO constructor. Keep the build green with the smallest temporary change (a stub throwing `new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED)`, or a placeholder value) until the real implementation lands.
 
 ## Security (ADR 0003, ADR 0004)
 
-- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. The filter chains and the gate are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`; token validation per trusted issuer is in `backend/src/main/java/com/mentorhub/users/internal/security/JwtAuthenticationConfiguration.java` and `backend/src/main/java/com/mentorhub/users/internal/security/TrustedIssuers.java`.
+- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. The filter chains and the gate are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`; token validation per trusted issuer is in `backend/src/main/java/com/mentorhub/users/internal/security/JwtAuthenticationConfiguration.java` and `backend/src/main/java/com/mentorhub/users/internal/security/TrustedIssuers.java`. `JwtAuthenticationConfiguration` also wires the administrator bootstrap (ADR 0005), which writes its `USER_BOOTSTRAPPED_ADMIN` audit entry.
 - Every `/api/v1/**` controller method carries `@RequirePermission(Permission.X)` or `@NoPermissionRequired` (both in `com.mentorhub.users`). Permission names never appear in strings; checks never use role names. `PermissionDeclarationTests` fails the build on an operation with neither or both.
 - The gate refuses callers that are not invited or disabled with 403 before any controller runs, except `GET /api/v1/me`. Services therefore only see active users: get the caller with `CurrentUserProvider.currentUser()` (`users.id` and permissions), never from the token.
 - Resource-level checks are explicit service code. A single resource the caller may not access throws `com.mentorhub.web.NotFoundException`, exactly like a missing one; lists leave inaccessible items out. A missing permission is Spring Security's `AccessDeniedException`.
@@ -33,12 +35,14 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - The `dev` profile (`backend/src/main/resources/application-dev.yaml`) serves Swagger UI, the API docs, `/openapi.yaml` and the actuator `info` and `modulith` endpoints, without sign-in. It trusts the local Keycloak (`http://localhost:8180/realms/mentorhub`) and sets the bootstrap email to `admin@mentorhub.local`.
 - Only `./mvnw spring-boot:run` and `TestMentorHubApplication` activate `dev`; `application.yaml` never does. For Maven it is the `spring-boot.run.profiles` property in `backend/pom.xml`, which covers `spring-boot:run` (and `start`, `test-run`) but not packaging or `process-aot`; `-Dspring-boot.run.profiles=...` overrides it.
 - Each trusted issuer's OIDC discovery and JWK set requests use `mentorhub.security.issuer-connect-timeout` (default 2s) and `mentorhub.security.issuer-read-timeout` (default 5s). An unreachable or hung identity provider fails the request with a 500 Problem after them instead of holding the request thread.
-- In `dev`, `DevelopmentUserRunner` (`backend/src/main/java/com/mentorhub/users/internal/dev/`) creates or updates the development users of `mentorhub.development-users` on every start: identity link, status and exactly the configured roles. They match the realm users of `infra/keycloak/mentorhub-realm.json` by fixed ids. Development users are never a Flyway migration.
+- In `dev`, `DevelopmentUserRunner` (`backend/src/main/java/com/mentorhub/users/internal/dev/`) creates or updates the development users of `mentorhub.development-users` on every start: identity link, status (a disabled user with its configured `disabled-reason` and `disabled-comment`) and exactly the configured roles. It writes no audit entries. They match the realm users of `infra/keycloak/mentorhub-realm.json` by fixed ids. Development users are never a Flyway migration.
 
 ## Errors
 
-- Errors are RFC 9457 Problem Details (`application/problem+json`). MentorHub types are in `backend/src/main/java/com/mentorhub/web/Problems.java`: `unauthorized` (401), `not-invited`, `access-ended`, `forbidden` (403) and `not-found` (404). Other errors use `about:blank`, written explicitly: the contract makes `type` required, but Spring 7 leaves it `null` and omits it from the JSON, so every problem passes through `Problems.withDefaultType`.
-- `ProblemDetailsAdvice` in `com.mentorhub.web` renders Spring MVC exceptions, `NotFoundException` and unexpected exceptions; the security entry point and access-denied handler write the 401 and 403 problems through `ProblemResponseWriter`.
+- Errors are RFC 9457 Problem Details (`application/problem+json`). MentorHub types are in `backend/src/main/java/com/mentorhub/web/Problems.java`: `unauthorized` (401), `not-invited`, `access-ended`, `forbidden` (403), `not-found` (404) and `validation-failed` (400). A feature module owns its own types, such as `self-lockout` and `last-admin` (409) in `backend/src/main/java/com/mentorhub/users/internal/service/LockoutProblems.java`. Other errors use `about:blank`, written explicitly: the contract makes `type` required, but Spring 7 leaves it `null` and omits it from the JSON, so every problem passes through `Problems.withDefaultType`.
+- `validation-failed` carries an `errors` member, `[{field, message}]` (`ValidationProblem` in the contract), where `field` is the query or path parameter name or the request body property name. Services throw `com.mentorhub.web.ValidationException` with `FieldViolation`s; bean validation (`@Valid` bodies, `@Min`/`@Max` parameters), parameters that do not convert (a non-UUID `{id}`, an unknown enum value) and body properties Jackson cannot bind (an unknown enum value) map to the same shape. Messages use bean validation wording (`must be between 1 and 100`); the frontend may show its own text per field. A body that is not JSON keeps Spring's generic 400 (`about:blank`).
+- `com.mentorhub.web.ConflictException(type, detail)` responds 409 with the given problem type.
+- `ProblemDetailsAdvice` in `com.mentorhub.web` renders Spring MVC exceptions, `NotFoundException`, `ValidationException`, `ConflictException`, bean validation failures and unexpected exceptions; the security entry point and access-denied handler write the 401 and 403 problems through `ProblemResponseWriter`.
 - `ProblemErrorController` in `com.mentorhub.web` replaces Boot's `BasicErrorController`. Errors from servlet filters (for example the security filter chain when an issuer's keys cannot be loaded) and from the container go through the error dispatch and are rendered as Problem Details: `about:blank`, the original status, the original path as `instance`, no exception text.
 
 ## Code
@@ -46,6 +50,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Internal types are `record`s. No Lombok.
 - Constructor injection, `final` fields.
 - `spring.jpa.open-in-view=false`: load the data you need in the service.
+- Persistence is chosen per module (ADR 0007, `docs/adr/0007-persistence-approach-per-module.md`): `JdbcClient` with records or Spring Data JPA, one approach per module, stated in the module's first spec. `users` and `audit` use `JdbcClient`. Each table is written through its owning module's approach only; a JPA module flushes before SQL reads of its changed tables.
 - Formatting: palantir-java-format via Spotless (`./mvnw spotless:apply`). `verify` fails on unformatted code.
 
 ## Database
@@ -55,6 +60,14 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Running the application with `./mvnw spring-boot:run` applies pending migrations to the dev database in `infra/compose.yaml`, which freezes them. Do not run it with a migration that is still under review. `TestMentorHubApplication` uses a throwaway Testcontainers database instead.
 - Parallel branches can pick the same version number for a new migration, and Flyway rejects duplicate versions. Before merging, rename your own **unapplied** migration to the next free number; never rename an applied one.
 - Primary keys are `uuid` (`gen_random_uuid()`), timestamps are `timestamptz`.
+- Advisory locks (`pg_advisory_xact_lock`) use a fixed `long` key per purpose. The administrator lock of the lockout rules is `ADMINISTRATORS_LOCK` in `UserRepository`; a new lock picks a different key. Lock order is the advisory lock first, then row locks.
+
+## Audit (ADR 0006)
+
+- Record an audited change with `com.mentorhub.audit.AuditLog.record(new AuditEntry(actorUserId, action, subjectType, subjectId, details))` inside the changing `@Transactional` method; `record` joins the transaction (`Propagation.MANDATORY`) and fails without one. The actor is `users.id`, or `null` for the system.
+- The action and subject type are string constants owned by the writing module (`UserAuditAction`, subject type `USER`). Details are a JSON-serializable map and never copy content with its own visibility rules.
+- There is no global read: the subject's module serves a per-subject history under its own access rules (`AuditLog.findBySubject`) and skips actions it does not know.
+- `audit_log` is append-only (a trigger rejects `UPDATE` and `DELETE`). Tests clean it with `truncate` (`TestUsers.deleteAll`).
 
 ## Tests
 
@@ -80,12 +93,13 @@ Models and older examples tend to produce Boot 3 code. Most of it fails to compi
 
 Jackson 2 (`com.fasterxml.jackson.databind` 2.x) is on the classpath transitively (springdoc → swagger-core), so Jackson 2 imports compile and run with a mapper the application does not configure. Always use the Jackson 3 types.
 
-Jackson pitfall: a global `spring.jackson.default-property-inclusion: non_null` also drops required nullable properties such as `MeUser.firstName`, which the contract sends as `null`. To leave an optional property out of one DTO, add a `@JacksonMixin` with `@JsonInclude(NON_NULL)` for that type, as `MeJsonMixin` does for `Me`.
+Jackson pitfall: a global `spring.jackson.default-property-inclusion: non_null` also drops required nullable properties such as `MeUser.firstName`, which the contract sends as `null`. To leave an optional property out of one DTO, add a `@JacksonMixin` with `@JsonInclude(NON_NULL)` for that type, as `MeJsonMixin` does for `Me`. When the DTO also has required nullable properties, annotate the optional properties' getters in the mixin instead of the class (`UserDetailsJsonMixin`, `HistoryEntryJsonMixin`). Optional array properties of generated DTOs start as `[]`, not `null`; set the unused ones to `null` before serializing.
 
 Security pitfalls:
 
 - `SecurityMockMvcRequestPostProcessors.jwt()` bypasses the application's converter: no gate, no bootstrap, no permissions from the database. Do not use it; use `TestAuthentications` or `TestIssuer`.
 - MockMvc does not perform the servlet container's error dispatch: an exception from a filter reaches the test as an exception instead of the `ProblemErrorController` response. Test filter-level failures with a `RANDOM_PORT` server, as `IssuerFailureTests` does.
+- `SecurityConfiguration` uses `@EnableMethodSecurity(proxyTargetClass = true)`. A JDK interface proxy of a controller that implements a generated `*Api` hides `@RestController` from handler mapping, so a `@WebMvcTest` slice answers 404 on every endpoint (the application itself gets class proxies from Boot's AOP auto-configuration). Keep the flag.
 - A catch-all `@ExceptionHandler(Exception.class)` turns method security's `AccessDeniedException` into a 500. `ProblemDetailsAdvice` rethrows security exceptions so Spring Security answers them; no other module declares a catch-all handler.
 
 When unsure whether a class, annotation or method exists, check the real artifacts (see [Checking an API](#checking-an-api)) instead of relying on examples.

@@ -11,9 +11,9 @@ Started: 2026-10-18
 | 1 contract | approved | 86737f0 | 2026-10-18 |
 | 2 migration | approved | 86737f0 | 2026-10-18 |
 | 3 domain | approved | 57988fc | 2026-10-18 |
-| 4 api | pending | | |
+| 4 api | approved | | 2026-10-18 |
 | frontend A (prototype) | skipped | | 2026-10-18 |
-| frontend B | in review | | 2026-10-18 |
+| frontend B | in review | f18d477 | 2026-10-18 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -32,6 +32,8 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-18, persistence: "I am fine with JDBC in "core-level" modules like user management and audit, but I want that this can be decided on per module basis, so for what is best for each module." Recorded as ADR 0007.
 - 2026-10-18, step 3: "step 3 backend approved".
 - 2026-10-18, ADR 0007: "add the rules to ADR 0007, commit both": transaction rules (one transaction manager, one approach per table, flush before SQL reads and mapped constraint errors) added to Consequences; step 3 and frontend committed separately.
+- 2026-10-18, step 4: mapper naming: "rename to UsersMapper": `UsersMapper` → `UsersMapper`; convention per tag `Foo`: `FooApi`, `FooController`, `FooMapper`. Mapping stays hand-written; MapStruct may be considered per module when the tracking core is specified.
+- 2026-10-18, step 4: "approved".
 
 ## Handoff notes
 
@@ -56,13 +58,17 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - Server validation messages use bean validation wording (e.g. `must be a valid phone number`); the frontend shows its own text for `phone`.
 - Known limitation (user decision), to add to the spec at the end: history entries with unknown actions are filtered after paging, so a page can hold fewer than `size` items while `totalItems` counts all entries. Happens only when the log holds actions the running code does not know (e.g. after rolling back a release that wrote a new action).
 - Final spec update: Design states persistence via `JdbcClient` for `users` and `audit` per ADR 0007, and adds ADR 0007 to Related.
+- `docs/development/backend.md` must be checked in step 4 (the commit hook flagged it): line 23 (`JwtAuthenticationConfiguration` wiring), 33 (`application-dev.yaml` development users now have a disable reason and comment), 34 (dependencies: libphonenumber), 40 (problem types: add `validation-failed`, `self-lockout`, `last-admin`), plus the `proxyTargetClass` pitfall and ADR 0007 persistence note.
+- Step 4 API facts for the manual checks: errors are `application/problem+json` with `type`, `title`, `status`, `detail`; 400 `validation-failed` adds `errors: [{field, message}]` and `detail` `The request is invalid.`; 409 details are `You can't lock yourself out.` / `MentorHub must keep at least one active administrator.`; a non-UUID `{id}` is 400 `validation-failed` field `id` (`must be a UUID`); a truncated non-JSON body is 400 `about:blank` without `errors`.
+- Controller parameter names must equal request parameter names: `@Validated` on the generated interface disables Spring MVC method validation, and the proxy's `ConstraintViolationException` reports Java parameter names (documented in `docs/development/backend.md`).
+- `docs/features/identity-foundation.md:249` still says `MeController` (past spec, left as is).
 
 ## Pending
 
 <!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
 
 - Frontend step B: all review findings fixed and committed; stays in review until the manual AC checks after step 4.
-- Step 4: start a fresh backend-dev after the user's go-ahead.
+- Step 4 approved; commit offered to the user. Next: manual AC checks against the real backend (environment start offered), then final review and verification.
 
 ## Open questions
 
@@ -77,3 +83,4 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 | backend-dev (steps 1–2) | a4887a1e18b011084 | 1 (contract) | 134k |
 | backend-dev (step 3) | a2e244985dedfc2dc | 2 (implementation) | 214k |
 | frontend-dev (step B) | a812ab410fd19cb9b | 2 (implementation) | 166k |
+| backend-dev (step 4) | a4c261bf17e990720 | 2 (implementation) | 185k |
