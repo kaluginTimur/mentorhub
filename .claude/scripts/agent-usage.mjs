@@ -11,7 +11,7 @@
 // the records are what persists.
 // Weighted = input-token equivalents at API price ratios: input 1, cache read 0.1, 5-minute write 1.25, 1-hour write 2.
 // Output tokens are left out of the weighted total: subagent transcripts do not record them reliably. The main session's
-// output is reported on its own. Effort is the reasoning effort the requests ran at (subagents inherit the session's).
+// output is reported on its own. Effort is the reasoning effort the requests ran at, read per agent (a subagent can differ from the session).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
