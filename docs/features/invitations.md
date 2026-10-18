@@ -449,7 +449,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 - The preview test sends an invalid bearer token and still gets 200.
 - The tests check that the token never appears in the `invitations` table or in the audit details.
 - Frontend unit tests: every list state, the dialog and its 409 messages, the link view's copy fallback, each landing state, the automatic accept after the round trip, and the history sentence.
-- `prompt=create` and `login_hint` support in `angular-auth-oidc-client` 22.x and Keycloak 26.8: confirmed with the `api-lookup` agent before use; the manual check (AC-23) confirms Keycloak opens registration with the email prefilled. If `prompt=create` is not supported, "Create an account" opens Keycloak's registration endpoint instead.
+- `prompt=create` and `login_hint`: `angular-auth-oidc-client` 22.x passes them through `customParams` (asserted in `auth.service.spec.ts`), and the manual check (AC-23) confirmed that Keycloak 26.8 opens registration with the email prefilled. If `prompt=create` is not supported, "Create an account" opens Keycloak's registration endpoint instead.
 - No automated accessibility (axe) test exists in the project; accessibility is checked by review.
 
 ### Documentation updates
