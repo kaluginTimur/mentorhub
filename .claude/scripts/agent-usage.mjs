@@ -13,7 +13,8 @@
 // Output tokens are left out of the weighted total: subagent transcripts do not record them reliably. The main session's
 // output is reported on its own. Effort is the reasoning effort the requests ran at, read per agent (a subagent can differ from the session).
 // An agent spawned by a subagent (such as api-lookup by backend-dev) gets its own row; spawnedBy names the top-level agent it
-// works for, and the summary rolls its cost up to that agent.
+// works for, and the summary rolls its cost up to that agent. Inspections counts an agent's tool calls into dependency
+// artifacts (javap, unzip -l, jar tf, ~/.m2, node_modules), which implementation agents should leave to api-lookup.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -118,12 +119,18 @@ function chainOf(file) {
   return chain.map((x) => byId.get(x));
 }
 
+// Tool calls that look into a dependency's artifacts: the work api-lookup exists for.
+const dependencyInspection = /\bjavap\b|\bunzip -l\b|\bjar tf\b|dependency:build-classpath|\.m2\/repository|node_modules\//;
+const inspectsDependency = (input) =>
+  [input?.command, input?.file_path, input?.path, input?.pattern].some((v) => typeof v === 'string' && dependencyInspection.test(v));
+
 function analyse(files) {
   const seen = new Set();
+  const tools = new Set();
   const models = new Set();
   const efforts = new Set();
   const output = new Map();
-  const s = { calls: 0, input: 0, read: 0, write5m: 0, write1h: 0, rebuilds: 0, rebuildTokens: 0, context: 0, first: null, last: null };
+  const s = { calls: 0, input: 0, read: 0, write5m: 0, write1h: 0, rebuilds: 0, rebuildTokens: 0, context: 0, inspections: 0, first: null, last: null };
   let prev = null;
   for (const line of files.flatMap(readLines)) {
     if (!line) continue;
@@ -137,6 +144,15 @@ function analyse(files) {
     const m = e.message;
     // A streamed message is written several times under one id; the last copy has the final output count.
     if (e.type === 'assistant' && m?.usage) output.set(m.id, Math.max(output.get(m.id) ?? 0, m.usage.output_tokens ?? 0));
+    // Each content block of a message is written as its own line under the message id, so tool calls count by their own id.
+    if (e.type === 'assistant') {
+      for (const c of Array.isArray(m?.content) ? m.content : []) {
+        if (c.type === 'tool_use' && !tools.has(c.id)) {
+          tools.add(c.id);
+          if (inspectsDependency(c.input)) s.inspections++;
+        }
+      }
+    }
     if (e.type !== 'assistant' || !m?.usage || seen.has(m.id)) continue;
     seen.add(m.id);
     if (m.model && m.model !== '<synthetic>') models.add(m.model);
@@ -247,7 +263,7 @@ if (record) {
 }
 
 console.log(`Session ${chainIds.join(' -> ')}\n`);
-const header = ['agent', 'model', 'effort', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'rebuilds'];
+const header = ['agent', 'model', 'effort', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'inspections', 'rebuilds'];
 const table = rows.map((r) => [
   `${r.spawnedBy ? `  ${r.agent} (via ${r.spawnedBy})` : r.agent}: ${r.description}`.slice(0, 48),
   r.model,
@@ -259,6 +275,7 @@ const table = rows.map((r) => [
   k(r.write5m),
   k(r.write1h),
   k(r.weighted),
+  String(r.inspections),
   r.rebuilds ? `${r.rebuilds}: ${k(r.rebuildTokens)} (${Math.round((100 * (r.write1h > r.write5m ? 2 : 1.25) * r.rebuildTokens) / r.weighted)}%)` : '-',
 ]);
 const widths = header.map((h, i) => Math.max(h.length, ...table.map((row) => row[i].length)));

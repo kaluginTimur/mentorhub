@@ -103,7 +103,7 @@ Security pitfalls:
 - `SecurityConfiguration` uses `@EnableMethodSecurity(proxyTargetClass = true)`. A JDK interface proxy of a controller that implements a generated `*Api` hides `@RestController` from handler mapping, so a `@WebMvcTest` slice answers 404 on every endpoint (the application itself gets class proxies from Boot's AOP auto-configuration). Keep the flag.
 - A catch-all `@ExceptionHandler(Exception.class)` turns method security's `AccessDeniedException` into a 500. `ProblemDetailsAdvice` rethrows security exceptions so Spring Security answers them; no other module declares a catch-all handler.
 
-When unsure whether a class, annotation or method exists, check the real artifacts (see [Checking an API](#checking-an-api)) instead of relying on examples.
+When unsure whether a class, annotation or method exists, check the real artifacts (see [Checking an API](#checking-an-api)) instead of relying on examples. Implementation agents ask the `api-lookup` subagent, which follows that section.
 
 ## Commands
 
@@ -133,7 +133,7 @@ On success it prints only the OpenAPI Generator banner and a JVM warning. On fai
 
 ## Checking an API
 
-To verify a class, annotation or method against the exact versions the project compiles with:
+The `api-lookup` subagent follows this section; implementation agents ask it instead of running these commands themselves. To verify a class, annotation or method against the exact versions the project compiles with:
 
 ```bash
 cd backend && ./mvnw -q dependency:build-classpath -Dmdep.outputFile=target/classpath.txt

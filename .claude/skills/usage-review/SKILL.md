@@ -30,6 +30,7 @@ For every feature after the baseline, check and report yes, no or no data:
 | Cheap re-reviews | re-review `reviewer` records run on Sonnet and are much smaller than full reviews |
 | Step 4 on Sonnet (experiment) | the step 4 `backend-dev` record runs on Sonnet; compare its feedback rounds and the final review's findings in controllers, mapping and error rendering with user-administration (one cosmetic round, none) |
 | One fix round per review | the log shows one fix round after each review |
+| API checks delegated to `api-lookup` | `backend-dev` and `frontend-dev` records have `inspections` 0, and there are `api-lookup` records with their `spawnedBy`; the reports' "API lookups" sections in the log or the transcripts name what was asked. Records made before `inspections` existed (all of identity-foundation, user-administration and invitations) lack it |
 
 A technique that did not take effect is the first finding: fix the mechanism before judging its effect.
 
