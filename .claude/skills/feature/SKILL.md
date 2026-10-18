@@ -35,7 +35,7 @@ Continue from the first step that is not approved; `$step`, when given, override
 
 ## Agents and briefs
 
-Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id and, after each report, its context size in the log; the completion notification gives the size.
+Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id, model and, after each report, its context size in the log; the completion notification gives the size. Take the model from the `model` parameter of the call, or else from the `model:` line of the agent's definition in `.claude/agents/`; never write it from memory.
 
 - **Within a step** (the user's feedback, rework): continue the same agent with `SendMessage`.
 - **Between steps:** continue the same agent while its last context size is under about 150k tokens. Above that, start a fresh agent for the next step. Its old context is mostly earlier steps' reasoning, which it no longer needs, and every call re-reads it.
@@ -50,7 +50,9 @@ Show the user a short summary of each report: what was done, the places to look 
 
 Steps of `backend-dev`: 1 contract, 2 migration, 3 domain (domain, service, authorization), 4 api (controllers and tests). Steps 1 and 2 form one checkpoint: brief them together, and the user reviews both in one diff. Otherwise one step per checkpoint, unless the user asks to merge more for a small feature.
 
-Step 4 runs on Sonnet (experiment since 2026-10, evaluated by `/usage-review`): always start a fresh `backend-dev` for it with the `model` parameter set to `sonnet`, since a continued agent keeps its model. Brief it with step 3's handoff notes and point it to the existing controllers, mappers and `ProblemDetailsAdvice` as the patterns to follow. Note the model in the log's Agents table. When step 4 is merged with step 3, it stays on Opus.
+When step 3 is large (about 10 or more acceptance criteria decided in services, or more than one service), propose to the user to split it in two checkpoints: 3a domain and persistence, 3b services, authorization and audit. Start a fresh `backend-dev` for 3b, briefed with 3a's handoff notes. Each checkpoint then carries less of the other's reasoning; in user-administration and invitations, step 3 alone grew past 200k.
+
+Step 4 runs on Sonnet (experiment since 2026-10, evaluated by `/usage-review`): always start a fresh `backend-dev` for it with the `model` parameter set to `sonnet`, since a continued agent keeps its model. Brief it with step 3's handoff notes and point it to the existing controllers, mappers and `ProblemDetailsAdvice` as the patterns to follow. When step 4 is merged with step 3, it stays on Opus.
 
 After each checkpoint:
 1. Relay the report as above.
@@ -73,7 +75,7 @@ When step B is done, run the review loop below with the focus "frontend changes 
 
 1. Run `reviewer` on the scope (the default model).
 2. Show the user every finding at once, blockers to minors, with your recommendation per finding. The user decides what to fix.
-3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review.
+3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement it writes against the code, not against the finding's wording or its own memory.
 4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. It checks those findings and the fix diff only. A new blocker or major from it goes back to step 2.
 
 ## Phase boundaries: one session per phase
@@ -87,7 +89,7 @@ The phases are: 1) `contract` (contract and migration); 2) `implementation` (dom
 
 > Phase done. Run `/clear`, then `/feature $feature` to continue in a fresh session.
 
-The new session starts from the log at a fraction of the old context. Never suggest `/compact`: a summary may drop details the log keeps exactly. The `review` phase ends the feature: record it after the final commit, and skip the message.
+The new session starts from the log at a fraction of the old context. Never suggest `/compact`: a summary may drop details the log keeps exactly. The `review` phase ends the feature: record it after the final commit, and skip the message. `/pr` records it again at its end, so the record also covers the work done after the final commit.
 
 ## Review and verification
 
