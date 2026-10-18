@@ -80,7 +80,7 @@ When step B is done, run the review loop below with the focus "frontend changes 
 
 The phases are: 1) `contract` (contract and migration); 2) `implementation` (domain, API and the frontend, which run in parallel); 3) `review` (the final review and verification). At the end of a phase, when no agent is running:
 
-1. Record the session's token usage under the phase name, as the **Recording usage** section of `.claude/README.md` describes.
+1. Record the session's token usage under the phase name, as the **Recording usage** section of `.claude/README.md` describes: without a session id, after the Agents table lists every agent of the phase. Check that the sessions it prints are this phase's; never pick a session id by hand or pass `--force` without the user.
 2. Write the log and include the usage record in the phase's last commit (or commit both on their own, if the user agrees).
 3. Tell the user:
 
