@@ -44,6 +44,48 @@ describe('describeEntry', () => {
       },
       'Granted administrator access by bootstrap (created the user, linked the sign-in identity, enabled the user)',
     ],
+    [
+      {
+        action: 'USER_INVITATION_ACCEPTED',
+        invitation: {
+          invitationId: 'i1',
+          invitedBy: { id: 'a1', name: 'Ada Admin' },
+          userCreated: true,
+          identityLinked: true,
+          enabled: false,
+        },
+        rolesAdded: ['MENTOR', 'STUDENT'],
+      },
+      'Joined by invitation from Ada Admin; roles added: Mentor, Student',
+    ],
+    [
+      {
+        action: 'USER_INVITATION_ACCEPTED',
+        invitation: {
+          invitationId: 'i1',
+          invitedBy: { id: 'a1', name: 'Ada Admin' },
+          userCreated: false,
+          identityLinked: true,
+          enabled: true,
+        },
+        rolesAdded: ['MENTOR'],
+        rolesRemoved: ['ADMIN'],
+      },
+      'Reactivated by invitation from Ada Admin; roles added: Mentor; roles removed: Administrator',
+    ],
+    [
+      {
+        action: 'USER_INVITATION_ACCEPTED',
+        invitation: {
+          invitationId: 'i1',
+          invitedBy: null,
+          userCreated: true,
+          identityLinked: true,
+          enabled: false,
+        },
+      },
+      'Joined by invitation',
+    ],
   ])('describes %j', (partial, text) => {
     expect(describeEntry({ ...base, ...partial } as HistoryEntry)).toBe(text);
   });

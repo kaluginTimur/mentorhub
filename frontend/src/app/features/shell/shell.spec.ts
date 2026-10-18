@@ -109,6 +109,22 @@ describe('shell', () => {
     expect(link(fixture.nativeElement)).toBeUndefined();
   });
 
+  it('shows the Invitations link only with USERS_INVITE (AC-18)', async () => {
+    const link = (element: HTMLElement) =>
+      [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
+    const original = user();
+    user.set({ ...original, permissions: ['USERS_READ', 'USERS_INVITE'] as never[] });
+    let fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    expect(link(fixture.nativeElement)?.getAttribute('href')).toBe('/invitations');
+
+    user.set({ ...original, permissions: ['USERS_READ'] as never[] });
+    fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    expect(link(fixture.nativeElement)).toBeUndefined();
+    user.set(original);
+  });
+
   it('has Profile above Sign out in the account menu (AC-27)', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();

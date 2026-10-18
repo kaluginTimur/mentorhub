@@ -2,38 +2,37 @@ import { Service, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { firstValueFrom } from 'rxjs';
+import { isCallbackUrl } from './api-urls';
+import { InvitationSession } from './invitation-session';
+import { readSession as read, writeSession as write } from './session-store';
 
 const RETURN_URL_KEY = 'mentorhub.return-url';
 const REDIRECT_TIMEOUT_MS = 15_000;
 const SIGN_IN_KEY = 'mentorhub.sign-in-pending';
 
 export type SignInResult =
-  { kind: 'signed-in'; returnUrl: string | null } | { kind: 'redirecting' } | { kind: 'failed' };
+  | { kind: 'signed-in'; returnUrl: string | null }
+  | { kind: 'redirecting' }
+  | { kind: 'invitation' }
+  | { kind: 'failed' };
 
-function read(key: string): string | null {
-  try {
-    return sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
+export interface SignInOptions {
+  /** The email the identity provider prefills. */
+  loginHint?: string;
+  /** Opens the registration page instead of the sign-in page. */
+  register?: boolean;
 }
 
-function write(key: string, value: string | null): void {
-  try {
-    if (value === null) {
-      sessionStorage.removeItem(key);
-    } else {
-      sessionStorage.setItem(key, value);
-    }
-  } catch {
-    // storage is only a convenience: without it the user returns to the home page
-  }
+/** The signed-in account's identity from the ID token. */
+export interface AccountIdentity {
+  email: string | null;
 }
 
 @Service()
 export class AuthService {
   private readonly oidc = inject(OidcSecurityService);
   private readonly router = inject(Router);
+  private readonly invitation = inject(InvitationSession);
   private callbackChecked = false;
 
   /** True when sign-in cannot start or keeps failing: the full-page error is shown. */
@@ -46,17 +45,9 @@ export class AuthService {
    * Starts sign-in when the visitor is not signed in.
    */
   async ensureSignedIn(url: string): Promise<SignInResult> {
-    const isCallback = /[?&](code|error)=/.test(url);
+    const isCallback = isCallbackUrl(url);
     try {
-      let authenticated: boolean;
-      if (this.callbackChecked) {
-        authenticated = await firstValueFrom(this.oidc.isAuthenticated());
-      } else {
-        this.callbackChecked = true;
-        const href = new URL(url, globalThis.location.origin).href;
-        authenticated = (await firstValueFrom(this.oidc.checkAuth(href))).isAuthenticated;
-      }
-      if (authenticated) {
+      if (await this.checkSession(url)) {
         const returnUrl = isCallback ? read(RETURN_URL_KEY) : null;
         if (isCallback) {
           write(RETURN_URL_KEY, null);
@@ -70,11 +61,47 @@ export class AuthService {
     if (isCallback) {
       return { kind: 'failed' };
     }
+    // a visitor with an invitation in progress chooses how to sign in on the landing page
+    if (this.invitation.token() !== null) {
+      return { kind: 'invitation' };
+    }
     return (await this.signIn(url)) ? { kind: 'redirecting' } : { kind: 'failed' };
   }
 
+  /** Whether a session exists, without starting sign-in; false when it cannot be determined. */
+  async isSignedIn(url: string): Promise<boolean> {
+    try {
+      return await this.checkSession(url);
+    } catch {
+      return false;
+    }
+  }
+
+  /** The email and its verification flag from the ID token; nulls when the token has none. */
+  async accountIdentity(): Promise<AccountIdentity> {
+    try {
+      const data = (await firstValueFrom(this.oidc.getUserData())) as {
+        email?: unknown;
+      } | null;
+      return {
+        email: typeof data?.email === 'string' ? data.email : null,
+      };
+    } catch {
+      return { email: null };
+    }
+  }
+
+  private async checkSession(url: string): Promise<boolean> {
+    if (this.callbackChecked) {
+      return firstValueFrom(this.oidc.isAuthenticated());
+    }
+    this.callbackChecked = true;
+    const href = new URL(url, globalThis.location.origin).href;
+    return (await firstValueFrom(this.oidc.checkAuth(href))).isAuthenticated;
+  }
+
   /** Sends the browser to the identity provider; false when its discovery document cannot be loaded. */
-  async signIn(returnUrl: string): Promise<boolean> {
+  async signIn(returnUrl: string, options: SignInOptions = {}): Promise<boolean> {
     this.redirecting.set(true);
     try {
       await firstValueFrom(this.oidc.preloadAuthWellKnownDocument());
@@ -89,7 +116,15 @@ export class AuthService {
       this.redirecting.set(false);
       this.startupError.set(true);
     }, REDIRECT_TIMEOUT_MS);
+    const customParams: Record<string, string> = {};
+    if (options.loginHint) {
+      customParams['login_hint'] = options.loginHint;
+    }
+    if (options.register) {
+      customParams['prompt'] = 'create';
+    }
     this.oidc.authorize(undefined, {
+      customParams,
       urlHandler: (url) => {
         clearTimeout(watchdog);
         globalThis.location.assign(url);

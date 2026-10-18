@@ -8,9 +8,17 @@ main {
   margin: 0 auto;
 }
 
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 h1 {
   font: var(--mat-sys-headline-medium);
-  margin: 0 0 16px;
+  margin: 0;
 }
 
 .filters {

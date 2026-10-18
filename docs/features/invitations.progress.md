@@ -10,7 +10,7 @@ Started: 2026-10-18
 |---|---|---|---|
 | 1 contract | approved | 5ea2a24 | 2026-10-18 |
 | 2 migration | approved | 5ea2a24 | 2026-10-18 |
-| 3 domain | approved | | 2026-10-18 |
+| 3 domain | approved | e3a88a6 | 2026-10-18 |
 | 4 api | pending | | |
 | frontend A (prototype) | skipped | | 2026-10-18 |
 | frontend B | approved | | 2026-10-18 |

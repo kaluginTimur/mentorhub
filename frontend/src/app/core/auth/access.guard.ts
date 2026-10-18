@@ -8,8 +8,9 @@ import {
   Router,
   RouterStateSnapshot,
 } from '@angular/router';
-import { stripCallbackParams } from './api-urls';
+import { isCallbackUrl, stripCallbackParams } from './api-urls';
 import { AuthService } from './auth.service';
+import { InvitationSession } from './invitation-session';
 import {
   ACCESS_PATHS,
   AccessScreen,
@@ -47,14 +48,23 @@ async function evaluate(
   const auth = inject(AuthService);
   const currentUser = inject(CurrentUserService);
   const router = inject(Router);
+  const invitation = inject(InvitationSession);
 
   const signIn = await auth.ensureSignedIn(state.url);
   if (signIn.kind === 'redirecting') {
     return false;
   }
+  if (signIn.kind === 'invitation') {
+    return router.parseUrl('/invite');
+  }
   if (signIn.kind === 'failed') {
     auth.startupError.set(true);
     return false;
+  }
+
+  // back from the identity provider with an invitation in progress: its landing page decides what is next
+  if (isCallbackUrl(state.url) && invitation.token() !== null) {
+    return router.parseUrl('/invite');
   }
 
   let actual: AccessScreen;

@@ -39,6 +39,12 @@ describe('authInterceptor', () => {
   it('does not attach the token to public API endpoints', async () => {
     expect(await authorizationOf('/api/v1/system/info')).toBeNull();
     expect(await authorizationOf('/api/v1/system/client-config')).toBeNull();
+    expect(await authorizationOf('/api/v1/invitations/preview')).toBeNull();
+  });
+
+  it('attaches the token to accept and the management endpoints', async () => {
+    expect(await authorizationOf('/api/v1/invitations/accept')).toBe('Bearer tok');
+    expect(await authorizationOf('/api/v1/invitations')).toBe('Bearer tok');
   });
 
   it('does not attach the token to other URLs', async () => {

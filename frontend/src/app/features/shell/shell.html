@@ -6,6 +6,11 @@
         >Users</a
       >
     }
+    @if (canInvite()) {
+      <a matButton routerLink="/invitations" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Invitations</a
+      >
+    }
     <span class="spacer"></span>
     <button
       matButton

@@ -10,6 +10,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -27,6 +28,7 @@ import { USER_STATUS } from '../../core/api/models/user-status-array';
 import { UserStatus } from '../../core/api/models/user-status';
 import { UserSummary } from '../../core/api/models/user-summary';
 import { isForbidden } from '../../core/problem';
+import { CurrentUserService } from '../../core/auth/current-user.service';
 import { displayName } from '../../core/auth/user-name';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS, STATUS_LABELS } from './labels';
@@ -57,6 +59,8 @@ export class UsersList {
   private readonly api = inject(Api);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly currentUser = inject(CurrentUserService);
   private readonly listState = inject(UsersListState);
   private pushedSearch: string | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,6 +90,8 @@ export class UsersList {
     source: () => this.q(),
     computation: (q, previous) => (previous && q === this.pushedSearch ? previous.value : q),
   });
+
+  protected readonly canInvite = computed(() => this.currentUser.hasPermission('USERS_INVITE'));
 
   protected readonly users = resource({
     params: () => ({
@@ -136,6 +142,12 @@ export class UsersList {
       }
       this.listState.query.set(query);
     });
+  }
+
+  protected async invite(): Promise<void> {
+    // loaded on demand: the dialog and its form code are needed only when someone invites
+    const { InviteDialog } = await import('../invitations/invite-dialog');
+    this.dialog.open(InviteDialog, { width: '520px' });
   }
 
   protected name(user: UserSummary): string {

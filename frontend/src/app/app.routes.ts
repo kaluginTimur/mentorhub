@@ -8,6 +8,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/access/unavailable-page').then((m) => m.UnavailablePage),
   },
+  // public: outside the access guard, so a visitor without an account can open an invitation
+  ...['invite/:token', 'invite'].map((path) => ({
+    path,
+    loadComponent: () => import('./features/invite/invite-page').then((m) => m.InvitePage),
+  })),
   {
     path: '',
     canActivateChild: [accessGuard],
@@ -29,6 +34,17 @@ export const routes: Routes = [
               {
                 path: ':id',
                 loadComponent: () => import('./features/users/user-page').then((m) => m.UserPage),
+              },
+            ],
+          },
+          {
+            path: 'invitations',
+            canActivateChild: [requirePermission('USERS_INVITE')],
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./features/invitations/invitations-list').then((m) => m.InvitationsList),
               },
             ],
           },

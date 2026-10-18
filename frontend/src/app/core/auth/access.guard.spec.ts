@@ -101,6 +101,31 @@ describe('accessGuard', () => {
     expect(await run('full', '/?code=a&state=b')).toBe('/students');
   });
 
+  it('sends a visitor with an invitation in progress to its landing page instead of signing in', async () => {
+    auth.ensureSignedIn.mockResolvedValue({ kind: 'invitation' });
+    expect(await run('full', '/')).toBe('/invite');
+    expect(currentUser.load).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['active', { status: 'ACTIVE', user: user(['MENTOR']) }],
+    ['not invited', { status: 'NOT_INVITED' }],
+    ['disabled', { status: 'DISABLED' }],
+  ])('returns to the invitation after the sign-in callback of a %s caller', async (_n, me) => {
+    sessionStorage.setItem('mentorhub.invitation-token', 'tok');
+    auth.ensureSignedIn.mockResolvedValue({ kind: 'signed-in', returnUrl: '/invite' });
+    currentUser.load.mockResolvedValue(me);
+    expect(await run('full', '/?code=a&state=b')).toBe('/invite');
+    sessionStorage.clear();
+  });
+
+  it('ignores a leftover invitation token when it is not a sign-in callback', async () => {
+    sessionStorage.setItem('mentorhub.invitation-token', 'tok');
+    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['MENTOR']) });
+    expect(await run('full', '/')).toBe(true);
+    sessionStorage.clear();
+  });
+
   it('blocks while redirecting to sign-in', async () => {
     auth.ensureSignedIn.mockResolvedValue({ kind: 'redirecting' });
     expect(await run('full')).toBe(false);
