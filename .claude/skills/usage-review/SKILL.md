@@ -28,6 +28,7 @@ For every feature after the baseline, check and report yes, no or no data:
 | Fresh `backend-dev` above about 150k | no `backend-dev` record's `lastContext` is far above it; the log's Agents table shows the new agents |
 | One session per phase | one record per phase, each with its own session |
 | Cheap re-reviews | re-review `reviewer` records run on Sonnet and are much smaller than full reviews |
+| Step 4 on Sonnet (experiment) | the step 4 `backend-dev` record runs on Sonnet; compare its feedback rounds and the final review's findings in controllers, mapping and error rendering with user-administration (one cosmetic round, none) |
 | One fix round per review | the log shows one fix round after each review |
 
 A technique that did not take effect is the first finding: fix the mechanism before judging its effect.

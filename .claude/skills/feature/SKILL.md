@@ -50,6 +50,8 @@ Show the user a short summary of each report: what was done, the places to look 
 
 Steps of `backend-dev`: 1 contract, 2 migration, 3 domain (domain, service, authorization), 4 api (controllers and tests). Steps 1 and 2 form one checkpoint: brief them together, and the user reviews both in one diff. Otherwise one step per checkpoint, unless the user asks to merge more for a small feature.
 
+Step 4 runs on Sonnet (experiment since 2026-10, evaluated by `/usage-review`): always start a fresh `backend-dev` for it with the `model` parameter set to `sonnet`, since a continued agent keeps its model. Brief it with step 3's handoff notes and point it to the existing controllers, mappers and `ProblemDetailsAdvice` as the patterns to follow. Note the model in the log's Agents table. When step 4 is merged with step 3, it stays on Opus.
+
 After each checkpoint:
 1. Relay the report as above.
 2. The user reviews the diff in their IDE and answers.
