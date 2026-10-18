@@ -6,6 +6,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '../../core/api/api';
 import { acceptInvitation } from '../../core/api/fn/invitations/accept-invitation';
 import { previewInvitation } from '../../core/api/fn/invitations/preview-invitation';
+import { AccessChannel } from '../../core/auth/access-channel';
 import { AuthService } from '../../core/auth/auth.service';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { InvitationSession } from '../../core/auth/invitation-session';
@@ -30,6 +31,7 @@ describe('InvitePage', () => {
     startupError: { set: vi.fn() },
   };
   const currentUser = { me: { set: vi.fn() } };
+  const accessChannel = { notifyChanged: vi.fn() };
   let session: InvitationSession;
 
   beforeEach(() => {
@@ -53,6 +55,7 @@ describe('InvitePage', () => {
         { provide: Api, useValue: api },
         { provide: AuthService, useValue: auth },
         { provide: CurrentUserService, useValue: currentUser },
+        { provide: AccessChannel, useValue: accessChannel },
       ],
     });
     session = TestBed.inject(InvitationSession);
@@ -175,6 +178,7 @@ describe('InvitePage', () => {
     await settle(harness);
     expect(api.invoke).toHaveBeenCalledWith(acceptInvitation, { body: { token: 'tok123' } });
     expect(currentUser.me.set).toHaveBeenCalledWith(ME);
+    expect(accessChannel.notifyChanged).toHaveBeenCalledOnce();
     expect(TestBed.inject(Router).url).toBe('/');
     expect(session.token()).toBeNull();
   });

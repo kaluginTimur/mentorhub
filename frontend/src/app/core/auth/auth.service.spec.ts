@@ -126,11 +126,77 @@ describe('AuthService', () => {
     expect(oidc.checkAuth).toHaveBeenCalledOnce();
   });
 
-  it('fails instead of looping when the callback did not sign in', async () => {
+  it('restarts sign-in once when the callback has no session (opened in another tab)', async () => {
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    const result = await create().ensureSignedIn('/?code=abc&state=xyz');
+    expect(result).toEqual({ kind: 'redirecting' });
+    expect(oidc.authorize).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem('mentorhub.return-url')).toBe('/');
+    expect(sessionStorage.getItem('mentorhub.callback-retry')).toBe('1');
+  });
+
+  it('restarts sign-in once when the library rejects the callback state (opened in another tab)', async () => {
+    oidc.checkAuth.mockReturnValue(throwError(() => new Error('could not find matching config')));
+    expect(await create().ensureSignedIn('/?code=abc&state=xyz')).toEqual({ kind: 'redirecting' });
+    expect(oidc.authorize).toHaveBeenCalledOnce();
+  });
+
+  it('restarts sign-in once when the identity provider reports an expired authentication', async () => {
+    sessionStorage.setItem('mentorhub.return-url', '/students');
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    const url = '/?error=temporarily_unavailable&error_description=authentication_expired&state=x';
+    expect(await create().ensureSignedIn(url)).toEqual({ kind: 'redirecting' });
+    expect(oidc.authorize).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem('mentorhub.return-url')).toBe('/students');
+  });
+
+  it('keeps the invitation across the retry', async () => {
+    sessionStorage.setItem('mentorhub.invitation-token', 'tok');
+    sessionStorage.setItem('mentorhub.invitation-auto-accept', '1');
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    const url = '/?error=temporarily_unavailable&state=x';
+    expect(await create().ensureSignedIn(url)).toEqual({ kind: 'redirecting' });
+    expect(sessionStorage.getItem('mentorhub.invitation-token')).toBe('tok');
+    expect(sessionStorage.getItem('mentorhub.invitation-auto-accept')).toBe('1');
+  });
+
+  it('fails when the retried callback fails again, and allows a later retry', async () => {
+    sessionStorage.setItem('mentorhub.callback-retry', '1');
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    const result = await create().ensureSignedIn('/?error=temporarily_unavailable&state=x');
+    expect(result).toEqual({ kind: 'failed' });
+    expect(oidc.authorize).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('mentorhub.callback-retry')).toBeNull();
+  });
+
+  it('fails and leaves no marker when the retry cannot start', async () => {
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    oidc.preloadAuthWellKnownDocument.mockReturnValue(throwError(() => new Error('down')));
+    expect(await create().ensureSignedIn('/?code=abc&state=xyz')).toEqual({ kind: 'failed' });
+    expect(sessionStorage.getItem('mentorhub.callback-retry')).toBeNull();
+  });
+
+  it('allows a new retry after an abandoned one once a fresh sign-in starts', async () => {
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    const service = create();
+    await service.ensureSignedIn('/?code=abc&state=xyz');
+    expect(sessionStorage.getItem('mentorhub.callback-retry')).toBe('1');
+    await service.signIn('/students');
+    expect(sessionStorage.getItem('mentorhub.callback-retry')).toBeNull();
+  });
+
+  it('does not retry when the user cancelled sign-in', async () => {
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     const result = await create().ensureSignedIn('/?error=access_denied&state=xyz');
     expect(result).toEqual({ kind: 'failed' });
     expect(oidc.authorize).not.toHaveBeenCalled();
+  });
+
+  it('clears the retry marker after a successful sign-in', async () => {
+    sessionStorage.setItem('mentorhub.callback-retry', '1');
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: true }));
+    await create().ensureSignedIn('/?code=abc&state=xyz');
+    expect(sessionStorage.getItem('mentorhub.callback-retry')).toBeNull();
   });
 
   it('fails when the OIDC client cannot start (client config unavailable)', async () => {
