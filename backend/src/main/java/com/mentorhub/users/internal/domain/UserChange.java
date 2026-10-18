@@ -3,6 +3,7 @@ package com.mentorhub.users.internal.domain;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -80,6 +81,35 @@ public sealed interface UserChange {
 
         public boolean changedAnything() {
             return userCreated || identityLinked || enabled || adminAdded;
+        }
+    }
+
+    /**
+     * What accepting an invitation did (spec invitations, AC-16). Role names as stored; a reader keeps only the roles
+     * it knows.
+     *
+     * @param invitedBy {@code users.id} of the administrator who created the invitation
+     * @param enabled the user was disabled and has been enabled
+     */
+    record InvitationAccepted(
+            UUID invitationId,
+            UUID invitedBy,
+            boolean userCreated,
+            boolean identityLinked,
+            boolean enabled,
+            List<String> rolesAdded,
+            List<String> rolesRemoved)
+            implements UserChange {
+        public InvitationAccepted {
+            Objects.requireNonNull(invitationId, "invitationId");
+            Objects.requireNonNull(invitedBy, "invitedBy");
+            rolesAdded = List.copyOf(rolesAdded);
+            rolesRemoved = List.copyOf(rolesRemoved);
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_INVITATION_ACCEPTED;
         }
     }
 }

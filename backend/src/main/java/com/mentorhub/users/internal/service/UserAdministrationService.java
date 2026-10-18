@@ -8,7 +8,6 @@ import com.mentorhub.users.internal.domain.DisableReason;
 import com.mentorhub.users.internal.domain.StoredRoles;
 import com.mentorhub.users.internal.domain.UserChange;
 import com.mentorhub.users.internal.domain.UserStatus;
-import com.mentorhub.users.internal.persistence.RecordedUserChange;
 import com.mentorhub.users.internal.persistence.StoredUser;
 import com.mentorhub.users.internal.persistence.UserAuditTrail;
 import com.mentorhub.users.internal.persistence.UserChangePage;
@@ -115,8 +114,8 @@ public class UserAdministrationService {
             throw new NotFoundException();
         }
         UserChangePage changes = auditTrail.find(userId, page, size);
-        Map<UUID, UserName> actors = users.findNames(changes.items().stream()
-                .map(RecordedUserChange::actorUserId)
+        Map<UUID, UserName> names = users.findNames(changes.items().stream()
+                .flatMap(change -> Stream.of(change.actorUserId(), inviter(change.change())))
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
@@ -124,8 +123,9 @@ public class UserAdministrationService {
                 .map(change -> new UserHistoryEntry(
                         change.id(),
                         change.occurredAt(),
-                        actor(change.actorUserId(), actors),
-                        withKnownRoles(change.change())))
+                        actor(change.actorUserId(), names),
+                        withKnownRoles(change.change()),
+                        invitedBy(change.change(), names)))
                 .toList();
         return new ResultPage<>(items, page, size, changes.totalItems());
     }
@@ -262,11 +262,35 @@ public class UserAdministrationService {
     }
 
     private UserChange withKnownRoles(UserChange change) {
-        if (change instanceof UserChange.RolesChanged(List<String> rolesAdded, List<String> rolesRemoved)) {
-            return new UserChange.RolesChanged(
-                    names(storedRoles.roles(rolesAdded)), names(storedRoles.roles(rolesRemoved)));
+        return switch (change) {
+            case UserChange.RolesChanged(List<String> rolesAdded, List<String> rolesRemoved) ->
+                new UserChange.RolesChanged(
+                        names(storedRoles.roles(rolesAdded)), names(storedRoles.roles(rolesRemoved)));
+            case UserChange.InvitationAccepted accepted ->
+                new UserChange.InvitationAccepted(
+                        accepted.invitationId(),
+                        accepted.invitedBy(),
+                        accepted.userCreated(),
+                        accepted.identityLinked(),
+                        accepted.enabled(),
+                        names(storedRoles.roles(accepted.rolesAdded())),
+                        names(storedRoles.roles(accepted.rolesRemoved())));
+            default -> change;
+        };
+    }
+
+    private static @Nullable UUID inviter(UserChange change) {
+        return change instanceof UserChange.InvitationAccepted accepted ? accepted.invitedBy() : null;
+    }
+
+    /** The inviter is resolved when possible; the history still shows the entry when not (contract). */
+    private static @Nullable HistoryActor invitedBy(UserChange change, Map<UUID, UserName> names) {
+        UUID inviter = inviter(change);
+        if (inviter == null) {
+            return null;
         }
-        return change;
+        UserName user = names.get(inviter);
+        return user == null ? null : HistoryActor.of(user);
     }
 
     private static @Nullable HistoryActor actor(@Nullable UUID actorUserId, Map<UUID, UserName> names) {
@@ -278,12 +302,7 @@ public class UserAdministrationService {
         if (user == null) {
             throw new IllegalStateException("Audit actor " + actorUserId + " is not a stored user");
         }
-        String name = String.join(
-                " ",
-                Stream.of(user.firstName(), user.lastName())
-                        .filter(Objects::nonNull)
-                        .toList());
-        return new HistoryActor(user.id(), name.isEmpty() ? user.email() : name);
+        return HistoryActor.of(user);
     }
 
     private static @Nullable String disableComment(DisableReason reason, @Nullable String comment) {

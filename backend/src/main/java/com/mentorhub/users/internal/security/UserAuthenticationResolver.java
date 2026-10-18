@@ -5,8 +5,6 @@ import com.mentorhub.users.internal.bootstrap.SignInClaims;
 import com.mentorhub.users.internal.domain.StoredRoles;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimNames;
-import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,19 +25,10 @@ class UserAuthenticationResolver {
     }
 
     MentorHubAuthentication resolve(Jwt jwt) {
-        String issuer = jwt.getClaimAsString(JwtClaimNames.ISS);
-        String subject = jwt.getSubject();
-        if (issuer == null || subject == null) {
-            throw new InvalidBearerTokenException("The token has no issuer or subject");
-        }
-        bootstrap.applyIfEligible(new SignInClaims(
-                issuer,
-                subject,
-                jwt.getClaimAsString("email"),
-                Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")),
-                jwt.getClaimAsString("given_name"),
-                jwt.getClaimAsString("family_name")));
-        return users.findAccess(issuer, subject)
+        SignInClaims claims = TokenClaims.of(jwt);
+        bootstrap.applyIfEligible(claims);
+        String subject = claims.subject();
+        return users.findAccess(claims.issuer(), subject)
                 .map(access -> switch (access.status()) {
                     case ACTIVE ->
                         MentorHubAuthentication.active(

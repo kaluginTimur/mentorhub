@@ -7,6 +7,7 @@ import com.mentorhub.api.model.HistoryAction;
 import com.mentorhub.api.model.HistoryActor;
 import com.mentorhub.api.model.HistoryEntry;
 import com.mentorhub.api.model.HistoryPage;
+import com.mentorhub.api.model.InvitationAcceptance;
 import com.mentorhub.api.model.Me;
 import com.mentorhub.api.model.MeUser;
 import com.mentorhub.api.model.Permission;
@@ -156,6 +157,16 @@ final class UsersMapper {
                         bootstrap.identityLinked(),
                         bootstrap.enabled(),
                         bootstrap.adminAdded()));
+            case UserChange.InvitationAccepted accepted -> {
+                dto.setInvitation(new InvitationAcceptance(
+                        accepted.invitationId(),
+                        historyActor(entry.invitedBy()),
+                        accepted.userCreated(),
+                        accepted.identityLinked(),
+                        accepted.enabled()));
+                dto.setRolesAdded(roleNames(accepted.rolesAdded()));
+                dto.setRolesRemoved(roleNames(accepted.rolesRemoved()));
+            }
         }
         return dto;
     }

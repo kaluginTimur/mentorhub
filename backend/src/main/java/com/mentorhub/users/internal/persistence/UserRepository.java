@@ -283,6 +283,13 @@ public class UserRepository {
                 .optional();
     }
 
+    public Optional<UUID> findActiveUserIdByEmail(String email) {
+        return jdbc.sql("select id from users where lower(email) = lower(:email) and status = 'ACTIVE'")
+                .param("email", email)
+                .query(UUID.class)
+                .optional();
+    }
+
     /** @return the number of inserted rows: 0 when the identity is already linked to any user */
     public int linkIdentityIfAbsent(UUID userId, String issuer, String subject) {
         return jdbc.sql("""
@@ -401,7 +408,7 @@ public class UserRepository {
             conditions.add("""
                     (u.email ilike :pattern escape '\\' or u.first_name ilike :pattern escape '\\'
                      or u.last_name ilike :pattern escape '\\')""");
-            params.put("pattern", "%" + escapeLike(search.text()) + "%");
+            params.put("pattern", LikePatterns.contains(search.text()));
         }
         if (search.status() != null) {
             conditions.add("u.status = :status");
@@ -420,9 +427,5 @@ public class UserRepository {
             case null -> {}
         }
         return conditions.isEmpty() ? "" : "where " + String.join("\n  and ", conditions) + "\n";
-    }
-
-    private static String escapeLike(String text) {
-        return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

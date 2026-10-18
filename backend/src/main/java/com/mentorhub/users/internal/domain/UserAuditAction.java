@@ -9,7 +9,8 @@ public enum UserAuditAction {
     USER_ENABLED(UserChange.Enabled.class),
     USER_ROLES_CHANGED(UserChange.RolesChanged.class),
     USER_PROFILE_UPDATED(UserChange.ProfileUpdated.class),
-    USER_BOOTSTRAPPED_ADMIN(UserChange.BootstrappedAdmin.class);
+    USER_BOOTSTRAPPED_ADMIN(UserChange.BootstrappedAdmin.class),
+    USER_INVITATION_ACCEPTED(UserChange.InvitationAccepted.class);
 
     public static final String SUBJECT_TYPE = "USER";
 

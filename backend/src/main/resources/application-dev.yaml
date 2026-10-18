@@ -13,6 +13,8 @@ springdoc:
 
 # The local Keycloak from infra/compose.yaml. Its hostname is fixed, so tokens always carry this issuer.
 mentorhub:
+  # The frontend dev server; invitation links point to it.
+  app-url: http://localhost:4200
   security:
     trusted-issuers:
       - issuer-uri: http://localhost:8180/realms/mentorhub

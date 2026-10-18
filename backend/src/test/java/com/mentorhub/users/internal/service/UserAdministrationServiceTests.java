@@ -644,6 +644,35 @@ class UserAdministrationServiceTests {
             assertThat(second.totalItems()).isEqualTo(3);
         }
 
+        // Invitations AC-16, AC-17: the inviter is resolved and only known roles remain.
+        @Test
+        void invitationAcceptedEntryHasTheInviterAndKnownRoles() {
+            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
+            UUID invitation = UUID.fromString("5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
+            storeEntry(user, user, "USER_INVITATION_ACCEPTED", invitationAccepted(invitation, admin), 0);
+
+            UserHistoryEntry entry = service.history(user, 0, 25).items().getFirst();
+
+            assertThat(entry.actor()).isEqualTo(new HistoryActor(user, "B B"));
+            assertThat(entry.invitedBy()).isEqualTo(new HistoryActor(admin, "Ada Admin"));
+            assertThat(entry.change())
+                    .isEqualTo(new UserChange.InvitationAccepted(
+                            invitation, admin, false, true, true, List.of("MENTOR"), List.of("ADMIN")));
+        }
+
+        // Invitations AC-16: an inviter that cannot be resolved leaves the entry without one.
+        @Test
+        void invitationAcceptedEntryWithAnUnknownInviterHasNoInviter() {
+            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
+            UUID unknown = UUID.fromString("00000000-0000-4000-8000-0000000000aa");
+            storeEntry(user, user, "USER_INVITATION_ACCEPTED", invitationAccepted(unknown, unknown), 0);
+
+            UserHistoryEntry entry = service.history(user, 0, 25).items().getFirst();
+
+            assertThat(entry.invitedBy()).isNull();
+            assertThat(entry.change()).isInstanceOf(UserChange.InvitationAccepted.class);
+        }
+
         // AC-19, AC-20
         @Test
         void bootstrapEntryHasNoActor() {
@@ -794,6 +823,13 @@ class UserAdministrationServiceTests {
                 .param("subject", subject)
                 .param("details", details)
                 .update();
+    }
+
+    private static String invitationAccepted(UUID invitationId, UUID invitedBy) {
+        return """
+                {"invitationId": "%s", "invitedBy": "%s", "userCreated": false, "identityLinked": true,
+                 "enabled": true, "rolesAdded": ["MENTOR", "AUDITOR"], "rolesRemoved": ["ADMIN", "AUDITOR"]}
+                """.formatted(invitationId, invitedBy);
     }
 
     private static Map<String, @Nullable Object> change(String field, @Nullable String oldValue, String newValue) {

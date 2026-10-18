@@ -1,7 +1,8 @@
 # Loaded in addition to src/main/resources/application.yaml (classpath:/config/ is a default config location), so it
-# does not replace the main file. Supplies the security settings that startup requires; TestIssuerConfiguration
-# replaces the issuer with one that signs real test tokens.
+# does not replace the main file. Supplies the settings that startup requires (security, app URL);
+# TestIssuerConfiguration replaces the issuer with one that signs real test tokens.
 mentorhub:
+  app-url: https://app.test
   security:
     trusted-issuers:
       - issuer-uri: https://issuer.test/realms/mentorhub
