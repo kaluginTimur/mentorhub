@@ -12,6 +12,9 @@
 // Weighted = input-token equivalents at API price ratios: input 1, cache read 0.1, 5-minute write 1.25, 1-hour write 2.
 // Output tokens are left out of the weighted total: subagent transcripts do not record them reliably. The main session's
 // output is reported on its own. Effort is the reasoning effort the requests ran at, read per agent (a subagent can differ from the session).
+// An agent spawned by a subagent (such as api-lookup by backend-dev) gets its own row; spawnedBy names the top-level agent it
+// works for, and the summary rolls its cost up to that agent. Inspections counts an agent's tool calls into dependency
+// artifacts (javap, unzip -l, jar tf, ~/.m2, node_modules), which implementation agents should leave to api-lookup.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -116,12 +119,18 @@ function chainOf(file) {
   return chain.map((x) => byId.get(x));
 }
 
+// Tool calls that look into a dependency's artifacts: the work api-lookup exists for.
+const dependencyInspection = /\bjavap\b|\bunzip -l\b|\bjar tf\b|dependency:build-classpath|\.m2\/repository|node_modules\//;
+const inspectsDependency = (input) =>
+  [input?.command, input?.file_path, input?.path, input?.pattern].some((v) => typeof v === 'string' && dependencyInspection.test(v));
+
 function analyse(files) {
   const seen = new Set();
+  const tools = new Set();
   const models = new Set();
   const efforts = new Set();
   const output = new Map();
-  const s = { calls: 0, input: 0, read: 0, write5m: 0, write1h: 0, rebuilds: 0, rebuildTokens: 0, context: 0, first: null, last: null };
+  const s = { calls: 0, input: 0, read: 0, write5m: 0, write1h: 0, rebuilds: 0, rebuildTokens: 0, context: 0, inspections: 0, first: null, last: null };
   let prev = null;
   for (const line of files.flatMap(readLines)) {
     if (!line) continue;
@@ -135,6 +144,15 @@ function analyse(files) {
     const m = e.message;
     // A streamed message is written several times under one id; the last copy has the final output count.
     if (e.type === 'assistant' && m?.usage) output.set(m.id, Math.max(output.get(m.id) ?? 0, m.usage.output_tokens ?? 0));
+    // Each content block of a message is written as its own line under the message id, so tool calls count by their own id.
+    if (e.type === 'assistant') {
+      for (const c of Array.isArray(m?.content) ? m.content : []) {
+        if (c.type === 'tool_use' && !tools.has(c.id)) {
+          tools.add(c.id);
+          if (inspectsDependency(c.input)) s.inspections++;
+        }
+      }
+    }
     if (e.type !== 'assistant' || !m?.usage || seen.has(m.id)) continue;
     seen.add(m.id);
     if (m.model && m.model !== '<synthetic>') models.add(m.model);
@@ -178,14 +196,24 @@ for (const [i, main] of chain.entries()) {
   for (const f of readdirSync(subDir).filter((x) => x.endsWith('.jsonl')).sort()) {
     const metaFile = path.join(subDir, f.replace(/\.jsonl$/, '.meta.json'));
     const meta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : {};
-    agentIds.push(f.replace(/^agent-|\.jsonl$/g, ''));
-    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, ...analyse([path.join(subDir, f)]), output: null };
+    const id = f.replace(/^agent-|\.jsonl$/g, '');
+    agentIds.push(id);
+    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, id, parentId: meta.parentAgentId ?? null, ...analyse([path.join(subDir, f)]), output: null };
     rows.push(row);
     perSession[i].agents++;
     if (row.last && (!perSession[i].last || row.last > perSession[i].last)) perSession[i].last = row.last;
   }
 }
 rows.sort((a, b) => (a.first ?? '').localeCompare(b.first ?? ''));
+// An agent spawned by another agent lands in the same subagents folder; its meta names the parent. spawnedBy is the
+// top-level agent it ultimately works for, so its cost can be rolled up to that agent.
+const byId = new Map(rows.filter((r) => r.id).map((r) => [r.id, r]));
+for (const r of rows) {
+  let top = r;
+  const seen = new Set();
+  while (top.parentId && byId.has(top.parentId) && !seen.has(top.parentId)) seen.add((top = byId.get(top.parentId)).id);
+  r.spawnedBy = top === r ? null : top.agent;
+}
 const chainLast = perSession.reduce((a, p) => (p.last && p.last > a ? p.last : a), '');
 
 function featureSize(feature) {
@@ -235,9 +263,9 @@ if (record) {
 }
 
 console.log(`Session ${chainIds.join(' -> ')}\n`);
-const header = ['agent', 'model', 'effort', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'rebuilds'];
+const header = ['agent', 'model', 'effort', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'inspections', 'rebuilds'];
 const table = rows.map((r) => [
-  `${r.agent}: ${r.description}`.slice(0, 48),
+  `${r.spawnedBy ? `  ${r.agent} (via ${r.spawnedBy})` : r.agent}: ${r.description}`.slice(0, 48),
   r.model,
   r.effort ?? '-',
   String(r.calls),
@@ -247,6 +275,7 @@ const table = rows.map((r) => [
   k(r.write5m),
   k(r.write1h),
   k(r.weighted),
+  String(r.inspections),
   r.rebuilds ? `${r.rebuilds}: ${k(r.rebuildTokens)} (${Math.round((100 * (r.write1h > r.write5m ? 2 : 1.25) * r.rebuildTokens) / r.weighted)}%)` : '-',
 ]);
 const widths = header.map((h, i) => Math.max(h.length, ...table.map((row) => row[i].length)));
@@ -256,4 +285,9 @@ const byModel = {};
 for (const r of rows) byModel[r.model] = (byModel[r.model] ?? 0) + r.weighted;
 console.log(`\nMain session output: ${k(rows[0].output)} tokens (${Math.round(rows[0].output / Math.max(rows[0].calls, 1))} per call); not in the weighted totals.`);
 console.log(`Weighted by model: ${Object.entries(byModel).map(([m, w]) => `${m} ${k(w)}`).join(', ')}`);
+if (rows.some((r) => r.spawnedBy)) {
+  const byTop = {};
+  for (const r of rows) byTop[r.spawnedBy ?? r.agent] = (byTop[r.spawnedBy ?? r.agent] ?? 0) + r.weighted;
+  console.log(`Weighted by top-level agent, nested agents included: ${Object.entries(byTop).map(([a, w]) => `${a} ${k(w)}`).join(', ')}`);
+}
 console.log('Rebuilds: whole-history cache writes after a pause longer than the cache lifetime (count: tokens, share of the agent\'s weighted cost).');

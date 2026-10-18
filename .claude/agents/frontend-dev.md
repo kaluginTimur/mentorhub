@@ -39,6 +39,7 @@ A maintenance brief (bug fix, refactoring) is a single step B unless it says oth
 
 - Follow `docs/development/frontend.md`: conventions, API client usage, styling only through theme tokens (the brand will change later and must stay a theme change).
 - Never edit generated code. Never change the API contract or anything outside `frontend/`. If the contract does not fit the UI (a missing field, an awkward shape), stop and report it as a question; the backend owns the contract.
+- To check what a package exports or which version is installed, ask the `api-lookup` subagent; never inspect a dependency yourself (`javap`, `unzip -l`, `jar tf`, `dependency:build-classpath`, `~/.m2`, `node_modules/<package>`). It answers from the exact versions on a small model, and the lookup stays out of your context. Batch the symbols you need into one question when you can.
 - UI text in English. Comments only for non-obvious points.
 - No commits, no pushes, no destructive commands.
 
@@ -55,6 +56,9 @@ A maintenance brief (bug fix, refactoring) is a single step B unless it says oth
 
 ### Checks
 - <each verification check>: PASS | FAIL (<details>)
+
+### API lookups
+- none | <symbol asked of `api-lookup`>: <answer in a few words>
 
 ### Contract or spec issues
 - none | <what does not fit and what you need>

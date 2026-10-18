@@ -30,6 +30,7 @@ For every feature after the baseline, check and report yes, no or no data:
 | Cheap re-reviews | re-review `reviewer` records run on Sonnet and are much smaller than full reviews |
 | Step 4 on Sonnet (experiment) | the step 4 `backend-dev` record runs on Sonnet; compare its feedback rounds and the final review's findings in controllers, mapping and error rendering with user-administration (one cosmetic round, none) |
 | One fix round per review | the log shows one fix round after each review |
+| API checks delegated to `api-lookup` | `backend-dev` and `frontend-dev` records have `inspections` 0, and there are `api-lookup` records with their `spawnedBy`; the reports' "API lookups" sections in the log or the transcripts name what was asked. Records made before `inspections` existed (all of identity-foundation, user-administration and invitations) lack it |
 
 A technique that did not take effect is the first finding: fix the mechanism before judging its effect.
 
@@ -39,7 +40,7 @@ Per feature, in one table with the baseline as the first row:
 - the effort each agent type ran at (`effort` in the records);
 - Opus and Sonnet weighted totals, and Opus weighted per inserted line and per acceptance criterion;
 - the coordinator's output tokens per call (`output` on the `main` records; subagent output is not recorded);
-- per agent type: calls, average context per call, rebuild share (rebuild tokens at their write price over the weighted total);
+- per agent type: calls, average context per call, rebuild share (rebuild tokens at their write price over the weighted total). A record with `spawnedBy` is a nested agent (such as `api-lookup` started by `backend-dev`): count its cost toward the `spawnedBy` agent type and name it next to that type's figures;
 - the share of each agent type in the Opus total.
 
 Average context per call and rebuild share barely depend on feature size; compare totals only through the per-line and per-AC figures. Effort changes thinking and output, and through thinking kept in an agent's context also calls and context size, so it confounds every metric: compare features at the same effort, or name the difference next to each figure it may explain and never attribute that part to a workflow technique. Records made before effort was recorded were backfilled from the transcripts: identity-foundation ran Opus agents at `high` and Sonnet agents at `medium`, user-administration everything at `medium`. One feature is an observation, not a trend: call something a trend only when at least two features after the baseline agree, and give the spread.

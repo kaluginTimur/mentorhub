@@ -35,7 +35,7 @@ Continue from the first step that is not approved; `$step`, when given, override
 
 ## Agents and briefs
 
-Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id and, after each report, its context size in the log; the completion notification gives the size.
+Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id, model and, after each report, its context size in the log; the completion notification gives the size. Take the model from the `model` parameter of the call, or else from the `model:` line of the agent's definition in `.claude/agents/`; never write it from memory.
 
 - **Within a step** (the user's feedback, rework): continue the same agent with `SendMessage`.
 - **Between steps:** continue the same agent while its last context size is under about 150k tokens. Above that, start a fresh agent for the next step. Its old context is mostly earlier steps' reasoning, which it no longer needs, and every call re-reads it.
@@ -50,13 +50,15 @@ Show the user a short summary of each report: what was done, the places to look 
 
 Steps of `backend-dev`: 1 contract, 2 migration, 3 domain (domain, service, authorization), 4 api (controllers and tests). Steps 1 and 2 form one checkpoint: brief them together, and the user reviews both in one diff. Otherwise one step per checkpoint, unless the user asks to merge more for a small feature.
 
-Step 4 runs on Sonnet (experiment since 2026-10, evaluated by `/usage-review`): always start a fresh `backend-dev` for it with the `model` parameter set to `sonnet`, since a continued agent keeps its model. Brief it with step 3's handoff notes and point it to the existing controllers, mappers and `ProblemDetailsAdvice` as the patterns to follow. Note the model in the log's Agents table. When step 4 is merged with step 3, it stays on Opus.
+When step 3 is large (about 10 or more acceptance criteria decided in services, or more than one service), propose to the user to split it in two checkpoints: 3a domain and persistence, 3b services, authorization and audit. Start a fresh `backend-dev` for 3b, briefed with 3a's handoff notes. Each checkpoint then carries less of the other's reasoning; in user-administration and invitations, step 3 alone grew past 200k.
+
+Step 4 runs on Sonnet (experiment since 2026-10, evaluated by `/usage-review`): always start a fresh `backend-dev` for it with the `model` parameter set to `sonnet`, since a continued agent keeps its model. Brief it with step 3's handoff notes and point it to the existing controllers, mappers and `ProblemDetailsAdvice` as the patterns to follow. When step 4 is merged with step 3, it stays on Opus.
 
 After each checkpoint:
 1. Relay the report as above.
 2. The user reviews the diff in their IDE and answers.
 3. Relay the answer to the agent in the user's words: feedback means "apply this, verify, report again"; approval means the step is done.
-4. On approval, mark the step `approved`, copy the report's "Notes for the next step" into the log's handoff notes, and offer to commit it: only that step's files (backend steps: everything outside `frontend/`; frontend steps: `frontend/` only) plus the log and the usage record, with a message following `AGENTS.md`. Commit only if the user agrees. Then send "proceed to step N", or start a fresh agent for it (see above).
+4. On approval, mark the step `approved`, copy the report's "Notes for the next step" into the log's handoff notes, and offer to commit it: only that step's files (backend steps: everything outside `frontend/`; frontend steps: `frontend/` only) plus the log, with a message following `AGENTS.md`. Commit only if the user agrees. Then send "proceed to step N", or start a fresh agent for it (see above).
 
 Never approve a step on the user's behalf and never send "proceed" without the user's explicit go-ahead.
 
@@ -73,20 +75,21 @@ When step B is done, run the review loop below with the focus "frontend changes 
 
 1. Run `reviewer` on the scope (the default model).
 2. Show the user every finding at once, blockers to minors, with your recommendation per finding. The user decides what to fix.
-3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review.
+3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement it writes against the code, not against the finding's wording or its own memory.
 4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. It checks those findings and the fix diff only. A new blocker or major from it goes back to step 2.
 
 ## Phase boundaries: one session per phase
 
 The phases are: 1) `contract` (contract and migration); 2) `implementation` (domain, API and the frontend, which run in parallel); 3) `review` (the final review and verification). At the end of a phase, when no agent is running:
 
-1. Record the session's token usage under the phase name, as the **Recording usage** section of `.claude/README.md` describes: without a session id, after the Agents table lists every agent of the phase. Check that the sessions it prints are this phase's; never pick a session id by hand or pass `--force` without the user.
-2. Write the log and include the usage record in the phase's last commit (or commit both on their own, if the user agrees).
-3. Tell the user:
+1. Write the log, with every agent of the phase and its context size in the Agents table, and commit it with the phase's last changes (or on its own), if the user agrees.
+2. Record the session's token usage under the phase name, as the **Recording usage** section of `.claude/README.md` describes: without a session id. The script reads the Agents table from the committed log, so it refuses to record before step 1. Check that the sessions it prints are this phase's; never pick a session id by hand or pass `--force` without the user.
+3. Commit the usage record on its own, if the user agrees.
+4. Tell the user:
 
 > Phase done. Run `/clear`, then `/feature $feature` to continue in a fresh session.
 
-The new session starts from the log at a fraction of the old context. Never suggest `/compact`: a summary may drop details the log keeps exactly. The `review` phase ends the feature: record it before the final commit, and skip the message.
+The new session starts from the log at a fraction of the old context. Never suggest `/compact`: a summary may drop details the log keeps exactly. The `review` phase ends the feature: record it after the final commit, and skip the message. `/pr` records it again at its end, so the record also covers the work done after the final commit.
 
 ## Review and verification
 

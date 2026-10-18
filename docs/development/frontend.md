@@ -105,6 +105,8 @@ cd frontend && ~/.nvm/nvm-exec npm run build
 
 ## Checking an API
 
+The `api-lookup` subagent follows this section; implementation agents ask it instead of reading `node_modules` themselves.
+
 - Package version: `node_modules/<package>/package.json`.
 - Exports: the package's `.d.ts` files (see `types` / `exports` in its `package.json`).
 - The generated client: `frontend/src/app/core/api/` (run `npm run generate:api` if it is missing).
