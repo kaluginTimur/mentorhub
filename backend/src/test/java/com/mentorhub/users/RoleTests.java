@@ -9,7 +9,8 @@ class RoleTests {
 
     @Test
     void onlyAdminHasUserPermissions() {
-        assertThat(Role.ADMIN.permissions()).containsExactlyInAnyOrder(Permission.USERS_READ, Permission.USERS_MANAGE);
+        assertThat(Role.ADMIN.permissions())
+                .containsExactlyInAnyOrder(Permission.USERS_READ, Permission.USERS_MANAGE, Permission.USERS_INVITE);
         assertThat(Arrays.stream(Role.values()).filter(role -> role != Role.ADMIN))
                 .allSatisfy(role -> assertThat(role.permissions()).isEmpty());
     }

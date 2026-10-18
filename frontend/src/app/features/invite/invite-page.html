@@ -1,0 +1,90 @@
+@switch (view()) {
+  @case ('loading') {
+    <app-loading />
+  }
+  @case ('error') {
+    <app-unavailable (retry)="retry()" />
+  }
+  @default {
+    <main>
+      <mat-card appearance="outlined" [attr.aria-busy]="view() === 'accepting'">
+        <mat-card-content>
+          @switch (view()) {
+            @case ('invalid') {
+              <h1 tabindex="-1">Invitation not valid</h1>
+              <p role="alert">
+                This invitation link is invalid or has expired. Ask the person who invited you for a
+                new link.
+              </p>
+            }
+            @case ('anonymous') {
+              <h1 tabindex="-1">You're invited to MentorHub</h1>
+              <p>
+                This invitation is for {{ preview()?.email }}. Sign in with that email, or create an
+                account if you don't have one.
+              </p>
+            }
+            @case ('signed-in') {
+              <h1 tabindex="-1">You're invited to MentorHub</h1>
+              <p>This invitation is for {{ preview()?.email }}.</p>
+              <p>
+                @if (account().email; as email) {
+                  You're signed in as {{ email }}.
+                } @else {
+                  You're signed in.
+                }
+              </p>
+            }
+            @case ('accepting') {
+              <h1 tabindex="-1">Joining MentorHub</h1>
+              <div role="status" class="progress">
+                <mat-spinner diameter="24" aria-hidden="true" />
+                <span>Accepting the invitation</span>
+              </div>
+            }
+            @case ('mismatch') {
+              <h1 tabindex="-1">Wrong account</h1>
+              <p role="alert">
+                @if (unverified()) {
+                  Verify your email in your account first, then try again.
+                } @else {
+                  This invitation is for {{ preview()?.email }}, but you're signed in as
+                  {{ account().email }}.
+                }
+              </p>
+            }
+            @case ('linked-elsewhere') {
+              <h1 tabindex="-1">Account already in use</h1>
+              <p role="alert">
+                This account already belongs to another MentorHub user. Contact the person who
+                invited you.
+              </p>
+            }
+          }
+        </mat-card-content>
+        <mat-card-actions align="end">
+          @switch (view()) {
+            @case ('anonymous') {
+              <button matButton type="button" (click)="signIn(true)">Create an account</button>
+              <button matButton="filled" type="button" (click)="signIn(false)">Sign in</button>
+            }
+            @case ('signed-in') {
+              <button matButton type="button" (click)="useAnotherAccount()">
+                Use another account
+              </button>
+              <button matButton="filled" type="button" (click)="accept()">Accept invitation</button>
+            }
+            @case ('mismatch') {
+              <button matButton="filled" type="button" (click)="useAnotherAccount()">
+                Use another account
+              </button>
+            }
+            @case ('linked-elsewhere') {
+              <button matButton="filled" type="button" (click)="signOut()">Sign out</button>
+            }
+          }
+        </mat-card-actions>
+      </mat-card>
+    </main>
+  }
+}

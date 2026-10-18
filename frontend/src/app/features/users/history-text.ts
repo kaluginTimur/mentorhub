@@ -47,6 +47,20 @@ export function describeEntry(entry: HistoryEntry): string {
         b?.adminAdded === false ? 'Bootstrap' : 'Granted administrator access by bootstrap';
       return extras.length > 0 ? `${base} (${extras.join(', ')})` : base;
     }
+    case 'USER_INVITATION_ACCEPTED': {
+      const inviter = entry.invitation?.invitedBy?.name;
+      const base = entry.invitation?.enabled ? 'Reactivated by invitation' : 'Joined by invitation';
+      const parts = [inviter ? `${base} from ${inviter}` : base];
+      const added = (entry.rolesAdded ?? []).map((r) => ROLE_LABELS[r]);
+      const removed = (entry.rolesRemoved ?? []).map((r) => ROLE_LABELS[r]);
+      if (added.length > 0) {
+        parts.push(`roles added: ${added.join(', ')}`);
+      }
+      if (removed.length > 0) {
+        parts.push(`roles removed: ${removed.join(', ')}`);
+      }
+      return parts.join('; ');
+    }
     default: {
       const unreachable: never = entry.action;
       return unreachable;

@@ -17,6 +17,8 @@ tags:
     description: Application service information
   - name: Users
     description: Users and the current caller
+  - name: Invitations
+    description: Invitations by a one-time link, and their acceptance
 paths:
   /api/v1/system/info:
     get:
@@ -303,6 +305,182 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/v1/invitations:
+    post:
+      tags: [Invitations]
+      operationId: createInvitation
+      summary: Invite a person by email
+      description: |
+        Requires `USERS_INVITE`. The email is trimmed, must be a valid address and is at most 254 characters;
+        it is stored as entered after trimming and compared ignoring case. The invitation expires after the
+        configured link lifetime. The `link` appears only in this response and in the response of
+        `POST /api/v1/invitations/{id}/link`; it is never returned again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationCreate'
+      responses:
+        '201':
+          description: The invitation and its link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedInvitation'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/InvitationCreateConflict'
+    get:
+      tags: [Invitations]
+      operationId: listInvitations
+      summary: Page of invitations
+      description: |
+        Requires `USERS_INVITE`. Sorted by creation time, newest first, then by id.
+      parameters:
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the email, after trimming; `%`, `_` and `\` match themselves.
+            At most 254 characters after trimming.
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/InvitationStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/invitations/{id}/revoke:
+    post:
+      tags: [Invitations]
+      operationId: revokeInvitation
+      summary: Revoke an open invitation
+      description: |
+        Requires `USERS_INVITE`. Only a pending or expired invitation can be revoked; its link stops working.
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+      responses:
+        '200':
+          description: The invitation after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvitationClosed'
+  /api/v1/invitations/{id}/link:
+    post:
+      tags: [Invitations]
+      operationId: reissueInvitationLink
+      summary: Issue a new link for an open invitation
+      description: |
+        Requires `USERS_INVITE`. Only for a pending or expired invitation. A new token replaces the old one,
+        whose link stops working, and the expiry becomes now plus the configured link lifetime.
+        The `link` appears only in this response.
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+      responses:
+        '200':
+          description: The invitation after the change, and its new link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedInvitation'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvitationClosed'
+  /api/v1/invitations/preview:
+    post:
+      tags: [Invitations]
+      operationId: previewInvitation
+      summary: The invited email and the expiry of a valid link
+      description: |
+        Public: needs no sign-in and ignores any bearer token. The token is in the body so that it stays out of
+        access logs.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationToken'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPreview'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/InvitationInvalid'
+  /api/v1/invitations/accept:
+    post:
+      tags: [Invitations]
+      operationId: acceptInvitation
+      summary: Accept an invitation as the signed-in caller
+      description: |
+        Admits every signed-in caller, including callers that are not invited or disabled, like `GET /api/v1/me`.
+        The token must have a verified email equal to the invitation's, ignoring case. Acceptance creates the user
+        with that email or enables the disabled one, links the caller's identity and assigns the invitation's
+        roles; for a disabled user the roles become exactly the invitation's, an active user only gains roles.
+        Accepting again an invitation already accepted by the caller's user changes nothing and responds 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationToken'
+      responses:
+        '200':
+          description: The caller after acceptance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InvitationInvalid'
+        '409':
+          $ref: '#/components/responses/InvitationAcceptConflict'
 components:
   securitySchemes:
     bearerAuth:
@@ -312,6 +490,13 @@ components:
       description: Access token issued by a trusted OIDC identity provider.
   parameters:
     UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
       name: id
       in: path
       required: true
@@ -381,6 +566,44 @@ components:
         The change would lock the installation out; nothing was changed. Problem type is one of:
         - `urn:mentorhub:problem:self-lockout`: the caller would disable themselves or remove their own ADMIN role;
         - `urn:mentorhub:problem:last-admin`: no other active user with the ADMIN role would remain.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationCreateConflict:
+      description: |
+        The email cannot be invited now; nothing was created. Schema `InvitationConflictProblem`; problem type is one of:
+        - `urn:mentorhub:problem:user-active`: an active user has the email (ignoring case); extension `userId`;
+        - `urn:mentorhub:problem:invitation-exists`: an open (pending or expired) invitation for the email exists;
+          extension `invitationId`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/InvitationConflictProblem'
+    InvitationClosed:
+      description: |
+        The invitation is accepted or revoked; nothing was changed. Problem type `urn:mentorhub:problem:invitation-closed`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationInvalid:
+      description: |
+        The token does not exist, is malformed, was replaced by a new link, or belongs to an expired, revoked or
+        accepted invitation. The response is the same in every case. Problem type
+        `urn:mentorhub:problem:invitation-invalid`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationAcceptConflict:
+      description: |
+        The caller cannot accept this invitation; nothing was changed and the invitation stays pending.
+        Problem type is one of:
+        - `urn:mentorhub:problem:invitation-email-mismatch`: the token's email is not verified or differs from the
+          invitation's email;
+        - `urn:mentorhub:problem:identity-linked-elsewhere`: the caller's identity is linked to a user other than the
+          user with the invitation's email.
       content:
         application/problem+json:
           schema:
@@ -463,7 +686,7 @@ components:
     Permission:
       type: string
       description: Must equal the `Permission` enum in the backend code.
-      enum: [USERS_READ, USERS_MANAGE]
+      enum: [USERS_READ, USERS_MANAGE, USERS_INVITE]
     Problem:
       type: object
       description: |
@@ -472,7 +695,11 @@ components:
         `urn:mentorhub:problem:access-ended`, `urn:mentorhub:problem:forbidden`,
         `urn:mentorhub:problem:not-found`, `urn:mentorhub:problem:validation-failed`
         (schema `ValidationProblem`), `urn:mentorhub:problem:self-lockout`,
-        `urn:mentorhub:problem:last-admin`. Other errors use `about:blank`.
+        `urn:mentorhub:problem:last-admin`, `urn:mentorhub:problem:invitation-invalid`,
+        `urn:mentorhub:problem:user-active` and `urn:mentorhub:problem:invitation-exists`
+        (schema `InvitationConflictProblem`), `urn:mentorhub:problem:invitation-closed`,
+        `urn:mentorhub:problem:invitation-email-mismatch`, `urn:mentorhub:problem:identity-linked-elsewhere`.
+        Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       required: [type, title, status]
       properties:
@@ -500,6 +727,22 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ValidationError'
+    InvitationConflictProblem:
+      description: |
+        A `Problem` of type `urn:mentorhub:problem:user-active` (with `userId`) or
+        `urn:mentorhub:problem:invitation-exists` (with `invitationId`).
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            userId:
+              type: string
+              format: uuid
+              description: The active user with the email. Present only for `user-active`.
+            invitationId:
+              type: string
+              format: uuid
+              description: The open invitation for the email. Present only for `invitation-exists`.
     ValidationError:
       type: object
       required: [field, message]
@@ -659,8 +902,15 @@ components:
         - `USER_ENABLED`: details `reason`, `comment` the user had been disabled with;
         - `USER_ROLES_CHANGED`: details `rolesAdded`, `rolesRemoved`;
         - `USER_PROFILE_UPDATED`: details `changes`;
-        - `USER_BOOTSTRAPPED_ADMIN`: details `bootstrap`; no actor.
-      enum: [USER_DISABLED, USER_ENABLED, USER_ROLES_CHANGED, USER_PROFILE_UPDATED, USER_BOOTSTRAPPED_ADMIN]
+        - `USER_BOOTSTRAPPED_ADMIN`: details `bootstrap`; no actor;
+        - `USER_INVITATION_ACCEPTED`: details `invitation`, `rolesAdded`, `rolesRemoved`; the actor is the user.
+      enum:
+        - USER_DISABLED
+        - USER_ENABLED
+        - USER_ROLES_CHANGED
+        - USER_PROFILE_UPDATED
+        - USER_BOOTSTRAPPED_ADMIN
+        - USER_INVITATION_ACCEPTED
     HistoryActor:
       type: object
       required: [id, name]
@@ -709,6 +959,8 @@ components:
             $ref: '#/components/schemas/ProfileChange'
         bootstrap:
           $ref: '#/components/schemas/BootstrapChanges'
+        invitation:
+          $ref: '#/components/schemas/InvitationAcceptance'
     ProfileField:
       type: string
       enum: [firstName, lastName, phone]
@@ -735,6 +987,26 @@ components:
           type: boolean
         adminAdded:
           type: boolean
+    InvitationAcceptance:
+      type: object
+      description: What accepting an invitation did. The roles added and removed are in `rolesAdded` and `rolesRemoved`.
+      required: [invitationId, invitedBy, userCreated, identityLinked, enabled]
+      properties:
+        invitationId:
+          type: string
+          format: uuid
+        invitedBy:
+          description: The administrator who created the invitation; `null` when they cannot be resolved.
+          oneOf:
+            - $ref: '#/components/schemas/HistoryActor'
+            - type: 'null'
+        userCreated:
+          type: boolean
+        identityLinked:
+          type: boolean
+        enabled:
+          type: boolean
+          description: The user was disabled and has been enabled (reactivated).
     HistoryPage:
       type: object
       required: [items, page, size, totalItems]
@@ -755,3 +1027,117 @@ components:
           type: integer
           format: int64
           description: The number of entries on all pages.
+    InvitationStatus:
+      type: string
+      description: |
+        Derived from the invitation's times, in this order:
+        - `ACCEPTED`: accepted;
+        - `REVOKED`: revoked;
+        - `EXPIRED`: open, and the expiry has passed;
+        - `PENDING`: open, and the link is valid.
+      enum: [PENDING, EXPIRED, ACCEPTED, REVOKED]
+    Invitation:
+      type: object
+      description: |
+        An invitation. `acceptedAt` and `acceptedUser` are present only when accepted, `revokedAt` and `revokedBy` only
+        when revoked; absent (not `null`) otherwise. The link is never part of it.
+      required: [id, email, roles, status, createdAt, expiresAt, createdBy]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          examples: [ivan@example.com]
+        roles:
+          type: array
+          description: The roles the invitation gives that the server knows.
+          items:
+            $ref: '#/components/schemas/Role'
+        status:
+          $ref: '#/components/schemas/InvitationStatus'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/HistoryActor'
+        acceptedAt:
+          type: string
+          format: date-time
+        acceptedUser:
+          $ref: '#/components/schemas/HistoryActor'
+        revokedAt:
+          type: string
+          format: date-time
+        revokedBy:
+          $ref: '#/components/schemas/HistoryActor'
+    CreatedInvitation:
+      type: object
+      description: An invitation with its link. The link is returned only once.
+      required: [invitation, link]
+      properties:
+        invitation:
+          $ref: '#/components/schemas/Invitation'
+        link:
+          type: string
+          format: uri
+          description: '`<app-url>/invite/<token>`.'
+          examples: ['http://localhost:4200/invite/Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQe']
+    InvitationPage:
+      type: object
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invitation'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
+    InvitationCreate:
+      type: object
+      required: [email, roles]
+      properties:
+        email:
+          type: string
+          description: Trimmed; a valid address of at most 254 characters after trimming.
+          examples: [ivan@example.com]
+        roles:
+          type: array
+          description: The roles the person gets on acceptance; may be empty.
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Role'
+    InvitationToken:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: |
+            The token from the link. Its length is bounded only to limit the public request body; any other malformed
+            token responds 404 `invitation-invalid`.
+          minLength: 1
+          maxLength: 200
+    InvitationPreview:
+      type: object
+      required: [email, expiresAt]
+      properties:
+        email:
+          type: string
+          examples: [ivan@example.com]
+        expiresAt:
+          type: string
+          format: date-time

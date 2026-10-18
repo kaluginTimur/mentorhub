@@ -9,7 +9,7 @@ import { MatCardModule } from '@angular/material/card';
     <main>
       <mat-card appearance="outlined" role="alert">
         <mat-card-content>
-          <h1>MentorHub is unavailable. Try again later.</h1>
+          <h1 tabindex="-1">MentorHub is unavailable. Try again later.</h1>
         </mat-card-content>
         <mat-card-actions align="end">
           <button matButton="filled" type="button" (click)="retry.emit()">Retry</button>
@@ -30,6 +30,7 @@ import { MatCardModule } from '@angular/material/card';
     h1 {
       font: var(--mat-sys-title-large);
       margin: 16px 0 0;
+      outline: none;
     }
   `,
 })

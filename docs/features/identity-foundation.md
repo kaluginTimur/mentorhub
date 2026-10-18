@@ -198,7 +198,7 @@ One layout, three messages. Each screen is a centered card without the user menu
 
 | Route | Shown when | Title | Text |
 |---|---|---|---|
-| `/access/invitation-only` | identity not linked to a user | Access by invitation only | MentorHub is available to students and staff of the training center by invitation. If you were invited, sign in with the account the invitation was sent to. |
+| `/access/invitation-only` | identity not linked to a user | Access by invitation only | MentorHub is available to students and staff of the training center by invitation. If you were invited, open your invitation link and sign in with the email it was sent to. |
 | `/access/ended` | user disabled | Your access has ended | Contact the training center if you think this is a mistake. |
 | `/access/pending` | active user without roles | Your access is being set up | Contact an administrator. |
 
@@ -388,7 +388,7 @@ In every profile, a missing trusted issuer list or client configuration fails st
   | `student@mentorhub.local` | STUDENT |
   | `noroles@mentorhub.local` | active, no roles |
   | `disabled@mentorhub.local` | disabled |
-  | `stranger@mentorhub.local` | Keycloak only, not linked |
+  | `stranger@mentorhub.local` | Keycloak only, not linked until it accepts an invitation |
 
   The realm gives them fixed ids, so the runner can link their `sub`. The bootstrap email in `dev` is `admin@mentorhub.local`.
 

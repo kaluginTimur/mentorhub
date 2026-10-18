@@ -13,6 +13,7 @@ describe('AuthService', () => {
     logoffLocal: vi.fn(),
     getAccessToken: vi.fn(),
     preloadAuthWellKnownDocument: vi.fn(),
+    getUserData: vi.fn(),
   };
   const router = {
     currentNavigation: () => ({ extractedUrl: '/students' }),
@@ -45,6 +46,66 @@ describe('AuthService', () => {
     expect(result).toEqual({ kind: 'redirecting' });
     expect(oidc.authorize).toHaveBeenCalledOnce();
     expect(sessionStorage.getItem('mentorhub.return-url')).toBe('/students');
+  });
+
+  it('sends a visitor with an invitation in progress to its landing page instead of signing in', async () => {
+    sessionStorage.setItem('mentorhub.invitation-token', 'tok');
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
+    expect(await create().ensureSignedIn('/')).toEqual({ kind: 'invitation' });
+    expect(oidc.authorize).not.toHaveBeenCalled();
+  });
+
+  it('passes the email hint and the registration prompt to the identity provider', async () => {
+    const service = create();
+    await service.signIn('/invite', { loginHint: 'ivan@example.com', register: true });
+    expect(oidc.authorize).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        customParams: { login_hint: 'ivan@example.com', prompt: 'create' },
+      }),
+    );
+    expect(sessionStorage.getItem('mentorhub.return-url')).toBe('/invite');
+
+    await service.signIn('/invite', { loginHint: 'ivan@example.com' });
+    expect(oidc.authorize).toHaveBeenLastCalledWith(
+      undefined,
+      expect.objectContaining({ customParams: { login_hint: 'ivan@example.com' } }),
+    );
+    await service.signIn('/');
+    expect(oidc.authorize).toHaveBeenLastCalledWith(
+      undefined,
+      expect.objectContaining({ customParams: {} }),
+    );
+  });
+
+  it('tells whether a session exists without starting sign-in', async () => {
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: true }));
+    const service = create();
+    expect(await service.isSignedIn('/invite')).toBe(true);
+    oidc.isAuthenticated.mockReturnValue(of(false));
+    expect(await service.isSignedIn('/invite')).toBe(false);
+    oidc.isAuthenticated.mockReturnValue(throwError(() => new Error('down')));
+    expect(await service.isSignedIn('/invite')).toBe(false);
+    expect(oidc.authorize).not.toHaveBeenCalled();
+  });
+
+  it('reads the account email and its verification from the ID token', async () => {
+    const service = create();
+    oidc.getUserData.mockReturnValue(of({ email: 'a@example.com', email_verified: true }));
+    expect(await service.accountIdentity()).toEqual({
+      email: 'a@example.com',
+    });
+    oidc.getUserData.mockReturnValue(of(null));
+    expect(await service.accountIdentity()).toEqual({ email: null });
+    oidc.getUserData.mockReturnValue(throwError(() => new Error('down')));
+    expect(await service.accountIdentity()).toEqual({ email: null });
+  });
+
+  it('keeps the invitation token when signing out', () => {
+    sessionStorage.setItem('mentorhub.invitation-token', 'tok');
+    oidc.logoff.mockReturnValue(of(null));
+    create().signOut();
+    expect(sessionStorage.getItem('mentorhub.invitation-token')).toBe('tok');
   });
 
   it('returns the remembered route after the sign-in callback (AC-1)', async () => {

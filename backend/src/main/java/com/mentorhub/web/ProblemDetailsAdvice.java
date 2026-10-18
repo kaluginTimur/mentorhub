@@ -39,13 +39,15 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ProblemDetailsAdvice.class);
 
     @ExceptionHandler(NotFoundException.class)
-    ProblemDetail notFound() {
-        return Problems.create(HttpStatus.NOT_FOUND, Problems.NOT_FOUND, "Not Found", null);
+    ProblemDetail notFound(NotFoundException exception) {
+        return Problems.create(HttpStatus.NOT_FOUND, exception.type(), "Not Found", exception.detail());
     }
 
     @ExceptionHandler(ConflictException.class)
     ProblemDetail conflict(ConflictException exception) {
-        return Problems.create(HttpStatus.CONFLICT, exception.type(), "Conflict", exception.detail());
+        ProblemDetail problem = Problems.create(HttpStatus.CONFLICT, exception.type(), "Conflict", exception.detail());
+        exception.extensions().forEach(problem::setProperty);
+        return problem;
     }
 
     @ExceptionHandler(ValidationException.class)

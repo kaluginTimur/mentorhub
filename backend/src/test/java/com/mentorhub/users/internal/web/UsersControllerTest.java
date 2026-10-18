@@ -646,6 +646,9 @@ class UsersControllerTest {
         static final Instant AT = Instant.parse("2026-10-17T10:12:05Z");
         static final UUID ENTRY_ID = UUID.fromString("9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a");
         static final HistoryActor ACTOR = new HistoryActor(CALLER_ID, "Anna Petrova");
+        static final UUID INVITATION_ID = UUID.fromString("5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
+        static final HistoryActor INVITER =
+                new HistoryActor(UUID.fromString("7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d"), "Ada Admin");
 
         MvcTestResult historyWith(UserHistoryEntry entry) {
             given(administration.history(USER_ID, 0, 25)).willReturn(new ResultPage<>(List.of(entry), 0, 25, 1));
@@ -750,6 +753,64 @@ class UsersControllerTest {
                       "action": "USER_BOOTSTRAPPED_ADMIN",
                       "actor": null,
                       "bootstrap": {"userCreated": true, "identityLinked": true, "enabled": false, "adminAdded": true}
+                    }"""));
+        }
+
+        // Invitations AC-16, AC-22
+        @Test
+        void invitationAcceptedEntryHasTheInvitationAndTheRoles() {
+            MvcTestResult result = historyWith(new UserHistoryEntry(
+                    ENTRY_ID,
+                    AT,
+                    ACTOR,
+                    new UserChange.InvitationAccepted(
+                            INVITATION_ID, INVITER.id(), false, true, true, List.of("MENTOR"), List.of("ADMIN")),
+                    INVITER));
+
+            assertThat(result).bodyJson().isStrictlyEqualTo(page("""
+                    {
+                      "id": "9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a",
+                      "occurredAt": "2026-10-17T10:12:05Z",
+                      "action": "USER_INVITATION_ACCEPTED",
+                      "actor": {"id": "0b6f1d2e-6a51-4f36-9b0c-5f2d8f3a1c10", "name": "Anna Petrova"},
+                      "invitation": {
+                        "invitationId": "5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                        "invitedBy": {"id": "7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d", "name": "Ada Admin"},
+                        "userCreated": false,
+                        "identityLinked": true,
+                        "enabled": true
+                      },
+                      "rolesAdded": ["MENTOR"],
+                      "rolesRemoved": ["ADMIN"]
+                    }"""));
+        }
+
+        // Invitations AC-16: the inviter is required nullable.
+        @Test
+        void invitationAcceptedEntryWithAnUnresolvedInviterHasANullInviter() {
+            MvcTestResult result = historyWith(new UserHistoryEntry(
+                    ENTRY_ID,
+                    AT,
+                    ACTOR,
+                    new UserChange.InvitationAccepted(
+                            INVITATION_ID, INVITER.id(), true, true, false, List.of(), List.of()),
+                    null));
+
+            assertThat(result).bodyJson().isStrictlyEqualTo(page("""
+                    {
+                      "id": "9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a",
+                      "occurredAt": "2026-10-17T10:12:05Z",
+                      "action": "USER_INVITATION_ACCEPTED",
+                      "actor": {"id": "0b6f1d2e-6a51-4f36-9b0c-5f2d8f3a1c10", "name": "Anna Petrova"},
+                      "invitation": {
+                        "invitationId": "5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                        "invitedBy": null,
+                        "userCreated": true,
+                        "identityLinked": true,
+                        "enabled": false
+                      },
+                      "rolesAdded": [],
+                      "rolesRemoved": []
                     }"""));
         }
 

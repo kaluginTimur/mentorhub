@@ -27,6 +27,7 @@ export class Shell {
 
   protected readonly name = this.currentUser.name;
   protected readonly canReadUsers = computed(() => this.currentUser.hasPermission('USERS_READ'));
+  protected readonly canInvite = computed(() => this.currentUser.hasPermission('USERS_INVITE'));
   protected readonly email = computed(() => this.currentUser.user()?.email ?? '');
 
   protected signOut(): void {

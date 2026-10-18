@@ -4,6 +4,8 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '../../core/api/api';
 import { listUsers } from '../../core/api/fn/users/list-users';
+import { CurrentUserService } from '../../core/auth/current-user.service';
+import { MatDialog } from '@angular/material/dialog';
 import { UsersList } from './users-list';
 
 const page = (items: unknown[], totalItems = items.length) => ({
@@ -236,5 +238,36 @@ describe('UsersList', () => {
     const { harness } = await open();
     await harness.fixture.whenStable();
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/'));
+  });
+
+  describe('Invite button (AC-18)', () => {
+    const inviteButton = (element: HTMLElement) =>
+      [...element.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Invite');
+
+    afterEach(() => TestBed.inject(MatDialog).closeAll());
+
+    it('is shown next to the heading with USERS_INVITE and opens the invite dialog', async () => {
+      TestBed.overrideProvider(CurrentUserService, {
+        useValue: { hasPermission: (p: string) => p === 'USERS_INVITE' },
+      });
+      api.invoke.mockResolvedValue(page([summary('a')]));
+      const { element } = await open();
+      expect(element.querySelector('.heading h1')?.textContent).toBe('Users');
+      inviteButton(element)?.click();
+      await vi.waitFor(() =>
+        expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+          'Invite a person',
+        ),
+      );
+    });
+
+    it('is not rendered without USERS_INVITE', async () => {
+      TestBed.overrideProvider(CurrentUserService, {
+        useValue: { hasPermission: () => false },
+      });
+      api.invoke.mockResolvedValue(page([summary('a')]));
+      const { element } = await open();
+      expect(inviteButton(element)).toBeUndefined();
+    });
   });
 });

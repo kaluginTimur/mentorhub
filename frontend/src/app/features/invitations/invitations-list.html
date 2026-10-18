@@ -1,0 +1,145 @@
+@if (failed()) {
+  <app-unavailable (retry)="invitations.reload()" />
+} @else {
+  <main [attr.aria-busy]="invitations.isLoading()">
+    <div class="heading">
+      <h1>Invitations</h1>
+      <button matButton="filled" type="button" (click)="invite()">Invite</button>
+    </div>
+
+    <div class="filters">
+      <mat-form-field class="search">
+        <mat-label>Search by email</mat-label>
+        <input
+          matInput
+          type="search"
+          autocomplete="off"
+          [attr.maxlength]="searchLimit"
+          [value]="searchText()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Status</mat-label>
+        <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
+          <mat-option value="">All</mat-option>
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="progress">
+      @if (invitations.isLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Loading invitations" />
+      }
+    </div>
+
+    @if (loaded(); as page) {
+      @if (rows().length > 0) {
+        <table mat-table [dataSource]="rows()">
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let invitation">{{ invitation.email }}</td>
+          </ng-container>
+          <ng-container matColumnDef="roles">
+            <th mat-header-cell *matHeaderCellDef>Roles</th>
+            <td mat-cell *matCellDef="let invitation">
+              @if (invitation.roles.length > 0) {
+                <mat-chip-set role="list" aria-label="Roles">
+                  @for (role of invitation.roles; track role) {
+                    <mat-chip role="listitem">{{ roleLabel(role) }}</mat-chip>
+                  }
+                </mat-chip-set>
+              } @else {
+                <span class="secondary">No roles</span>
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let invitation">
+              <div>{{ statusLabel(invitation.status) }}</div>
+              <div class="secondary">
+                @switch (invitation.status) {
+                  @case ('PENDING') {
+                    Expires {{ invitation.expiresAt | date: 'd MMM y' }}
+                  }
+                  @case ('EXPIRED') {
+                    Expired {{ invitation.expiresAt | date: 'd MMM y' }}
+                  }
+                  @case ('ACCEPTED') {
+                    @if (invitation.acceptedUser; as user) {
+                      Accepted by <a [routerLink]="['/users', user.id]">{{ user.name }}</a>
+                    } @else {
+                      Accepted
+                    }
+                  }
+                  @case ('REVOKED') {
+                    @if (invitation.revokedBy; as admin) {
+                      Revoked by {{ admin.name }}
+                    }
+                  }
+                }
+              </div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="invited">
+            <th mat-header-cell *matHeaderCellDef>Invited</th>
+            <td mat-cell *matCellDef="let invitation">
+              <div>{{ invitation.createdAt | date: 'd MMM y' }}</div>
+              <div class="secondary">{{ invitation.createdBy.name }}</div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+            <td mat-cell *matCellDef="let invitation" class="actions">
+              @if (isOpen(invitation)) {
+                <button
+                  matButton
+                  type="button"
+                  [attr.aria-label]="'Get a new link for ' + invitation.email"
+                  (click)="newLink(invitation)"
+                >
+                  Get a new link
+                </button>
+                <button
+                  matButton
+                  type="button"
+                  [attr.aria-label]="'Revoke the invitation for ' + invitation.email"
+                  (click)="revoke(invitation)"
+                >
+                  Revoke
+                </button>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+      }
+      @if (page.totalItems > 0) {
+        <mat-paginator
+          [length]="page.totalItems"
+          [pageSize]="pageSize"
+          [pageIndex]="pageIndex()"
+          [hidePageSize]="true"
+          (page)="onPage($event)"
+        />
+      }
+      @if (rows().length === 0 && !invitations.isLoading()) {
+        <div class="empty">
+          @if (page.totalItems > 0) {
+            <p>No invitations on this page.</p>
+          } @else if (hasFilters()) {
+            <p>No invitations match the filters.</p>
+            <button matButton type="button" (click)="clearFilters()">Clear filters</button>
+          } @else {
+            <p>No invitations yet.</p>
+          }
+        </div>
+      }
+    }
+  </main>
+}

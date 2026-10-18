@@ -13,7 +13,7 @@ interface Message {
 const MESSAGES: Record<Exclude<Access, 'full'>, Message> = {
   'invitation-only': {
     title: 'Access by invitation only',
-    text: 'MentorHub is available to students and staff of the training center by invitation. If you were invited, sign in with the account the invitation was sent to.',
+    text: 'MentorHub is available to students and staff of the training center by invitation. If you were invited, open your invitation link and sign in with the email it was sent to.',
   },
   ended: {
     title: 'Your access has ended',

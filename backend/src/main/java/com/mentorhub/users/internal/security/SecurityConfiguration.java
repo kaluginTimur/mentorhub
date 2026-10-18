@@ -40,6 +40,10 @@ class SecurityConfiguration {
     private static final List<String> PUBLIC_PATHS =
             List.of("/api/v1/system/info", "/api/v1/system/client-config", "/actuator/health", "/actuator/health/**");
 
+    private static final String INVITATION_PREVIEW_PATH = "/api/v1/invitations/preview";
+
+    private static final String INVITATION_ACCEPT_PATH = "/api/v1/invitations/accept";
+
     private static final List<String> DEV_PATHS = List.of(
             "/swagger-ui.html",
             "/swagger-ui/**",
@@ -79,6 +83,8 @@ class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/me")
                         .authenticated()
+                        .requestMatchers(HttpMethod.POST, INVITATION_ACCEPT_PATH)
+                        .authenticated()
                         .requestMatchers("/api/v1/**")
                         .access(SecurityConfiguration::activeUser)
                         .anyRequest()
@@ -106,8 +112,11 @@ class SecurityConfiguration {
         if (environment.matchesProfiles("dev")) {
             paths.addAll(DEV_PATHS);
         }
-        return new OrRequestMatcher(paths.stream()
+        List<RequestMatcher> matchers = new ArrayList<>(paths.stream()
                 .<RequestMatcher>map(path -> PathPatternRequestMatcher.pathPattern(HttpMethod.GET, path))
                 .toList());
+        // The token in the body is the authorization; a bearer token must not be able to fail the preview.
+        matchers.add(PathPatternRequestMatcher.pathPattern(HttpMethod.POST, INVITATION_PREVIEW_PATH));
+        return new OrRequestMatcher(matchers);
     }
 }

@@ -2,7 +2,12 @@
   <app-unavailable (retry)="users.reload()" />
 } @else {
   <main [attr.aria-busy]="users.isLoading()">
-    <h1>Users</h1>
+    <div class="heading">
+      <h1>Users</h1>
+      @if (canInvite()) {
+        <button matButton="filled" type="button" (click)="invite()">Invite</button>
+      }
+    </div>
 
     <div class="filters">
       <mat-form-field class="search">

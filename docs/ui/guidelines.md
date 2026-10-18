@@ -4,7 +4,7 @@ Screens use Angular Material and the theme tokens only (see `docs/development/fr
 
 ## Application shell
 
-- Route `/` and everything an active user with roles can open lives inside `frontend/src/app/features/shell/shell.ts`: a toolbar with "MentorHub", the "Users" link (only with the `USERS_READ` permission; marked as the current page on `/users` and `/users/{id}`) and the account menu, then the routed page.
+- Route `/` and everything an active user with roles can open lives inside `frontend/src/app/features/shell/shell.ts`: a toolbar with "MentorHub", the "Users" link (only with the `USERS_READ` permission; marked as the current page on `/users` and `/users/{id}`), the "Invitations" link (only with the `USERS_INVITE` permission; marked as the current page on `/invitations`) and the account menu, then the routed page.
 - The account menu button is named "Account menu for <name>"; the menu shows the name and email and the actions "Profile" (opens `/profile`) and "Sign out".
 - The user's name is first and last name, or the one that is set, or the email.
 - Each page has one `h1`. The home page shows "Welcome, <first name>" and the application version in its footer.
@@ -20,6 +20,10 @@ One layout (`frontend/src/app/features/access/access-screen.ts`), a centered car
 | `/access/pending` | Your access is being set up |
 
 Every route resolves to the screen matching the user's status; unknown paths redirect to `/`.
+
+The public invitation landing page `/invite` (`frontend/src/app/features/invite/`) uses the same centered card with an `h1` (focused on open), a text and actions, and is open to visitors who are not signed in. Its title depends on the state (for example "You're invited to MentorHub", "Invitation not valid", "Wrong account"); "Sign out" appears only in the states where a signed-in visitor has to switch accounts.
+
+Link view (`frontend/src/app/features/invitations/link-view.ts`, shown in the invite dialog after an invitation is created and after "Get a new link" on an open row): the link is shown once, in a read-only field that is focused and selects its text on focus, with the "Copy link" action and "Done". "Copy link" shows a polite snackbar "Link copied"; if the clipboard is not available, it selects the field text instead so the user can copy it by hand.
 
 ## States
 

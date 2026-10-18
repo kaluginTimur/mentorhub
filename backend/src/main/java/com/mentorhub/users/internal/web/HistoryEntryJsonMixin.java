@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mentorhub.api.model.BootstrapChanges;
 import com.mentorhub.api.model.DisableReason;
 import com.mentorhub.api.model.HistoryEntry;
+import com.mentorhub.api.model.InvitationAcceptance;
 import com.mentorhub.api.model.ProfileChange;
 import com.mentorhub.api.model.Role;
 import java.util.List;
@@ -34,4 +35,7 @@ abstract class HistoryEntryJsonMixin {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract @Nullable BootstrapChanges getBootstrap();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable InvitationAcceptance getInvitation();
 }
