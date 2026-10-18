@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -9,7 +9,15 @@ import { CurrentUserService } from '../../core/auth/current-user.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, MatToolbarModule, MatButtonModule, MatMenuModule, MatIconModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatToolbarModule,
+    MatButtonModule,
+    MatMenuModule,
+    MatIconModule,
+  ],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
 })
@@ -18,6 +26,7 @@ export class Shell {
   private readonly currentUser = inject(CurrentUserService);
 
   protected readonly name = this.currentUser.name;
+  protected readonly canReadUsers = computed(() => this.currentUser.hasPermission('USERS_READ'));
   protected readonly email = computed(() => this.currentUser.user()?.email ?? '');
 
   protected signOut(): void {

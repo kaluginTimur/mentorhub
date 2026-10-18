@@ -1,0 +1,191 @@
+@if (failed()) {
+  <app-unavailable (retry)="user.reload()" />
+} @else if (user.error() || (user.isLoading() && !user.hasValue())) {
+  <app-loading />
+} @else if (user.hasValue()) {
+  @if (user.value(); as u) {
+    <main>
+      <a class="back" routerLink="/users" [queryParams]="listState.query()">Users</a>
+      <div class="title">
+        <h1 #heading tabindex="-1">{{ name(u) }}</h1>
+        <mat-chip-set role="list" aria-label="Status">
+          <mat-chip role="listitem">{{ statusLabels[u.status] }}</mat-chip>
+        </mat-chip-set>
+      </div>
+
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <h2 mat-card-title>Profile</h2>
+          @if (canManage() && !editing()) {
+            <button matButton type="button" class="edit" (click)="editing.set(true)">Edit</button>
+          }
+        </mat-card-header>
+        <mat-card-content>
+          @if (editing()) {
+            <app-profile-form
+              [values]="profileValues(u)"
+              [save]="saveProfile"
+              [cancellable]="true"
+              (saved)="editing.set(false)"
+              (cancelled)="editing.set(false)"
+            />
+          } @else {
+            <dl>
+              <div>
+                <dt>Email</dt>
+                <dd>{{ u.email }}</dd>
+              </div>
+              <div>
+                <dt>First name</dt>
+                <dd>{{ u.firstName || '—' }}</dd>
+              </div>
+              <div>
+                <dt>Last name</dt>
+                <dd>{{ u.lastName || '—' }}</dd>
+              </div>
+              <div>
+                <dt>Phone</dt>
+                <dd>{{ u.phone || '—' }}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{{ u.createdAt | date: 'd MMM y' }}</dd>
+              </div>
+            </dl>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <div class="row">
+        <mat-card appearance="outlined">
+          <mat-card-header><h2 mat-card-title>Access</h2></mat-card-header>
+          <mat-card-content>
+            @if (u.status === 'ACTIVE') {
+              <p class="status">Active</p>
+              @if (canManage()) {
+                <button
+                  matButton="outlined"
+                  type="button"
+                  disabledInteractive
+                  [disabled]="isSelf()"
+                  [attr.aria-describedby]="isSelf() ? 'disable-hint' : null"
+                  (click)="disable(u)"
+                >
+                  Disable user
+                </button>
+                @if (isSelf()) {
+                  <p id="disable-hint" class="hint">You can't disable yourself.</p>
+                }
+              }
+            } @else {
+              <p class="status">Disabled</p>
+              <p>{{ disabledSummary(u) }}</p>
+              @if (canManage()) {
+                <button matButton="outlined" type="button" (click)="enable(u)">Enable user</button>
+              }
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
+          <mat-card-header><h2 mat-card-title id="roles-heading">Roles</h2></mat-card-header>
+          <mat-card-content>
+            @if (canManage()) {
+              <div class="roles" role="group" aria-labelledby="roles-heading">
+                @for (role of roles; track role) {
+                  <mat-checkbox
+                    disabledInteractive
+                    [checked]="hasRole(role)"
+                    [disabled]="role === 'ADMIN' && isSelf()"
+                    [aria-describedby]="role === 'ADMIN' && isSelf() ? 'admin-hint' : ''"
+                    (change)="toggleRole(role, $event.checked)"
+                  >
+                    {{ roleLabels[role] }}
+                  </mat-checkbox>
+                }
+              </div>
+              @if (isSelf()) {
+                <p id="admin-hint" class="hint">You can't remove your own administrator role.</p>
+              }
+              @if (selectedRoles().length === 0) {
+                <p class="hint">
+                  Without roles the user can sign in but has no access to anything.
+                </p>
+              }
+              <div class="actions">
+                <button
+                  matButton
+                  type="button"
+                  [disabled]="!rolesChanged()"
+                  (click)="resetRoles(u)"
+                >
+                  Reset
+                </button>
+                <button
+                  matButton="filled"
+                  type="button"
+                  [disabled]="!rolesChanged() || savingRoles()"
+                  (click)="saveRoles(u)"
+                >
+                  Save
+                </button>
+              </div>
+            } @else if (u.roles.length > 0) {
+              <ul>
+                @for (role of u.roles; track role) {
+                  <li>{{ roleLabels[role] }}</li>
+                }
+              </ul>
+            } @else {
+              <p class="hint">No roles</p>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><h2 mat-card-title>History</h2></mat-card-header>
+        <mat-card-content [attr.aria-busy]="historyLoading()">
+          @if (historyLoading()) {
+            <mat-progress-bar mode="indeterminate" aria-label="Loading history" />
+          }
+          @if (entries().length > 0) {
+            <ol class="history">
+              @for (entry of entries(); track entry.id) {
+                <li>
+                  <time [attr.datetime]="entry.occurredAt">
+                    {{ entry.occurredAt | date: 'd MMM y HH:mm' }}
+                  </time>
+                  <span class="actor">{{ entry.actor?.name ?? 'System' }}</span>
+                  <span>{{ describe(entry) }}</span>
+                </li>
+              }
+            </ol>
+          } @else if (!historyLoading() && !historyFailed()) {
+            <p class="hint">No changes yet.</p>
+          }
+          @if (historyFailed()) {
+            <p role="alert">Could not load the history.</p>
+            <button matButton type="button" (click)="loadHistory(entries().length === 0)">
+              Retry
+            </button>
+          } @else if (entries().length < historyTotal()) {
+            <button
+              matButton
+              type="button"
+              [disabled]="historyLoading()"
+              (click)="loadHistory(false)"
+            >
+              Show more
+            </button>
+          }
+        </mat-card-content>
+      </mat-card>
+    </main>
+  } @else {
+    <main class="not-found">
+      <h1>User not found</h1>
+      <a routerLink="/users" [queryParams]="listState.query()">Back to users</a>
+    </main>
+  }
+}

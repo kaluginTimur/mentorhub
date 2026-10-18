@@ -1,0 +1,103 @@
+@if (failed()) {
+  <app-unavailable (retry)="users.reload()" />
+} @else {
+  <main [attr.aria-busy]="users.isLoading()">
+    <h1>Users</h1>
+
+    <div class="filters">
+      <mat-form-field class="search">
+        <mat-label>Search by name or email</mat-label>
+        <input
+          matInput
+          type="search"
+          autocomplete="off"
+          [attr.maxlength]="searchLimit"
+          [value]="searchText()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Status</mat-label>
+        <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
+          <mat-option value="">All</mat-option>
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Role</mat-label>
+        <mat-select [value]="role()" (selectionChange)="setRole($event.value)">
+          <mat-option value="">Any role</mat-option>
+          @for (r of roleFilters; track r) {
+            <mat-option [value]="r">{{ roleFilterLabel(r) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="progress">
+      @if (users.isLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Loading users" />
+      }
+    </div>
+
+    @if (loaded(); as page) {
+      @if (rows().length > 0) {
+        <table mat-table [dataSource]="rows()">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let user">
+              <a [routerLink]="['/users', user.id]">{{ name(user) }}</a>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+          </ng-container>
+          <ng-container matColumnDef="roles">
+            <th mat-header-cell *matHeaderCellDef>Roles</th>
+            <td mat-cell *matCellDef="let user">
+              @if (user.roles.length > 0) {
+                <mat-chip-set role="list" aria-label="Roles">
+                  @for (role of user.roles; track role) {
+                    <mat-chip role="listitem">{{ roleLabel(role) }}</mat-chip>
+                  }
+                </mat-chip-set>
+              } @else {
+                <span class="secondary">No roles</span>
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let user">{{ statusLabel(user.status) }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+      }
+      @if (page.totalItems > 0) {
+        <mat-paginator
+          [length]="page.totalItems"
+          [pageSize]="pageSize"
+          [pageIndex]="pageIndex()"
+          [hidePageSize]="true"
+          (page)="onPage($event)"
+        />
+      }
+      @if (rows().length === 0 && !users.isLoading()) {
+        <div class="empty">
+          @if (page.totalItems > 0) {
+            <p>No users on this page.</p>
+          } @else if (hasFilters()) {
+            <p>No users match the filters.</p>
+            <button matButton type="button" (click)="clearFilters()">Clear filters</button>
+          } @else {
+            <p>No users yet.</p>
+          }
+        </div>
+      }
+    }
+  </main>
+}

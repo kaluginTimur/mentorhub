@@ -64,9 +64,14 @@ describe('errorInterceptor', () => {
     expect(auth.confirmSignIn).toHaveBeenCalledOnce();
   });
 
-  it('shows a snackbar on 403 forbidden and stays on the page (AC-29)', () => {
+  it('shows a snackbar on 403 forbidden and stays on the page (AC-29)', async () => {
     fail('/api/v1/users', 403, 'urn:mentorhub:problem:forbidden');
-    expect(snackBar.open).toHaveBeenCalledWith("You don't have permission to do this.", 'Dismiss');
+    await vi.waitFor(() =>
+      expect(snackBar.open).toHaveBeenCalledWith(
+        "You don't have permission to do this.",
+        'Dismiss',
+      ),
+    );
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
