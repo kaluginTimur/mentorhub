@@ -12,6 +12,8 @@
 // Weighted = input-token equivalents at API price ratios: input 1, cache read 0.1, 5-minute write 1.25, 1-hour write 2.
 // Output tokens are left out of the weighted total: subagent transcripts do not record them reliably. The main session's
 // output is reported on its own. Effort is the reasoning effort the requests ran at, read per agent (a subagent can differ from the session).
+// An agent spawned by a subagent (such as api-lookup by backend-dev) gets its own row; spawnedBy names the top-level agent it
+// works for, and the summary rolls its cost up to that agent.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -178,14 +180,24 @@ for (const [i, main] of chain.entries()) {
   for (const f of readdirSync(subDir).filter((x) => x.endsWith('.jsonl')).sort()) {
     const metaFile = path.join(subDir, f.replace(/\.jsonl$/, '.meta.json'));
     const meta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : {};
-    agentIds.push(f.replace(/^agent-|\.jsonl$/g, ''));
-    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, ...analyse([path.join(subDir, f)]), output: null };
+    const id = f.replace(/^agent-|\.jsonl$/g, '');
+    agentIds.push(id);
+    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, id, parentId: meta.parentAgentId ?? null, ...analyse([path.join(subDir, f)]), output: null };
     rows.push(row);
     perSession[i].agents++;
     if (row.last && (!perSession[i].last || row.last > perSession[i].last)) perSession[i].last = row.last;
   }
 }
 rows.sort((a, b) => (a.first ?? '').localeCompare(b.first ?? ''));
+// An agent spawned by another agent lands in the same subagents folder; its meta names the parent. spawnedBy is the
+// top-level agent it ultimately works for, so its cost can be rolled up to that agent.
+const byId = new Map(rows.filter((r) => r.id).map((r) => [r.id, r]));
+for (const r of rows) {
+  let top = r;
+  const seen = new Set();
+  while (top.parentId && byId.has(top.parentId) && !seen.has(top.parentId)) seen.add((top = byId.get(top.parentId)).id);
+  r.spawnedBy = top === r ? null : top.agent;
+}
 const chainLast = perSession.reduce((a, p) => (p.last && p.last > a ? p.last : a), '');
 
 function featureSize(feature) {
@@ -237,7 +249,7 @@ if (record) {
 console.log(`Session ${chainIds.join(' -> ')}\n`);
 const header = ['agent', 'model', 'effort', 'calls', 'avg ctx', 'last ctx', 'read', 'write 5m', 'write 1h', 'weighted', 'rebuilds'];
 const table = rows.map((r) => [
-  `${r.agent}: ${r.description}`.slice(0, 48),
+  `${r.spawnedBy ? `  ${r.agent} (via ${r.spawnedBy})` : r.agent}: ${r.description}`.slice(0, 48),
   r.model,
   r.effort ?? '-',
   String(r.calls),
@@ -256,4 +268,9 @@ const byModel = {};
 for (const r of rows) byModel[r.model] = (byModel[r.model] ?? 0) + r.weighted;
 console.log(`\nMain session output: ${k(rows[0].output)} tokens (${Math.round(rows[0].output / Math.max(rows[0].calls, 1))} per call); not in the weighted totals.`);
 console.log(`Weighted by model: ${Object.entries(byModel).map(([m, w]) => `${m} ${k(w)}`).join(', ')}`);
+if (rows.some((r) => r.spawnedBy)) {
+  const byTop = {};
+  for (const r of rows) byTop[r.spawnedBy ?? r.agent] = (byTop[r.spawnedBy ?? r.agent] ?? 0) + r.weighted;
+  console.log(`Weighted by top-level agent, nested agents included: ${Object.entries(byTop).map(([a, w]) => `${a} ${k(w)}`).join(', ')}`);
+}
 console.log('Rebuilds: whole-history cache writes after a pause longer than the cache lifetime (count: tokens, share of the agent\'s weighted cost).');
