@@ -20,6 +20,8 @@ public final class TestUsers {
     public void deleteAll() {
         // The append-only trigger rejects delete but not truncate.
         jdbc.sql("truncate audit_log").update();
+        jdbc.sql("delete from invitation_roles").update();
+        jdbc.sql("delete from invitations").update();
         jdbc.sql("delete from user_roles").update();
         jdbc.sql("delete from user_identities").update();
         jdbc.sql("delete from users").update();

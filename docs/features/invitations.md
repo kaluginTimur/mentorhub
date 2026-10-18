@@ -58,7 +58,7 @@ Creating and listing:
   - 25 per page by default and at most 100, sorted by creation time, newest first, then by id;
   - each item has the id, email, roles, status, creation time, expiry, who created it, and when relevant when and by whom it was accepted or revoked;
   - `q` filters by email (contains, case-insensitive, `%`, `_` and `\` match themselves), and `status` filters by status;
-  - invalid parameters respond 400 `validation-failed` as in user administration (AC-3 there).
+  - invalid parameters respond 400 `validation-failed` as in user administration (AC-3 there), except that `q` may be up to 254 characters after trimming, not 100: the `invitation-exists` link opens `/invitations?q=<email>`, and an email may be up to 254 characters (AC-2), so a shorter limit would break that link for long emails.
 - AC-5 (S1–S4, auto): Given a caller without `USERS_INVITE` (any role other than ADMIN, or no roles), when they call any invitation management operation (create, list, revoke, new link), then the response is 403 `forbidden`.
 
 Revoking and new links:
@@ -467,6 +467,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 - Invitations carry no names: a new user's first and last name come from the token at acceptance, as with the bootstrap, and a reactivated user's profile is unchanged.
 - Reactivating a disabled user through an invitation sets their roles to exactly the invitation's, so the invitation states everything the person gets back (user decision; refines the earlier "adds roles"). A user who became active after the invitation was created only gains the invitation's roles. "Enable user" on the user page still keeps roles (user administration AC-8).
 - Editing an invitation is not supported; revoke and create again.
+- The invitation search `q` is limited to 254 characters, the maximum email length, instead of the 100 of `/users`, so the `invitation-exists` link works for every valid email (user decision, steps 1–2).
 
 ## 4. Open questions
 

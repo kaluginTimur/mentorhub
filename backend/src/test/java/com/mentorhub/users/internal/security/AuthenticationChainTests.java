@@ -164,7 +164,7 @@ class AuthenticationChainTests {
                 .bodyJson()
                 .extractingPath("$.permissions")
                 .asArray()
-                .containsExactlyInAnyOrder("USERS_READ", "USERS_MANAGE");
+                .containsExactlyInAnyOrder("USERS_READ", "USERS_MANAGE", "USERS_INVITE");
     }
 
     // AC-7, AC-17
