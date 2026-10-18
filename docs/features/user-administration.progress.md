@@ -8,12 +8,12 @@ Started: 2026-10-18
 
 | Step | Status | Commit | Updated |
 |---|---|---|---|
-| 1 contract | approved | | 2026-10-18 |
-| 2 migration | approved | | 2026-10-18 |
-| 3 domain | pending | | |
+| 1 contract | approved | 86737f0 | 2026-10-18 |
+| 2 migration | approved | 86737f0 | 2026-10-18 |
+| 3 domain | approved | | 2026-10-18 |
 | 4 api | pending | | |
 | frontend A (prototype) | skipped | | 2026-10-18 |
-| frontend B | pending | | |
+| frontend B | in review | | 2026-10-18 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -26,26 +26,43 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-18, start: frontend prototype step skipped because mock mode is not implemented; screens are reviewed at the end.
 - 2026-10-18, steps 1–2: controller layout: "go with variant (a)": single `Users` tag; step 4 renames `MeController` to `UsersController`, serving `getMe`, `updateMyProfile` and the admin operations.
 - 2026-10-18, steps 1–2: database checks: "go with your recommendation, drop the weak checks": keep the `disabled_reason` value check and the combined `users_disabled_reason_ck`; drop the `phone` E.164 regex, the `disabled_comment` length check, and the non-empty `action`/`subject_type` and `details` JSON-object checks on `audit_log`. The service still enforces phone and comment rules. Spec Design (lines ~299–302) to be updated at the end.
+- 2026-10-18, frontend review: "fix all 11 plus the chip-set check".
+- 2026-10-18, step 3 question 1 (phone error text): "variant (a)": server keeps `must be a valid phone number`; the frontend shows its own "Enter a valid phone number" for `phone`.
+- 2026-10-18, step 3 question 2 (short history pages): "I am fine with short history pages for now, but I want it to be noted as a known-issue/corner case or something like that."
+- 2026-10-18, persistence: "I am fine with JDBC in "core-level" modules like user management and audit, but I want that this can be decided on per module basis, so for what is best for each module." Recorded as ADR 0007.
+- 2026-10-18, step 3: "step 3 backend approved".
+- 2026-10-18, ADR 0007: "add the rules to ADR 0007, commit both": transaction rules (one transaction manager, one approach per table, flush before SQL reads and mapped constraint errors) added to Consequences; step 3 and frontend committed separately.
 
 ## Handoff notes
 
 <!-- From each approved step's "Notes for the next step": what a fresh agent or session needs that the spec, decisions and diff do not show (temporary stubs, pitfalls found, conventions adopted, deferred follow-ups). Remove a note when it no longer applies. -->
 
-- Temporary code marked `TODO(user-administration step N)`: `MeController` (8 stubs returning 501, `MeUser.phone = null`; step 4), `UserRepository.setStatus` (writes `OTHER`/`Development user` for DISABLED; replace with `enable`/`disable(reason, comment)` in step 3), `DevelopmentUserRunner` (forced ACTIVE insert, no reason/comment config in `mentorhub.development-users`; step 3).
-- No database backstop for phone or comment (user decision): step 3 must enforce E.164 phones (libphonenumber) and comments of 1–500 characters after trimming, with service tests for both.
+- Temporary code marked `TODO(user-administration step 4)`: `MeController` (8 stubs returning 501; `getMe` can now pass `user.phone()` instead of `null`). Step 3 TODOs are resolved.
 - `SecurityConfiguration` uses `@EnableMethodSecurity(proxyTargetClass = true)`: interface-based proxies hide `@RestController` in `@WebMvcTest` slices (404 on every endpoint). Add this pitfall to `docs/development/backend.md`.
 - Generated `HistoryEntry`: optional lists `rolesAdded`, `rolesRemoved`, `changes` start as `[]`, not `null`; step 4 must set unused ones to `null` before the planned per-class `@JsonInclude(NON_NULL)` mixin can omit them.
 - Step 4 validation: the generated `UsersApi` is `@Validated` with `@Min`/`@Max` on `page`/`size`; those failures, a non-UUID `{id}`, and unknown enum values (query parameters and `reason` in the body) must map to `validation-failed` with `field` naming the parameter or property.
 - Schema tests: a check failure aborts the test transaction, so each `@Transactional` test can contain at most one rejected statement (use parameterized tests).
 - Audit ordering: entries in one transaction share `occurred_at` and `gen_random_uuid()` ids, so their order is arbitrary; consider `uuidv7()` if one change ever writes several entries.
 - Frontend: after regenerating the client, `MeUser.phone` is required; fixtures building `MeUser` (`access.guard.spec.ts`, `shell.spec.ts`) need `phone: null`.
-- Do not run the application against the dev database until V3 is committed and approved (it would apply V3 and freeze it).
+- Frontend (step B): forms use Signal Forms with Material fields (`[formField]`, `submit()` returning server errors as field errors); reuse for the invitation forms. `UsersListState` keeps the list's last query for the user page's back link. `history-text.ts` handles missing or empty optional history lists. `updateMyProfile` returns `Me`, stored directly in `CurrentUserService.me`.
+- Frontend was verified by unit tests only: once the step 4 controllers exist, first check that error bodies parse as problems (`type`, `errors`); the 409 and 400 handling depends on it.
+- Frontend bundle: a static `MatSnackBar` import in `error.interceptor.ts` pulled snack bar and CDK code into the initial bundle; it is now a dynamic `import()`. Keep heavy Material imports out of eagerly loaded core code (noted in `docs/development/frontend.md`).
+- Step 4 problem rendering in `ProblemDetailsAdvice`: `ConflictException` → 409 with `exception.type()`, title `Conflict`, detail `exception.detail()`; `ValidationException` → 400 `Problems.VALIDATION_FAILED` with `errors` `[{field, message}]` from `FieldViolation`; bean validation and conversion failures map the same way (see the validation note above).
+- Step 4 controller mapping: `listUsers` → `service.list(new UserQuery(q, status, roleFilter, page, size))`, API `RoleFilter.NONE` → `new RoleFilter.WithoutRoles()`, others → `WithRole(Role.valueOf(name))`. `updateMyProfile` → `profileService.updateOwnProfile(...)` (void), then `meService.me()` for the `Me` response. `ManagedUser` already has `disabledReason`/`disabledComment` null unless disabled.
+- Step 4 history: map `UserHistoryEntry.change()` by its `UserChange` subtype to `HistoryEntry` details and the subtype's `action()` to `HistoryAction`; role names in `RolesChanged` are already filtered to known ones.
+- Service methods also carry `@RequirePermission` (agent decision); service validation also rejects `page`/`size` out of range and `q` over 100 characters (fields `page`, `size`, `q`); the `@Validated` interface catches page and size first, `q` only the service.
+- Service tests set the caller with `SecurityContextHolder` plus `TestAuthentications.activeUserAuthentication`. `TestUsers.deleteAll` truncates `audit_log` (the trigger blocks delete, not truncate).
+- Advisory lock key for the administrator lock is a fixed constant in `UserRepository`; later features using advisory locks must pick a different key.
+- Server validation messages use bean validation wording (e.g. `must be a valid phone number`); the frontend shows its own text for `phone`.
+- Known limitation (user decision), to add to the spec at the end: history entries with unknown actions are filtered after paging, so a page can hold fewer than `size` items while `totalItems` counts all entries. Happens only when the log holds actions the running code does not know (e.g. after rolling back a release that wrote a new action).
+- Final spec update: Design states persistence via `JdbcClient` for `users` and `audit` per ADR 0007, and adds ADR 0007 to Related.
 
 ## Pending
 
 <!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
 
-- none
+- Frontend step B: all review findings fixed and committed; stays in review until the manual AC checks after step 4.
+- Step 4: start a fresh backend-dev after the user's go-ahead.
 
 ## Open questions
 
@@ -58,3 +75,5 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 | Agent | Id | Session | Context |
 |---|---|---|---|
 | backend-dev (steps 1–2) | a4887a1e18b011084 | 1 (contract) | 134k |
+| backend-dev (step 3) | a2e244985dedfc2dc | 2 (implementation) | 214k |
+| frontend-dev (step B) | a812ab410fd19cb9b | 2 (implementation) | 166k |

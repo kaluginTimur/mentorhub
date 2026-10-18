@@ -9,6 +9,7 @@ import com.mentorhub.users.internal.security.TestUsers;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +66,7 @@ class DevelopmentUserRunnerTests {
         assertMe(NO_ROLES, "ACTIVE", List.of());
         assertThat(me(DISABLED)).bodyJson().isStrictlyEqualTo("{\"status\": \"DISABLED\"}");
         assertThat(me(STRANGER)).bodyJson().isStrictlyEqualTo("{\"status\": \"NOT_INVITED\"}");
+        assertThat(disableReason(userId("disabled@mentorhub.local"))).isEqualTo("OTHER: Development user");
     }
 
     @Test
@@ -90,12 +92,36 @@ class DevelopmentUserRunnerTests {
         jdbc.sql("update users set status = 'ACTIVE', disabled_reason = null, disabled_comment = null where id = :id")
                 .param("id", disabled)
                 .update();
+        int auditEntries = users.count("audit_log");
 
         runner.run(new DefaultApplicationArguments());
 
         assertThat(users.status(mentor)).isEqualTo("ACTIVE");
+        assertThat(disableReason(mentor)).isNull();
         assertThat(users.roles(mentor)).containsExactly("MENTOR");
         assertThat(users.status(disabled)).isEqualTo("DISABLED");
+        assertThat(disableReason(disabled)).isEqualTo("OTHER: Development user");
+        assertThat(users.count("audit_log")).isEqualTo(auditEntries);
+    }
+
+    // A disabled development user keeps the reason it has; the configured one applies when it is disabled again.
+    @Test
+    void keepsTheReasonOfADisabledUser() {
+        UUID disabled = userId("disabled@mentorhub.local");
+        jdbc.sql("update users set disabled_reason = 'SECURITY', disabled_comment = null where id = :id")
+                .param("id", disabled)
+                .update();
+
+        runner.run(new DefaultApplicationArguments());
+
+        assertThat(disableReason(disabled)).isEqualTo("SECURITY: null");
+
+        jdbc.sql("update users set status = 'ACTIVE', disabled_reason = null where id = :id")
+                .param("id", disabled)
+                .update();
+        runner.run(new DefaultApplicationArguments());
+
+        assertThat(disableReason(disabled)).isEqualTo("OTHER: Development user");
     }
 
     @Test
@@ -140,6 +166,15 @@ class DevelopmentUserRunnerTests {
                 .param("email", email)
                 .query(UUID.class)
                 .single();
+    }
+
+    private @Nullable String disableReason(UUID userId) {
+        return jdbc.sql(
+                        "select disabled_reason || ': ' || coalesce(disabled_comment, 'null') from users where id = :id")
+                .param("id", userId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
     }
 
     private Map<String, Integer> counts() {

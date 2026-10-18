@@ -1,7 +1,7 @@
 package com.mentorhub.users.internal.dev;
 
 import com.mentorhub.users.Role;
-import com.mentorhub.users.internal.domain.UserStatus;
+import com.mentorhub.users.internal.domain.DisableReason;
 import com.mentorhub.users.internal.persistence.LinkedUser;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import java.util.UUID;
@@ -12,8 +12,10 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Creates or updates the development users on start: identity link, status and exactly the configured roles.
- * Idempotent. Profile data is set only when a user is created, as everywhere else.
+ * Creates or updates the development users on start: identity link, status with its disable reason, and exactly the
+ * configured roles. Idempotent. Profile data is set only when a user is created, as everywhere else. A user an
+ * administrator disabled locally is enabled again, with its reason cleared; a configured disabled user that is already
+ * disabled keeps its reason. Writes no audit entries (spec user-administration, Audit).
  */
 class DevelopmentUserRunner implements ApplicationRunner {
 
@@ -39,10 +41,18 @@ class DevelopmentUserRunner implements ApplicationRunner {
     }
 
     private void apply(DevelopmentUsersProperties.DevelopmentUser user) {
-        // TODO(user-administration step 3): temporary; setStatus below sets the status with its disable reason.
-        users.insertUserIfAbsent(user.email(), user.firstName(), user.lastName(), UserStatus.ACTIVE);
+        users.insertUserIfAbsent(user.email(), user.firstName(), user.lastName());
         UUID userId = users.findUserIdByEmail(user.email()).orElseThrow();
-        users.setStatus(userId, user.status());
+        switch (user.status()) {
+            case ACTIVE -> users.enable(userId);
+            case DISABLED -> {
+                DisableReason reason = user.disabledReason();
+                if (reason == null) {
+                    throw new IllegalStateException("Development user " + user.email() + " needs a disabled-reason");
+                }
+                users.disable(userId, reason, user.disabledComment());
+            }
+        }
         users.linkIdentityIfAbsent(userId, properties.issuerUri(), user.subject());
         LinkedUser linked =
                 users.findLinkedUser(properties.issuerUri(), user.subject()).orElseThrow();

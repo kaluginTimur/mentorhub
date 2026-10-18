@@ -37,6 +37,7 @@ public class MeService {
                         profile.email(),
                         profile.firstName(),
                         profile.lastName(),
+                        profile.phone(),
                         List.copyOf(storedRoles.roles(profile.roleNames())),
                         List.copyOf(storedRoles.permissions(profile.roleNames()))));
     }

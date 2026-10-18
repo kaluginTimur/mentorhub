@@ -12,6 +12,7 @@ import com.mentorhub.users.internal.security.TestUsers;
 import com.mentorhub.web.Problems;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -32,6 +33,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 /** ADR 0005 through the real chain; the bootstrap address is {@link TestIssuer#BOOTSTRAP_EMAIL}. */
 @SpringBootTest
@@ -51,6 +54,9 @@ class AdministratorBootstrapTests {
 
     @Autowired
     JdbcClient jdbc;
+
+    @Autowired
+    JsonMapper jsonMapper;
 
     TestUsers users;
 
@@ -83,6 +89,7 @@ class AdministratorBootstrapTests {
                 .containsEntry("first_name", "Anna");
         assertThat(output.getOut()).containsOnlyOnce(APPLIED);
         assertThat(output.getOut()).contains(APPLIED + userId);
+        assertThat(bootstrapEntries(userId)).containsExactly(changes(true, true, false, true));
     }
 
     // AC-12
@@ -131,6 +138,32 @@ class AdministratorBootstrapTests {
         assertThat(users.roles(userId)).containsExactly("ADMIN");
         assertThat(users.count("user_identities")).isEqualTo(1);
         assertThat(output.getOut()).containsOnlyOnce(APPLIED + userId);
+        assertThat(bootstrapEntries(userId)).containsExactly(changes(false, false, true, true));
+    }
+
+    // user-administration AC-20
+    @Test
+    void enablingClearsTheDisableReasonAndComment() {
+        UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.ACTIVE, Role.ADMIN);
+        users.link(userId, "recovering-admin");
+        jdbc.sql("update users set status = 'DISABLED', disabled_reason = 'OTHER', disabled_comment = 'On leave'"
+                        + " where id = :id")
+                .param("id", userId)
+                .update();
+        String token = issuer.token("recovering-admin")
+                .email(TestIssuer.BOOTSTRAP_EMAIL, true)
+                .bearer();
+
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+
+        assertThat(jdbc.sql("select status, disabled_reason, disabled_comment from users where id = :id")
+                        .param("id", userId)
+                        .query()
+                        .singleRow())
+                .containsEntry("status", "ACTIVE")
+                .containsEntry("disabled_reason", null)
+                .containsEntry("disabled_comment", null);
+        assertThat(bootstrapEntries(userId)).containsExactly(changes(false, false, true, false));
     }
 
     // AC-13
@@ -173,6 +206,7 @@ class AdministratorBootstrapTests {
         assertThat(users.status(disabledBootstrapUser)).isEqualTo("DISABLED");
         assertThat(users.roles(disabledBootstrapUser)).isEmpty();
         assertThat(output.getOut()).doesNotContain(APPLIED);
+        assertThat(users.count("audit_log")).isZero();
     }
 
     // AC-14: an administrator who is disabled does not count.
@@ -230,6 +264,7 @@ class AdministratorBootstrapTests {
         assertThat(users.count("user_identities")).isEqualTo(1);
         assertThat(users.roles(userIdByEmail(TestIssuer.BOOTSTRAP_EMAIL))).containsExactly("ADMIN");
         assertThat(output.getOut()).containsOnlyOnce(APPLIED);
+        assertThat(users.count("audit_log")).isEqualTo(1);
     }
 
     private MvcTestResult get(String path, String authorization) {
@@ -237,6 +272,32 @@ class AdministratorBootstrapTests {
                 .uri(path)
                 .header(HttpHeaders.AUTHORIZATION, authorization)
                 .exchange();
+    }
+
+    /** The details of the user's USER_BOOTSTRAPPED_ADMIN entries; each has no actor. */
+    private List<Map<String, Object>> bootstrapEntries(UUID userId) {
+        assertThat(jdbc.sql("select count(*) from audit_log where actor_user_id is not null")
+                        .query(Integer.class)
+                        .single())
+                .isZero();
+        return jdbc
+                .sql("select details::text from audit_log where action = 'USER_BOOTSTRAPPED_ADMIN'"
+                        + " and subject_type = 'USER' and subject_id = :id")
+                .param("id", userId)
+                .query(String.class)
+                .list()
+                .stream()
+                .map(details -> jsonMapper.readValue(details, new TypeReference<Map<String, Object>>() {}))
+                .toList();
+    }
+
+    private static Map<String, Object> changes(
+            boolean userCreated, boolean identityLinked, boolean enabled, boolean adminAdded) {
+        return Map.of(
+                "userCreated", userCreated,
+                "identityLinked", identityLinked,
+                "enabled", enabled,
+                "adminAdded", adminAdded);
     }
 
     private UUID userIdByEmail(String email) {

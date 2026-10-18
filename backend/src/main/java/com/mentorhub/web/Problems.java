@@ -13,6 +13,7 @@ public final class Problems {
     public static final URI ACCESS_ENDED = URI.create("urn:mentorhub:problem:access-ended");
     public static final URI FORBIDDEN = URI.create("urn:mentorhub:problem:forbidden");
     public static final URI NOT_FOUND = URI.create("urn:mentorhub:problem:not-found");
+    public static final URI VALIDATION_FAILED = URI.create("urn:mentorhub:problem:validation-failed");
     public static final URI ABOUT_BLANK = URI.create("about:blank");
 
     private Problems() {}

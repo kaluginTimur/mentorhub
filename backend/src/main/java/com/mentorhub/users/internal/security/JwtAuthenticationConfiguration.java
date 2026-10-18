@@ -1,6 +1,7 @@
 package com.mentorhub.users.internal.security;
 
 import com.mentorhub.users.internal.bootstrap.AdministratorBootstrap;
+import com.mentorhub.users.internal.persistence.UserAuditTrail;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -29,7 +30,10 @@ class JwtAuthenticationConfiguration {
 
     @Bean
     AdministratorBootstrap administratorBootstrap(
-            UserRepository users, TransactionTemplate transactions, SecurityProperties properties) {
-        return new AdministratorBootstrap(users, transactions, properties.bootstrapAdminEmail());
+            UserRepository users,
+            UserAuditTrail auditTrail,
+            TransactionTemplate transactions,
+            SecurityProperties properties) {
+        return new AdministratorBootstrap(users, auditTrail, transactions, properties.bootstrapAdminEmail());
     }
 }

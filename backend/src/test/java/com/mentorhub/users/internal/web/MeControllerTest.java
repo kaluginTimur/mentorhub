@@ -65,7 +65,7 @@ class MeControllerTest {
         given(meService.me())
                 .willReturn(new MeDetails(
                         AccessStatus.ACTIVE,
-                        new UserProfile(USER_ID, "anna@example.com", "Anna", "Petrova", List.of(), List.of())));
+                        new UserProfile(USER_ID, "anna@example.com", "Anna", "Petrova", null, List.of(), List.of())));
 
         MvcTestResult result = mvc.get()
                 .uri("/api/v1/me")
@@ -93,6 +93,7 @@ class MeControllerTest {
                                 "anna@example.com",
                                 "Anna",
                                 "Petrova",
+                                null,
                                 List.of(Role.ADMIN, Role.MENTOR),
                                 List.of(Permission.USERS_READ, Permission.USERS_MANAGE))));
 
@@ -122,7 +123,7 @@ class MeControllerTest {
         given(meService.me())
                 .willReturn(new MeDetails(
                         AccessStatus.ACTIVE,
-                        new UserProfile(USER_ID, "anna@example.com", null, null, List.of(), List.of())));
+                        new UserProfile(USER_ID, "anna@example.com", null, null, null, List.of(), List.of())));
 
         MvcTestResult result = mvc.get()
                 .uri("/api/v1/me")

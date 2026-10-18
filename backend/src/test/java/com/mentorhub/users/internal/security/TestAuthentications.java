@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import com.mentorhub.users.Permission;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -14,7 +15,12 @@ public final class TestAuthentications {
     private TestAuthentications() {}
 
     public static RequestPostProcessor activeUser(UUID userId, Permission... permissions) {
-        return authentication(MentorHubAuthentication.active(jwt(), userId, Set.of(permissions)));
+        return authentication(activeUserAuthentication(userId, permissions));
+    }
+
+    /** For tests that call services directly: put it into the {@code SecurityContextHolder}. */
+    public static Authentication activeUserAuthentication(UUID userId, Permission... permissions) {
+        return MentorHubAuthentication.active(jwt(), userId, Set.of(permissions));
     }
 
     public static RequestPostProcessor disabledUser(UUID userId) {

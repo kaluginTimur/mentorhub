@@ -54,3 +54,5 @@ mentorhub:
         first-name: Dan
         last-name: Disabled
         status: DISABLED
+        disabled-reason: OTHER
+        disabled-comment: Development user

@@ -12,5 +12,6 @@ public record UserProfile(
         String email,
         @Nullable String firstName,
         @Nullable String lastName,
+        @Nullable String phone,
         List<Role> roles,
         List<Permission> permissions) {}
