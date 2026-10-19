@@ -60,6 +60,8 @@ Related: <ADRs, other specs>
 
 ## 3. Design
 
+<Snapshot of the implementation plan; it may drift from the code later. Requirements above stay current.>
+
 ### Modules
 
 <Which modules change or appear, and what each owns.>

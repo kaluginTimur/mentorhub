@@ -23,6 +23,7 @@ An internal platform for the mentors of a training center (SWE, QA, DevOps track
 - Before planning a feature, read the related ADRs, `docs/architecture/invariants.md` and the spec. Record significant new architectural decisions as an ADR.
 - A feature is a vertical slice: contract, migration, backend, frontend, tests.
 - Never edit an applied database migration; add a new one.
+- Until the first release, ADRs and spec requirements are living documents: change them in place when behavior changes; a spec's Design is a snapshot (`docs/development/docs.md`).
 - Work is done when the verification in `docs/development/` passes for every area it touches.
 - Security: domain data references `users.id`, never the token `sub`; access to student data is checked at the resource level; note visibility holds on every read path. Details in `docs/architecture/invariants.md`.
 - Ask before destructive or hard-to-reverse actions, even on local resources: deleting data, resetting databases or Docker volumes, rewriting git history, pushing.

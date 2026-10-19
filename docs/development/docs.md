@@ -22,6 +22,14 @@ The consistency check relies on these:
 - Agents and skills refer to document sections by their bold name: "the **Verification** section of `docs/development/backend.md`". Every guide in `docs/development/` has a Verification section.
 - Commands in `bash` blocks of the Verification and Checking an API sections must match an allow rule in `.claude/settings.json`, so agents can run them without prompts.
 
+## Keeping decisions and specs current
+
+Until the first release, documents describe the current state rather than a history of changes; git keeps the history.
+
+- **ADRs are living.** A changed decision is edited in its ADR, with a dated note in the Status line (`revised <YYYY-MM-DD>: <what changed>`). No superseding ADRs before the first release.
+- **A spec's Requirements are living:** scenarios, acceptance criteria, access matrix, visibility, audit, out of scope. When a feature's behavior changes, its spec is updated in the same change as the code, with a line under the header: `Revised <YYYY-MM-DD>: <what changed> (<feature or PR>)`. A new feature that changes another feature's behavior lists the affected criteria in its own spec and edits them in the other spec.
+- **A spec's Design is a snapshot** of how the feature was implemented. It may drift from the code; the code, `api/openapi.yaml` and the guides in `docs/development/` are the truth for how things work now. A changed ADR does not trigger rewriting the Design sections of implemented specs.
+
 ## Verification
 
 ```bash
