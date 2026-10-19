@@ -31,6 +31,16 @@ Each concern comes with the episode that showed it.
 8. **Acceptance criteria numbers collide.** They are per spec (every spec has an AC-1), while code references them.
 9. **Attribution.** User decisions and Claude's inferences must stay apart. An earlier spec labeled an inference as a user decision.
 10. **No single constitution.** Non-negotiable rules are spread across `AGENTS.md`, `docs/architecture/invariants.md`, the ADRs and the guides.
+11. **"What" and "how" share one document.** Spec-driven development separates the specification (behavior and its reasons) from the technical plan (how it is built). Here the spec's Design section goes down to class names, SQL and lock order. That is what makes specs large and makes them age quickly, because implementation details change more often than behavior.
+12. **`/feature` has no task breakdown.** Implementation follows a fixed pipeline (contract → migration → domain → API → frontend), not tasks derived from a plan for the feature. The progress log records how the work went, not what is planned.
+
+### Pure SDD or not
+
+In an agent-driven project, stale documents cost more than keeping them current. Agents take documents literally and have no unwritten team knowledge to correct them. Updating requirements is cheap work an agent can do as part of every change. The rework therefore aims at living documents as the only description of behavior: every behavior change goes through them, and history stays in git, not in the documents. Costs to plan for:
+
+- small changes and bug fixes need a cheap path that updates the affected requirements without a full `/spec`;
+- review must check that documents and code agree, because a document claiming behavior the code lacks is worse than no document;
+- tests stay the executable check of the requirements, so requirements and tests keep stable ids that refer to each other.
 
 ## Already changed on this branch
 
