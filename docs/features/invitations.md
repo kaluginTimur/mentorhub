@@ -1,18 +1,20 @@
 # Invitations
 
 Status: implemented
+
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (Mailpit and invitation emails).
+Revised: 2026-10-20 by `invitation-links`: the link can be copied again while the invitation is pending (Goal, Scope, AC-1, AC-19, AC-20, Visibility, UI, Decisions). The Design section below still describes the hashed storage of the original implementation (`token_hash`); `invitation-links` replaces it.
 
 ## 1. Requirements
 
 ### Goal
 
-Registration is by invitation only (ADR 0003), but today the only ways in are the administrator bootstrap and the development users. Administrators need to let new people in without touching the database. They create an invitation for an email, optionally with roles, and pass the one-time link on however they like. The person signs in or registers in Keycloak with that email, opens the link, and is linked to a MentorHub user. Inviting a disabled user reactivates the same user. Invitations are audited, so "who let this person in?" always has an answer.
+Registration is by invitation only (ADR 0003), but today the only ways in are the administrator bootstrap and the development users. Administrators need to let new people in without touching the database. They create an invitation for an email, optionally with roles, and pass the link on however they like. The person signs in or registers in Keycloak with that email, opens the link, and is linked to a MentorHub user. Inviting a disabled user reactivates the same user. Invitations are audited, so "who let this person in?" always has an answer.
 
 ### Scope
 
-- Creating an invitation for an email with optional roles. The link is shown once, to copy.
+- Creating an invitation for an email with optional roles. The link is shown when the invitation is created or a new link is issued, and can be copied again from the list while the invitation is pending (revised by `invitation-links`).
 - A list of invitations with their status (pending, expired, accepted, revoked), search and a status filter.
 - Revoking an open invitation, and issuing a new link for it (which also renews the expiry).
 - A public landing page for the link, which leads to sign-in or registration in Keycloak and then accepts the invitation.
@@ -47,7 +49,7 @@ Creating and listing:
 
 - AC-1 (S1, auto): Given an administrator, when they call `POST /api/v1/invitations` with an email and a role set (possibly empty), then:
   - the response is 201 with the invitation (status `PENDING`, expiry = now + the configured lifetime, 7 days by default) and the `link` `<app-url>/invite/<token>`;
-  - the link appears only in this response and in the response that issues a new link (AC-7); it is never returned again;
+  - the link appears in this response, in the response that issues a new link (AC-7) and, for a pending invitation, in `GET /api/v1/invitations/{id}/link` (`invitation-links` AC-1); no other response contains it;
   - an audit entry `INVITATION_CREATED` is written.
 - AC-2 (S1, auto): The email is validated as follows, and an invalid request responds 400 `validation-failed` with an error per field, creating nothing:
   - it is trimmed, must be a valid address, and is at most 254 characters;
@@ -115,12 +117,12 @@ UI:
 
   Given a user without it, these are not rendered, and opening `/invitations` redirects to `/`.
 - AC-19 (S1, S4, auto): The invite dialog validates the email and lets the administrator pick roles.
-  - After creating, the dialog shows the link with "Copy link" and the note that the link is shown only once.
+  - After creating, the dialog shows the link with "Copy link" and the note that it can be copied again from the invitations list while the invitation is pending.
   - The same view appears after "Get a new link".
   - On 409 `user-active` it shows "This person already has access." with a link to their user page; on 409 `invitation-exists`, "There is already an invitation for this email." with a link to that invitation in the list.
   - On 400, field errors show under their fields.
 - AC-20 (S2, S3, auto): The invitations page shows the loading, empty (with and without filters) and error states, and search, status filter and page are kept in the URL. Its row actions depend on the status:
-  - pending and expired: "Get a new link" and "Revoke" (after a confirmation);
+  - pending: "Copy link", "Get a new link" and "Revoke" (after a confirmation); expired: "Get a new link" and "Revoke";
   - accepted: the accepting user's name links to their page;
   - revoked: no actions.
 - AC-21 (S6–S9, auto): The landing page `/invite/<token>` works without sign-in and shows:
@@ -158,7 +160,7 @@ UI:
 | Data | Who sees it |
 |---|---|
 | Invitations (email, roles, status, times, who created, revoked or accepted) | Holders of `USERS_INVITE` (administrators) |
-| The link (token) | The administrator who creates the invitation or issues a new link, in that response only. Only a SHA-256 hash is stored. |
+| The link (token) | Holders of `USERS_INVITE`, while the invitation is pending (in the create and new-link responses and through `GET /api/v1/invitations/{id}/link`). The token is stored in plaintext (`invitation-links`). |
 | An invitation's email and expiry | Anyone holding a valid link (preview) |
 | The acceptance in a user's history | Administrators (`USERS_READ`), as all user history |
 
@@ -212,9 +214,10 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
     - Roles: chips, or "No roles" in secondary text;
     - Status: text "Pending", "Expired", "Accepted" or "Revoked", with a second line "Expires <date>", "Expired <date>", "Accepted by <name>" (a link to the user page) or "Revoked by <name>";
     - Invited: the date and the inviter's name;
-    - row actions: "Get a new link" and "Revoke" as two text buttons, for pending and expired invitations;
+    - row actions: "Copy link", "Get a new link" and "Revoke" as text buttons for a pending invitation; "Get a new link" and "Revoke" for an expired one;
   - a paginator (25 per page);
   - search, status and page are kept in the URL query; `?q=<email>` is also what the `invitation-exists` link opens. The "Accepted by" link to the user page keeps no back-link state for the invitations list.
+- "Copy link" copies the link of a pending invitation to the clipboard and shows the snackbar "Link copied"; the errors and the clipboard fallback are in `invitation-links` AC-8.
 - "Revoke" opens a confirmation: "Revoke the invitation for <email>? The link will stop working." with "Cancel" and "Revoke". On success the snackbar shows "Invitation revoked" and the row updates.
 - "Get a new link" opens a confirmation: "Get a new link for <email>? The previous link will stop working." On success it opens the link view (below).
 - 409 `invitation-closed` shows the snackbar "This invitation is already closed." and reloads the list; 404 (an invitation that disappeared cannot happen, but is handled) does the same. Other errors of the row actions show the snackbar "Something went wrong. Try again." and leave the row as it was.
@@ -230,7 +233,7 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
 | Email              Roles     Status                Invited               |
 | ivan@example.com   Mentor    Pending               18 Oct 2026           |
 |                              Expires 25 Oct 2026   Ada Admin             |
-|                                      [Get a new link] [Revoke]           |
+|                         [Copy link] [Get a new link] [Revoke]            |
 | maria@example.com  No roles  Accepted              15 Oct 2026           |
 |                              Accepted by Maria K.  Ada Admin             |
 |                                        25 per page  1-2 of 2  < >        |
@@ -248,15 +251,16 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
 
 Shown in the dialog after creating an invitation or getting a new link.
 
-- Title "Invitation link"; text "Send this link to <email>. It is shown only once and expires on <date>."
+- Title "Invitation link"; text "Send this link to <email>. It expires on <date>. You can copy it again from the invitations list while it is pending."
 - A read-only field with the link and "Copy link". Copying shows the snackbar "Link copied". If the clipboard is not available, the field is selected so the user can copy it by hand.
 - Action "Done". The list reloads when the dialog closes.
 
 ```
 +-------------------------------------------------+
 | Invitation link                                 |
-| Send this link to ivan@example.com. It is shown |
-| only once and expires on 25 Oct 2026.           |
+| Send this link to ivan@example.com. It expires  |
+| on 25 Oct 2026. You can copy it again from the  |
+| invitations list while it is pending.           |
 | [http://localhost:4200/invite/Xf3...] [Copy link]|
 |                                        [Done]   |
 +-------------------------------------------------+
@@ -300,7 +304,7 @@ Shown in the dialog after creating an invitation or getting a new link.
 ### Accessibility
 
 - The same rules as user administration: one `h1` per page, labelled filters, column headers, status as text, and dialog focus handling.
-- "Copy link" has the accessible name "Copy invitation link"; the link field has the label "Invitation link".
+- "Copy link" in the link view has the accessible name "Copy invitation link"; the row action has the accessible name "Copy invitation link for <email>"; the link field has the label "Invitation link".
 - Snackbars are polite; the dialog's 409 messages are inline with `role="alert"`.
 
 ## 3. Design
@@ -468,7 +472,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 - Only administrators invite, through a new permission `USERS_INVITE` (user decision).
 - Acceptance requires a verified email equal to the invitation's (user decision). A forwarded link is useless to anyone else.
 - An email of an active user cannot be invited (409). An active user's roles are changed only on the user page. A disabled user's email can be invited, and acceptance reactivates the same `users.id` and adds roles (user decision).
-- Links last 7 days, configurable. Only the hash is stored, so a lost link is replaced by issuing a new one, and there is one open invitation per email (user decision).
+- Links last 7 days, configurable. There is one open invitation per email (user decision). Revised by `invitation-links`: the token is stored in plaintext (not a hash), so the link of a pending invitation can be copied again; a new link is still issued when the invitation has expired.
 - A public landing page with "Sign in" and "Create an account", and automatic acceptance after the round trip (user decision).
 - Invitations get their own page, `/invitations` (user decision).
 - Invitations live in the `users` module, not in a new module (recommendation; the user did not object). Linking identities, reactivation, the gate exemption and the row locks are `users` internals. A separate module would need a public "link an identity to a user" API, which the invariant "linking happens only through an invitation or ADR 0005" argues against.

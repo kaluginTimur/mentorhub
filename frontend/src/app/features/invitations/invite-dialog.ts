@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Api } from '../../core/api/api';
 import { createInvitation } from '../../core/api/fn/invitations/create-invitation';
+import { InvitationLink } from '../../core/api/models/invitation-link';
 import { CreatedInvitation } from '../../core/api/models/created-invitation';
 import { Role } from '../../core/api/models/role';
 import { ROLE } from '../../core/api/models/role-array';
@@ -18,6 +19,28 @@ import { LinkView } from './link-view';
 export interface InviteDialogData {
   /** Opens the link view directly, for a link that has just been issued. */
   created?: CreatedInvitation;
+  /** Opens the copy view directly, when the clipboard could not be written. */
+  copy?: InvitationLink;
+}
+
+interface LinkShown {
+  link: InvitationLink;
+  mode: 'new' | 'copy';
+}
+
+function toLink(created: CreatedInvitation): InvitationLink {
+  return {
+    link: created.link,
+    email: created.invitation.email,
+    expiresAt: created.invitation.expiresAt,
+  };
+}
+
+function initialView(data: InviteDialogData | null): LinkShown | null {
+  if (data?.created) {
+    return { link: toLink(data.created), mode: 'new' };
+  }
+  return data?.copy ? { link: data.copy, mode: 'copy' } : null;
 }
 
 type Conflict = { kind: 'user-active'; userId: string } | { kind: 'invitation-exists' };
@@ -38,8 +61,8 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     LinkView,
   ],
   template: `
-    @if (created(); as c) {
-      <app-link-view [created]="c" (done)="ref.close()" />
+    @if (shown(); as s) {
+      <app-link-view [link]="s.link" [mode]="s.mode" (done)="ref.close()" />
     } @else {
       <h2 mat-dialog-title>Invite a person</h2>
       <form novalidate (submit)="onSubmit($event)">
@@ -140,7 +163,7 @@ export class InviteDialog {
 
   protected readonly roles = ROLE;
   protected readonly labels = ROLE_LABELS;
-  protected readonly created = signal<CreatedInvitation | null>(this.data?.created ?? null);
+  protected readonly shown = signal<LinkShown | null>(initialView(this.data));
   protected readonly saving = signal(false);
   protected readonly selected = signal<Role[]>([]);
   protected readonly rolesError = signal('');
@@ -189,7 +212,7 @@ export class InviteDialog {
           const result = await this.api.invoke(createInvitation, {
             body: { email: field().value().email.trim(), roles: this.selected() },
           });
-          this.created.set(result);
+          this.shown.set({ link: toLink(result), mode: 'new' });
           return undefined;
         } catch (error) {
           return this.fail(error, field);

@@ -13,32 +13,42 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CreatedInvitation } from '../../core/api/models/created-invitation';
+import { InvitationLink } from '../../core/api/models/invitation-link';
 
-/** The content of a dialog that shows a new invitation link once. */
+/** The content of a dialog that shows an invitation link: 'new' offers to copy it, 'copy' is the manual fallback. */
 @Component({
   selector: 'app-link-view',
   imports: [DatePipe, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   template: `
     <h2 mat-dialog-title>Invitation link</h2>
     <mat-dialog-content>
-      <p>
-        Send this link to {{ created().invitation.email }}. It is shown only once and expires on
-        {{ created().invitation.expiresAt | date: 'd MMM y' }}.
-      </p>
+      @if (mode() === 'new') {
+        <p>
+          Send this link to {{ link().email }}. It expires on
+          {{ link().expiresAt | date: 'd MMM y' }}. You can copy it again from the invitations list
+          while it is pending.
+        </p>
+      } @else {
+        <p>
+          Copy this link and send it to {{ link().email }}. It expires on
+          {{ link().expiresAt | date: 'd MMM y' }}.
+        </p>
+      }
       <div class="row">
         <mat-form-field class="field">
           <mat-label>Invitation link</mat-label>
-          <input #field matInput readonly [value]="created().link" (focus)="field.select()" />
+          <input #field matInput readonly [value]="link().link" (focus)="field.select()" />
         </mat-form-field>
-        <button
-          matButton="outlined"
-          type="button"
-          aria-label="Copy invitation link"
-          (click)="copy()"
-        >
-          Copy link
-        </button>
+        @if (mode() === 'new') {
+          <button
+            matButton="outlined"
+            type="button"
+            aria-label="Copy invitation link"
+            (click)="copy()"
+          >
+            Copy link
+          </button>
+        }
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -64,15 +74,20 @@ export class LinkView {
   private readonly field = viewChild.required<ElementRef<HTMLInputElement>>('field');
 
   constructor() {
-    afterNextRender(() => this.field().nativeElement.focus());
+    afterNextRender(() => {
+      const input = this.field().nativeElement;
+      input.focus();
+      input.select();
+    });
   }
 
-  readonly created = input.required<CreatedInvitation>();
+  readonly link = input.required<InvitationLink>();
+  readonly mode = input<'new' | 'copy'>('new');
   readonly done = output();
 
   protected async copy(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(this.created().link);
+      await navigator.clipboard.writeText(this.link().link);
       this.snackBar.open('Link copied', 'Dismiss', { duration: 5000, politeness: 'polite' });
     } catch {
       // no clipboard (insecure origin or permission refused): select the text to copy it by hand

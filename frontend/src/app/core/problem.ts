@@ -7,6 +7,7 @@ export const PROBLEM = {
   lastAdmin: 'urn:mentorhub:problem:last-admin',
   invitationInvalid: 'urn:mentorhub:problem:invitation-invalid',
   invitationClosed: 'urn:mentorhub:problem:invitation-closed',
+  invitationExpired: 'urn:mentorhub:problem:invitation-expired',
   invitationExists: 'urn:mentorhub:problem:invitation-exists',
   invitationEmailMismatch: 'urn:mentorhub:problem:invitation-email-mismatch',
   identityLinkedElsewhere: 'urn:mentorhub:problem:identity-linked-elsewhere',

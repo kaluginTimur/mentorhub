@@ -95,10 +95,22 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
             <td mat-cell *matCellDef="let invitation" class="actions">
+              @if (invitation.status === 'PENDING') {
+                <button
+                  matButton
+                  type="button"
+                  [disabled]="busyId() === invitation.id"
+                  [attr.aria-label]="'Copy invitation link for ' + invitation.email"
+                  (click)="copyLink(invitation)"
+                >
+                  Copy link
+                </button>
+              }
               @if (isOpen(invitation)) {
                 <button
                   matButton
                   type="button"
+                  [disabled]="busyId() === invitation.id"
                   [attr.aria-label]="'Get a new link for ' + invitation.email"
                   (click)="newLink(invitation)"
                 >
@@ -107,6 +119,7 @@
                 <button
                   matButton
                   type="button"
+                  [disabled]="busyId() === invitation.id"
                   [attr.aria-label]="'Revoke the invitation for ' + invitation.email"
                   (click)="revoke(invitation)"
                 >

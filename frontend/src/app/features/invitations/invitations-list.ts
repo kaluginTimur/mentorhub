@@ -7,6 +7,7 @@ import {
   inject,
   linkedSignal,
   resource,
+  signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
@@ -22,6 +23,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../../core/api/api';
+import { getInvitationLink } from '../../core/api/fn/invitations/get-invitation-link';
 import { listInvitations } from '../../core/api/fn/invitations/list-invitations';
 import { reissueInvitationLink } from '../../core/api/fn/invitations/reissue-invitation-link';
 import { revokeInvitation } from '../../core/api/fn/invitations/revoke-invitation';
@@ -113,6 +115,9 @@ export class InvitationsList {
   });
   protected readonly rows = computed(() => this.loaded()?.items ?? []);
 
+  /** The invitation whose row action is running; its actions stay disabled meanwhile. */
+  protected readonly busyId = signal<string | null>(null);
+
   protected readonly columns = ['email', 'roles', 'status', 'invited', 'actions'];
   protected readonly statuses = INVITATION_STATUS;
   protected readonly pageSize = PAGE_SIZE;
@@ -165,6 +170,43 @@ export class InvitationsList {
 
   protected async invite(): Promise<void> {
     await this.openAndReload({});
+  }
+
+  protected async copyLink(invitation: Invitation): Promise<void> {
+    this.busyId.set(invitation.id);
+    // fetched before any await so that the clipboard write starts inside the click (Safari)
+    const fetched = this.api.invoke(getInvitationLink, { id: invitation.id });
+    fetched.catch(() => undefined);
+    try {
+      let copied = false;
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        const blob = fetched.then((l) => new Blob([l.link], { type: 'text/plain' }));
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
+          copied = true;
+        } catch {
+          // fall back to writeText below (or to the API error)
+        }
+      }
+      const link = await fetched;
+      if (!copied) {
+        try {
+          await navigator.clipboard.writeText(link.link);
+          copied = true;
+        } catch {
+          // no clipboard at all: the copy view lets the user copy by hand
+        }
+      }
+      if (copied) {
+        this.snackBar.open('Link copied', 'Dismiss', { duration: 5000, politeness: 'polite' });
+      } else {
+        await this.openAndReload({ copy: link });
+      }
+    } catch (error) {
+      this.rowActionFailed(error);
+    } finally {
+      this.busyId.update((id) => (id === invitation.id ? null : id));
+    }
   }
 
   protected async revoke(invitation: Invitation): Promise<void> {
@@ -223,6 +265,11 @@ export class InvitationsList {
     const problem = problemOf(error);
     if (problem?.type === PROBLEM.invitationClosed || problem?.status === 404) {
       this.snackBar.open('This invitation is already closed.', 'Dismiss', { politeness: 'polite' });
+      this.invitations.reload();
+    } else if (problem?.type === PROBLEM.invitationExpired) {
+      this.snackBar.open('This invitation has expired. Get a new link.', 'Dismiss', {
+        politeness: 'polite',
+      });
       this.invitations.reload();
     } else if (problem?.status !== 403) {
       this.snackBar.open('Something went wrong. Try again.', 'Dismiss', { politeness: 'polite' });

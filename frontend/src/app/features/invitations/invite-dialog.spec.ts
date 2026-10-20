@@ -91,7 +91,7 @@ describe('InviteDialog', () => {
     });
     expect(root.textContent).toContain('Invitation link');
     expect(root.textContent).toContain(
-      'Send this link to ivan@example.com. It is shown only once and expires on 25 Oct 2026.',
+      'Send this link to ivan@example.com. It expires on 25 Oct 2026. You can copy it again from the invitations list while it is pending.',
     );
     expect((root.querySelector('input[readonly]') as HTMLInputElement).value).toBe(
       'http://localhost:4200/invite/Xf3abc',
@@ -106,6 +106,21 @@ describe('InviteDialog', () => {
     const { root } = await open({ created: created() });
     expect(root.textContent).toContain('Invitation link');
     expect(root.querySelector('input[type=email]')).toBeNull();
+  });
+
+  it('opens the copy view for a link fetched from the list (AC-8)', async () => {
+    const { root } = await open({
+      copy: {
+        link: 'http://localhost:4200/invite/Xf3abc',
+        email: 'ivan@example.com',
+        expiresAt: '2026-10-25T09:00:00Z',
+      },
+    });
+    expect(root.textContent).toContain(
+      'Copy this link and send it to ivan@example.com. It expires on 25 Oct 2026.',
+    );
+    expect(root.querySelector('button[aria-label="Copy invitation link"]')).toBeNull();
+    expect(root.textContent).toContain('Done');
   });
 
   it('copies the link and confirms with a snackbar (AC-19)', async () => {
