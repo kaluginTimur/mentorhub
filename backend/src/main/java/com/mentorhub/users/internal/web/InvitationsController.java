@@ -16,12 +16,12 @@ import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.internal.invitation.InvitationAcceptanceService;
 import com.mentorhub.users.internal.invitation.InvitationAdministrationService;
 import com.mentorhub.users.internal.invitation.InvitationQuery;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Invitations} tag: managing invitations, and the public preview and the acceptance of a link. Parameter
@@ -32,10 +32,20 @@ class InvitationsController implements InvitationsApi {
 
     private final InvitationAdministrationService administration;
     private final InvitationAcceptanceService acceptance;
+    private final HttpServletResponse response;
 
-    InvitationsController(InvitationAdministrationService administration, InvitationAcceptanceService acceptance) {
+    InvitationsController(
+            InvitationAdministrationService administration,
+            InvitationAcceptanceService acceptance,
+            HttpServletResponse response) {
         this.administration = administration;
         this.acceptance = acceptance;
+        this.response = response;
+    }
+
+    /** The generated methods return DTOs, so the header of a response that carries a token is set here. */
+    private void noStore() {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     }
 
     @Override
@@ -46,7 +56,10 @@ class InvitationsController implements InvitationsApi {
         List<com.mentorhub.users.@Nullable Role> roles = invitationCreate.getRoles().stream()
                 .map(role -> role == null ? null : UsersMapper.role(role))
                 .toList();
-        return InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles));
+        CreatedInvitation created =
+                InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles));
+        noStore();
+        return created;
     }
 
     @Override
@@ -66,14 +79,17 @@ class InvitationsController implements InvitationsApi {
     @Override
     @RequirePermission(Permission.USERS_INVITE)
     public CreatedInvitation reissueInvitationLink(UUID id) {
-        return InvitationsMapper.created(administration.reissueLink(id));
+        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id));
+        noStore();
+        return created;
     }
 
-    // TODO(invitation-links step 4): temporary stub, replaced by the real implementation.
     @Override
     @RequirePermission(Permission.USERS_INVITE)
     public InvitationLink getInvitationLink(UUID id) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+        InvitationLink link = InvitationsMapper.link(administration.link(id));
+        noStore();
+        return link;
     }
 
     @Override

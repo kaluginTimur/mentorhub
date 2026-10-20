@@ -3,12 +3,14 @@ package com.mentorhub.users.internal.web;
 import com.mentorhub.api.model.CreatedInvitation;
 import com.mentorhub.api.model.HistoryActor;
 import com.mentorhub.api.model.Invitation;
+import com.mentorhub.api.model.InvitationLink;
 import com.mentorhub.api.model.InvitationPage;
 import com.mentorhub.api.model.InvitationPreview;
 import com.mentorhub.api.model.InvitationStatus;
 import com.mentorhub.api.model.Role;
 import com.mentorhub.users.internal.invitation.InvitationDetails;
 import com.mentorhub.users.internal.invitation.IssuedInvitation;
+import com.mentorhub.users.internal.invitation.PendingInvitationLink;
 import com.mentorhub.users.internal.invitation.PreviewedInvitation;
 import com.mentorhub.users.internal.service.ResultPage;
 import java.time.Instant;
@@ -47,6 +49,10 @@ final class InvitationsMapper {
                 page.page(),
                 page.size(),
                 page.totalItems());
+    }
+
+    static InvitationLink link(PendingInvitationLink link) {
+        return new InvitationLink(link.link(), link.email(), dateTime(link.expiresAt()));
     }
 
     static InvitationPreview preview(PreviewedInvitation preview) {

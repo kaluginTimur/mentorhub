@@ -17,6 +17,7 @@ import com.mentorhub.users.internal.invitation.InvitationDetails;
 import com.mentorhub.users.internal.invitation.InvitationProblems;
 import com.mentorhub.users.internal.invitation.InvitationQuery;
 import com.mentorhub.users.internal.invitation.IssuedInvitation;
+import com.mentorhub.users.internal.invitation.PendingInvitationLink;
 import com.mentorhub.users.internal.invitation.PreviewedInvitation;
 import com.mentorhub.users.internal.security.TestAuthentications;
 import com.mentorhub.users.internal.security.WebSliceSecurity;
@@ -130,7 +131,8 @@ class InvitationsControllerTest {
                 Arguments.of(HttpMethod.POST, "/api/v1/invitations", CREATE_BODY),
                 Arguments.of(HttpMethod.GET, "/api/v1/invitations", ""),
                 Arguments.of(HttpMethod.POST, invitation + "/revoke", ""),
-                Arguments.of(HttpMethod.POST, invitation + "/link", ""));
+                Arguments.of(HttpMethod.POST, invitation + "/link", ""),
+                Arguments.of(HttpMethod.GET, invitation + "/link", ""));
     }
 
     @Nested
@@ -245,6 +247,7 @@ class InvitationsControllerTest {
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations", CREATE_BODY, admin());
 
             assertThat(result).hasStatus(HttpStatus.CREATED);
+            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
             assertThat(result).bodyJson().isStrictlyEqualTo("""
                     {
                       "invitation": {
@@ -347,6 +350,7 @@ class InvitationsControllerTest {
                     mvc.get().uri("/api/v1/invitations").with(admin()).exchange();
 
             assertThat(result).hasStatusOk();
+            assertThat(result).bodyText().doesNotContain(TOKEN);
             assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(2);
             assertThat(result).bodyJson().extractingPath("$.size").isEqualTo(25);
             assertThat(result)
@@ -452,6 +456,7 @@ class InvitationsControllerTest {
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations/" + INVITATION_ID + "/link", "", admin());
 
             assertThat(result).hasStatusOk();
+            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
             assertThat(result).bodyJson().extractingPath("$.link").isEqualTo("http://localhost:4200/invite/" + TOKEN);
             assertThat(result).bodyJson().extractingPath("$.invitation.id").isEqualTo(INVITATION_ID.toString());
         }
@@ -461,6 +466,61 @@ class InvitationsControllerTest {
             assertValidationProblem(send(HttpMethod.POST, "/api/v1/invitations/nope/revoke", "", admin()), "id");
             assertValidationProblem(send(HttpMethod.POST, "/api/v1/invitations/nope/link", "", admin()), "id");
         }
+    }
+
+    @Nested
+    class GetLink {
+
+        static final String PATH = "/api/v1/invitations/" + INVITATION_ID + "/link";
+
+        // AC-1, AC-4
+        @Test
+        void returnsTheLinkWithoutCaching() {
+            given(administration.link(INVITATION_ID))
+                    .willReturn(new PendingInvitationLink(
+                            URI.create("http://localhost:4200/invite/" + TOKEN), "ivan@example.com", EXPIRES_AT));
+
+            MvcTestResult result = send(HttpMethod.GET, PATH, "", admin());
+
+            assertThat(result).hasStatusOk();
+            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
+            assertThat(result).bodyJson().isStrictlyEqualTo("""
+                    {
+                      "link": "http://localhost:4200/invite/%s",
+                      "email": "ivan@example.com",
+                      "expiresAt": "2026-10-19T09:00:30Z"
+                    }
+                    """.formatted(TOKEN));
+        }
+
+        // AC-2
+        @Test
+        void unknownInvitationIsNotFound() {
+            given(administration.link(INVITATION_ID)).willThrow(new NotFoundException());
+
+            assertProblem(send(HttpMethod.GET, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
+        }
+
+        // AC-2
+        @ParameterizedTest
+        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#unavailableLinkTypes")
+        void closedOrExpiredInvitationIsAConflict(URI type) {
+            given(administration.link(INVITATION_ID)).willThrow(new ConflictException(type, "Unavailable."));
+
+            MvcTestResult result = send(HttpMethod.GET, PATH, "", admin());
+
+            assertProblem(result, HttpStatus.CONFLICT, type);
+            assertThat(result).bodyText().doesNotContain(TOKEN);
+        }
+
+        @Test
+        void nonUuidIdIsAValidationProblem() {
+            assertValidationProblem(send(HttpMethod.GET, "/api/v1/invitations/nope/link", "", admin()), "id");
+        }
+    }
+
+    static Stream<URI> unavailableLinkTypes() {
+        return Stream.of(InvitationProblems.INVITATION_CLOSED, InvitationProblems.INVITATION_EXPIRED);
     }
 
     @Nested
