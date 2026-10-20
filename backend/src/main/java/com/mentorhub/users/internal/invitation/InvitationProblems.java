@@ -13,6 +13,9 @@ public final class InvitationProblems {
     public static final URI INVITATION_EXISTS = URI.create("urn:mentorhub:problem:invitation-exists");
 
     public static final URI INVITATION_CLOSED = URI.create("urn:mentorhub:problem:invitation-closed");
+    /** 409: the link of an expired invitation is not returned (spec invitation-links, AC-2). */
+    public static final URI INVITATION_EXPIRED = URI.create("urn:mentorhub:problem:invitation-expired");
+
     public static final URI INVITATION_EMAIL_MISMATCH = URI.create("urn:mentorhub:problem:invitation-email-mismatch");
     public static final URI IDENTITY_LINKED_ELSEWHERE = URI.create("urn:mentorhub:problem:identity-linked-elsewhere");
 

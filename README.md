@@ -45,7 +45,7 @@ Every development user has the password `mentorhub`:
 
 ### Inviting and accepting locally
 
-1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant, then copy the link from the "Invitation link" dialog: it is shown only once.
+1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant, then copy the link from the "Invitation link" dialog (you can copy it again later with "Copy link" in the invitations list while it is pending).
 2. Sign out, open the link and sign in with the invited email, or choose "Create an account" and verify the email through Mailpit. Accepting needs an email that Keycloak has verified; `stranger@mentorhub.local` is already verified.
 3. After accepting, you land on the home page with the invited roles; the user's page shows the acceptance in its history.
 

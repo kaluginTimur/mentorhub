@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '../../core/api/api';
+import { getInvitationLink } from '../../core/api/fn/invitations/get-invitation-link';
 import { listInvitations } from '../../core/api/fn/invitations/list-invitations';
 import { reissueInvitationLink } from '../../core/api/fn/invitations/reissue-invitation-link';
 import { revokeInvitation } from '../../core/api/fn/invitations/revoke-invitation';
@@ -105,7 +106,10 @@ describe('InvitationsList', () => {
     expect(rows[2].querySelector('a')?.getAttribute('href')).toBe('/users/u9');
     expect(rows[2].querySelector('a')?.textContent).toBe('Maria K.');
     expect(rows[3].textContent).toContain('Revoked by Boris B.');
-    expect(rowButtons(element, 0)).toEqual(['Get a new link', 'Revoke']);
+    expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
+    expect(rows[0].querySelector('button')?.getAttribute('aria-label')).toBe(
+      'Copy invitation link for p@example.com',
+    );
     expect(rowButtons(element, 1)).toEqual(['Get a new link', 'Revoke']);
     expect(rowButtons(element, 2)).toEqual([]);
     expect(rowButtons(element, 3)).toEqual([]);
@@ -329,8 +333,242 @@ describe('InvitationsList', () => {
       const field = document.querySelector('app-link-view input') as HTMLInputElement;
       expect(field.value).toBe('http://localhost:4200/invite/Xf3abc');
       expect(document.querySelector('app-link-view')?.textContent).toContain(
-        'Send this link to p@example.com. It is shown only once and expires on 25 Oct 2026.',
+        'Send this link to p@example.com. It expires on 25 Oct 2026. You can copy it again from the invitations list while it is pending.',
       );
+    });
+
+    describe('Copy link (AC-8)', () => {
+      const linkResponse = {
+        link: 'http://localhost:4200/invite/Xf3abc',
+        email: 'p@example.com',
+        expiresAt: '2026-10-25T09:00:00Z',
+      };
+
+      afterEach(() => vi.unstubAllGlobals());
+
+      const pending = async () => {
+        const result = await openWithOnePending();
+        api.invoke.mockImplementation(async (fn) =>
+          fn === getInvitationLink ? linkResponse : page([invitation({ id: 'p' })]),
+        );
+        return result;
+      };
+
+      it('starts the clipboard item write inside the click, before the link arrives', async () => {
+        class FakeItem {
+          constructor(readonly data: Record<string, Promise<Blob>>) {}
+        }
+        let copiedText: Promise<string> | undefined;
+        const write = vi.fn(async (items: FakeItem[]) => {
+          copiedText = items[0].data['text/plain'].then((blob) => blob.text());
+          await copiedText;
+        });
+        vi.stubGlobal('ClipboardItem', FakeItem);
+        vi.stubGlobal('navigator', { clipboard: { write } });
+        const { element } = await openWithOnePending();
+        let release!: (v: unknown) => void;
+        api.invoke.mockImplementation(
+          (fn) =>
+            new Promise((resolve) => {
+              if (fn === getInvitationLink) {
+                release = resolve;
+              } else {
+                resolve(page([invitation({ id: 'p' })]));
+              }
+            }),
+        );
+        click(element, 'Copy link');
+        expect(write).toHaveBeenCalledTimes(1);
+        expect(document.body.textContent).not.toContain('Link copied');
+        release(linkResponse);
+        await vi.waitFor(() => expect(document.body.textContent).toContain('Link copied'));
+        expect(await copiedText).toBe(linkResponse.link);
+        expect(api.invoke).toHaveBeenCalledWith(getInvitationLink, { id: 'p' });
+      });
+
+      it('falls back to writeText when the item write is rejected', async () => {
+        class FakeItem {
+          constructor(readonly data: Record<string, Promise<Blob>>) {}
+        }
+        const write = vi.fn().mockRejectedValue(new Error('denied'));
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('ClipboardItem', FakeItem);
+        vi.stubGlobal('navigator', { clipboard: { write, writeText } });
+        const { element } = await pending();
+        click(element, 'Copy link');
+        await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(linkResponse.link));
+        await vi.waitFor(() => expect(document.body.textContent).toContain('Link copied'));
+      });
+
+      it('falls back to writeText when the item write is not supported', async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText } });
+        const { element } = await pending();
+        click(element, 'Copy link');
+        await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(linkResponse.link));
+        await vi.waitFor(() => expect(document.body.textContent).toContain('Link copied'));
+      });
+
+      it('opens the copy view when no clipboard write works', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', {});
+        const { element } = await pending();
+        click(element, 'Copy link');
+        await vi.waitFor(() =>
+          expect(document.querySelector('app-link-view')?.textContent).toContain(
+            'Copy this link and send it to p@example.com. It expires on 25 Oct 2026.',
+          ),
+        );
+        expect((document.querySelector('app-link-view input') as HTMLInputElement).value).toBe(
+          linkResponse.link,
+        );
+        expect(
+          document.querySelector('app-link-view button[aria-label="Copy invitation link"]'),
+        ).toBeNull();
+        const input = document.querySelector('app-link-view input') as HTMLInputElement;
+        expect(document.activeElement).toBe(input);
+        expect(input.selectionStart).toBe(0);
+        expect(input.selectionEnd).toBe(linkResponse.link.length);
+      });
+
+      it('returns focus to the Copy link button after the copy view closes', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', {});
+        const { harness, element } = await pending();
+        const copy = element.querySelector('tr.mat-mdc-row button') as HTMLButtonElement;
+        copy.focus();
+        copy.click();
+        await vi.waitFor(() => expect(document.querySelector('app-link-view')).toBeTruthy());
+        TestBed.inject(MatDialog).closeAll();
+        await vi.waitFor(() => expect(document.querySelector('app-link-view')).toBeNull());
+        await vi.waitFor(() => {
+          harness.detectChanges();
+          const current = element.querySelector('tr.mat-mdc-row button');
+          expect(current?.textContent?.trim()).toBe('Copy link');
+          expect(document.activeElement).toBe(current);
+        });
+      });
+
+      it('shows nothing of its own on 403 (the interceptor shows the permission message)', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        const { element } = await openWithOnePending();
+        api.invoke.mockRejectedValueOnce(problem(403, 'urn:mentorhub:problem:forbidden'));
+        click(element, 'Copy link');
+        await vi.waitFor(() =>
+          expect(
+            element.querySelector('tr.mat-mdc-row button')?.getAttribute('aria-disabled'),
+          ).not.toBe('true'),
+        );
+        expect(document.body.textContent).not.toContain('Something went wrong');
+        expect(document.body.textContent).not.toContain('already closed');
+        expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(1);
+      });
+
+      it('disables the row actions while the link is fetched', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        const { harness, element } = await openWithOnePending();
+        let release!: (v: unknown) => void;
+        api.invoke.mockImplementation(
+          (fn) => new Promise((r) => (release = fn === getInvitationLink ? r : () => undefined)),
+        );
+        click(element, 'Copy link');
+        harness.detectChanges();
+        await vi.waitFor(() => {
+          harness.detectChanges();
+          const buttons = [...element.querySelectorAll('tr.mat-mdc-row button')];
+          expect(buttons).toHaveLength(3);
+          expect(buttons.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
+          expect(buttons.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
+        });
+        const copy = element.querySelector('tr.mat-mdc-row button') as HTMLButtonElement;
+        copy.focus();
+        expect(document.activeElement).toBe(copy);
+        const calls = api.invoke.mock.calls.length;
+        copy.click();
+        expect(api.invoke.mock.calls).toHaveLength(calls);
+        release(linkResponse);
+      });
+
+      it('keeps the busy state per row while another row starts an action', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        api.invoke.mockResolvedValue(
+          page([invitation({ id: 'p' }), invitation({ id: 'q', email: 'q@example.com' })]),
+        );
+        const { harness, element } = await open();
+        const releases: Record<string, (v: unknown) => void> = {};
+        api.invoke.mockImplementation(
+          (fn, params) =>
+            new Promise((resolve) => {
+              if (fn === getInvitationLink) {
+                releases[(params as { id: string }).id] = resolve;
+              } else {
+                resolve(page([]));
+              }
+            }),
+        );
+        const copyOf = (row: number) =>
+          element.querySelectorAll('tr.mat-mdc-row')[row].querySelector('button') as HTMLElement;
+        copyOf(0).click();
+        copyOf(1).click();
+        harness.detectChanges();
+        expect(copyOf(0).getAttribute('aria-disabled')).toBe('true');
+        expect(copyOf(1).getAttribute('aria-disabled')).toBe('true');
+        releases['q'](linkResponse);
+        await vi.waitFor(() => {
+          harness.detectChanges();
+          expect(copyOf(1).getAttribute('aria-disabled')).not.toBe('true');
+        });
+        expect(copyOf(0).getAttribute('aria-disabled')).toBe('true');
+        releases['p'](linkResponse);
+      });
+
+      it('shows the expired message and reloads on 409 invitation-expired', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        const { element } = await openWithOnePending();
+        api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-expired'));
+        click(element, 'Copy link');
+        await vi.waitFor(() =>
+          expect(document.body.textContent).toContain(
+            'This invitation has expired. Get a new link.',
+          ),
+        );
+        await vi.waitFor(() =>
+          expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(2),
+        );
+      });
+
+      it.each([
+        [409, 'urn:mentorhub:problem:invitation-closed'],
+        [404, 'urn:mentorhub:problem:not-found'],
+      ])('shows the closed message and reloads on %i', async (status, type) => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        const { element } = await openWithOnePending();
+        api.invoke.mockRejectedValueOnce(problem(status, type));
+        click(element, 'Copy link');
+        await vi.waitFor(() =>
+          expect(document.body.textContent).toContain('This invitation is already closed.'),
+        );
+        await vi.waitFor(() =>
+          expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(2),
+        );
+      });
+
+      it('shows a generic message on other errors', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        const { element } = await openWithOnePending();
+        api.invoke.mockRejectedValueOnce(problem(500, 'about:blank'));
+        click(element, 'Copy link');
+        await vi.waitFor(() =>
+          expect(document.body.textContent).toContain('Something went wrong. Try again.'),
+        );
+      });
     });
 
     it('reloads the list when the link dialog closes', async () => {

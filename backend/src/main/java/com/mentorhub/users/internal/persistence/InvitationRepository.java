@@ -54,15 +54,15 @@ public class InvitationRepository {
      * @return the new id, or empty when an open invitation for the email (ignoring case) exists
      */
     public Optional<UUID> insertIfNoOpenInvitation(
-            String email, String tokenHash, UUID createdBy, Duration lifetime, Collection<Role> roles) {
+            String email, String token, UUID createdBy, Duration lifetime, Collection<Role> roles) {
         Optional<UUID> id = jdbc.sql("""
-                        insert into invitations (email, token_hash, created_by, expires_at)
-                        values (:email, :tokenHash, :createdBy, now() + :lifetimeMillis * interval '1 millisecond')
+                        insert into invitations (email, token, created_by, expires_at)
+                        values (:email, :token, :createdBy, now() + :lifetimeMillis * interval '1 millisecond')
                         on conflict ((lower(email))) where accepted_at is null and revoked_at is null do nothing
                         returning id
                         """)
                 .param("email", email)
-                .param("tokenHash", tokenHash)
+                .param("token", token)
                 .param("createdBy", createdBy)
                 .param("lifetimeMillis", lifetime.toMillis())
                 .query(UUID.class)
@@ -89,9 +89,23 @@ public class InvitationRepository {
                 .optional());
     }
 
-    public Optional<StoredInvitation> findByTokenHash(String tokenHash) {
-        return withRoles(jdbc.sql(COLUMNS + "where i.token_hash = :tokenHash")
-                .param("tokenHash", tokenHash)
+    /** The only read that returns a stored token (spec invitation-links, AC-1). */
+    public Optional<StoredInvitationLink> findLink(UUID id) {
+        return jdbc.sql("select i.id, i.token, i.email, i.expires_at, %s as status from invitations i where i.id = :id"
+                        .formatted(STATUS))
+                .param("id", id)
+                .query((rs, rowNum) -> new StoredInvitationLink(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("token"),
+                        rs.getString("email"),
+                        InvitationStatus.valueOf(rs.getString("status")),
+                        instant(rs, "expires_at")))
+                .optional();
+    }
+
+    public Optional<StoredInvitation> findByToken(String token) {
+        return withRoles(jdbc.sql(COLUMNS + "where i.token = :token")
+                .param("token", token)
                 .query(InvitationRepository::invitation)
                 .optional());
     }
@@ -110,25 +124,25 @@ public class InvitationRepository {
     }
 
     /**
-     * Like {@link #lock(UUID)}, by token hash. A concurrent new link that replaced the hash leaves nothing to find once
-     * it commits.
+     * Like {@link #lock(UUID)}, by token. A concurrent new link that replaced the token leaves nothing to find once it
+     * commits.
      */
-    public Optional<StoredInvitation> lockByTokenHash(String tokenHash) {
-        return withRoles(jdbc.sql(COLUMNS + "where i.token_hash = :tokenHash for no key update")
-                .param("tokenHash", tokenHash)
+    public Optional<StoredInvitation> lockByToken(String token) {
+        return withRoles(jdbc.sql(COLUMNS + "where i.token = :token for no key update")
+                .param("token", token)
                 .query(InvitationRepository::invitation)
                 .optional());
     }
 
     /** Replaces the token and sets the expiry to {@code lifetime} after now. */
-    public void replaceToken(UUID id, String tokenHash, Duration lifetime) {
+    public void replaceToken(UUID id, String token, Duration lifetime) {
         jdbc.sql("""
                         update invitations
-                        set token_hash = :tokenHash, expires_at = now() + :lifetimeMillis * interval '1 millisecond'
+                        set token = :token, expires_at = now() + :lifetimeMillis * interval '1 millisecond'
                         where id = :id
                         """)
                 .param("id", id)
-                .param("tokenHash", tokenHash)
+                .param("token", token)
                 .param("lifetimeMillis", lifetime.toMillis())
                 .update();
     }

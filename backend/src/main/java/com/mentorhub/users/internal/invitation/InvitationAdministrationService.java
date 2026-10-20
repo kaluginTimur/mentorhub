@@ -9,6 +9,7 @@ import com.mentorhub.users.internal.persistence.InvitationAuditTrail;
 import com.mentorhub.users.internal.persistence.InvitationRepository;
 import com.mentorhub.users.internal.persistence.InvitationSearch;
 import com.mentorhub.users.internal.persistence.StoredInvitation;
+import com.mentorhub.users.internal.persistence.StoredInvitationLink;
 import com.mentorhub.users.internal.persistence.UserName;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import com.mentorhub.users.internal.service.HistoryActor;
@@ -35,9 +36,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Managing invitations (spec invitations, AC-1 to AC-7): only holders of {@link Permission#USERS_INVITE}, who see every
- * invitation, so the only resource-level rule is that an unknown id is {@link NotFoundException}. Revocation and new
- * links lock the invitation row, which serializes them with acceptance (AC-15).
+ * Managing invitations (spec invitations, AC-1 to AC-7; spec invitation-links): only holders of
+ * {@link Permission#USERS_INVITE}, who see every invitation and the link of a pending one, so the only resource-level
+ * rule is that an unknown id is {@link NotFoundException}. Revocation and new links lock the invitation row, which
+ * serializes them with acceptance (AC-15).
  */
 @Service
 public class InvitationAdministrationService {
@@ -107,7 +109,7 @@ public class InvitationAdministrationService {
                     Map.of("userId", activeUser.get()));
         }
         String token = InvitationTokens.newToken();
-        UUID invitationId = insert(validEmail, InvitationTokens.hash(token), callerId, invitedRoles);
+        UUID invitationId = insert(validEmail, token, callerId, invitedRoles);
         auditTrail.created(callerId, invitationId, validEmail, invitedRoles);
         return new IssuedInvitation(details(load(invitationId)), properties.link(token));
     }
@@ -163,16 +165,39 @@ public class InvitationAdministrationService {
         UUID callerId = currentUser.currentUser().id();
         lockOpen(invitationId);
         String token = InvitationTokens.newToken();
-        invitations.replaceToken(invitationId, InvitationTokens.hash(token), properties.linkLifetime());
+        invitations.replaceToken(invitationId, token, properties.linkLifetime());
         StoredInvitation invitation = load(invitationId);
         auditTrail.linkReissued(callerId, invitationId, invitation.expiresAt());
         return new IssuedInvitation(details(invitation), properties.link(token));
     }
 
-    private UUID insert(String email, String tokenHash, UUID callerId, Set<Role> roles) {
+    /**
+     * Spec invitation-links, AC-1, AC-2, AC-7: the current link of a pending invitation, for any holder of the
+     * permission. Read-only and not audited. Not locked: a concurrent new link may make the returned link stale (the
+     * spec's accepted edge case).
+     *
+     * @throws NotFoundException for an unknown id
+     * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED} or
+     *     {@link InvitationProblems#INVITATION_EXPIRED}
+     */
+    @RequirePermission(Permission.USERS_INVITE)
+    @Transactional(readOnly = true)
+    public PendingInvitationLink link(UUID invitationId) {
+        StoredInvitationLink stored = invitations.findLink(invitationId).orElseThrow(NotFoundException::new);
+        return switch (stored.status()) {
+            case PENDING ->
+                new PendingInvitationLink(properties.link(stored.token()), stored.email(), stored.expiresAt());
+            case EXPIRED ->
+                throw new ConflictException(
+                        InvitationProblems.INVITATION_EXPIRED, "This invitation has expired. Get a new link.");
+            case ACCEPTED, REVOKED -> throw closed();
+        };
+    }
+
+    private UUID insert(String email, String token, UUID callerId, Set<Role> roles) {
         for (int attempt = 1; ; attempt++) {
             Optional<UUID> inserted =
-                    invitations.insertIfNoOpenInvitation(email, tokenHash, callerId, properties.linkLifetime(), roles);
+                    invitations.insertIfNoOpenInvitation(email, token, callerId, properties.linkLifetime(), roles);
             if (inserted.isPresent()) {
                 return inserted.get();
             }
@@ -192,9 +217,13 @@ public class InvitationAdministrationService {
     private void lockOpen(UUID invitationId) {
         StoredInvitation invitation = invitations.lock(invitationId).orElseThrow(NotFoundException::new);
         if (!invitation.status().isOpen()) {
-            throw new ConflictException(
-                    InvitationProblems.INVITATION_CLOSED, "This invitation is already accepted or revoked.");
+            throw closed();
         }
+    }
+
+    private static ConflictException closed() {
+        return new ConflictException(
+                InvitationProblems.INVITATION_CLOSED, "This invitation is already accepted or revoked.");
     }
 
     private StoredInvitation load(UUID invitationId) {

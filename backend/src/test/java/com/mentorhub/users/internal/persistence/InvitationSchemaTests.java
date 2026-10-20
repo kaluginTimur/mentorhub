@@ -8,7 +8,7 @@ import com.mentorhub.TestcontainersConfiguration;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.HexFormat;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.jspecify.annotations.Nullable;
@@ -53,7 +53,7 @@ class InvitationSchemaTests {
     })
     void acceptsConsistentClosingColumns(
             boolean acceptedAt, boolean acceptedUser, boolean revokedAt, boolean revokedBy) {
-        assertThatCode(() -> insert(email(), hash(), acceptedAt, acceptedUser, revokedAt, revokedBy))
+        assertThatCode(() -> insert(email(), token(), acceptedAt, acceptedUser, revokedAt, revokedBy))
                 .doesNotThrowAnyException();
     }
 
@@ -67,65 +67,67 @@ class InvitationSchemaTests {
     })
     void rejectsInconsistentClosingColumns(
             boolean acceptedAt, boolean acceptedUser, boolean revokedAt, boolean revokedBy) {
-        assertThatThrownBy(() -> insert(email(), hash(), acceptedAt, acceptedUser, revokedAt, revokedBy))
+        assertThatThrownBy(() -> insert(email(), token(), acceptedAt, acceptedUser, revokedAt, revokedBy))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @ParameterizedTest
     @ValueSource(
             strings = {
-                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQe", // a raw token
-                "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789", // uppercase hex
-                "abcdef0123456789abcdef0123456789abcdef0123456789abcdef012345678", // 63 characters
+                "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789", // a SHA-256 hash in hex
+                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQ", // 42 characters
+                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQeA", // 44 characters
+                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9w+/", // base64, not base64url
+                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQ=", // padding
                 ""
             })
-    void rejectsTokenHashThatIsNotSha256Hex(String tokenHash) {
-        assertThatThrownBy(() -> insertOpen(email(), tokenHash)).isInstanceOf(DataIntegrityViolationException.class);
+    void rejectsTokenThatIsNotBase64Url43(String token) {
+        assertThatThrownBy(() -> insertOpen(email(), token)).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void rejectsEmptyEmail() {
-        assertThatThrownBy(() -> insertOpen("", hash())).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertOpen("", token())).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    void rejectsDuplicateTokenHash() {
-        String tokenHash = hash();
-        insert(email(), tokenHash, true, true, false, false);
+    void rejectsDuplicateToken() {
+        String token = token();
+        insert(email(), token, true, true, false, false);
 
-        assertThatThrownBy(() -> insertOpen(email(), tokenHash)).isInstanceOf(DuplicateKeyException.class);
+        assertThatThrownBy(() -> insertOpen(email(), token)).isInstanceOf(DuplicateKeyException.class);
     }
 
     @Test
     void rejectsSecondOpenInvitationForEmailIgnoringCase() {
-        insertOpen("Ivan@Example.com", hash());
+        insertOpen("Ivan@Example.com", token());
 
-        assertThatThrownBy(() -> insertOpen("ivan@example.COM", hash())).isInstanceOf(DuplicateKeyException.class);
+        assertThatThrownBy(() -> insertOpen("ivan@example.COM", token())).isInstanceOf(DuplicateKeyException.class);
     }
 
     @Test
     void openInvitationCountsWhenExpired() {
         jdbc.update(
-                "insert into invitations (email, token_hash, created_by, expires_at) values (?, ?, ?, ?)",
+                "insert into invitations (email, token, created_by, expires_at) values (?, ?, ?, ?)",
                 "ivan@example.com",
-                hash(),
+                token(),
                 admin,
                 Timestamp.from(Instant.now().minus(1, ChronoUnit.DAYS)));
 
-        assertThatThrownBy(() -> insertOpen("ivan@example.com", hash())).isInstanceOf(DuplicateKeyException.class);
+        assertThatThrownBy(() -> insertOpen("ivan@example.com", token())).isInstanceOf(DuplicateKeyException.class);
     }
 
     @ParameterizedTest
     @CsvSource({"true, false", "false, true"})
     void acceptsNewOpenInvitationWhenEarlierOneIsClosed(boolean accepted, boolean revoked) {
-        insert("ivan@example.com", hash(), accepted, accepted, revoked, revoked);
+        insert("ivan@example.com", token(), accepted, accepted, revoked, revoked);
 
-        assertThatCode(() -> insertOpen("ivan@example.com", hash())).doesNotThrowAnyException();
+        assertThatCode(() -> insertOpen("ivan@example.com", token())).doesNotThrowAnyException();
     }
 
     @Test
     void storesKnownRoles() {
-        UUID invitation = insertOpen(email(), hash());
+        UUID invitation = insertOpen(email(), token());
         jdbc.update(
                 "insert into invitation_roles (invitation_id, role) values (?, 'MENTOR'), (?, 'STUDENT')",
                 invitation,
@@ -140,31 +142,31 @@ class InvitationSchemaTests {
 
     @Test
     void rejectsRoleMissingFromRolesTable() {
-        UUID invitation = insertOpen(email(), hash());
+        UUID invitation = insertOpen(email(), token());
 
         assertThatThrownBy(() -> jdbc.update(
                         "insert into invitation_roles (invitation_id, role) values (?, 'JANITOR')", invitation))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    private UUID insertOpen(String email, String tokenHash) {
-        return insert(email, tokenHash, false, false, false, false);
+    private UUID insertOpen(String email, String token) {
+        return insert(email, token, false, false, false, false);
     }
 
     private UUID insert(
             String email,
-            String tokenHash,
+            String token,
             boolean acceptedAt,
             boolean acceptedUser,
             boolean revokedAt,
             boolean revokedBy) {
         return jdbc.queryForObject(
-                "insert into invitations (email, token_hash, created_by, expires_at, accepted_at, accepted_user_id,"
+                "insert into invitations (email, token, created_by, expires_at, accepted_at, accepted_user_id,"
                         + " revoked_at, revoked_by) values (?, ?, ?, now() + interval '7 days', ?, ?, ?, ?)"
                         + " returning id",
                 UUID.class,
                 email,
-                tokenHash,
+                token,
                 admin,
                 timeIf(acceptedAt),
                 userIf(acceptedUser),
@@ -184,9 +186,9 @@ class InvitationSchemaTests {
         return UUID.randomUUID() + "@example.com";
     }
 
-    private static String hash() {
+    private static String token() {
         byte[] bytes = new byte[32];
         ThreadLocalRandom.current().nextBytes(bytes);
-        return HexFormat.of().formatHex(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
