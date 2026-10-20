@@ -2,6 +2,7 @@ package com.mentorhub.users.internal.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mentorhub.users.internal.domain.InvitationStatus;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
@@ -18,7 +19,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-/** Spec invitation-links, AC-6: V5 gives every invitation stored with a token hash a new plaintext token. */
+/**
+ * Spec invitation-links, AC-6: V5 gives every invitation stored with a token hash a new plaintext token, which "Copy
+ * link" returns for a pending one.
+ */
 @Testcontainers
 class InvitationTokenMigrationTests {
 
@@ -68,6 +72,11 @@ class InvitationTokenMigrationTests {
                         select email from invitations
                         where accepted_at is null and revoked_at is null and expires_at > now()
                         """).query(String.class).list()).containsExactly("pending@x.test");
+        // "Copy link" on the pending invitation returns the new link.
+        StoredInvitationLink link =
+                new InvitationRepository(jdbc).findLink(pending).orElseThrow();
+        assertThat(link.status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(link.token()).isEqualTo(tokens.get(pending));
     }
 
     private static UUID insert(JdbcClient jdbc, String email, UUID createdBy, @Nullable String closing) {

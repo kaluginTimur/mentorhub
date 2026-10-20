@@ -1,7 +1,6 @@
 # Invitations
 
 Status: implemented
-
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (Mailpit and invitation emails).
 Revised: 2026-10-20 by `invitation-links`: the link can be copied again while the invitation is pending (Goal, Scope, AC-1, AC-19, AC-20, Visibility, UI, Decisions). The Design section describes the plaintext token storage of `invitation-links`.
@@ -363,7 +362,9 @@ Migrations `V4__invitations.sql` and `V5__invitation_plain_tokens.sql`. V4 creat
 | `POST /api/v1/invitations/{id}/link` | Issue a new link (AC-7); returns `CreatedInvitation` | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed` |
 | `GET /api/v1/invitations/{id}/link` | The link of a pending invitation; returns `InvitationLink` (`invitation-links`) | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed`, 409 `invitation-expired` |
 | `POST /api/v1/invitations/preview` | `{token}` → `InvitationPreview` (AC-8, AC-9) | public | 400, 404 `invitation-invalid` |
-| `POST /api/v1/invitations/accept` | `{token}` → `Me` (AC-10 to AC-14) | authenticated, any status | 400, 401, 404 `invitation-invalid`, 409 `invitation-email-mismatch`, 409 `identity-linked-elsewhere` |
+| `POST /api/v1/invitations/accept` | `{token}` → `Me` (AC-10 to AC-14) | authenticated, any status | 400, 404 `invitation-invalid`, 409 `invitation-email-mismatch`, 409 `identity-linked-elsewhere` |
+
+All endpoints except preview answer 401 without a valid bearer token; accept needs only that token, the others also pass the gate (an active user).
 
 The token travels in the request body, never in an API path or query, so it stays out of server access logs. A response that returns a token (create, new link, `GET .../link`) sets `Cache-Control: no-store`.
 
@@ -459,7 +460,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 
 - `docs/development/backend.md`: gate-exempt endpoints for callers in any status; plaintext token storage and `Cache-Control: no-store`; problems with extensions.
 - `docs/development/frontend.md`: public routes outside the access guard; sign-in with a hint and a return URL.
-- `docs/ui/guidelines.md`: the "Invitations" toolbar link, the link view (show once and copy), and the landing page in the access screen layout.
+- `docs/ui/guidelines.md`: the "Invitations" toolbar link, the link view (copy, and copy again from the list), and the landing page in the access screen layout.
 - `docs/features/identity-foundation.md`: the new "Access by invitation only" text.
 - `docs/architecture/invariants.md`: no change. Linking through an invitation with a verified email is already the rule.
 - `README.md`: inviting and accepting locally (see Local environment); the development users table no longer calls `stranger@mentorhub.local` permanently "not invited" (it is unlinked until it accepts an invitation).

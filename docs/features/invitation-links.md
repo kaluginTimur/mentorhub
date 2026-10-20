@@ -1,6 +1,6 @@
 # Invitation links
 
-Status: approved
+Status: implemented
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0006, ADR 0007, `docs/features/invitations.md` (changes its requirements, see below), `docs/architecture/invariants.md`. Followed by `invitation-emails`.
 
@@ -117,11 +117,11 @@ No new entries. Creating and issuing a new link are audited as before (`INVITATI
 All changes are in `com.mentorhub.users`:
 
 - `InvitationTokens`: `hash` is removed; generation and the format check stay.
-- `InvitationRepository`: lookup, insert and replace use `token`; a new `findLink`-style read returns the token and status of one invitation.
-- `InvitationAdministrationService.link(id)` with `@RequirePermission(USERS_INVITE)`, read-only transaction: unknown → `NotFoundException`; accepted or revoked → `ConflictException(INVITATION_CLOSED)`; expired → `ConflictException(INVITATION_EXPIRED)`.
+- `InvitationRepository`: lookup, insert and replace use `token`. `findLink` (row `StoredInvitationLink`) returns the token and status of one invitation and is the only read that selects the token; the shared column list of every other read leaves it out.
+- `InvitationAdministrationService.link(id)` with `@RequirePermission(USERS_INVITE)`, read-only transaction, returns `PendingInvitationLink`: unknown → `NotFoundException`; accepted or revoked → `ConflictException(INVITATION_CLOSED)`; expired → `ConflictException(INVITATION_EXPIRED)`. Closed takes priority over expired.
 - `InvitationAcceptanceService`: looks up by token.
-- `InvitationsController` implements the new operation and sets `Cache-Control: no-store`.
-- Frontend: the row action in `features/invitations/invitations-list.ts`, the link view text and its clipboard fallback mode.
+- `InvitationsController` implements the new operation. A private `noStore()` (injected `HttpServletResponse`) sets `Cache-Control: no-store` on the success responses of create, new link and get link.
+- Frontend: the row action in `features/invitations/invitations-list.ts`, the link view text and its clipboard fallback mode. Row actions use `disabledInteractive` while busy, so the clicked button keeps focus; busy state is a set of invitation ids, and the table tracks rows by id so focus survives the reload after the copy view.
 
 No new module and no new dependency.
 
@@ -143,6 +143,7 @@ Migration `V5__invitation_plain_tokens.sql`:
 - Response schema `InvitationLink`: `link` (string, URI), `email`, `expiresAt` (date-time), all required.
 - Contract descriptions that say the link is returned only once (`createInvitation`, `reissueInvitationLink`, `CreatedInvitation`) are updated in the contract step.
 - New problem type `urn:mentorhub:problem:invitation-expired` (409); `invitation-closed` is reused.
+- The `Cache-Control: no-store` response header is declared once as `components/headers/NoStore` and referenced by the create, new-link and get-link responses.
 - The token stays out of every path and query; this operation takes only the invitation id.
 
 ### Authorization
@@ -155,7 +156,7 @@ None.
 
 ### Documentation updates
 
-- `docs/features/invitations.md`: the requirement changes listed above, with a "Revised" line.
+- `docs/features/invitations.md`: the requirement changes listed above, with a "Revised" line. Its Design section is also updated to plaintext token storage and the new operation (user decision), with one note under the API table on 401.
 - `docs/architecture/invariants.md` (Identity): invitation tokens are stored in plaintext, so acceptance must keep requiring a verified email equal to the invitation's; relaxing that rule needs hashing again.
 - `docs/development/backend.md` (Security): the secret link tokens bullet. Tokens are stored in plaintext with a format check, lookups use the token, and tokens stay out of paths, queries, logs and audit details. A response that returns a token sets `Cache-Control: no-store`. Do not enable bind-parameter logging (`org.springframework.jdbc` at TRACE, PostgreSQL `log_statement`), which would write tokens to the logs.
 - `api/openapi.yaml`: the descriptions listed under API.

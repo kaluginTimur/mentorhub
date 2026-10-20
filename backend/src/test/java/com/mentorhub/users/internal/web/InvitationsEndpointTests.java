@@ -77,7 +77,8 @@ class InvitationsEndpointTests {
                     new String[] {"POST", "/api/v1/invitations", "{\"email\": \"a@x.test\", \"roles\": []}"},
                     new String[] {"GET", "/api/v1/invitations", ""},
                     new String[] {"POST", "/api/v1/invitations/{id}/revoke", ""},
-                    new String[] {"POST", "/api/v1/invitations/{id}/link", ""})) {
+                    new String[] {"POST", "/api/v1/invitations/{id}/link", ""},
+                    new String[] {"GET", "/api/v1/invitations/{id}/link", ""})) {
                 calls.add(Arguments.of(
                         role == null ? "no roles" : role.name(), operation[0], operation[1], operation[2]));
             }
@@ -130,12 +131,17 @@ class InvitationsEndpointTests {
                         arguments.get()[1], arguments.get()[2], arguments.get()[3]));
     }
 
-    // AC-1, AC-4, AC-8, AC-10, AC-14, AC-16 and the link's single appearance, from creation to a repeated accept.
+    // AC-1, AC-4, AC-8, AC-10, AC-14, AC-16 and the link's absence from the list, from creation to a repeated accept.
     @Test
     void invitedPersonJoinsThroughTheLink() {
         InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\", \"STUDENT\"]");
         assertThat(invitation.token()).hasSize(43);
         assertThat(invitation.link()).endsWith("/invite/" + invitation.token());
+        // Spec invitation-links, AC-1, AC-4: the pending invitation's link can be read again, uncached.
+        MvcTestResult link = send(HttpMethod.GET, "/api/v1/invitations/" + invitation.id() + "/link", "", "admin");
+        assertThat(link).hasStatusOk();
+        assertThat(link).bodyJson().extractingPath("$.link").isEqualTo(invitation.link());
+        assertThat(link).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
 
         MvcTestResult preview = preview(invitation.token(), "Bearer not-a-valid-token");
         assertThat(preview).hasStatusOk();
@@ -151,6 +157,10 @@ class InvitationsEndpointTests {
         assertThat(accepted).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
         assertThat(accepted).bodyJson().extractingPath("$.user.email").isEqualTo(INVITED_EMAIL);
         assertThat(accepted).bodyJson().extractingPath("$.user.roles").asArray().containsExactly("MENTOR", "STUDENT");
+        assertProblem(
+                send(HttpMethod.GET, "/api/v1/invitations/" + invitation.id() + "/link", "", "admin"),
+                HttpStatus.CONFLICT,
+                InvitationProblems.INVITATION_CLOSED);
         // AC-10: the next request passes the gate; the caller only lacks the permission.
         assertProblem(send(HttpMethod.GET, "/api/v1/users", "", "stranger"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
 

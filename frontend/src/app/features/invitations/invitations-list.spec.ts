@@ -426,6 +426,44 @@ describe('InvitationsList', () => {
         expect(
           document.querySelector('app-link-view button[aria-label="Copy invitation link"]'),
         ).toBeNull();
+        const input = document.querySelector('app-link-view input') as HTMLInputElement;
+        expect(document.activeElement).toBe(input);
+        expect(input.selectionStart).toBe(0);
+        expect(input.selectionEnd).toBe(linkResponse.link.length);
+      });
+
+      it('returns focus to the Copy link button after the copy view closes', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', {});
+        const { harness, element } = await pending();
+        const copy = element.querySelector('tr.mat-mdc-row button') as HTMLButtonElement;
+        copy.focus();
+        copy.click();
+        await vi.waitFor(() => expect(document.querySelector('app-link-view')).toBeTruthy());
+        TestBed.inject(MatDialog).closeAll();
+        await vi.waitFor(() => expect(document.querySelector('app-link-view')).toBeNull());
+        await vi.waitFor(() => {
+          harness.detectChanges();
+          const current = element.querySelector('tr.mat-mdc-row button');
+          expect(current?.textContent?.trim()).toBe('Copy link');
+          expect(document.activeElement).toBe(current);
+        });
+      });
+
+      it('shows nothing of its own on 403 (the interceptor shows the permission message)', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        const { element } = await openWithOnePending();
+        api.invoke.mockRejectedValueOnce(problem(403, 'urn:mentorhub:problem:forbidden'));
+        click(element, 'Copy link');
+        await vi.waitFor(() =>
+          expect(
+            element.querySelector('tr.mat-mdc-row button')?.getAttribute('aria-disabled'),
+          ).not.toBe('true'),
+        );
+        expect(document.body.textContent).not.toContain('Something went wrong');
+        expect(document.body.textContent).not.toContain('already closed');
+        expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(1);
       });
 
       it('disables the row actions while the link is fetched', async () => {
@@ -442,9 +480,50 @@ describe('InvitationsList', () => {
           harness.detectChanges();
           const buttons = [...element.querySelectorAll('tr.mat-mdc-row button')];
           expect(buttons).toHaveLength(3);
-          expect(buttons.every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+          expect(buttons.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
+          expect(buttons.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
         });
+        const copy = element.querySelector('tr.mat-mdc-row button') as HTMLButtonElement;
+        copy.focus();
+        expect(document.activeElement).toBe(copy);
+        const calls = api.invoke.mock.calls.length;
+        copy.click();
+        expect(api.invoke.mock.calls).toHaveLength(calls);
         release(linkResponse);
+      });
+
+      it('keeps the busy state per row while another row starts an action', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+        api.invoke.mockResolvedValue(
+          page([invitation({ id: 'p' }), invitation({ id: 'q', email: 'q@example.com' })]),
+        );
+        const { harness, element } = await open();
+        const releases: Record<string, (v: unknown) => void> = {};
+        api.invoke.mockImplementation(
+          (fn, params) =>
+            new Promise((resolve) => {
+              if (fn === getInvitationLink) {
+                releases[(params as { id: string }).id] = resolve;
+              } else {
+                resolve(page([]));
+              }
+            }),
+        );
+        const copyOf = (row: number) =>
+          element.querySelectorAll('tr.mat-mdc-row')[row].querySelector('button') as HTMLElement;
+        copyOf(0).click();
+        copyOf(1).click();
+        harness.detectChanges();
+        expect(copyOf(0).getAttribute('aria-disabled')).toBe('true');
+        expect(copyOf(1).getAttribute('aria-disabled')).toBe('true');
+        releases['q'](linkResponse);
+        await vi.waitFor(() => {
+          harness.detectChanges();
+          expect(copyOf(1).getAttribute('aria-disabled')).not.toBe('true');
+        });
+        expect(copyOf(0).getAttribute('aria-disabled')).toBe('true');
+        releases['p'](linkResponse);
       });
 
       it('shows the expired message and reloads on 409 invitation-expired', async () => {

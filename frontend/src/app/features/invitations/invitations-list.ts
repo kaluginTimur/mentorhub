@@ -115,8 +115,8 @@ export class InvitationsList {
   });
   protected readonly rows = computed(() => this.loaded()?.items ?? []);
 
-  /** The invitation whose row action is running; its actions stay disabled meanwhile. */
-  protected readonly busyId = signal<string | null>(null);
+  /** Invitations whose row action is running; their actions stay disabled meanwhile. */
+  private readonly busyIds = signal<ReadonlySet<string>>(new Set());
 
   protected readonly columns = ['email', 'roles', 'status', 'invited', 'actions'];
   protected readonly statuses = INVITATION_STATUS;
@@ -140,6 +140,13 @@ export class InvitationsList {
   protected statusLabel(status: InvitationStatus): string {
     return INVITATION_STATUS_LABELS[status];
   }
+
+  protected isBusy(id: string): boolean {
+    return this.busyIds().has(id);
+  }
+
+  /** Keeps row elements (and the focus on a row button) across reloads. */
+  protected readonly trackById = (_: number, invitation: Invitation): string => invitation.id;
 
   protected isOpen(invitation: Invitation): boolean {
     return invitation.status === 'PENDING' || invitation.status === 'EXPIRED';
@@ -173,7 +180,10 @@ export class InvitationsList {
   }
 
   protected async copyLink(invitation: Invitation): Promise<void> {
-    this.busyId.set(invitation.id);
+    if (this.isBusy(invitation.id)) {
+      return;
+    }
+    this.setBusy(invitation.id, true);
     // fetched before any await so that the clipboard write starts inside the click (Safari)
     const fetched = this.api.invoke(getInvitationLink, { id: invitation.id });
     fetched.catch(() => undefined);
@@ -205,11 +215,14 @@ export class InvitationsList {
     } catch (error) {
       this.rowActionFailed(error);
     } finally {
-      this.busyId.update((id) => (id === invitation.id ? null : id));
+      this.setBusy(invitation.id, false);
     }
   }
 
   protected async revoke(invitation: Invitation): Promise<void> {
+    if (this.isBusy(invitation.id)) {
+      return;
+    }
     const ref = this.dialog.open(ConfirmDialog, {
       width: '420px',
       data: {
@@ -234,6 +247,9 @@ export class InvitationsList {
   }
 
   protected async newLink(invitation: Invitation): Promise<void> {
+    if (this.isBusy(invitation.id)) {
+      return;
+    }
     const ref = this.dialog.open(ConfirmDialog, {
       width: '420px',
       data: {
@@ -253,6 +269,18 @@ export class InvitationsList {
     } catch (error) {
       this.rowActionFailed(error);
     }
+  }
+
+  private setBusy(id: string, busy: boolean): void {
+    this.busyIds.update((ids) => {
+      const next = new Set(ids);
+      if (busy) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
   }
 
   private async openAndReload(data: InviteDialogData): Promise<void> {

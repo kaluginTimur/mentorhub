@@ -38,7 +38,7 @@
 
     @if (loaded(); as page) {
       @if (rows().length > 0) {
-        <table mat-table [dataSource]="rows()">
+        <table mat-table [dataSource]="rows()" [trackBy]="trackById">
           <ng-container matColumnDef="email">
             <th mat-header-cell *matHeaderCellDef>Email</th>
             <td mat-cell *matCellDef="let invitation">{{ invitation.email }}</td>
@@ -99,7 +99,8 @@
                 <button
                   matButton
                   type="button"
-                  [disabled]="busyId() === invitation.id"
+                  disabledInteractive
+                  [disabled]="isBusy(invitation.id)"
                   [attr.aria-label]="'Copy invitation link for ' + invitation.email"
                   (click)="copyLink(invitation)"
                 >
@@ -110,7 +111,8 @@
                 <button
                   matButton
                   type="button"
-                  [disabled]="busyId() === invitation.id"
+                  disabledInteractive
+                  [disabled]="isBusy(invitation.id)"
                   [attr.aria-label]="'Get a new link for ' + invitation.email"
                   (click)="newLink(invitation)"
                 >
@@ -119,7 +121,8 @@
                 <button
                   matButton
                   type="button"
-                  [disabled]="busyId() === invitation.id"
+                  disabledInteractive
+                  [disabled]="isBusy(invitation.id)"
                   [attr.aria-label]="'Revoke the invitation for ' + invitation.email"
                   (click)="revoke(invitation)"
                 >
