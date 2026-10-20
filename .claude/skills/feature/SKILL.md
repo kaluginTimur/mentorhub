@@ -14,7 +14,7 @@ Implement the feature `$feature` from `docs/features/$feature.md`. You are the c
 
 The conversation is not a reliable memory; the log is. A new session must be able to continue from the log, the spec and `git log` alone, so write everything there that a later step needs.
 
-Write the log once per checkpoint, in one edit: when the user has decided, record the status, the decision, the handoff notes and, if made, the commit together. Also write it before a phase boundary, and record a relay as pending when you send it and clear it when the agent has acted.
+Write the log once per checkpoint, in one edit: when the user has decided, record the status, the decision, the handoff notes and, if made, the commit together. Also write it before a phase boundary, and record a relay as pending when you send it and clear it when the agent has acted. Agents' ids, models and context sizes go into the next such write, never into an edit of their own: every edit is a coordinator call that re-reads the whole session context.
 
 ## Start
 
@@ -35,7 +35,7 @@ Continue from the first step that is not approved; `$step`, when given, override
 
 ## Agents and briefs
 
-Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id, model and, after each report, its context size in the log; the completion notification gives the size. Take the model from the `model` parameter of the call, or else from the `model:` line of the agent's definition in `.claude/agents/`; never write it from memory.
+Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id, model, phase and, after each report, its context size in the log, with the next checkpoint write; the completion notification gives the size. Take the model from the `model` parameter of the call, or else from the `model:` line of the agent's definition in `.claude/agents/`; never write it from memory.
 
 - **Within a step** (the user's feedback, rework): continue the same agent with `SendMessage`.
 - **Between steps:** continue the same agent while its last context size is under about 150k tokens. Above that, start a fresh agent for the next step. Its old context is mostly earlier steps' reasoning, which it no longer needs, and every call re-reads it.
@@ -45,6 +45,8 @@ Before every brief or `SendMessage`, check that the current branch is the one in
 ## Relaying reports
 
 Show the user a short summary of each report: what was done, the places to look first and the verification result. Show the decisions, deviations from the spec and questions in full; never shorten a question. The full report stays available to quote on request.
+
+When an agent or `verifier` reports a failure it attributes to the environment (network, Docker, tool versions), do not investigate it yourself: brief a `general-purpose` agent with the `model` parameter set to `sonnet` to find the cause and a workaround, and relay its answer. Until the cause is confirmed, record the failure in the log as an open question, not as a fact.
 
 ## Backend: a checkpoint after every step
 

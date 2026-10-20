@@ -104,6 +104,7 @@ cd frontend && ~/.nvm/nvm-exec npm run build
 - If `node_modules` is missing, run `cd frontend && ~/.nvm/nvm-exec npm ci` first.
 - Formatting failures are fixed with `cd frontend && ~/.nvm/nvm-exec npm run format`.
 - Without nvm, check `node -v` (^24.15) and run the same `npm` commands directly.
+- The production build downloads font CSS from Google Fonts, so it needs internet access. `frontend/.npmrc` gives Node a longer connect attempt per address family, without which the download times out on networks without IPv6 (WSL); it is temporary until the fonts are served from the app (#12).
 
 ## Checking an API
 

@@ -43,7 +43,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 
 ## Agents
 
-<!-- Agents can be continued only within the session that created them; a new session starts fresh agents from this log. Context is the size from the agent's last completion notification. Model is the `model` parameter of the call, or else the `model:` line of the agent's definition. -->
+<!-- Agents can be continued only within the session that created them; a new session starts fresh agents from this log. Context is the size from the agent's last completion notification. Model is the `model` parameter of the call, or else the `model:` line of the agent's definition. Phase is `contract`, `implementation` or `review`; the usage record has the session ids. -->
 
-| Agent | Model | Id | Session | Context |
+| Agent | Model | Id | Phase | Context |
 |---|---|---|---|---|
