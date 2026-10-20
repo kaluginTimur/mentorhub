@@ -13,7 +13,7 @@ Started: 2026-10-20
 | 3 domain | approved | 40e7b2a | 2026-10-20 |
 | 4 api | approved | 68665c2 | 2026-10-20 |
 | frontend A (prototype) | skipped | | 2026-10-20 |
-| frontend B | approved | (this commit) | 2026-10-20 |
+| frontend B | approved | cd84433 | 2026-10-20 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -28,6 +28,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-20, steps 1–2: "Одобряю, оставляем в этом шаге, коммить" (approved; the switch of persistence and services from hashed to plaintext tokens, planned for step 3, stays in this checkpoint because V5 drops `token_hash`).
 - 2026-10-20, step 3 and frontend review: "Одобряю шаг 3, коммить; пункты 1–6 отдай frontend-dev" (all six frontend review findings accepted, including the doc drift in `README.md` and `docs/features/invitations.md`, which frontend-dev updates).
 - 2026-10-20, step 4 and frontend: "Одобряю шаг 4, коммить оба; Design — вариант (a)" (step 4 approved; backend and frontend committed separately; the Design section of `docs/features/invitations.md` is updated by the step 4 backend-dev to the plaintext token storage instead of being kept as a historical snapshot). Manual checks AC-8, AC-9, AC-10 remain for the final review.
+- 2026-10-20, implementation phase end: "Да, коммить оба" (Design section update of `docs/features/invitations.md` accepted and committed with the log; the missing 401 in its new API row is left for the final review).
 
 ## Handoff notes
 
@@ -38,6 +39,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - Javadoc is not reflowed by Spotless; wrap long javadoc lines by hand at 120 columns.
 - Migration test `InvitationTokenMigrationTests` (AC-6) runs on its own Testcontainers PostgreSQL, migrating to V4 then latest. V4's comment says the token is never stored; V4 is applied and stays; V5's header states the new rule.
 - Docs done in step 3: `docs/development/backend.md` Security, `docs/architecture/invariants.md` Identity. `docs/ui/guidelines.md` done by frontend-dev; `README.md` and `docs/features/invitations.md` assigned to frontend-dev.
+- For the final review: the `GET /api/v1/invitations/{id}/link` row in the Design API table of `docs/features/invitations.md` lists 400, 403, 404, 409 but not 401 (the spec's table has 401).
 - Test gap for the final review: end-to-end `InvitationsEndpointTests` has no `GET /link` case; `no-store` is tested only in the `@WebMvcTest` slice.
 - Frontend production build not run (no network); rerun `npm run build`.
 
@@ -45,7 +47,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 
 <!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
 
-- Sent to backend-dev (step 4): update the Design section of `docs/features/invitations.md` (token_hash, hash lookups, the Decisions entry on the extra token_hash check) to plaintext token storage.
+- none
 
 ## Open questions
 
@@ -61,4 +63,4 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 | backend-dev (step 3) | opus | ab9a0c6d96d1b4842 | a6edf05c | 92k |
 | frontend-dev (step B) | sonnet | a9b009dde2f242570 | a6edf05c | 87k |
 | reviewer (frontend) | opus | ad8db77eb7292d917 | a6edf05c | 45k |
-| backend-dev (step 4) | sonnet | ae68c4dacc9b7c171 | a6edf05c | 41k |
+| backend-dev (step 4) | sonnet | ae68c4dacc9b7c171 | a6edf05c | 52k |

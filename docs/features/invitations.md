@@ -4,7 +4,7 @@ Status: implemented
 
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (Mailpit and invitation emails).
-Revised: 2026-10-20 by `invitation-links`: the link can be copied again while the invitation is pending (Goal, Scope, AC-1, AC-19, AC-20, Visibility, UI, Decisions). The Design section below still describes the hashed storage of the original implementation (`token_hash`); `invitation-links` replaces it.
+Revised: 2026-10-20 by `invitation-links`: the link can be copied again while the invitation is pending (Goal, Scope, AC-1, AC-19, AC-20, Visibility, UI, Decisions). The Design section describes the plaintext token storage of `invitation-links`.
 
 ## 1. Requirements
 
@@ -325,12 +325,12 @@ Shown in the dialog after creating an invitation or getting a new link.
 
 ### Data model
 
-Migration `V4__invitations.sql`:
+Migrations `V4__invitations.sql` and `V5__invitation_plain_tokens.sql`. V4 created the table with a `token_hash` column (SHA-256 of the token, hex; the token itself was never stored). V5 replaced it with the plaintext `token` (spec `invitation-links`): it gave every existing invitation a new random token in the application's format, because a hash cannot be turned back into a token, and dropped `token_hash` with its check and unique constraints. The table after V5:
 
 - `invitations`:
   - `id uuid` PK default `gen_random_uuid()`;
   - `email text not null`;
-  - `token_hash text not null`, unique (SHA-256 of the token, hex);
+  - `token text not null`, unique;
   - `created_at timestamptz not null default now()`, `created_by uuid not null` FK → `users`;
   - `expires_at timestamptz not null`;
   - `accepted_at timestamptz null`, `accepted_user_id uuid null` FK → `users`;
@@ -340,7 +340,7 @@ Migration `V4__invitations.sql`:
     - `(revoked_at is null) = (revoked_by is null)`;
     - not both accepted and revoked;
     - `email <> ''`;
-    - `token_hash ~ '^[0-9a-f]{64}$'`;
+    - `token ~ '^[A-Za-z0-9_-]{43}$'`;
   - partial unique index `invitations_open_email_uq` on `lower(email)` where `accepted_at is null and revoked_at is null`: at most one open invitation per email (AC-3, AC-15);
   - index on (`created_at desc`, `id desc`) for the list.
 - `invitation_roles(invitation_id uuid` FK → `invitations` on delete restrict, `role text` FK → `roles`, PK both`)`.
@@ -361,10 +361,11 @@ Migration `V4__invitations.sql`:
 | `GET /api/v1/invitations?q&status&page&size` | Page of invitations (AC-4) | `USERS_INVITE` | 400, 403 |
 | `POST /api/v1/invitations/{id}/revoke` | Revoke (AC-6); returns `Invitation` | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed` |
 | `POST /api/v1/invitations/{id}/link` | Issue a new link (AC-7); returns `CreatedInvitation` | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed` |
+| `GET /api/v1/invitations/{id}/link` | The link of a pending invitation; returns `InvitationLink` (`invitation-links`) | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed`, 409 `invitation-expired` |
 | `POST /api/v1/invitations/preview` | `{token}` → `InvitationPreview` (AC-8, AC-9) | public | 400, 404 `invitation-invalid` |
 | `POST /api/v1/invitations/accept` | `{token}` → `Me` (AC-10 to AC-14) | authenticated, any status | 400, 401, 404 `invitation-invalid`, 409 `invitation-email-mismatch`, 409 `identity-linked-elsewhere` |
 
-The token travels in the request body, never in an API path or query, so it stays out of server access logs.
+The token travels in the request body, never in an API path or query, so it stays out of server access logs. A response that returns a token (create, new link, `GET .../link`) sets `Cache-Control: no-store`.
 
 Schemas:
 
@@ -392,7 +393,7 @@ Schemas:
 ### Tokens and links
 
 - Each token is 32 bytes from `SecureRandom`, encoded base64url without padding (43 characters).
-- Only the token's SHA-256 hash is stored. Lookup is by the hash of the presented token; a token that is not 43 base64url characters is `invitation-invalid` without a query.
+- The token is stored in plaintext in `invitations.token`. Lookup is by the presented token; a token that is not 43 base64url characters is `invitation-invalid` without a query. Only `InvitationRepository.findLink` reads a stored token back, for the link of a pending invitation; every other read, including the list, leaves it out. Audit details never contain it.
 - The link is `<mentorhub.app-url>/invite/<token>`.
 - Creating and issuing a new link both set `expires_at = now() + mentorhub.invitations.link-lifetime`. The database `now()` is the one clock for expiry, status and audit.
 
@@ -403,7 +404,7 @@ Schemas:
   - `POST /api/v1/invitations/preview` goes into the public filter chain, which ignores bearer tokens. `SecurityConfiguration` builds GET-only matchers for the public paths today, so preview needs its own POST matcher (tested with an invalid bearer token, AC-8);
   - `POST /api/v1/invitations/accept` is exempt from the gate like `GET /api/v1/me`: it only requires authentication. It carries the "no permission required" marker and reads the caller through `CurrentCaller`, which with its `Caller` record is extended with the token's issuer, subject, email, `email_verified` and names (today it returns only the status and user id).
 - Acceptance, in one transaction (AC-10 to AC-15):
-  1. look up the invitation by token hash `for no key update`; missing, expired, revoked → `invitation-invalid`; accepted → AC-14 if `accepted_user_id` is the user the caller's `(issuer, subject)` is linked to, read now inside the transaction (not the user resolved at authentication), returning that user's current state, else `invitation-invalid`;
+  1. look up the invitation by token `for no key update`; missing, expired, revoked → `invitation-invalid`; accepted → AC-14 if `accepted_user_id` is the user the caller's `(issuer, subject)` is linked to, read now inside the transaction (not the user resolved at authentication), returning that user's current state, else `invitation-invalid`;
   2. require `email_verified` and an email equal to the invitation's, ignoring case → else `invitation-email-mismatch`;
   3. read the identity's linked user and the user with the invitation's email; if the identity is linked to a user other than that one (or to any user when none has that email) → `identity-linked-elsewhere`, with a warning naming both ids (or only the linked one), before anything is written;
   4. `insertUserIfAbsent` with the invitation's email and the token's names, then lock the user row by email (`for no key update`, as user administration does); link the identity if it is unlinked; if a concurrent transaction linked it to another user meanwhile, the answer is `identity-linked-elsewhere` and the transaction rolls back;
@@ -449,14 +450,14 @@ No infrastructure changes. Keycloak allows registration but requires email verif
   - an unknown stored role on reads; on acceptance it is covered by the service tests only.
 - AC-15 runs parallel requests against Testcontainers Postgres.
 - The preview test sends an invalid bearer token and still gets 200.
-- The tests check that the token never appears in the `invitations` table or in the audit details.
+- The tests check that the token never appears in the audit details or in the list response.
 - Frontend unit tests: every list state, the dialog and its 409 messages, the link view's copy fallback, each landing state, the automatic accept after the round trip, and the history sentence.
 - `prompt=create` and `login_hint`: `angular-auth-oidc-client` 22.x passes them through `customParams` (asserted in `auth.service.spec.ts`), and the manual check (AC-23) confirmed that Keycloak 26.8 opens registration with the email prefilled. If `prompt=create` is not supported, "Create an account" opens Keycloak's registration endpoint instead.
 - No automated accessibility (axe) test exists in the project; accessibility is checked by review.
 
 ### Documentation updates
 
-- `docs/development/backend.md`: gate-exempt endpoints for callers in any status; token hashing; problems with extensions.
+- `docs/development/backend.md`: gate-exempt endpoints for callers in any status; plaintext token storage and `Cache-Control: no-store`; problems with extensions.
 - `docs/development/frontend.md`: public routes outside the access guard; sign-in with a hint and a return URL.
 - `docs/ui/guidelines.md`: the "Invitations" toolbar link, the link view (show once and copy), and the landing page in the access screen layout.
 - `docs/features/identity-foundation.md`: the new "Access by invitation only" text.
@@ -480,7 +481,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 - Reactivating a disabled user through an invitation sets their roles to exactly the invitation's, so the invitation states everything the person gets back (user decision; refines the earlier "adds roles"). A user who became active after the invitation was created only gains the invitation's roles. "Enable user" on the user page still keeps roles (user administration AC-8).
 - Editing an invitation is not supported; revoke and create again.
 - The invitation search `q` is limited to 254 characters, the maximum email length, instead of the 100 of `/users`, so the `invitation-exists` link works for every valid email (user decision, steps 1–2).
-- Implementation choices accepted by the user at the checkpoints (steps 1–3, frontend B, final review), recorded above: the extra `email` and `token_hash` checks; `InvitationConflictProblem` as an `allOf`; the typed 404 through `NotFoundException`; `@Email`; database `now()` as the one clock; `on conflict do nothing` with up to 3 retries for parallel creates; the audit field `invitedBy` and `expiresAt` as an ISO-8601 string; an AC-14 retry returns the current state; a concurrent link ends in `identity-linked-elsewhere` with rollback; the token session with an auto-accept key; the account email from ID token claims; "Sign out" on "Account already in use" clears the token; the "Expired <date>" line; two text row actions instead of a menu; no back-link state; `customParams` for `login_hint` and `prompt=create`; the lazily loaded invite dialog; an unknown role plus an invalid email reports only the parsing error.
+- Implementation choices accepted by the user at the checkpoints (steps 1–3, frontend B, final review), recorded above: the extra `email` check (the extra `token_hash` check was dropped with the hash by V5); `InvitationConflictProblem` as an `allOf`; the typed 404 through `NotFoundException`; `@Email`; database `now()` as the one clock; `on conflict do nothing` with up to 3 retries for parallel creates; the audit field `invitedBy` and `expiresAt` as an ISO-8601 string; an AC-14 retry returns the current state; a concurrent link ends in `identity-linked-elsewhere` with rollback; the token session with an auto-accept key; the account email from ID token claims; "Sign out" on "Account already in use" clears the token; the "Expired <date>" line; two text row actions instead of a menu; no back-link state; `customParams` for `login_hint` and `prompt=create`; the lazily loaded invite dialog; an unknown role plus an invalid email reports only the parsing error.
 
 ## 4. Open questions
 
