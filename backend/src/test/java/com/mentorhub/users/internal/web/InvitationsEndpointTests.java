@@ -188,11 +188,12 @@ class InvitationsEndpointTests {
         assertInvalid(preview(invitation.token(), ""));
         assertInvalid(accept(invitation.token(), "other", INVITED_EMAIL, true));
 
-        assertThat(jdbc.sql("select count(*) from invitations i where i::text like :token")
-                        .param("token", "%" + invitation.token() + "%")
+        // Spec invitation-links: the token is stored in plaintext, but never in audit details (AC-7).
+        assertThat(jdbc.sql("select count(*) from invitations where token = :token")
+                        .param("token", invitation.token())
                         .query(Integer.class)
                         .single())
-                .isZero();
+                .isOne();
         assertThat(jdbc.sql("select count(*) from audit_log where details::text like :token")
                         .param("token", "%" + invitation.token() + "%")
                         .query(Integer.class)

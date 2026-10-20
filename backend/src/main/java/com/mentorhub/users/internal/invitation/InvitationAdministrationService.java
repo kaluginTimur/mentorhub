@@ -107,7 +107,7 @@ public class InvitationAdministrationService {
                     Map.of("userId", activeUser.get()));
         }
         String token = InvitationTokens.newToken();
-        UUID invitationId = insert(validEmail, InvitationTokens.hash(token), callerId, invitedRoles);
+        UUID invitationId = insert(validEmail, token, callerId, invitedRoles);
         auditTrail.created(callerId, invitationId, validEmail, invitedRoles);
         return new IssuedInvitation(details(load(invitationId)), properties.link(token));
     }
@@ -163,16 +163,16 @@ public class InvitationAdministrationService {
         UUID callerId = currentUser.currentUser().id();
         lockOpen(invitationId);
         String token = InvitationTokens.newToken();
-        invitations.replaceToken(invitationId, InvitationTokens.hash(token), properties.linkLifetime());
+        invitations.replaceToken(invitationId, token, properties.linkLifetime());
         StoredInvitation invitation = load(invitationId);
         auditTrail.linkReissued(callerId, invitationId, invitation.expiresAt());
         return new IssuedInvitation(details(invitation), properties.link(token));
     }
 
-    private UUID insert(String email, String tokenHash, UUID callerId, Set<Role> roles) {
+    private UUID insert(String email, String token, UUID callerId, Set<Role> roles) {
         for (int attempt = 1; ; attempt++) {
             Optional<UUID> inserted =
-                    invitations.insertIfNoOpenInvitation(email, tokenHash, callerId, properties.linkLifetime(), roles);
+                    invitations.insertIfNoOpenInvitation(email, token, callerId, properties.linkLifetime(), roles);
             if (inserted.isPresent()) {
                 return inserted.get();
             }

@@ -4,6 +4,7 @@ import com.mentorhub.api.InvitationsApi;
 import com.mentorhub.api.model.CreatedInvitation;
 import com.mentorhub.api.model.Invitation;
 import com.mentorhub.api.model.InvitationCreate;
+import com.mentorhub.api.model.InvitationLink;
 import com.mentorhub.api.model.InvitationPage;
 import com.mentorhub.api.model.InvitationPreview;
 import com.mentorhub.api.model.InvitationStatus;
@@ -18,7 +19,9 @@ import com.mentorhub.users.internal.invitation.InvitationQuery;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Invitations} tag: managing invitations, and the public preview and the acceptance of a link. Parameter
@@ -64,6 +67,13 @@ class InvitationsController implements InvitationsApi {
     @RequirePermission(Permission.USERS_INVITE)
     public CreatedInvitation reissueInvitationLink(UUID id) {
         return InvitationsMapper.created(administration.reissueLink(id));
+    }
+
+    // TODO(invitation-links step 4): temporary stub, replaced by the real implementation.
+    @Override
+    @RequirePermission(Permission.USERS_INVITE)
+    public InvitationLink getInvitationLink(UUID id) {
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
     }
 
     @Override

@@ -116,14 +116,13 @@ class InvitationAdministrationServiceTests {
                             Map.of("email", "ivan@x.test", "roles", List.of("MENTOR", "STUDENT"))));
         }
 
-        // Spec, Tokens and links; Tests: only the hash is stored, never the token.
+        // Spec invitation-links: the token is stored in plaintext; audit details never contain it (AC-7).
         @Test
-        void storesOnlyTheHashOfTheToken() {
+        void storesTheTokenOfTheLink() {
             IssuedInvitation issued = service.create("ivan@x.test", Set.of());
             String token = token(issued.link());
 
-            assertThat(data.tokenHash(issued.invitation().id())).isEqualTo(InvitationTokens.hash(token));
-            assertThat(data.allInvitationData()).doesNotContain(token);
+            assertThat(data.storedToken(issued.invitation().id())).isEqualTo(token);
             assertThat(data.allAuditDetails()).doesNotContain(token);
         }
 
@@ -470,7 +469,7 @@ class InvitationAdministrationServiceTests {
             assertThat(reissued.link().toString())
                     .matches(LINK_PATTERN)
                     .isNotEqualTo(created.link().toString());
-            assertThat(data.tokenHash(invitation)).isEqualTo(InvitationTokens.hash(newToken));
+            assertThat(data.storedToken(invitation)).isEqualTo(newToken);
             assertThat(reissued.invitation().status()).isEqualTo(InvitationStatus.PENDING);
             assertThat(reissued.invitation().roles()).containsExactly(Role.MENTOR);
             assertThat(reissued.invitation().expiresAt())
@@ -484,7 +483,6 @@ class InvitationAdministrationServiceTests {
                             Map.of(
                                     "expiresAt",
                                     reissued.invitation().expiresAt().toString())));
-            assertThat(data.allInvitationData()).doesNotContain(newToken);
             assertThat(data.allAuditDetails()).doesNotContain(newToken);
         }
 
@@ -493,11 +491,11 @@ class InvitationAdministrationServiceTests {
         @ValueSource(booleans = {false, true})
         void refusesAClosedInvitation(boolean accepted) {
             UUID invitation = create("ivan@x.test");
-            String hash = data.tokenHash(invitation);
+            String token = data.storedToken(invitation);
             close(invitation, accepted);
 
             assertConflict(() -> service.reissueLink(invitation), InvitationProblems.INVITATION_CLOSED);
-            assertThat(data.tokenHash(invitation)).isEqualTo(hash);
+            assertThat(data.storedToken(invitation)).isEqualTo(token);
         }
 
         // AC-7
@@ -512,7 +510,7 @@ class InvitationAdministrationServiceTests {
     @MethodSource("operations")
     void callersWithoutTheInvitePermissionAreRefused(Consumer<InvitationAdministrationService> operation) {
         UUID invitation = create("open@x.test");
-        String hash = data.tokenHash(invitation);
+        String token = data.storedToken(invitation);
         UUID caller = users.create("mentor@x.test", UserStatus.ACTIVE, Role.MENTOR);
         for (Permission[] permissions :
                 List.of(new Permission[0], new Permission[] {Permission.USERS_READ}, new Permission[] {
@@ -522,7 +520,7 @@ class InvitationAdministrationServiceTests {
             assertThatThrownBy(() -> operation.accept(service)).isInstanceOf(AccessDeniedException.class);
         }
         assertThat(data.count("invitations")).isEqualTo(1);
-        assertThat(data.tokenHash(invitation)).isEqualTo(hash);
+        assertThat(data.storedToken(invitation)).isEqualTo(token);
         assertThat(data.auditEntries(invitation)).hasSize(1);
     }
 

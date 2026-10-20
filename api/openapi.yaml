@@ -18,7 +18,7 @@ tags:
   - name: Users
     description: Users and the current caller
   - name: Invitations
-    description: Invitations by a one-time link, and their acceptance
+    description: Invitations by link, and their acceptance
 paths:
   /api/v1/system/info:
     get:
@@ -313,8 +313,9 @@ paths:
       description: |
         Requires `USERS_INVITE`. The email is trimmed, must be a valid address and is at most 254 characters;
         it is stored as entered after trimming and compared ignoring case. The invitation expires after the
-        configured link lifetime. The `link` appears only in this response and in the response of
-        `POST /api/v1/invitations/{id}/link`; it is never returned again.
+        configured link lifetime. The `link` is returned in this response, in the response of
+        `POST /api/v1/invitations/{id}/link`, and by `GET /api/v1/invitations/{id}/link` while the invitation is
+        pending; no other response contains it.
       requestBody:
         required: true
         content:
@@ -324,6 +325,9 @@ paths:
       responses:
         '201':
           description: The invitation and its link
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
@@ -396,6 +400,36 @@ paths:
         '409':
           $ref: '#/components/responses/InvitationClosed'
   /api/v1/invitations/{id}/link:
+    get:
+      tags: [Invitations]
+      operationId: getInvitationLink
+      summary: The link of a pending invitation
+      description: |
+        Requires `USERS_INVITE`. Returns the current link of a pending invitation, the same as in the response that
+        created or last replaced it; reading it changes nothing. An expired invitation has no link to copy: issue a
+        new one with `POST /api/v1/invitations/{id}/link`.
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+      responses:
+        '200':
+          description: The link, with the email it is for and its expiry
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationLink'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvitationLinkUnavailable'
     post:
       tags: [Invitations]
       operationId: reissueInvitationLink
@@ -403,12 +437,15 @@ paths:
       description: |
         Requires `USERS_INVITE`. Only for a pending or expired invitation. A new token replaces the old one,
         whose link stops working, and the expiry becomes now plus the configured link lifetime.
-        The `link` appears only in this response.
+        While the invitation is pending, `GET /api/v1/invitations/{id}/link` returns the new link again.
       parameters:
         - $ref: '#/components/parameters/InvitationId'
       responses:
         '200':
           description: The invitation after the change, and its new link
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
@@ -522,6 +559,12 @@ components:
         minimum: 1
         maximum: 100
         default: 25
+  headers:
+    NoStore:
+      description: Always `no-store`. The response contains an invitation link, which must not be cached.
+      schema:
+        type: string
+        enum: [no-store]
   responses:
     Unauthorized:
       description: |
@@ -583,6 +626,15 @@ components:
     InvitationClosed:
       description: |
         The invitation is accepted or revoked; nothing was changed. Problem type `urn:mentorhub:problem:invitation-closed`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationLinkUnavailable:
+      description: |
+        The invitation has no link to return; nothing was changed. Problem type is one of:
+        - `urn:mentorhub:problem:invitation-closed`: the invitation is accepted or revoked;
+        - `urn:mentorhub:problem:invitation-expired`: the invitation is open but expired; a new link renews it.
       content:
         application/problem+json:
           schema:
@@ -698,7 +750,7 @@ components:
         `urn:mentorhub:problem:last-admin`, `urn:mentorhub:problem:invitation-invalid`,
         `urn:mentorhub:problem:user-active` and `urn:mentorhub:problem:invitation-exists`
         (schema `InvitationConflictProblem`), `urn:mentorhub:problem:invitation-closed`,
-        `urn:mentorhub:problem:invitation-email-mismatch`, `urn:mentorhub:problem:identity-linked-elsewhere`.
+        `urn:mentorhub:problem:invitation-expired`, `urn:mentorhub:problem:invitation-email-mismatch`, `urn:mentorhub:problem:identity-linked-elsewhere`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       required: [type, title, status]
@@ -1076,7 +1128,9 @@ components:
           $ref: '#/components/schemas/HistoryActor'
     CreatedInvitation:
       type: object
-      description: An invitation with its link. The link is returned only once.
+      description: |
+        An invitation with its link. While the invitation is pending, `GET /api/v1/invitations/{id}/link` returns the
+        same link again.
       required: [invitation, link]
       properties:
         invitation:
@@ -1086,6 +1140,22 @@ components:
           format: uri
           description: '`<app-url>/invite/<token>`.'
           examples: ['http://localhost:4200/invite/Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQe']
+    InvitationLink:
+      type: object
+      description: The link of a pending invitation.
+      required: [link, email, expiresAt]
+      properties:
+        link:
+          type: string
+          format: uri
+          description: '`<app-url>/invite/<token>`.'
+          examples: ['http://localhost:4200/invite/Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQe']
+        email:
+          type: string
+          examples: [ivan@example.com]
+        expiresAt:
+          type: string
+          format: date-time
     InvitationPage:
       type: object
       required: [items, page, size, totalItems]
