@@ -89,6 +89,20 @@ public class InvitationRepository {
                 .optional());
     }
 
+    /** The only read that returns a stored token (spec invitation-links, AC-1). */
+    public Optional<StoredInvitationLink> findLink(UUID id) {
+        return jdbc.sql("select i.id, i.token, i.email, i.expires_at, %s as status from invitations i where i.id = :id"
+                        .formatted(STATUS))
+                .param("id", id)
+                .query((rs, rowNum) -> new StoredInvitationLink(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("token"),
+                        rs.getString("email"),
+                        InvitationStatus.valueOf(rs.getString("status")),
+                        instant(rs, "expires_at")))
+                .optional();
+    }
+
     public Optional<StoredInvitation> findByToken(String token) {
         return withRoles(jdbc.sql(COLUMNS + "where i.token = :token")
                 .param("token", token)

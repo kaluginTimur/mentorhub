@@ -20,6 +20,7 @@ Planned order: tracking core (users, roles, cohorts, enrollments, notes and feed
 - The application stores no passwords and does not implement sign-in. The backend is an OAuth2 resource server; trusted issuers are configuration.
 - Domain data references `users.id`, never the token `sub`. External identities live in `user_identities(user_id, issuer, subject)`.
 - Registration is by invitation only. The exceptions are the administrator bootstrap (ADR 0005) and development users, which exist only in the development profile.
+- Invitation tokens are stored in plaintext (`docs/features/invitation-links.md`), so anyone with database access can read a link. Accepting an invitation therefore must keep requiring a verified email equal to the invitation's; that match is the only protection of a link, and relaxing it requires hashing the tokens again.
 - Only active users pass the gate: the identity in a validated token must be linked to the user (linking happens only through an invitation or ADR 0005, both with a verified email), and a disabled user is refused on the next request.
 
 ## Authorization

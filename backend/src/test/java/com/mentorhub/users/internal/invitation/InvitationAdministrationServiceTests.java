@@ -505,6 +505,96 @@ class InvitationAdministrationServiceTests {
         }
     }
 
+    /** Spec invitation-links. */
+    @Nested
+    class Links {
+
+        // invitation-links AC-1
+        @Test
+        void returnsTheLinkOfTheCreatedInvitation() {
+            IssuedInvitation created = service.create("Ivan@x.test", Set.of(Role.MENTOR));
+
+            PendingInvitationLink link = service.link(created.invitation().id());
+
+            assertThat(link)
+                    .isEqualTo(new PendingInvitationLink(
+                            created.link(), "Ivan@x.test", created.invitation().expiresAt()));
+        }
+
+        // invitation-links AC-1: after a new link, the new one is returned.
+        @Test
+        void returnsTheLinkOfTheLatestNewLink() {
+            UUID invitation = create("ivan@x.test");
+            data.expire(invitation);
+            IssuedInvitation reissued = service.reissueLink(invitation);
+
+            PendingInvitationLink link = service.link(invitation);
+
+            assertThat(link.link()).isEqualTo(reissued.link());
+            assertThat(link.expiresAt()).isEqualTo(reissued.invitation().expiresAt());
+        }
+
+        // invitation-links AC-1: any holder of USERS_INVITE, not only the creator.
+        @Test
+        void anotherAdministratorGetsTheSameLink() {
+            IssuedInvitation created = service.create("ivan@x.test", Set.of());
+            actAs(users.create("other@x.test", UserStatus.ACTIVE, Role.ADMIN), Permission.USERS_INVITE);
+
+            assertThat(service.link(created.invitation().id()).link()).isEqualTo(created.link());
+        }
+
+        // invitation-links AC-7
+        @Test
+        void writesNoAuditEntry() {
+            UUID invitation = create("ivan@x.test");
+
+            service.link(invitation);
+
+            assertThat(data.auditEntries(invitation))
+                    .extracting(AuditRow::action)
+                    .containsExactly("INVITATION_CREATED");
+        }
+
+        // invitation-links AC-2: expiry is decided with the database's now().
+        @Test
+        void refusesAnExpiredInvitation() {
+            UUID invitation = create("ivan@x.test");
+            String token = data.storedToken(invitation);
+            data.expire(invitation);
+
+            assertConflict(() -> service.link(invitation), InvitationProblems.INVITATION_EXPIRED);
+            assertThat(data.storedToken(invitation)).isEqualTo(token);
+            assertThat(data.auditEntries(invitation)).hasSize(1);
+        }
+
+        // invitation-links AC-2: closed wins over expired, as in the status derivation.
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        void refusesAClosedInvitation(boolean accepted) {
+            UUID pending = create("ivan@x.test");
+            UUID expired = create("maria@x.test");
+            data.expire(expired);
+            for (UUID invitation : List.of(pending, expired)) {
+                if (accepted) {
+                    data.markAccepted(invitation, users.create(invitation + "@x.test", UserStatus.ACTIVE));
+                } else {
+                    data.markRevoked(invitation, admin);
+                }
+            }
+
+            assertConflict(() -> service.link(pending), InvitationProblems.INVITATION_CLOSED);
+            assertConflict(() -> service.link(expired), InvitationProblems.INVITATION_CLOSED);
+        }
+
+        // invitation-links AC-2
+        @Test
+        void unknownIdIsNotFound() {
+            create("ivan@x.test");
+
+            assertThatThrownBy(() -> service.link(ANY_ID)).isInstanceOf(NotFoundException.class);
+        }
+    }
+
     // AC-5: every management operation needs USERS_INVITE; other permissions do not grant it.
     @ParameterizedTest
     @MethodSource("operations")
@@ -532,7 +622,9 @@ class InvitationAdministrationServiceTests {
                 operation(service -> service.create("new@x.test", Set.of())),
                 operation(service -> service.list(new InvitationQuery(null, null, 0, 25))),
                 operation(service -> service.revoke(ANY_ID)),
-                operation(service -> service.reissueLink(ANY_ID)));
+                operation(service -> service.reissueLink(ANY_ID)),
+                // invitation-links AC-3
+                operation(service -> service.link(ANY_ID)));
     }
 
     private static Arguments operation(Consumer<InvitationAdministrationService> operation) {
