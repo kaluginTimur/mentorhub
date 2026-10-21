@@ -2,6 +2,8 @@
 # Installs the toolchains that the remote sandbox image lacks: Node 24 (frontend/.nvmrc) and JDK 25 (docs/development/backend.md).
 # The JDK comes from the conda-forge package, verified against its repodata SHA-256.
 # Starts the Docker daemon and provides postgres:18 for Testcontainers. Docker failures only warn.
+# Also provides ~/.nvm/nvm-exec and installs frontend dependencies. The dev stack is not started here: the backend's
+# spring-boot-docker-compose support starts infra/compose.yaml on `spring-boot:run`.
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
@@ -67,6 +69,23 @@ if start_docker; then
   fi
 else
   echo "Docker daemon did not start; see $HOME/dockerd.log" >&2
+fi
+
+export JAVA_HOME="$JDK_DIR"
+export PATH="$NODE_DIR/bin:$JDK_DIR/bin:$PATH"
+
+# The commands in docs/development/frontend.md and the allow rules call ~/.nvm/nvm-exec. The sandbox has no nvm, and the
+# Node on PATH already satisfies frontend/.nvmrc, so the wrapper only runs its arguments.
+if [ ! -e "$HOME/.nvm/nvm-exec" ]; then
+  mkdir -p "$HOME/.nvm"
+  printf '#!/bin/bash\nexec "$@"\n' > "$HOME/.nvm/nvm-exec"
+  chmod +x "$HOME/.nvm/nvm-exec"
+fi
+
+# Dependencies for `npm start`; a failure only warns, so the session still starts.
+if [ ! -d "$CLAUDE_PROJECT_DIR/frontend/node_modules" ]; then
+  (cd "$CLAUDE_PROJECT_DIR/frontend" && npm ci) >/dev/null 2>&1 \
+    || echo "npm ci in frontend failed; run it manually" >&2
 fi
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
