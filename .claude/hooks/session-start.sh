@@ -1,6 +1,7 @@
 #!/bin/bash
 # Installs the toolchains that the remote sandbox image lacks: Node 24 (frontend/.nvmrc) and JDK 25 (docs/development/backend.md).
 # The JDK comes from the conda-forge package, verified against its repodata SHA-256.
+# Starts the Docker daemon and provides postgres:18 for Testcontainers; Docker failures only warn.
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
@@ -42,6 +43,30 @@ for package in glob.glob(f"{outer}/pkg-*.tar.zst"):
 EOF
   rm -rf "$JDK_DIR"
   mv "$tmp/jdk" "$JDK_DIR"
+fi
+
+start_docker() {
+  if docker info >/dev/null 2>&1; then
+    return 0
+  fi
+  setsid nohup dockerd > "$HOME/dockerd.log" 2>&1 < /dev/null &
+  for _ in $(seq 30); do
+    if docker info >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+# Docker is optional for the session: a failure here must not block it, so it only warns.
+if start_docker; then
+  if ! docker image inspect postgres:18 >/dev/null 2>&1; then
+    docker pull mirror.gcr.io/library/postgres:18 >/dev/null && docker tag mirror.gcr.io/library/postgres:18 postgres:18 \
+      || echo "Could not pull postgres:18 from mirror.gcr.io (Docker Hub rate-limits anonymous pulls)" >&2
+  fi
+else
+  echo "Docker daemon did not start; see $HOME/dockerd.log" >&2
 fi
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
