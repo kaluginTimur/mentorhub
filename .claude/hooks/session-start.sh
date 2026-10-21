@@ -1,7 +1,8 @@
 #!/bin/bash
 # Installs the toolchains that the remote sandbox image lacks: Node 24 (frontend/.nvmrc) and JDK 25 (docs/development/backend.md).
 # The JDK comes from the conda-forge package, verified against its repodata SHA-256.
-# Starts the Docker daemon and provides postgres:18 for Testcontainers; Docker failures only warn.
+# Starts the Docker daemon, provides postgres:18 for Testcontainers and starts the dev stack from infra/compose.yaml.
+# Docker failures only warn.
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
@@ -64,6 +65,12 @@ if start_docker; then
   if ! docker image inspect postgres:18 >/dev/null 2>&1; then
     docker pull mirror.gcr.io/library/postgres:18 >/dev/null && docker tag mirror.gcr.io/library/postgres:18 postgres:18 \
       || echo "Could not pull postgres:18 from mirror.gcr.io (Docker Hub rate-limits anonymous pulls)" >&2
+  fi
+  if docker compose -f "$CLAUDE_PROJECT_DIR/infra/compose.yaml" up -d --wait; then
+    curl -fsS -o /dev/null --retry 60 --retry-delay 2 --retry-all-errors http://localhost:8180/realms/mentorhub \
+      || echo "Keycloak realm mentorhub is not reachable on :8180" >&2
+  else
+    echo "Dev stack (infra/compose.yaml) did not start" >&2
   fi
 else
   echo "Docker daemon did not start; see $HOME/dockerd.log" >&2
