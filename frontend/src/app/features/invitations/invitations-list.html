@@ -83,6 +83,24 @@
                   }
                 }
               </div>
+              @if (invitation.lastEmail; as email) {
+                <div class="secondary" [class.failed]="email.status === 'FAILED'">
+                  @switch (email.status) {
+                    @case ('QUEUED') {
+                      Sending email…
+                    }
+                    @case ('SENT') {
+                      Email sent {{ email.finishedAt | date: 'd MMM y' }}
+                    }
+                    @case ('FAILED') {
+                      Email failed {{ email.finishedAt | date: 'd MMM y' }}
+                    }
+                    @case ('SKIPPED') {
+                      Email not sent
+                    }
+                  }
+                </div>
+              }
             </td>
           </ng-container>
           <ng-container matColumnDef="invited">
@@ -96,6 +114,18 @@
             <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
             <td mat-cell *matCellDef="let invitation" class="actions">
               @if (invitation.status === 'PENDING') {
+                @if (emailEnabled()) {
+                  <button
+                    matButton
+                    type="button"
+                    disabledInteractive
+                    [disabled]="isBusy(invitation.id)"
+                    [attr.aria-label]="'Send invitation email to ' + invitation.email"
+                    (click)="sendEmail(invitation)"
+                  >
+                    Send email
+                  </button>
+                }
                 <button
                   matButton
                   type="button"

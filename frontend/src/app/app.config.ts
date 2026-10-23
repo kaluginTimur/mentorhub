@@ -7,17 +7,23 @@ import {
   StsConfigLoader,
   provideAuth,
 } from 'angular-auth-oidc-client';
-import { map, shareReplay } from 'rxjs';
+import { map, shareReplay, tap } from 'rxjs';
 import { provideApiConfiguration } from './core/api/api-configuration';
 import { getClientConfig } from './core/api/fn/system/get-client-config';
+import { ClientConfig } from './core/api/models/client-config';
+import { ClientConfigService } from './core/client-config.service';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/auth/error.interceptor';
 import { routes } from './app.routes';
 
-export function oidcConfigLoader(http: HttpClient): StsConfigLoader {
+export function oidcConfigLoader(
+  http: HttpClient,
+  onConfig?: (config: ClientConfig) => void,
+): StsConfigLoader {
   const origin = globalThis.location.origin;
   return new StsConfigHttpLoader(
     getClientConfig(http, '').pipe(
+      tap((response) => onConfig?.(response.body)),
       map((response) => ({
         authority: response.body.issuer,
         clientId: response.body.clientId,
@@ -51,7 +57,12 @@ export const appConfig: ApplicationConfig = {
     // contract paths already start with /api, so the base URL is empty
     provideApiConfiguration(''),
     provideAuth({
-      loader: { provide: StsConfigLoader, useFactory: oidcConfigLoader, deps: [HttpClient] },
+      loader: {
+        provide: StsConfigLoader,
+        useFactory: (http: HttpClient, config: ClientConfigService) =>
+          oidcConfigLoader(http, (c) => config.apply(c)),
+        deps: [HttpClient, ClientConfigService],
+      },
     }),
   ],
 };

@@ -5,6 +5,7 @@ import com.mentorhub.api.model.CreatedInvitation;
 import com.mentorhub.api.model.Invitation;
 import com.mentorhub.api.model.InvitationCreate;
 import com.mentorhub.api.model.InvitationLink;
+import com.mentorhub.api.model.InvitationLinkReissue;
 import com.mentorhub.api.model.InvitationPage;
 import com.mentorhub.api.model.InvitationPreview;
 import com.mentorhub.api.model.InvitationStatus;
@@ -56,8 +57,8 @@ class InvitationsController implements InvitationsApi {
         List<com.mentorhub.users.@Nullable Role> roles = invitationCreate.getRoles().stream()
                 .map(role -> role == null ? null : UsersMapper.role(role))
                 .toList();
-        CreatedInvitation created =
-                InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles));
+        CreatedInvitation created = InvitationsMapper.created(administration.create(
+                invitationCreate.getEmail(), roles, Boolean.TRUE.equals(invitationCreate.getSendEmail())));
         noStore();
         return created;
     }
@@ -78,8 +79,9 @@ class InvitationsController implements InvitationsApi {
 
     @Override
     @RequirePermission(Permission.USERS_INVITE)
-    public CreatedInvitation reissueInvitationLink(UUID id) {
-        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id));
+    public CreatedInvitation reissueInvitationLink(UUID id, @Nullable InvitationLinkReissue invitationLinkReissue) {
+        boolean sendEmail = invitationLinkReissue != null && Boolean.TRUE.equals(invitationLinkReissue.getSendEmail());
+        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id, sendEmail));
         noStore();
         return created;
     }
@@ -90,6 +92,12 @@ class InvitationsController implements InvitationsApi {
         InvitationLink link = InvitationsMapper.link(administration.link(id));
         noStore();
         return link;
+    }
+
+    @Override
+    @RequirePermission(Permission.USERS_INVITE)
+    public Invitation sendInvitationEmail(UUID id) {
+        return InvitationsMapper.invitation(administration.sendEmail(id));
     }
 
     @Override

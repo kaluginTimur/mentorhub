@@ -1,8 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { ClientConfigService } from '../../core/client-config.service';
+import { sendInvitationEmail } from '../../core/api/fn/invitations/send-invitation-email';
 import { Api } from '../../core/api/api';
 import { getInvitationLink } from '../../core/api/fn/invitations/get-invitation-link';
 import { listInvitations } from '../../core/api/fn/invitations/list-invitations';
@@ -614,6 +617,283 @@ describe('InvitationsList', () => {
           'Invite a person',
         ),
       );
+    });
+  });
+
+  describe('invitation emails (AC-17, AC-18)', () => {
+    const emailOn = () =>
+      TestBed.overrideProvider(ClientConfigService, { useValue: { invitationEmails: () => true } });
+    const pending = () => invitation({ id: 'p', email: 'p@example.com' });
+    const click = (element: HTMLElement, label: string) =>
+      [...element.querySelectorAll('tr.mat-mdc-row button')]
+        .find((b) => b.textContent?.trim() === label)
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const confirmDialog = async (harness: RouterTestingHarness, label: string) => {
+      await vi.waitFor(() => expect(overlayButton(label)).toBeTruthy());
+      overlayButton(label)?.click();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    };
+    const snackSpy = () => vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+    const listCalls = () => api.invoke.mock.calls.filter(([fn]) => fn === listInvitations).length;
+
+    it('shows "Send email" before "Copy link" on pending rows only', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page(rowsOf));
+      const { element } = await open();
+      expect(rowButtons(element, 0)).toEqual([
+        'Send email',
+        'Copy link',
+        'Get a new link',
+        'Revoke',
+      ]);
+      expect(rowButtons(element, 1)).toEqual(['Get a new link', 'Revoke']);
+      expect(element.querySelector('tr.mat-mdc-row button')?.getAttribute('aria-label')).toBe(
+        'Send invitation email to p@example.com',
+      );
+    });
+
+    it('hides the email action when email is disabled', async () => {
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
+    });
+
+    it('shows the email line for every status of lastEmail', async () => {
+      const requestedBy = { id: 'a1', name: 'Ada Admin' };
+      const requestedAt = '2026-10-18T09:00:00Z';
+      const mail = (status: string, finishedAt?: string) => ({
+        status,
+        requestedAt,
+        requestedBy,
+        ...(finishedAt ? { finishedAt } : {}),
+      });
+      api.invoke.mockResolvedValue(
+        page([
+          invitation({ id: '1', lastEmail: mail('QUEUED') as never }),
+          invitation({ id: '2', lastEmail: mail('SENT', '2026-10-18T09:05:00Z') as never }),
+          invitation({ id: '3', lastEmail: mail('FAILED', '2026-10-19T09:05:00Z') as never }),
+          invitation({ id: '4', lastEmail: mail('SKIPPED', '2026-10-19T09:05:00Z') as never }),
+          invitation({
+            id: '5',
+            status: 'REVOKED',
+            lastEmail: mail('SKIPPED', requestedAt) as never,
+          }),
+          invitation({ id: '6' }),
+        ]),
+      );
+      const { element } = await open();
+      const rows = [...element.querySelectorAll('tr.mat-mdc-row')];
+      expect(rows[0].textContent).toContain('Sending email…');
+      expect(rows[1].textContent).toContain('Email sent 18 Oct 2026');
+      expect(rows[2].textContent).toContain('Email failed 19 Oct 2026');
+      expect(rows[2].querySelector('.secondary.failed')).toBeTruthy();
+      expect(rows[3].textContent).toContain('Email not sent');
+      expect(rows[4].textContent).toContain('Email not sent');
+      const statusLines = (row: Element) =>
+        row.querySelectorAll('td.mat-column-status .secondary').length;
+      expect(statusLines(rows[0])).toBe(2);
+      expect(statusLines(rows[5])).toBe(1);
+      expect(rows[1].querySelector('.failed')).toBeNull();
+    });
+
+    it('sends without a confirmation, replaces the row and confirms (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { harness, element } = await open();
+      api.invoke.mockResolvedValueOnce(
+        invitation({
+          id: 'p',
+          email: 'p@example.com',
+          lastEmail: {
+            status: 'QUEUED',
+            requestedAt: '2026-10-18T09:00:00Z',
+            requestedBy: { id: 'a1', name: 'Ada Admin' },
+          },
+        }),
+      );
+      const snack = snackSpy();
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(api.invoke).toHaveBeenCalledWith(sendInvitationEmail, { id: 'p' }),
+      );
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+      expect(document.querySelector('mat-dialog-container')).toBeNull();
+      expect(element.querySelector('tr.mat-mdc-row')?.textContent).toContain('Sending email…');
+      expect(document.body.textContent).toContain('Email to p@example.com queued');
+      expect(snack).toHaveBeenCalledWith(
+        'Email to p@example.com queued',
+        'Dismiss',
+        expect.objectContaining({ politeness: 'polite' }),
+      );
+      expect(listCalls()).toBe(1);
+    });
+
+    it('explains 409 email-queued and reloads (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:email-queued'));
+      const snack = snackSpy();
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(
+          'An email to p@example.com is already on its way.',
+        ),
+      );
+      expect(snack).toHaveBeenCalledWith(
+        'An email to p@example.com is already on its way.',
+        'Dismiss',
+        expect.objectContaining({ politeness: 'assertive' }),
+      );
+      await vi.waitFor(() => expect(listCalls()).toBe(2));
+    });
+
+    it('explains 409 email-unavailable (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:email-unavailable'));
+      const snack = snackSpy();
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(
+          'Sending email is not available. Reload the page and try again.',
+        ),
+      );
+      expect(snack).toHaveBeenCalledWith(
+        'Sending email is not available. Reload the page and try again.',
+        'Dismiss',
+        expect.objectContaining({ politeness: 'assertive' }),
+      );
+    });
+
+    it('disables the row actions while the email request runs (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { harness, element } = await open();
+      let resolve!: (value: unknown) => void;
+      api.invoke.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+      click(element, 'Send email');
+      harness.detectChanges();
+      const buttons = () => [...element.querySelectorAll('tr.mat-mdc-row button')];
+      await vi.waitFor(() =>
+        expect(buttons().map((b) => b.getAttribute('aria-disabled'))).toEqual([
+          'true',
+          'true',
+          'true',
+          'true',
+        ]),
+      );
+      resolve(pending());
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+      await vi.waitFor(() =>
+        expect(buttons().every((b) => b.getAttribute('aria-disabled') !== 'true')).toBe(true),
+      );
+    });
+
+    it('treats an expired invitation like Copy link (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-expired'));
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('This invitation has expired. Get a new link.'),
+      );
+      await vi.waitFor(() => expect(listCalls()).toBe(2));
+    });
+
+    it('treats a closed invitation like Copy link (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-closed'));
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('This invitation is already closed.'),
+      );
+      await vi.waitFor(() => expect(listCalls()).toBe(2));
+    });
+
+    it('treats a 404 like Copy link (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(404, 'urn:mentorhub:problem:not-found'));
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('This invitation is already closed.'),
+      );
+      await vi.waitFor(() => expect(listCalls()).toBe(2));
+    });
+
+    it('offers the email checkbox in the new-link confirmation, checked, and requests it (AC-17)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { harness, element } = await open();
+      click(element, 'Get a new link');
+      await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
+      const box = document.querySelector('mat-dialog-container mat-checkbox') as HTMLElement;
+      expect(box.textContent).toContain('Send the new link by email');
+      expect((box.querySelector('input') as HTMLInputElement).checked).toBe(true);
+      api.invoke.mockImplementation(async (fn) =>
+        fn === reissueInvitationLink
+          ? created({ id: 'p', email: 'p@example.com' })
+          : page([pending()]),
+      );
+      await confirmDialog(harness, 'Get a new link');
+      await vi.waitFor(() =>
+        expect(api.invoke).toHaveBeenCalledWith(reissueInvitationLink, {
+          id: 'p',
+          body: { sendEmail: true },
+        }),
+      );
+      await vi.waitFor(() =>
+        expect(document.querySelector('app-link-view')?.textContent).toContain(
+          'An email with this link is on its way to p@example.com. It expires on 25 Oct 2026. You can also copy the link, and copy it again from the invitations list while it is pending.',
+        ),
+      );
+    });
+
+    it('requests no email when the box is unchecked (AC-17)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { harness, element } = await open();
+      click(element, 'Get a new link');
+      await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
+      (document.querySelector('mat-dialog-container mat-checkbox input') as HTMLElement).click();
+      api.invoke.mockImplementation(async (fn) =>
+        fn === reissueInvitationLink ? created({ id: 'p' }) : page([pending()]),
+      );
+      await confirmDialog(harness, 'Get a new link');
+      await vi.waitFor(() =>
+        expect(api.invoke).toHaveBeenCalledWith(reissueInvitationLink, {
+          id: 'p',
+          body: { sendEmail: false },
+        }),
+      );
+      await vi.waitFor(() =>
+        expect(document.querySelector('app-link-view')?.textContent).toContain('Send this link to'),
+      );
+    });
+
+    it('shows a snackbar when the new link cannot be emailed (AC-17)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { harness, element } = await open();
+      click(element, 'Get a new link');
+      await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
+      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:email-unavailable'));
+      await confirmDialog(harness, 'Get a new link');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(
+          'Sending email is not available. Reload the page and try again.',
+        ),
+      );
+      expect(document.querySelector('app-link-view')).toBeNull();
     });
   });
 });

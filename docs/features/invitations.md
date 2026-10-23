@@ -2,8 +2,9 @@
 
 Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (Mailpit and invitation emails).
+Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (invitation emails).
 Revised: 2026-10-20 by `invitation-links`: the link can be copied again while the invitation is pending (Goal, Scope, AC-1, AC-19, AC-20, Visibility, UI, Decisions). The Design section describes the plaintext token storage of `invitation-links`.
+Revised: 2026-10-23 by `invitation-emails`: with a configured mail server MentorHub can send the link by email (AC-5, AC-20, Access matrix, Out of scope, UI Invitations, API).
 
 ## 1. Requirements
 
@@ -60,7 +61,7 @@ Creating and listing:
   - each item has the id, email, roles, status, creation time, expiry, who created it, and when relevant when and by whom it was accepted or revoked;
   - `q` filters by email (contains, case-insensitive, `%`, `_` and `\` match themselves), and `status` filters by status;
   - invalid parameters respond 400 `validation-failed` as in user administration (AC-3 there), except that `q` may be up to 254 characters after trimming, not 100: the `invitation-exists` link opens `/invitations?q=<email>`, and an email may be up to 254 characters (AC-2), so a shorter limit would break that link for long emails.
-- AC-5 (S1–S4, auto): Given a caller without `USERS_INVITE` (any role other than ADMIN, or no roles), when they call any invitation management operation (create, list, revoke, new link), then the response is 403 `forbidden`.
+- AC-5 (S1–S4, auto): Given a caller without `USERS_INVITE` (any role other than ADMIN, or no roles), when they call any invitation management operation (create, list, revoke, new link, send an email), then the response is 403 `forbidden`.
 
 Revoking and new links:
 
@@ -121,9 +122,10 @@ UI:
   - On 409 `user-active` it shows "This person already has access." with a link to their user page; on 409 `invitation-exists`, "There is already an invitation for this email." with a link to that invitation in the list.
   - On 400, field errors show under their fields.
 - AC-20 (S2, S3, auto): The invitations page shows the loading, empty (with and without filters) and error states, and search, status filter and page are kept in the URL. Its row actions depend on the status:
-  - pending: "Copy link", "Get a new link" and "Revoke" (after a confirmation); expired: "Get a new link" and "Revoke";
+  - pending: "Copy link", "Get a new link" and "Revoke" (after a confirmation), and with email enabled "Send email" before "Copy link" (`invitation-emails` AC-18); expired: "Get a new link" and "Revoke";
   - accepted: the accepting user's name links to their page;
   - revoked: no actions.
+  - with email enabled, the Status column also shows the latest email of the invitation (`invitation-emails` AC-18).
 - AC-21 (S6–S9, auto): The landing page `/invite/<token>` works without sign-in and shows:
   - loading, then either the invitation or "This invitation link is invalid or has expired.";
   - not signed in: "Sign in" and "Create an account", both opening Keycloak with the invited email prefilled;
@@ -146,7 +148,7 @@ UI:
 
 | Action | admin | coordinator | mentor | student | observer | active, no roles | disabled | not invited | not signed in |
 |---|---|---|---|---|---|---|---|---|---|
-| Create, list, revoke, issue a new link | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ (gate) | ✗ (gate) | 401 |
+| Create, list, revoke, issue a new link, send an email | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ (gate) | ✗ (gate) | 401 |
 | Preview a link (`POST /api/v1/invitations/preview`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Accept a link (`POST /api/v1/invitations/accept`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 401 |
 
@@ -178,7 +180,7 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
 
 ### Out of scope
 
-- Sending the invitation by email, Mailpit, and resending by email (feature `invitation-emails`).
+- Sending the invitation by email and resending by email (feature `invitation-emails`, revised).
 - Coordinators or mentors inviting, and invitations tied to an enrollment or cohort (tracking core).
 - Bulk invitations and import.
 - Editing an invitation (email or roles): revoke it and create a new one.
@@ -211,9 +213,9 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
   - a table with:
     - Email;
     - Roles: chips, or "No roles" in secondary text;
-    - Status: text "Pending", "Expired", "Accepted" or "Revoked", with a second line "Expires <date>", "Expired <date>", "Accepted by <name>" (a link to the user page) or "Revoked by <name>";
+    - Status: text "Pending", "Expired", "Accepted" or "Revoked", with a second line "Expires <date>", "Expired <date>", "Accepted by <name>" (a link to the user page) or "Revoked by <name>", and with email enabled a line for the latest email (`invitation-emails` AC-18);
     - Invited: the date and the inviter's name;
-    - row actions: "Copy link", "Get a new link" and "Revoke" as text buttons for a pending invitation; "Get a new link" and "Revoke" for an expired one;
+    - row actions: "Copy link", "Get a new link" and "Revoke" as text buttons for a pending invitation (with email enabled, "Send email" comes first); "Get a new link" and "Revoke" for an expired one;
   - a paginator (25 per page);
   - search, status and page are kept in the URL query; `?q=<email>` is also what the `invitation-exists` link opens. The "Accepted by" link to the user page keeps no back-link state for the invitations list.
 - "Copy link" copies the link of a pending invitation to the clipboard and shows the snackbar "Link copied"; the errors and the clipboard fallback are in `invitation-links` AC-8.
@@ -356,10 +358,11 @@ Migrations `V4__invitations.sql` and `V5__invitation_plain_tokens.sql`. V4 creat
 
 | Method and path | Purpose | Permission | Errors |
 |---|---|---|---|
-| `POST /api/v1/invitations` | Create `{email, roles}`; returns `CreatedInvitation` (AC-1 to AC-3) | `USERS_INVITE` | 400, 403, 409 `user-active`, 409 `invitation-exists` |
+| `POST /api/v1/invitations` | Create `{email, roles}`, optional `sendEmail` (`invitation-emails`); returns `CreatedInvitation` (AC-1 to AC-3) | `USERS_INVITE` | 400, 403, 409 `user-active`, 409 `invitation-exists`, 409 `email-unavailable` |
 | `GET /api/v1/invitations?q&status&page&size` | Page of invitations (AC-4) | `USERS_INVITE` | 400, 403 |
 | `POST /api/v1/invitations/{id}/revoke` | Revoke (AC-6); returns `Invitation` | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed` |
-| `POST /api/v1/invitations/{id}/link` | Issue a new link (AC-7); returns `CreatedInvitation` | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed` |
+| `POST /api/v1/invitations/{id}/link` | Issue a new link (AC-7), optional body `{sendEmail}` (`invitation-emails`); returns `CreatedInvitation` | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed`, 409 `email-unavailable` |
+| `POST /api/v1/invitations/{id}/email` | Send the current link by email; returns `Invitation` with 202 (`invitation-emails`) | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed`, 409 `invitation-expired`, 409 `email-queued`, 409 `email-unavailable` |
 | `GET /api/v1/invitations/{id}/link` | The link of a pending invitation; returns `InvitationLink` (`invitation-links`) | `USERS_INVITE` | 400, 403, 404, 409 `invitation-closed`, 409 `invitation-expired` |
 | `POST /api/v1/invitations/preview` | `{token}` → `InvitationPreview` (AC-8, AC-9) | public | 400, 404 `invitation-invalid` |
 | `POST /api/v1/invitations/accept` | `{token}` → `Me` (AC-10 to AC-14) | authenticated, any status | 400, 404 `invitation-invalid`, 409 `invitation-email-mismatch`, 409 `identity-linked-elsewhere` |

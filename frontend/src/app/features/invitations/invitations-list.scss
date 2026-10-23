@@ -66,3 +66,7 @@ a {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.secondary.failed {
+  color: var(--mat-sys-error);
+}
