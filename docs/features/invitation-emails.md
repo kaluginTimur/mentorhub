@@ -3,7 +3,7 @@
 Status: draft
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0001, ADR 0002, ADR 0006, ADR 0007, `docs/features/invitations.md`, `docs/features/invitation-links.md`, `docs/architecture/invariants.md`.
-Reconstructed: 2026-10-23. The first draft stayed in an unpushed local branch; this version is rebuilt from what the repository records about it (see Decisions) and needs the user's confirmation of every point marked "proposed".
+Reconstructed: 2026-10-23. The first draft stayed in an unpushed local branch; this version is rebuilt from what the repository records about it, and the user confirmed the proposals of the reconstruction on 2026-10-23 (see Decisions).
 
 ## 1. Requirements
 
@@ -32,7 +32,7 @@ Administrators create an invitation and today must pass the link on by hand. Men
 
 #### Invited person
 
-- S6. As an invited person, I receive an email that says who invited me to MentorHub, with which address I have to sign in, the link and its expiry.
+- S6. As an invited person, I receive an email that says I am invited to MentorHub, with which address I have to sign in, the link and its expiry.
 
 #### Operator
 
@@ -44,7 +44,7 @@ Each criterion is marked **auto** (automated tests) or **manual** (checked by ha
 
 Configuration:
 
-- AC-1 (S5, S7, auto): Given no mail server is configured (`spring.mail.host` unset), then the application starts, `GET /api/v1/system/client-config` returns `invitationEmails: false`, and every request that asks to send an email responds 409 `email-unavailable` and changes nothing. Given a mail server is configured, then `invitationEmails` is `true`, and startup fails, naming the property, if `mentorhub.mail.from` is missing or not a valid address (proposed).
+- AC-1 (S5, S7, auto): Given no mail server is configured (`spring.mail.host` unset), then the application starts, `GET /api/v1/system/client-config` returns `invitationEmails: false`, and every request that asks to send an email responds 409 `email-unavailable` and changes nothing. Given a mail server is configured, then `invitationEmails` is `true`, and startup fails, naming the property, if `mentorhub.mail.from` is missing or not a valid address.
 
 Requesting an email:
 
@@ -56,7 +56,7 @@ Requesting an email:
   `sendEmail` is optional and defaults to `false`; without it nothing changes against today. If creating the invitation fails (400, 409), no email is requested.
 - AC-3 (S3, auto): The same holds for `POST /api/v1/invitations/{id}/link` with the optional body `{sendEmail: true}`: the email carries the new link. Without a body the operation behaves as today.
 - AC-4 (S2, auto): Given a pending invitation, when an administrator calls `POST /api/v1/invitations/{id}/email`, then an email request is stored and audited as in AC-2, the token and the expiry stay unchanged, and the response is 202 with the invitation. An accepted or revoked invitation responds 409 `invitation-closed`, an expired one 409 `invitation-expired` (as `GET .../link`), an unknown id 404 `not-found`. Any administrator can send it, not only the inviter.
-- AC-5 (S2, auto): Given the invitation's latest email is still `QUEUED`, when an administrator requests another one, then the response is 409 `email-queued` and nothing is stored, so a double click sends one email (proposed).
+- AC-5 (S2, auto): Given the invitation's latest email is still `QUEUED`, when an administrator requests another one, then the response is 409 `email-queued` and nothing is stored, so a double click sends one email.
 - AC-6 (auto): Given a caller without `USERS_INVITE`, then `POST .../email` and the `sendEmail` flag respond 403 `forbidden`; disabled and not invited callers are refused by the gate.
 
 Delivery:
@@ -64,22 +64,23 @@ Delivery:
 - AC-7 (S1–S3, S6, auto): Given a stored email request, after the requesting transaction commits, the application sends one email to the invitation's address with the link of the invitation's current token, and marks the request `SENT` with the time. The administrator's request never waits for the mail server: the response is returned before any connection to it.
 - AC-8 (auto): Given the requesting transaction rolls back, then no email is sent.
 - AC-9 (auto): Given the invitation is no longer pending when the email is about to be sent (accepted, revoked or expired since the request), then no email is sent and the request becomes `SKIPPED`. A request whose link was replaced since sends the current link, never a replaced one.
-- AC-10 (S4, auto): Given the mail server refuses the message or cannot be reached within the configured timeouts, then the request becomes `FAILED` with the time and a short reason without the token, a warning is logged without the token or the message body, and the invitation is unchanged. There is no automatic retry; the administrator sends again (proposed).
+- AC-10 (S4, auto): Given the mail server refuses the message or cannot be reached within the configured timeouts, then the request becomes `FAILED` with the time and a short reason without the token, a warning is logged without the token or the message body, and the invitation is unchanged. There is no automatic retry; the administrator sends again.
 - AC-11 (auto): Given the application stops after the commit but before the email was sent, then after the next start the email is sent once (event publication registry, ADR 0008, planned). An email may be sent twice if the application stops between handing it to the mail server and recording `SENT`; that is accepted.
 - AC-12 (S6, auto): The email is plain text in English:
   - From: `mentorhub.mail.from`; To: the invitation's email; Subject: "You're invited to MentorHub";
-  - body: "<inviter name> invited you to MentorHub, the training center's mentoring platform. Open this link and sign in or create an account with <email>: <link>. The link expires on <date>. If you didn't expect this invitation, ignore this email.";
-  - the inviter name follows the name rule of the shell (first and last name, or the one that is set, or the email); the date uses the same format as the UI, in UTC (proposed).
+  - body: "You're invited to MentorHub, the training center's mentoring platform. Open this link and sign in or create an account with <email>: <link>. The link expires on <date>. If you didn't expect this invitation, ignore this email.";
+  - the email is impersonal: it names no administrator and contains no data about the invitation beyond the address, the link and the expiry (user decision);
+  - the date uses the same format as the UI, in UTC.
 - AC-13 (auto): The token and the link never appear in logs, audit details, the event publication registry or the email request rows. The email request row references the invitation; the link is built when the email is sent.
 
 Reading the outcome:
 
-- AC-14 (S4, auto): Each item of `GET /api/v1/invitations` (and every response that returns an `Invitation`) carries `lastEmail` when the invitation has at least one email request: `status` (`QUEUED`, `SENT`, `FAILED`, `SKIPPED`), `requestedAt`, `requestedBy` (`HistoryActor`) and, when they apply, `sentAt` or `failedAt`. Earlier requests stay in the database and are not shown (proposed).
+- AC-14 (S4, auto): Each item of `GET /api/v1/invitations` (and every response that returns an `Invitation`) carries `lastEmail` when the invitation has at least one email request: `status` (`QUEUED`, `SENT`, `FAILED`, `SKIPPED`), `requestedAt`, `requestedBy` (`HistoryActor`) and, once it is no longer `QUEUED`, `finishedAt`. Earlier requests stay in the database and are not shown.
 
 UI:
 
 - AC-15 (S1, S3, S5, auto): Given email is enabled, then the invite dialog has the checkbox "Send the invitation by email to this address", checked by default, and the "Get a new link" confirmation has "Send the new link by email", checked by default. After success, the link view reads "An email with this link is on its way to <email>. It expires on <date>. You can also copy the link, and copy it again from the invitations list while it is pending." Given email is disabled, neither checkbox is rendered and the dialog works as today.
-- AC-16 (S2, S4, auto): Given email is enabled, a pending row has "Send email" before "Copy link". It sends without a confirmation and shows the snackbar "Email to <email> queued"; 409 `email-queued` shows "An email to <email> is already on its way."; 409 `invitation-closed`, `invitation-expired`, 404 and other errors behave as for "Copy link" (`invitation-links` AC-8). The Status column shows a further line for `lastEmail`: "Sending email…", "Email sent <date>", "Email failed <date>" or "Email not sent". The list does not poll; it shows the new state when it reloads (proposed).
+- AC-16 (S2, S4, auto): Given email is enabled, a pending row has "Send email" before "Copy link". It sends without a confirmation and shows the snackbar "Email to <email> queued"; 409 `email-queued` shows "An email to <email> is already on its way."; 409 `invitation-closed`, `invitation-expired`, 404 and other errors behave as for "Copy link" (`invitation-links` AC-8). The Status column shows a further line for `lastEmail`: "Sending email…", "Email sent <date>", "Email failed <date>" or "Email not sent". The list does not poll; it shows the new state when it reloads.
 - AC-17 (manual): Given the local environment, an administrator creates an invitation with the email checkbox, the email arrives in Mailpit with a working link, the row shows "Email sent", "Send email" delivers a second email with the same link, and opening it as the invited person accepts the invitation. With Mailpit stopped, "Send email" ends as "Email failed" after a reload, and the administrator still can copy the link.
 
 ### Access matrix
@@ -97,7 +98,7 @@ UI:
 | Data | Who sees it |
 |---|---|
 | The latest email's status, times and requester | Holders of `USERS_INVITE`, in the invitations list |
-| The failure reason | Nobody through the API; the warning in the server log and the request row (proposed) |
+| The failure reason | Nobody through the API; the warning in the server log and the request row |
 | The link inside the email | The owner of the invited mailbox. The email adds no new reader of the link: acceptance still requires the invited verified email (`docs/architecture/invariants.md`). |
 | Whether email is enabled | Anyone (public client configuration) |
 
@@ -107,7 +108,7 @@ UI:
 |---|---|---|---|
 | `INVITATION_EMAIL_REQUESTED` | `INVITATION` | the administrator | `reason`: `CREATED`, `LINK_REISSUED` or `RESENT` |
 
-The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrator's change; it is kept in the email request row and not audited (proposed).
+The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrator's change; it is kept in the email request row and not audited.
 
 ### Out of scope
 
@@ -162,7 +163,7 @@ The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrat
 
 ### Modules
 
-- New module `com.mentorhub.mail` (planned), an infrastructure module with no domain knowledge (proposed):
+- New module `com.mentorhub.mail` (planned), an infrastructure module with no domain knowledge:
   - public API: `MailDelivery.isEnabled()` and `MailDelivery.send(MailMessage)` (`to`, `subject`, `text`), which sends synchronously and throws `MailDeliveryException` on failure;
   - internals: a `JavaMailSender` adapter, `MailProperties` (`mentorhub.mail.from`) and a disabled implementation when no `JavaMailSender` bean exists;
   - it depends on no other module.
@@ -180,7 +181,7 @@ The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrat
 - Incomplete publications are resubmitted on startup (`spring.modulith.events.republish-outstanding-events-on-restart: true`), which gives AC-11. Completed publications are deleted (`spring.modulith.events.completion-mode: delete`), so the table does not grow.
 - The listener records `FAILED` and completes instead of throwing, so a failure is not replayed endlessly on each restart (AC-10). It throws only on unexpected errors (for example the database is down), which leaves the publication incomplete for the next start.
 - `spring-boot-starter-mail`. Spring Boot creates the `JavaMailSender` only when `spring.mail.host` is set; that is the "mail server configured" switch.
-- Mail timeouts: `spring.mail.properties.mail.smtp.connectiontimeout`, `timeout` and `writetimeout` default to 5 s in `application.yaml` (proposed), so a hung server frees the listener thread.
+- Mail timeouts: `spring.mail.properties.mail.smtp.connectiontimeout`, `timeout` and `writetimeout` default to 5 s in `application.yaml`, so a hung server frees the listener thread.
 
 ### Data model
 
@@ -256,18 +257,16 @@ Recovered from the repository:
 - Before approval the spec was to be reworked for plaintext tokens, resending without a new link, and asynchronous sending (`docs/features/invitation-links.md`, Documentation updates). The plaintext token makes "Send email" possible without replacing the link.
 - The mail server is optional, and sending is asynchronous (the user, 2026-10-23, from memory of the lost draft).
 
-Proposed in this reconstruction (to be confirmed):
+Proposed in this reconstruction and confirmed by the user (2026-10-23):
 
 - Durable asynchronous delivery through the Spring Modulith event publication registry with JDBC, as ADR 0001 anticipated, recorded in ADR 0008.
 - A separate `mail` infrastructure module; the invitation text and the decision what to send stay in `users`.
 - The email request row stores no link; the link is built from the current token when the email is sent, and closed invitations are skipped.
 - One queued email per invitation; no automatic retries; failures are shown in the list.
 - The availability of email is a public flag in the client configuration.
+- The email checkbox is checked by default; the list shows only the latest email of an invitation.
+- The email is impersonal and does not name the inviter (user decision, instead of the proposed inviter name).
 
 ## 4. Open questions
 
-- Q1. What the lost draft decided differently: anything in "Proposed" that contradicts it. Decided by the user.
-- Q2. Automatic retries for a failed email (for example three attempts with backoff) instead of showing `FAILED` at once: recommendation no retries, the administrator retries with one click and sees the result. Decided by the user.
-- Q3. Default of the email checkbox when email is enabled: recommendation checked. Decided by the user.
-- Q4. Showing the outcome: only the latest email in the list (recommendation), or a per-invitation email history. Decided by the user.
-- Q5. Whether the email names the inviter: recommendation yes, it makes the email recognizable and less like phishing. Decided by the user.
+None.
