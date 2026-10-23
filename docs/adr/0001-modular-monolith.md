@@ -17,4 +17,4 @@ The platform covers several domains: cohorts and students, notes and feedback, a
 
 - Violating module boundaries breaks the build.
 - A module can later be extracted into a service without rewriting the rest.
-- The Modulith event publication registry (`spring-modulith-starter-jpa`) will be added when asynchronous events between modules appear.
+- The Modulith event publication registry was added with JDBC instead of JPA when the first asynchronous events appeared (ADR 0008).

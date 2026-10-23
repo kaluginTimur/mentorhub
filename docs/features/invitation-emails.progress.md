@@ -16,7 +16,7 @@ Started: 2026-10-23
 | frontend A (prototype) | skipped | | 2026-10-23 |
 | frontend B | approved | 95f64fc | 2026-10-23 |
 | review | approved | (this commit) | 2026-10-23 |
-| verify | in progress (automated PASS; AC-19 manual running) | | 2026-10-23 |
+| verify | approved | (this commit) | 2026-10-23 |
 
 Status: `pending`, `in progress`, `in review` (report shown, waiting for the user), `approved`, `skipped`. Steps 1 and 2 are one checkpoint.
 
@@ -36,6 +36,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-23, final review: "Делай правки без учета миграций. Если нужна дополнительная колонка - делай её в v6. Остальное делай по рекомендациям": fix findings 1 (duplicate send on a backlog >5 min; any new column goes into V6, not a new migration), 4 (AC-6 test) and 5 (AC-18 test); findings 2 and 3 (spec "(planned)", `identity-foundation.md` revised note) at the final spec update. The user asked to continue the conversation in Russian (project artifacts stay in English).
 - 2026-10-23, final review: "Добавляй тест": frontend also adds a "Send email" 404 case (AC-18).
 - 2026-10-23, final review: "Фразу добавляй, коммить и пуш": `backend.md` notes that deliveries waiting on the guard hold executor threads; fix round committed and pushed. "Тест сам я сделать не могу ... Можешь ли ты сам сделать тест через headless браузер и прислать скриншоты?": AC-19 is run by an agent with headless Chromium.
+- 2026-10-23, verify: `verifier` (scope `all`) PASS; AC-19 passed in headless Chromium against `spring-boot:run` (dev) and `npm start`, all 8 sub-checks, no product bugs (Keycloak image pulled from `mirror.gcr.io` because Docker Hub answered 429). "Принимаю, обновляй спеку и документацию".
 - 2026-10-23, frontend B: review fixes applied (plus Cancel in `confirm-dialog` now closes with `undefined` instead of `''`, and `sessionStorage.clear()` in `access.guard.spec.ts` to fix an order-dependent test); "Коммить оба, фронтенд одобряю, пуш".
 
 ## Handoff notes
@@ -44,7 +45,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 
 - Final review fix round (committed with the review step): finding 1 fixed without a schema change (V6 unchanged) by an in-process per-request guard in `InvitationEmailSender` (regression test `InvitationEmailResubmissionTests`); `resubmit only FAILED` was rejected because `PROCESSING` has no timestamp of its own (Modulith 2.1.1 probed by compiling and at runtime, not via `api-lookup`). Spec text to fix at the final spec update: Design, Asynchronous delivery ("5 minutes is far longer than one send can take..." is wrong; step 1's lock does not cover the send, the sender serializes deliveries per request) and the "Single instance" bullet (guard is per process; backlog re-queueing). Also the reviewer's findings 2 (drop "(planned)" at lines 194, 224) and 3 ("Revised" note in `identity-foundation.md:300,357`).
 - Implementation is complete (steps 1–4, frontend B). Next: the `review` phase — review loop on all feature changes, then `verifier` with scope `all`, then the manual checks per AC (frontend-dev's list for AC-17 to AC-19, with the backend running and Mailpit).
-- Documentation still owed by the coordinator at the final spec update: ADR 0008 (event publication registry; `docs/development/backend.md` already says "ADR 0008 planned" and no file exists), the ADR 0001 line, `docs/features/invitations.md`, README, the compose comment, and the spec's Configuration table row for `management.health.mail.enabled: false`. Check the spec's Documentation updates section for the full list.
+- Feature implemented and accepted (2026-10-23). The final spec update is done: spec status `implemented`, Design aligned with the code, ADR 0008 written, ADR 0001 line, `invitations.md`, `identity-foundation.md` (Revised note), README and the compose comment updated. Next: record the `review` phase usage after the final commit, then `/pr`.
 - Step 4 decisions: `InvitationEmailsEndpointTests` holds `MailDelivery.send` with a `@MockitoSpyBean` latch (context sets `spring.mail.host=localhost`, never connects; `@AfterEach` releases the latch); the 202 has no `Cache-Control` assertion because Spring Security always adds one. Step 4's last `backend.md` edit came after its green verify run (docs only).
 - Test support and pitfalls: `com.mentorhub.support.Mailpit`; mail-enabled tests clear `event_publication`; `SpringApplicationBuilder.properties(...)` are overridden by `application.yaml` (use `--args`); audit entries in one transaction have no stable order.
 - `backend-dev` had no `api-lookup` tool in 3a, 3b and 4; the coordinator ran the one open lookup (no Docker Compose mail connection in Boot 4.1.1; `dev` sets the Mailpit host explicitly).
@@ -56,7 +57,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 
 <!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
 
-- AC-19 manual check: a `general-purpose` agent (sonnet) runs it in this remote container with a headless browser (user's request), screenshots in the session scratchpad; result not yet reported.
+- none
 
 ## Open questions
 
@@ -80,4 +81,4 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 | frontend-dev (review fixes) | sonnet | a43d2a6f6e9cb5c75 | review | 65k |
 | reviewer (re-review) | sonnet | ad4cdb27cc4916bee | review | 41k |
 | verifier (all) | sonnet | af480ac05d7d83f6e | review | 15k |
-| general-purpose (AC-19) | sonnet | acc5cf06c5250af7a | review | running |
+| general-purpose (AC-19) | inherited (opus) | acc5cf06c5250af7a | review | 113k |

@@ -3,6 +3,7 @@
 Status: implemented
 Stage: tracking core (users, roles)
 Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005
+Revised: 2026-10-23 by `invitation-emails`: `ClientConfig` also has the required `invitationEmails`, and `application-dev.yaml` also configures Mailpit (Design: API, Development profile; the Design section is otherwise a snapshot).
 
 ## 1. Requirements
 

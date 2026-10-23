@@ -1,8 +1,8 @@
 # Invitation emails
 
-Status: approved
+Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0001, ADR 0002, ADR 0006, ADR 0007, ADR 0008 (planned), `docs/features/invitations.md` (changes its requirements, see below), `docs/features/invitation-links.md`, `docs/architecture/invariants.md`.
+Related: ADR 0001, ADR 0002, ADR 0006, ADR 0007, ADR 0008, `docs/features/invitations.md` (changes its requirements, see below), `docs/features/invitation-links.md`, `docs/architecture/invariants.md`.
 Reconstructed: 2026-10-23. The first draft stayed in an unpushed local branch; this version is rebuilt from what the repository records about it, and the user confirmed the proposals of the reconstruction on 2026-10-23 (see Decisions).
 
 ## 1. Requirements
@@ -68,7 +68,7 @@ Delivery:
 
   Accepted edge case: the invitation is read once before the mail server is contacted, not locked during the send. A revoke, acceptance or new link that commits while the email is being handed to the mail server (at most the mail timeouts) is not seen: the email carries the link read just before, which may already be dead. The administrator then sends again (as in `invitation-links`, where a copy can race a new link).
 - AC-11 (S4, auto): Given the mail server refuses the message or cannot be reached within the configured timeouts, then the request becomes `FAILED` with the time and a short reason without the token, a warning is logged without the token or the message body, and the invitation is unchanged. There is no automatic retry; the administrator sends again.
-- AC-12 (auto): Given the application stops after the commit but before the email was sent, then after the next start the email is sent once (event publication registry, ADR 0008, planned). A request that is no longer `QUEUED` is never sent again, so a publication replayed after `SENT` was recorded sends nothing. An email may be sent twice if the application stops between handing it to the mail server and recording `SENT`; that is accepted.
+- AC-12 (auto): Given the application stops after the commit but before the email was sent, then after the next start the email is sent once (event publication registry, ADR 0008). A request that is no longer `QUEUED` is never sent again, so a publication replayed after `SENT` was recorded sends nothing. An email may be sent twice if the application stops between handing it to the mail server and recording `SENT`; that is accepted.
 - AC-13 (auto): Given a request stays `QUEUED` because its processing failed unexpectedly (for example the database was unavailable when the result was recorded), then within 10 minutes, without a restart, it is processed again (stale incomplete publications are resubmitted, see Design), so neither the row nor AC-5 stay blocked.
 - AC-14 (S6, auto): The email is plain text in English:
   - From: `mentorhub.mail.from`; To: the invitation's email; Subject: "You're invited to MentorHub";
@@ -191,7 +191,7 @@ The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrat
 
 ### Modules
 
-- New module `com.mentorhub.mail` (planned), an infrastructure module with no domain knowledge:
+- New module `com.mentorhub.mail`, an infrastructure module with no domain knowledge:
   - public API: `MailDelivery.isEnabled()` and `MailDelivery.send(MailMessage)` (`to`, `subject`, `text`), which sends synchronously and throws `MailDeliveryException` on failure;
   - internals: a `JavaMailSender` adapter and `MailSenderProperties` (`mentorhub.mail.from`; not `MailProperties`, which is Spring Boot's own class). Whether email is enabled is decided at runtime from `ObjectProvider<JavaMailSender>`, not with `@ConditionalOnMissingBean(JavaMailSender.class)` in application configuration: that condition is evaluated before Boot's mail auto-configuration and would always see no sender;
   - it depends on no other module.
@@ -202,26 +202,28 @@ The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrat
     2. outside any transaction, it builds the text (AC-14) and calls `MailDelivery.send`;
     3. a short transaction records `SENT` or `FAILED` (`update … where status = 'QUEUED'`).
 
+    The row lock of step 1 commits before the send, so on its own it does not keep two deliveries of one request apart. The sender runs the deliveries of one request one at a time in the process (an in-memory guard): a later delivery waits for the running one, then finds the request no longer `QUEUED`, or sends it if the first one failed unexpectedly.
+
     The event is internal to `users`; the registry is what makes it durable.
   - `InvitationRepository` / a new `InvitationEmailRepository` for the request rows and `lastEmail` in the list query.
 - `com.mentorhub.system`: `ClientConfig` gains `invitationEmails`, read from `MailDelivery.isEnabled()` (`system` → `mail`).
 - Frontend: the checkboxes, the row action and the status line in `frontend/src/app/features/invitations/`; the client config flag next to the OIDC settings.
 
-### Asynchronous delivery (ADR 0008, planned)
+### Asynchronous delivery (ADR 0008)
 
 - `spring-modulith-starter-jdbc` adds the event publication registry (JDBC fits ADR 0007; one transaction manager serves both). ADR 0001 expected the JPA starter here; ADR 0008 records the change.
 - The registry's tables are created by Modulith's schema initialization (`spring.modulith.events.jdbc.schema-initialization.enabled: true`), not by a Flyway migration.
 - Incomplete publications are resubmitted on startup (`spring.modulith.events.republish-outstanding-events-on-restart: true`), which gives AC-12. Completed publications are deleted (`spring.modulith.events.completion-mode: delete`), so the table does not grow.
-- A scheduled job (every 5 minutes) resubmits incomplete publications older than 5 minutes (`IncompleteEventPublications.resubmitIncompletePublicationsOlderThan`), which gives AC-13 without a restart. 5 minutes is far longer than one send can take (the mail timeouts), so a send still in progress is not started twice.
+- A scheduled job (every 5 minutes) resubmits incomplete publications older than 5 minutes (`IncompleteEventPublications.resubmitIncompletePublicationsOlderThan`), which gives AC-13 without a restart. The age counts from the publication, and a publication stays incomplete while it waits in the executor's queue and while it sends, so during a backlog (for example a hanging mail server) publications still being delivered are resubmitted too; the sender's guard and the `QUEUED` check keep them from sending twice. A delivery waiting on the guard holds an executor thread for at most the rest of the running send.
 - The listener records `FAILED` and completes instead of throwing, so a mail failure is not replayed (AC-11). It throws only on unexpected errors (for example the database is down), which leaves the publication incomplete for the scheduled job or the next start.
 - `@EnableAsync` and `@EnableScheduling` on `MentorHubApplication`. Without `@EnableAsync`, `@ApplicationModuleListener` silently runs in the request thread after the commit, and the response waits for the mail server (AC-8). Boot's `applicationTaskExecutor` runs the listener; `spring.task.execution.shutdown.await-termination: true` with a 30 s period lets sends in progress finish on shutdown.
-- **Single instance.** Resubmission on startup and by the job does not know about other instances, so with several instances an email in progress could be sent twice. MentorHub runs as one instance; running several needs a new decision (recorded in ADR 0008).
+- **Single instance.** Resubmission on startup and by the job does not know about other instances, and the sender's guard is in memory per process, so with several instances an email in progress could be sent twice. MentorHub runs as one instance; running several needs a new decision (recorded in ADR 0008).
 - `spring-boot-starter-mail`. Spring Boot creates the `JavaMailSender` only when `spring.mail.host` is set; that is the "mail server configured" switch.
 - Mail timeouts: `spring.mail.properties.mail.smtp.connectiontimeout`, `timeout` and `writetimeout` default to 5 s in `application.yaml`, so a hung server frees the listener thread.
 
 ### Data model
 
-Migration `V6__invitation_emails.sql` (planned):
+Migration `V6__invitation_emails.sql`:
 
 - `invitation_emails`:
   - `id uuid` PK default `gen_random_uuid()`;
@@ -265,14 +267,15 @@ Migration `V6__invitation_emails.sql` (planned):
 | `mentorhub.mail.from` | Sender address, for example `MentorHub <no-reply@example.org>`. Required when the host is set. |
 | `dev` profile | `spring.mail.host: localhost`, `port: 1025` (Mailpit), `mentorhub.mail.from: MentorHub <no-reply@mentorhub.local>` |
 | `spring.task.execution.shutdown.*` | Await termination on shutdown, 30 s (see Asynchronous delivery) |
+| `spring.modulith.events.*` | `jdbc.schema-initialization.enabled: true`, `completion-mode: delete`, `republish-outstanding-events-on-restart: true` (see Asynchronous delivery) |
+| `management.health.mail.enabled: false` | The mail server stays out of `/actuator/health`, so an unreachable one never makes the application unhealthy; a failed email shows as `FAILED` in the list and a warning in the log |
 
-`TestMentorHubApplication` also runs `dev` but starts no Mailpit, so emails there end `FAILED`; that is expected and documented, not fixed. Whether Spring Boot 4.1's Docker Compose support wires Mailpit as a mail service connection by itself is checked in the step; if it does, the explicit `dev` settings must not conflict with it.
+`TestMentorHubApplication` also runs `dev` but starts no Mailpit, so emails there end `FAILED`; that is expected and documented, not fixed. Spring Boot 4.1.1's Docker Compose support has no mail service connection, so `dev` sets the Mailpit host and port explicitly.
 
 ### Tests
 
-- The listener against a real SMTP server: a Mailpit Testcontainer whose HTTP API the test reads, or GreenMail (decided in the step, checked with `api-lookup`).
-- After-commit and rollback behavior (AC-8, AC-9), the restart case (AC-12) and the stale resubmission (AC-13) with `@ApplicationModuleTest` and Modulith's `Scenario`, or the registry's incomplete publications.
-- To check in the step with `api-lookup`, against the jars in use: the names of the Modulith properties above, and `IncompleteEventPublications`.
+- The listener against a real SMTP server: a Mailpit Testcontainer whose HTTP API the test reads (`com.mentorhub.support.Mailpit`); a hung SMTP server for the timeouts (`InvitationEmailMailServerTimeoutTests`).
+- After-commit and rollback behavior (AC-8, AC-9), the restart case (AC-12, `InvitationEmailRestartTests`: a stopped context leaves the publication incomplete, a restarted one sends it) and the stale resubmission (AC-13) through the registry's incomplete publications. `InvitationEmailResubmissionTests` holds a send, resubmits it as stale and checks that it is sent once.
 - AC-19 also checks the received email in one autolinking client (the Mailpit UI is enough) to confirm that the link opens unchanged.
 - The "disabled" path runs in the default test configuration (no host); the "enabled" path in its own configuration.
 - AC-15: tests check that no log line, audit detail, request row or registry row contains the token.
@@ -280,7 +283,7 @@ Migration `V6__invitation_emails.sql` (planned):
 
 ### Documentation updates
 
-- `docs/adr/0008-asynchronous-events.md` (planned): the event publication registry with JDBC, its schema initialization, completion mode and the restart policy.
+- `docs/adr/0008-asynchronous-events.md`: the event publication registry with JDBC, its schema initialization, completion mode and the restart policy.
 - `docs/adr/0001-modular-monolith.md`: the consequence line points to ADR 0008.
 - `docs/development/backend.md`: the `mail` module, events through the registry (`@EnableAsync` as a pitfall, the single-instance assumption), mail configuration and the optional mail server, the `FAILED` emails of `TestMentorHubApplication`, and `mail.debug` next to the bind-parameter logging warning.
 - `docs/features/invitations.md`: the changes listed in "Changes to `docs/features/invitations.md`", with a "Revised" line.
@@ -319,6 +322,11 @@ Accepted after the spec review (user decision, 2026-10-23):
 Decided at the contract checkpoint (user decision, 2026-10-23):
 
 - Modulith creates the registry's tables through its own schema initialization; no Flyway migration for them.
+
+Decided during implementation (user decisions, 2026-10-23):
+
+- The mail server stays out of `/actuator/health` (`management.health.mail.enabled: false`).
+- A delivery backlog must not send an email twice: the sender runs one delivery per request at a time in the process, without a schema change (final review).
 
 ## 4. Open questions
 
