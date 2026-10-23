@@ -37,9 +37,9 @@ paths:
     get:
       tags: [System]
       operationId: getClientConfig
-      summary: OIDC settings for the frontend
+      summary: OIDC settings and enabled features for the frontend
       description: |
-        Issuer, client id and scope the frontend needs to start sign-in.
+        Issuer, client id and scope the frontend needs to start sign-in, and whether optional features are enabled.
         Only values that are public by nature; never a secret.
       security: []
       responses:
@@ -316,6 +316,12 @@ paths:
         configured link lifetime. The `link` is returned in this response, in the response of
         `POST /api/v1/invitations/{id}/link`, and by `GET /api/v1/invitations/{id}/link` while the invitation is
         pending; no other response contains it.
+
+        With `sendEmail: true` an email with the link to the invited address is also requested in the same
+        transaction; it is sent asynchronously after the commit, and the returned invitation carries it as
+        `lastEmail` with status `QUEUED`. This needs a configured mail server (`invitationEmails` in
+        `GET /api/v1/system/client-config`), otherwise the response is 409 `email-unavailable` and nothing is created.
+        If the invitation cannot be created, no email is requested.
       requestBody:
         required: true
         content:
@@ -438,8 +444,21 @@ paths:
         Requires `USERS_INVITE`. Only for a pending or expired invitation. A new token replaces the old one,
         whose link stops working, and the expiry becomes now plus the configured link lifetime.
         While the invitation is pending, `GET /api/v1/invitations/{id}/link` returns the new link again.
+
+        The body is optional; without it, or with `sendEmail: false`, no email is requested. With
+        `sendEmail: true` an email with the new link is requested as in `POST /api/v1/invitations`, and the
+        returned invitation carries it as `lastEmail`. If the invitation's latest email is still `QUEUED`, no second
+        email is requested and the response carries the queued one: it builds its link when it is sent, so it
+        carries the new link. Without a configured mail server the response is 409 `email-unavailable` and nothing
+        is changed.
       parameters:
         - $ref: '#/components/parameters/InvitationId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationLinkReissue'
       responses:
         '200':
           description: The invitation after the change, and its new link
@@ -459,7 +478,36 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          $ref: '#/components/responses/InvitationClosed'
+          $ref: '#/components/responses/InvitationLinkReissueConflict'
+  /api/v1/invitations/{id}/email:
+    post:
+      tags: [Invitations]
+      operationId: sendInvitationEmail
+      summary: Email the current link of a pending invitation
+      description: |
+        Requires `USERS_INVITE`; any holder can send it, not only the inviter. Requests an email with the current
+        link to the invited address; the token and the expiry stay unchanged. The email is sent asynchronously after
+        the commit; the returned invitation carries it as `lastEmail` with status `QUEUED`. The operation has no
+        request body, and its response does not contain the link.
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+      responses:
+        '202':
+          description: The email is requested; the invitation with it as `lastEmail`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvitationEmailConflict'
   /api/v1/invitations/preview:
     post:
       tags: [Invitations]
@@ -615,10 +663,13 @@ components:
             $ref: '#/components/schemas/Problem'
     InvitationCreateConflict:
       description: |
-        The email cannot be invited now; nothing was created. Schema `InvitationConflictProblem`; problem type is one of:
+        The invitation cannot be created now; nothing was created. Schema `InvitationConflictProblem`; problem type is
+        one of, checked in this order:
         - `urn:mentorhub:problem:user-active`: an active user has the email (ignoring case); extension `userId`;
         - `urn:mentorhub:problem:invitation-exists`: an open (pending or expired) invitation for the email exists;
-          extension `invitationId`.
+          extension `invitationId`;
+        - `urn:mentorhub:problem:email-unavailable`: `sendEmail` is `true` and no mail server is configured; no
+          extension.
       content:
         application/problem+json:
           schema:
@@ -626,6 +677,26 @@ components:
     InvitationClosed:
       description: |
         The invitation is accepted or revoked; nothing was changed. Problem type `urn:mentorhub:problem:invitation-closed`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationLinkReissueConflict:
+      description: |
+        No new link was issued; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:invitation-closed`: the invitation is accepted or revoked;
+        - `urn:mentorhub:problem:email-unavailable`: `sendEmail` is `true` and no mail server is configured.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationEmailConflict:
+      description: |
+        No email was requested; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:invitation-closed`: the invitation is accepted or revoked;
+        - `urn:mentorhub:problem:invitation-expired`: the invitation is open but expired; a new link renews it;
+        - `urn:mentorhub:problem:email-unavailable`: no mail server is configured;
+        - `urn:mentorhub:problem:email-queued`: the invitation's latest email is still `QUEUED`.
       content:
         application/problem+json:
           schema:
@@ -673,7 +744,7 @@ components:
           examples: [0.0.1-SNAPSHOT]
     ClientConfig:
       type: object
-      required: [issuer, clientId, scope]
+      required: [issuer, clientId, scope, invitationEmails]
       properties:
         issuer:
           type: string
@@ -686,6 +757,11 @@ components:
           type: string
           description: Space-separated OIDC scopes to request.
           examples: [openid profile email]
+        invitationEmails:
+          type: boolean
+          description: |
+            Whether a mail server is configured, so invitation emails can be requested. When `false`, every request
+            to send an email responds 409 `email-unavailable`.
     AccessStatus:
       type: string
       description: |
@@ -750,7 +826,9 @@ components:
         `urn:mentorhub:problem:last-admin`, `urn:mentorhub:problem:invitation-invalid`,
         `urn:mentorhub:problem:user-active` and `urn:mentorhub:problem:invitation-exists`
         (schema `InvitationConflictProblem`), `urn:mentorhub:problem:invitation-closed`,
-        `urn:mentorhub:problem:invitation-expired`, `urn:mentorhub:problem:invitation-email-mismatch`, `urn:mentorhub:problem:identity-linked-elsewhere`.
+        `urn:mentorhub:problem:invitation-expired`, `urn:mentorhub:problem:invitation-email-mismatch`,
+        `urn:mentorhub:problem:identity-linked-elsewhere`, `urn:mentorhub:problem:email-unavailable`,
+        `urn:mentorhub:problem:email-queued`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       required: [type, title, status]
@@ -1092,7 +1170,8 @@ components:
       type: object
       description: |
         An invitation. `acceptedAt` and `acceptedUser` are present only when accepted, `revokedAt` and `revokedBy` only
-        when revoked; absent (not `null`) otherwise. The link is never part of it.
+        when revoked, `lastEmail` only when an email was ever requested for it; absent (not `null`) otherwise. The
+        link is never part of it.
       required: [id, email, roles, status, createdAt, expiresAt, createdBy]
       properties:
         id:
@@ -1126,6 +1205,33 @@ components:
           format: date-time
         revokedBy:
           $ref: '#/components/schemas/HistoryActor'
+        lastEmail:
+          $ref: '#/components/schemas/InvitationEmail'
+    InvitationEmailStatus:
+      type: string
+      description: |
+        - `QUEUED`: requested and not processed yet;
+        - `SENT`: accepted by the configured mail server;
+        - `FAILED`: the mail server refused it or could not be reached; there is no automatic retry;
+        - `SKIPPED`: not sent, because the invitation was no longer pending when the email was about to be sent.
+      enum: [QUEUED, SENT, FAILED, SKIPPED]
+    InvitationEmail:
+      type: object
+      description: |
+        The latest email requested for an invitation. `finishedAt` is present once the status is not `QUEUED`; absent
+        (not `null`) otherwise.
+      required: [status, requestedAt, requestedBy]
+      properties:
+        status:
+          $ref: '#/components/schemas/InvitationEmailStatus'
+        requestedAt:
+          type: string
+          format: date-time
+        requestedBy:
+          $ref: '#/components/schemas/HistoryActor'
+        finishedAt:
+          type: string
+          format: date-time
     CreatedInvitation:
       type: object
       description: |
@@ -1190,6 +1296,17 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Role'
+        sendEmail:
+          type: boolean
+          default: false
+          description: Also email the link to the invited address. `true` needs a configured mail server.
+    InvitationLinkReissue:
+      type: object
+      properties:
+        sendEmail:
+          type: boolean
+          default: false
+          description: Also email the new link to the invited address. `true` needs a configured mail server.
     InvitationToken:
       type: object
       required: [token]

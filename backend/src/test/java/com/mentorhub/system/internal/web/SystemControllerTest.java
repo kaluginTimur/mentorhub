@@ -40,7 +40,8 @@ class SystemControllerTest {
                         {
                           "issuer": "http://localhost:8180/realms/mentorhub",
                           "clientId": "mentorhub-web",
-                          "scope": "openid profile email"
+                          "scope": "openid profile email",
+                          "invitationEmails": false
                         }
                         """);
     }

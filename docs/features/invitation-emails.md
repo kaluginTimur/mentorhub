@@ -210,7 +210,7 @@ The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrat
 ### Asynchronous delivery (ADR 0008, planned)
 
 - `spring-modulith-starter-jdbc` adds the event publication registry (JDBC fits ADR 0007; one transaction manager serves both). ADR 0001 expected the JPA starter here; ADR 0008 records the change.
-- The registry's `event_publication` table is created by a Flyway migration, not by Modulith's schema initialization.
+- The registry's tables are created by Modulith's schema initialization (`spring.modulith.events.jdbc.schema-initialization.enabled: true`), not by a Flyway migration.
 - Incomplete publications are resubmitted on startup (`spring.modulith.events.republish-outstanding-events-on-restart: true`), which gives AC-12. Completed publications are deleted (`spring.modulith.events.completion-mode: delete`), so the table does not grow.
 - A scheduled job (every 5 minutes) resubmits incomplete publications older than 5 minutes (`IncompleteEventPublications.resubmitIncompletePublicationsOlderThan`), which gives AC-13 without a restart. 5 minutes is far longer than one send can take (the mail timeouts), so a send still in progress is not started twice.
 - The listener records `FAILED` and completes instead of throwing, so a mail failure is not replayed (AC-11). It throws only on unexpected errors (for example the database is down), which leaves the publication incomplete for the scheduled job or the next start.
@@ -233,7 +233,6 @@ Migration `V6__invitation_emails.sql` (planned):
   - `failure text null`, only with `FAILED`, at most 500 characters, never the token;
   - index on (`invitation_id`, `requested_at desc`) for `lastEmail`;
   - partial unique index on `invitation_id` where `status = 'QUEUED'`: at most one queued email per invitation (AC-5, also under parallel requests).
-- `event_publication` as Spring Modulith 2.1's JDBC schema for PostgreSQL requires (copied from the version in use and checked by a test that starts the registry against the migrated schema). Its rows are deleted on completion.
 - `invitation_emails` rows are never deleted.
 
 ### API
@@ -273,7 +272,7 @@ Migration `V6__invitation_emails.sql` (planned):
 
 - The listener against a real SMTP server: a Mailpit Testcontainer whose HTTP API the test reads, or GreenMail (decided in the step, checked with `api-lookup`).
 - After-commit and rollback behavior (AC-8, AC-9), the restart case (AC-12) and the stale resubmission (AC-13) with `@ApplicationModuleTest` and Modulith's `Scenario`, or the registry's incomplete publications.
-- To check in the step with `api-lookup`, against the jars in use: the names of the Modulith properties above, `IncompleteEventPublications`, and the `event_publication` schema of Spring Modulith 2.1.
+- To check in the step with `api-lookup`, against the jars in use: the names of the Modulith properties above, and `IncompleteEventPublications`.
 - AC-19 also checks the received email in one autolinking client (the Mailpit UI is enough) to confirm that the link opens unchanged.
 - The "disabled" path runs in the default test configuration (no host); the "enabled" path in its own configuration.
 - AC-15: tests check that no log line, audit detail, request row or registry row contains the token.
@@ -281,7 +280,7 @@ Migration `V6__invitation_emails.sql` (planned):
 
 ### Documentation updates
 
-- `docs/adr/0008-asynchronous-events.md` (planned): the event publication registry with JDBC, its migration, completion mode and the restart policy.
+- `docs/adr/0008-asynchronous-events.md` (planned): the event publication registry with JDBC, its schema initialization, completion mode and the restart policy.
 - `docs/adr/0001-modular-monolith.md`: the consequence line points to ADR 0008.
 - `docs/development/backend.md`: the `mail` module, events through the registry (`@EnableAsync` as a pitfall, the single-instance assumption), mail configuration and the optional mail server, the `FAILED` emails of `TestMentorHubApplication`, and `mail.debug` next to the bind-parameter logging warning.
 - `docs/features/invitations.md`: the changes listed in "Changes to `docs/features/invitations.md`", with a "Revised" line.
@@ -316,6 +315,10 @@ Accepted after the spec review (user decision, 2026-10-23):
 - The send runs outside database transactions; a change that commits during the send is an accepted edge case instead of a lock held for the mail timeouts.
 - The link stands on its own line in the email; the expiry shows time and UTC.
 - One instance is assumed for delivery.
+
+Decided at the contract checkpoint (user decision, 2026-10-23):
+
+- Modulith creates the registry's tables through its own schema initialization; no Flyway migration for them.
 
 ## 4. Open questions
 

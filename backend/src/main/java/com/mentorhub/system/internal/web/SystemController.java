@@ -38,6 +38,7 @@ class SystemController implements SystemApi {
     @Override
     @NoPermissionRequired
     public ClientConfig getClientConfig() {
-        return new ClientConfig(client.issuerUri(), client.clientId(), SCOPE);
+        // TODO(invitation-emails step 4): read from MailDelivery.isEnabled().
+        return new ClientConfig(client.issuerUri(), client.clientId(), SCOPE, false);
     }
 }
