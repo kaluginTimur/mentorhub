@@ -112,7 +112,6 @@ Every tool call re-sends the agent's whole context; prompt caching makes the re-
 | Manual browser checks run on Haiku, and `/pr` does not watch a green pull request | A clear test case needs no stronger model (invitation-emails AC-19 ran on inherited Opus, 0.42M); every pull request event wakes the session and re-reads its whole context. |
 | `/spec` records its own `spec` phase | Otherwise the spec's work lands in the feature's `contract` record (invitation-emails: about 1M). |
 
-
 ### Measuring a session
 
 ```bash
