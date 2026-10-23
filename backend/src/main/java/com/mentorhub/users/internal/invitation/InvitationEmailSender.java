@@ -11,6 +11,9 @@ import com.mentorhub.users.internal.persistence.InvitationRepository;
 import com.mentorhub.users.internal.persistence.StoredInvitationEmail;
 import com.mentorhub.users.internal.persistence.StoredInvitationLink;
 import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>A mail failure is recorded as {@link InvitationEmailStatus#FAILED} and completes the publication, so it is not
  * retried (AC-11). Any other exception leaves the publication incomplete for {@link InvitationEmailResubmission} or the
  * next start (AC-12, AC-13); a request that is no longer queued is never sent again.
+ *
+ * <p>Deliveries of one request run one at a time in this process: a resubmitted publication can be delivered while the
+ * first delivery is still sending (a backlog in the executor makes the publication look stale), and the row lock of the
+ * first step does not cover the send. The later delivery waits, then finds the request done, or sends it if the first
+ * delivery failed unexpectedly. Like resubmission, this assumes a single application instance.
  */
 @Component
 class InvitationEmailSender {
@@ -44,6 +52,7 @@ class InvitationEmailSender {
     private final InvitationProperties properties;
     private final MailDelivery mail;
     private final TransactionTemplate transaction;
+    private final Set<UUID> delivering = new HashSet<>();
 
     InvitationEmailSender(
             InvitationEmailRepository emails,
@@ -62,6 +71,28 @@ class InvitationEmailSender {
     // the async and transaction proxies apply.
     @ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
     public void on(InvitationEmailRequested event) {
+        UUID id = event.emailRequestId();
+        synchronized (delivering) {
+            while (!delivering.add(id)) {
+                try {
+                    delivering.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for another delivery of " + id, e);
+                }
+            }
+        }
+        try {
+            deliver(event);
+        } finally {
+            synchronized (delivering) {
+                delivering.remove(id);
+                delivering.notifyAll();
+            }
+        }
+    }
+
+    private void deliver(InvitationEmailRequested event) {
         Delivery delivery = transaction.execute(status -> prepare(event));
         if (delivery == null) {
             return;

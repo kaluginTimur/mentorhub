@@ -66,8 +66,9 @@ public class InvitationEmailRepository {
     }
 
     /**
-     * Locks the request's row until the end of the transaction and reads it, so two deliveries of one request are
-     * serialized. {@code for no key update}, like the other row locks of this module.
+     * Locks the request's row until the end of the transaction and reads it. Only the transaction is serialized: two
+     * deliveries that each commit before sending both see {@link InvitationEmailStatus#QUEUED}, so the sender keeps
+     * deliveries of one request apart itself. {@code for no key update}, like the other row locks of this module.
      */
     public Optional<StoredInvitationEmail> lock(UUID id) {
         return jdbc.sql(COLUMNS + "where e.id = :id for no key update")

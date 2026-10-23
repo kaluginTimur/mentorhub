@@ -794,7 +794,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('treats a closed invitation like Copy link (AC-18)', async () => {
+    it('treats an expired invitation like Copy link (AC-18)', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -802,6 +802,30 @@ describe('InvitationsList', () => {
       click(element, 'Send email');
       await vi.waitFor(() =>
         expect(document.body.textContent).toContain('This invitation has expired. Get a new link.'),
+      );
+      await vi.waitFor(() => expect(listCalls()).toBe(2));
+    });
+
+    it('treats a closed invitation like Copy link (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-closed'));
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('This invitation is already closed.'),
+      );
+      await vi.waitFor(() => expect(listCalls()).toBe(2));
+    });
+
+    it('treats a 404 like Copy link (AC-18)', async () => {
+      emailOn();
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { element } = await open();
+      api.invoke.mockRejectedValueOnce(problem(404, 'urn:mentorhub:problem:not-found'));
+      click(element, 'Send email');
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('This invitation is already closed.'),
       );
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });

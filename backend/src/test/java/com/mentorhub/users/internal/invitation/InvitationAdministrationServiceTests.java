@@ -764,6 +764,17 @@ class InvitationAdministrationServiceTests {
             data.expire(expired);
             assertConflict(() -> service.sendEmail(expired), InvitationProblems.INVITATION_EXPIRED);
         }
+
+        // invitation-emails AC-6: email-unavailable comes before email-queued.
+        @Test
+        void sendingIsUnavailableBeforeAQueuedEmailIsChecked() {
+            UUID invitation = create("ivan@x.test");
+            emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
+
+            assertConflict(() -> service.sendEmail(invitation), InvitationProblems.EMAIL_UNAVAILABLE);
+
+            assertThat(data.count("invitation_emails")).isEqualTo(1);
+        }
     }
 
     // AC-5: every management operation needs USERS_INVITE; other permissions do not grant it.

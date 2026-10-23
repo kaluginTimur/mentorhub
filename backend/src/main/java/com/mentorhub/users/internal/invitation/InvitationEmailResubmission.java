@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * Resubmits event publications whose processing failed unexpectedly, without waiting for a restart (spec
- * invitation-emails, AC-13). The age is far longer than one send can take (the mail timeouts), so a send still in
- * progress is not started twice. Assumes a single application instance (spec, Asynchronous delivery).
+ * invitation-emails, AC-13). The age counts from the publication, so a publication still waiting in the executor or
+ * still sending is resubmitted too; {@link InvitationEmailSender} runs the deliveries of one request one at a time,
+ * and a request that is no longer queued is not sent again. Assumes a single application instance (spec, Asynchronous
+ * delivery).
  */
 @Component
 class InvitationEmailResubmission {
