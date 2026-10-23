@@ -11,6 +11,8 @@ export const PROBLEM = {
   invitationExists: 'urn:mentorhub:problem:invitation-exists',
   invitationEmailMismatch: 'urn:mentorhub:problem:invitation-email-mismatch',
   identityLinkedElsewhere: 'urn:mentorhub:problem:identity-linked-elsewhere',
+  emailUnavailable: 'urn:mentorhub:problem:email-unavailable',
+  emailQueued: 'urn:mentorhub:problem:email-queued',
   userActive: 'urn:mentorhub:problem:user-active',
 } as const;
 

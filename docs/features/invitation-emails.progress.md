@@ -10,11 +10,11 @@ Started: 2026-10-23
 |---|---|---|---|
 | 1 contract | approved | cf555bd | 2026-10-23 |
 | 2 migration | approved | cf555bd | 2026-10-23 |
-| 3a domain and persistence | approved | | 2026-10-23 |
+| 3a domain and persistence | approved | 946e10b | 2026-10-23 |
 | 3b services, authorization and audit | pending | | |
 | 4 api | pending | | |
 | frontend A (prototype) | skipped | | 2026-10-23 |
-| frontend B | in progress | | 2026-10-23 |
+| frontend B | approved | (this commit) | 2026-10-23 |
 | review | pending | | |
 | verify | pending | | |
 
@@ -31,6 +31,7 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-23, step 3a: "Вариант а по хелс чеку": the mail server stays out of `/actuator/health` (`management.health.mail.enabled: false`); document it in `docs/development/backend.md` (3b) and in the spec's Configuration table (coordinator, at the final spec update).
 - 2026-10-23, frontend B review: "все 4 замечания отдай фронтенд агенту": `@Service()` for `ClientConfigService`; update `docs/ui/guidelines.md` and `docs/development/frontend.md`; add `confirm-dialog.spec.ts`; add tests for snackbar politeness, disabled row actions while sending, and replace the weak `not.toContain('mail')` assertion. The frontend commit includes those two docs files.
 - 2026-10-23, step 3a: "Все остальное одобряю".
+- 2026-10-23, frontend B: review fixes applied (plus Cancel in `confirm-dialog` now closes with `undefined` instead of `''`, and `sessionStorage.clear()` in `access.guard.spec.ts` to fix an order-dependent test); "Коммить оба, фронтенд одобряю, пуш".
 
 ## Handoff notes
 
@@ -50,13 +51,13 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - Test support: `com.mentorhub.support.Mailpit` (`host()`, `smtpPort()`, `deleteAll()`, `awaitMessages(n)`). Default test config has no mail host (email disabled); enable per test with `spring.mail.host` / `spring.mail.port` / `mentorhub.mail.from`. Tests that commit data through the registry may need to clear `event_publication`; `TestUsers.deleteAll` already clears `invitation_emails`.
 - Docker: the first Mailpit pull can exceed Testcontainers' 2-minute limit; run `docker pull axllent/mailpit:v1.31.4` once.
 - Environment: if verification fails with "Could not find a valid Docker environment", start `dockerd` first.
-- Frontend prototype (step A) is skipped: mock mode is not implemented (`docs/development/frontend.md`); screens are reviewed after step B.
+- Frontend is done (step A skipped, mock mode not implemented); screens are checked manually per AC after backend step 4, using frontend-dev's manual check list (AC-17, AC-18, AC-19).
 
 ## Pending
 
 <!-- Relays sent to an agent and not yet acted on, and findings waiting for the user's decision. Empty at every phase boundary. -->
 
-- Frontend review fixes (4 minors, see Decisions) sent to `frontend-dev` on 2026-10-23.
+- none
 
 ## Open questions
 
@@ -70,5 +71,5 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 |---|---|---|---|---|
 | backend-dev | opus | ac29c78fe9df0105b | contract | 136k |
 | backend-dev (3a) | opus | a3c9d5afd83dd21df | implementation | 157k |
-| frontend-dev (B) | sonnet | a4f6c753ea793a2d4 | implementation | 118k |
+| frontend-dev (B) | sonnet | a4f6c753ea793a2d4 | implementation | 138k |
 | reviewer (frontend) | opus | a73598105dbd26fbd | implementation | 67k |

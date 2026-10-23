@@ -23,6 +23,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../../core/api/api';
+import { sendInvitationEmail } from '../../core/api/fn/invitations/send-invitation-email';
 import { getInvitationLink } from '../../core/api/fn/invitations/get-invitation-link';
 import { listInvitations } from '../../core/api/fn/invitations/list-invitations';
 import { reissueInvitationLink } from '../../core/api/fn/invitations/reissue-invitation-link';
@@ -33,7 +34,8 @@ import { INVITATION_STATUS } from '../../core/api/models/invitation-status-array
 import { InvitationStatus } from '../../core/api/models/invitation-status';
 import { Role } from '../../core/api/models/role';
 import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
-import { ConfirmDialog } from '../../shared/confirm-dialog/confirm-dialog';
+import { ClientConfigService } from '../../core/client-config.service';
+import { ConfirmDialog, ConfirmResult } from '../../shared/confirm-dialog/confirm-dialog';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS } from '../users/labels';
 import { InviteDialog, InviteDialogData } from './invite-dialog';
@@ -67,6 +69,7 @@ export class InvitationsList {
   private readonly snackBar = inject(MatSnackBar);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly emailEnabled = inject(ClientConfigService).invitationEmails;
   private pushedSearch: string | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -219,6 +222,29 @@ export class InvitationsList {
     }
   }
 
+  protected async sendEmail(invitation: Invitation): Promise<void> {
+    if (this.isBusy(invitation.id)) {
+      return;
+    }
+    this.setBusy(invitation.id, true);
+    try {
+      const updated = await this.api.invoke(sendInvitationEmail, { id: invitation.id });
+      this.loaded.update((page) =>
+        page
+          ? { ...page, items: page.items.map((i) => (i.id === updated.id ? updated : i)) }
+          : page,
+      );
+      this.snackBar.open(`Email to ${invitation.email} queued`, 'Dismiss', {
+        duration: 5000,
+        politeness: 'polite',
+      });
+    } catch (error) {
+      this.rowActionFailed(error, invitation);
+    } finally {
+      this.setBusy(invitation.id, false);
+    }
+  }
+
   protected async revoke(invitation: Invitation): Promise<void> {
     if (this.isBusy(invitation.id)) {
       return;
@@ -256,18 +282,26 @@ export class InvitationsList {
         title: `Get a new link for ${invitation.email}?`,
         text: 'The previous link will stop working.',
         confirmLabel: 'Get a new link',
+        ...(this.emailEnabled()
+          ? { checkbox: { label: 'Send the new link by email', checked: true } }
+          : {}),
       },
     });
-    if (!(await firstValueFrom(ref.afterClosed()))) {
+    const result: true | ConfirmResult | undefined = await firstValueFrom(ref.afterClosed());
+    if (!result) {
       return;
     }
+    const emailRequested = this.emailEnabled() && result !== true && result.checked;
     try {
-      const created = await this.api.invoke(reissueInvitationLink, { id: invitation.id });
+      const created = await this.api.invoke(reissueInvitationLink, {
+        id: invitation.id,
+        ...(this.emailEnabled() ? { body: { sendEmail: emailRequested } } : {}),
+      });
       // the old link is already invalid, so the list changes even if the dialog is closed at once
       this.invitations.reload();
-      await this.openAndReload({ created });
+      await this.openAndReload({ created, emailRequested });
     } catch (error) {
-      this.rowActionFailed(error);
+      this.rowActionFailed(error, invitation);
     }
   }
 
@@ -289,9 +323,24 @@ export class InvitationsList {
     this.invitations.reload();
   }
 
-  private rowActionFailed(error: unknown): void {
+  private rowActionFailed(error: unknown, invitation?: Invitation): void {
     const problem = problemOf(error);
-    if (problem?.type === PROBLEM.invitationClosed || problem?.status === 404) {
+    if (problem?.type === PROBLEM.emailUnavailable) {
+      this.snackBar.open(
+        'Sending email is not available. Reload the page and try again.',
+        'Dismiss',
+        {
+          politeness: 'assertive',
+        },
+      );
+    } else if (problem?.type === PROBLEM.emailQueued) {
+      this.snackBar.open(
+        `An email to ${invitation?.email ?? 'this address'} is already on its way.`,
+        'Dismiss',
+        { politeness: 'assertive' },
+      );
+      this.invitations.reload();
+    } else if (problem?.type === PROBLEM.invitationClosed || problem?.status === 404) {
       this.snackBar.open('This invitation is already closed.', 'Dismiss', { politeness: 'polite' });
       this.invitations.reload();
     } else if (problem?.type === PROBLEM.invitationExpired) {

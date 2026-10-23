@@ -22,7 +22,13 @@ import { InvitationLink } from '../../core/api/models/invitation-link';
   template: `
     <h2 mat-dialog-title>Invitation link</h2>
     <mat-dialog-content>
-      @if (mode() === 'new') {
+      @if (mode() === 'new' && emailRequested()) {
+        <p>
+          An email with this link is on its way to {{ link().email }}. It expires on
+          {{ link().expiresAt | date: 'd MMM y' }}. You can also copy the link, and copy it again
+          from the invitations list while it is pending.
+        </p>
+      } @else if (mode() === 'new') {
         <p>
           Send this link to {{ link().email }}. It expires on
           {{ link().expiresAt | date: 'd MMM y' }}. You can copy it again from the invitations list
@@ -83,6 +89,8 @@ export class LinkView {
 
   readonly link = input.required<InvitationLink>();
   readonly mode = input<'new' | 'copy'>('new');
+  /** The invitation email was requested together with this link. */
+  readonly emailRequested = input(false);
   readonly done = output();
 
   protected async copy(): Promise<void> {
