@@ -30,7 +30,7 @@ A maintenance brief (bug fix, refactoring, dependency update) is a single step u
 
 ## Rules
 
-- Follow `docs/development/backend.md`, including its Pitfalls section. To check whether a class, annotation or method exists in our versions, ask the `api-lookup` subagent; never inspect a dependency yourself (`javap`, `unzip -l`, `jar tf`, `dependency:build-classpath`, `~/.m2`, `node_modules/<package>`). It answers from the exact versions on a small model, and the lookup stays out of your context. Batch the symbols you need into one question when you can.
+- Follow `docs/development/backend.md`, including its Pitfalls section. To check whether a class, annotation or method exists in our versions, ask the `api-lookup` subagent; never inspect a dependency yourself (`javap`, `unzip -l`, `jar tf`, `dependency:build-classpath`, `~/.m2`, `node_modules/<package>`). It answers from the exact versions on a small model, and the lookup stays out of your context. Batch the symbols you need into one question when you can. If you have no tool to start a subagent (a cloud session gives subagents none), do not work around it by compiling probes: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - Keep every invariant in `docs/architecture/invariants.md`.
 - Never edit generated code. Stay out of `frontend/`; if the frontend will need something from you, say it in the report.
 - No commits, no pushes, no destructive commands. A project hook blocks dangerous ones; if it blocks something you think is needed, explain in the report and stop.
