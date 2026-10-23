@@ -3,6 +3,7 @@ package com.mentorhub.users.internal.web;
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -242,7 +243,7 @@ class InvitationsControllerTest {
         // AC-1
         @Test
         void createsAnInvitationAndReturnsItsLinkOnce() {
-            given(administration.create("ivan@example.com", List.of(Role.MENTOR)))
+            given(administration.create("ivan@example.com", List.of(Role.MENTOR), false))
                     .willReturn(issued());
 
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations", CREATE_BODY, admin());
@@ -268,7 +269,7 @@ class InvitationsControllerTest {
         // AC-2: the service reports a null role together with the email's violations.
         @Test
         void nullRoleIsPassedToTheService() {
-            given(administration.create("ivan@example.com", Arrays.asList((Role) null)))
+            given(administration.create("ivan@example.com", Arrays.asList((Role) null), false))
                     .willThrow(ValidationException.of("roles", "must not contain null"));
 
             MvcTestResult result = send(
@@ -297,7 +298,7 @@ class InvitationsControllerTest {
         // AC-3
         @Test
         void activeUserConflictCarriesTheUserId() {
-            given(administration.create(any(), any()))
+            given(administration.create(any(), any(), anyBoolean()))
                     .willThrow(new ConflictException(
                             InvitationProblems.USER_ACTIVE,
                             "This person already has access.",
@@ -313,7 +314,7 @@ class InvitationsControllerTest {
         // AC-3
         @Test
         void existingInvitationConflictCarriesTheInvitationId() {
-            given(administration.create(any(), any()))
+            given(administration.create(any(), any(), anyBoolean()))
                     .willThrow(new ConflictException(
                             InvitationProblems.INVITATION_EXISTS,
                             "There is already an invitation for this email.",
@@ -439,7 +440,7 @@ class InvitationsControllerTest {
         void closedInvitationIsAConflictAndUnknownIdIsNotFound() {
             given(administration.revoke(INVITATION_ID))
                     .willThrow(new ConflictException(InvitationProblems.INVITATION_CLOSED, "Closed."));
-            given(administration.reissueLink(OTHER_ID)).willThrow(new NotFoundException());
+            given(administration.reissueLink(OTHER_ID, false)).willThrow(new NotFoundException());
 
             assertProblem(
                     send(HttpMethod.POST, "/api/v1/invitations/" + INVITATION_ID + "/revoke", "", admin()),
@@ -454,7 +455,7 @@ class InvitationsControllerTest {
         // AC-7
         @Test
         void reissuesTheLink() {
-            given(administration.reissueLink(INVITATION_ID)).willReturn(issued());
+            given(administration.reissueLink(INVITATION_ID, false)).willReturn(issued());
 
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations/" + INVITATION_ID + "/link", "", admin());
 

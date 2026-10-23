@@ -64,7 +64,7 @@ class InvitationsController implements InvitationsApi {
                 .map(role -> role == null ? null : UsersMapper.role(role))
                 .toList();
         CreatedInvitation created =
-                InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles));
+                InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles, false));
         noStore();
         return created;
     }
@@ -90,7 +90,7 @@ class InvitationsController implements InvitationsApi {
         if (invitationLinkReissue != null && Boolean.TRUE.equals(invitationLinkReissue.getSendEmail())) {
             throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
         }
-        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id));
+        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id, false));
         noStore();
         return created;
     }

@@ -16,6 +16,11 @@ public final class InvitationProblems {
     /** 409: the link of an expired invitation is not returned (spec invitation-links, AC-2). */
     public static final URI INVITATION_EXPIRED = URI.create("urn:mentorhub:problem:invitation-expired");
 
+    /** 409: an email is requested but no mail server is configured (spec invitation-emails, AC-1). */
+    public static final URI EMAIL_UNAVAILABLE = URI.create("urn:mentorhub:problem:email-unavailable");
+    /** 409: the invitation's latest email is still queued (spec invitation-emails, AC-5). */
+    public static final URI EMAIL_QUEUED = URI.create("urn:mentorhub:problem:email-queued");
+
     public static final URI INVITATION_EMAIL_MISMATCH = URI.create("urn:mentorhub:problem:invitation-email-mismatch");
     public static final URI IDENTITY_LINKED_ELSEWHERE = URI.create("urn:mentorhub:problem:identity-linked-elsewhere");
 

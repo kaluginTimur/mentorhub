@@ -1,9 +1,11 @@
 package com.mentorhub.users.internal.invitation;
 
+import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.CurrentUserProvider;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.Role;
+import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.StoredRoles;
 import com.mentorhub.users.internal.persistence.InvitationAuditTrail;
 import com.mentorhub.users.internal.persistence.InvitationEmailRepository;
@@ -34,14 +36,21 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Managing invitations (spec invitations, AC-1 to AC-7; spec invitation-links): only holders of
  * {@link Permission#USERS_INVITE}, who see every invitation and the link of a pending one, so the only resource-level
- * rule is that an unknown id is {@link NotFoundException}. Revocation and new links lock the invitation row, which
- * serializes them with acceptance (AC-15).
+ * rule is that an unknown id is {@link NotFoundException}. Revocation, new links and email requests lock the invitation
+ * row, which serializes them with acceptance (AC-15).
+ *
+ * <p>Email requests (spec invitation-emails, AC-2 to AC-7): stored, audited and published as
+ * {@link InvitationEmailRequested} in the changing transaction; {@link InvitationEmailSender} sends them after the
+ * commit. Whether email is enabled is checked after the invitation's own errors (AC-6), so a refused request rolls back
+ * the whole change.
  */
 @Service
 public class InvitationAdministrationService {
@@ -63,6 +72,8 @@ public class InvitationAdministrationService {
     private final InvitationAuditTrail auditTrail;
     private final InvitationProperties properties;
     private final Validator validator;
+    private final MailDelivery mail;
+    private final ApplicationEventPublisher events;
 
     InvitationAdministrationService(
             CurrentUserProvider currentUser,
@@ -72,7 +83,9 @@ public class InvitationAdministrationService {
             StoredRoles storedRoles,
             InvitationAuditTrail auditTrail,
             InvitationProperties properties,
-            Validator validator) {
+            Validator validator,
+            MailDelivery mail,
+            ApplicationEventPublisher events) {
         this.currentUser = currentUser;
         this.invitations = invitations;
         this.emails = emails;
@@ -81,20 +94,25 @@ public class InvitationAdministrationService {
         this.auditTrail = auditTrail;
         this.properties = properties;
         this.validator = validator;
+        this.mail = mail;
+        this.events = events;
     }
 
     /**
-     * AC-1 to AC-3, AC-15.
+     * AC-1 to AC-3, AC-15; spec invitation-emails, AC-2.
      *
      * @param email trimmed, stored as entered after trimming, compared ignoring case
      * @param roles as requested; a {@code null} item is a violation reported together with the email's
+     * @param sendEmail whether to email the link to the invited address
      * @throws ValidationException for {@code email} and {@code roles}
-     * @throws ConflictException {@link InvitationProblems#USER_ACTIVE} with {@code userId}, or
-     *     {@link InvitationProblems#INVITATION_EXISTS} with {@code invitationId}
+     * @throws ConflictException {@link InvitationProblems#USER_ACTIVE} with {@code userId},
+     *     {@link InvitationProblems#INVITATION_EXISTS} with {@code invitationId}, or
+     *     {@link InvitationProblems#EMAIL_UNAVAILABLE}
      */
     @RequirePermission(Permission.USERS_INVITE)
     @Transactional
-    public IssuedInvitation create(@Nullable String email, Collection<? extends @Nullable Role> roles) {
+    public IssuedInvitation create(
+            @Nullable String email, Collection<? extends @Nullable Role> roles, boolean sendEmail) {
         List<FieldViolation> errors = new ArrayList<>();
         String validEmail = validEmail(email, errors);
         if (roles.stream().anyMatch(Objects::isNull)) {
@@ -116,6 +134,11 @@ public class InvitationAdministrationService {
         String token = InvitationTokens.newToken();
         UUID invitationId = insert(validEmail, token, callerId, invitedRoles);
         auditTrail.created(callerId, invitationId, validEmail, invitedRoles);
+        if (sendEmail) {
+            // After the insert, which decides invitation-exists (AC-6); the exception rolls the insert back.
+            requireEmailEnabled();
+            requestEmail(invitationId, InvitationEmailReason.CREATED, callerId);
+        }
         return new IssuedInvitation(details(load(invitationId)), properties.link(token));
     }
 
@@ -159,20 +182,31 @@ public class InvitationAdministrationService {
     }
 
     /**
-     * AC-7: a new token replaces the old one and the expiry becomes now plus the link lifetime.
+     * AC-7: a new token replaces the old one and the expiry becomes now plus the link lifetime. Spec
+     * invitation-emails, AC-3: with {@code sendEmail}, an email with the new link is requested, unless one is still
+     * queued; that one builds its link when it is sent, so it carries the new link.
      *
      * @throws NotFoundException for an unknown id
-     * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}
+     * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED} or
+     *     {@link InvitationProblems#EMAIL_UNAVAILABLE}
      */
     @RequirePermission(Permission.USERS_INVITE)
     @Transactional
-    public IssuedInvitation reissueLink(UUID invitationId) {
+    public IssuedInvitation reissueLink(UUID invitationId, boolean sendEmail) {
         UUID callerId = currentUser.currentUser().id();
         lockOpen(invitationId);
+        if (sendEmail) {
+            requireEmailEnabled();
+        }
         String token = InvitationTokens.newToken();
         invitations.replaceToken(invitationId, token, properties.linkLifetime());
         StoredInvitation invitation = load(invitationId);
         auditTrail.linkReissued(callerId, invitationId, invitation.expiresAt());
+        // The invitation row is locked, so no other request can queue an email in between; checking first keeps the
+        // unique index from aborting this transaction.
+        if (sendEmail && emails.findQueued(invitationId).isEmpty()) {
+            requestEmail(invitationId, InvitationEmailReason.LINK_REISSUED, callerId);
+        }
         return new IssuedInvitation(details(invitation), properties.link(token));
     }
 
@@ -192,11 +226,63 @@ public class InvitationAdministrationService {
         return switch (stored.status()) {
             case PENDING ->
                 new PendingInvitationLink(properties.link(stored.token()), stored.email(), stored.expiresAt());
-            case EXPIRED ->
-                throw new ConflictException(
-                        InvitationProblems.INVITATION_EXPIRED, "This invitation has expired. Get a new link.");
+            case EXPIRED -> throw expired();
             case ACCEPTED, REVOKED -> throw closed();
         };
+    }
+
+    /**
+     * Spec invitation-emails, AC-4 to AC-6: requests an email with the current link of a pending invitation; the token
+     * and the expiry stay unchanged. Any holder of the permission may send it, not only the inviter.
+     *
+     * @throws NotFoundException for an unknown id
+     * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}, {@link InvitationProblems#INVITATION_EXPIRED},
+     *     {@link InvitationProblems#EMAIL_UNAVAILABLE} or {@link InvitationProblems#EMAIL_QUEUED}, in this order
+     */
+    @RequirePermission(Permission.USERS_INVITE)
+    @Transactional
+    public InvitationDetails sendEmail(UUID invitationId) {
+        UUID callerId = currentUser.currentUser().id();
+        StoredInvitation invitation = invitations.lock(invitationId).orElseThrow(NotFoundException::new);
+        switch (invitation.status()) {
+            case PENDING -> {}
+            case EXPIRED -> throw expired();
+            case ACCEPTED, REVOKED -> throw closed();
+        }
+        requireEmailEnabled();
+        if (emails.findQueued(invitationId).isPresent()) {
+            throw emailQueued();
+        }
+        try {
+            requestEmail(invitationId, InvitationEmailReason.RESENT, callerId);
+        } catch (DuplicateKeyException e) {
+            // Not expected while the invitation row is locked; the aborted transaction can only roll back.
+            throw emailQueued();
+        }
+        return details(load(invitationId));
+    }
+
+    private void requireEmailEnabled() {
+        if (!mail.isEnabled()) {
+            throw new ConflictException(InvitationProblems.EMAIL_UNAVAILABLE, "Sending email is not available.");
+        }
+    }
+
+    /** Stores, audits and publishes a request; the invitation has no queued request. */
+    private void requestEmail(UUID invitationId, InvitationEmailReason reason, UUID callerId) {
+        UUID requestId = emails.insertQueued(invitationId, reason, callerId);
+        auditTrail.emailRequested(callerId, invitationId, reason);
+        events.publishEvent(new InvitationEmailRequested(requestId));
+    }
+
+    private static ConflictException emailQueued() {
+        return new ConflictException(
+                InvitationProblems.EMAIL_QUEUED, "An email for this invitation is already queued.");
+    }
+
+    private static ConflictException expired() {
+        return new ConflictException(
+                InvitationProblems.INVITATION_EXPIRED, "This invitation has expired. Get a new link.");
     }
 
     private UUID insert(String email, String token, UUID callerId, Set<Role> roles) {

@@ -101,7 +101,7 @@ class InvitationAdministrationServiceTests {
         // AC-1
         @Test
         void createsAPendingInvitationWithALinkAndAnAuditEntry() {
-            IssuedInvitation issued = service.create("ivan@x.test", Set.of(Role.STUDENT, Role.MENTOR));
+            IssuedInvitation issued = service.create("ivan@x.test", Set.of(Role.STUDENT, Role.MENTOR), false);
 
             InvitationDetails invitation = issued.invitation();
             assertThat(invitation.email()).isEqualTo("ivan@x.test");
@@ -127,7 +127,7 @@ class InvitationAdministrationServiceTests {
         // Spec invitation-links: the token is stored in plaintext; audit details never contain it (AC-7).
         @Test
         void storesTheTokenOfTheLink() {
-            IssuedInvitation issued = service.create("ivan@x.test", Set.of());
+            IssuedInvitation issued = service.create("ivan@x.test", Set.of(), false);
             String token = token(issued.link());
 
             assertThat(data.storedToken(issued.invitation().id())).isEqualTo(token);
@@ -137,7 +137,7 @@ class InvitationAdministrationServiceTests {
         // AC-1
         @Test
         void acceptsAnEmptyRoleSet() {
-            IssuedInvitation issued = service.create("ivan@x.test", Set.of());
+            IssuedInvitation issued = service.create("ivan@x.test", Set.of(), false);
 
             assertThat(issued.invitation().roles()).isEmpty();
             assertThat(data.auditEntries(issued.invitation().id()).getFirst().details())
@@ -147,7 +147,7 @@ class InvitationAdministrationServiceTests {
         // AC-2
         @Test
         void storesTheEmailAsEnteredAfterTrimming() {
-            IssuedInvitation issued = service.create(" \tIvan.Sidorov@Example.COM  ", Set.of());
+            IssuedInvitation issued = service.create(" \tIvan.Sidorov@Example.COM  ", Set.of(), false);
 
             assertThat(issued.invitation().email()).isEqualTo("Ivan.Sidorov@Example.COM");
         }
@@ -157,7 +157,8 @@ class InvitationAdministrationServiceTests {
         void acceptsAnEmailOf254Characters() {
             String email = longEmail(254);
 
-            assertThat(service.create(email, Set.of()).invitation().email()).isEqualTo(email);
+            assertThat(service.create(email, Set.of(), false).invitation().email())
+                    .isEqualTo(email);
         }
 
         // AC-2
@@ -166,7 +167,7 @@ class InvitationAdministrationServiceTests {
         @ValueSource(strings = {"", "   "})
         void rejectsAMissingEmail(@Nullable String email) {
             assertValidationErrors(
-                    () -> service.create(email, Set.of()), new FieldViolation("email", "must not be blank"));
+                    () -> service.create(email, Set.of(), false), new FieldViolation("email", "must not be blank"));
             assertThat(data.count("invitations")).isZero();
         }
 
@@ -175,7 +176,7 @@ class InvitationAdministrationServiceTests {
         @ValueSource(strings = {"not-an-email", "a@b@x.test", "ivan @x.test", "@x.test", "ivan@"})
         void rejectsAnInvalidEmail(String email) {
             assertValidationErrors(
-                    () -> service.create(email, Set.of()),
+                    () -> service.create(email, Set.of(), false),
                     new FieldViolation("email", "must be a well-formed email address"));
             assertThat(data.count("invitations")).isZero();
         }
@@ -184,7 +185,7 @@ class InvitationAdministrationServiceTests {
         @Test
         void rejectsAnEmailLongerThan254Characters() {
             assertValidationErrors(
-                    () -> service.create(longEmail(255), Set.of()),
+                    () -> service.create(longEmail(255), Set.of(), false),
                     new FieldViolation("email", "must be at most 254 characters"));
             assertThat(data.count("invitations")).isZero();
         }
@@ -193,11 +194,11 @@ class InvitationAdministrationServiceTests {
         @Test
         void reportsANullRoleTogetherWithAnInvalidEmail() {
             assertValidationErrors(
-                    () -> service.create("not-an-email", Arrays.asList(Role.MENTOR, null)),
+                    () -> service.create("not-an-email", Arrays.asList(Role.MENTOR, null), false),
                     new FieldViolation("email", "must be a well-formed email address"),
                     new FieldViolation("roles", "must not contain null"));
             assertValidationErrors(
-                    () -> service.create("ivan@x.test", Arrays.asList((Role) null)),
+                    () -> service.create("ivan@x.test", Arrays.asList((Role) null), false),
                     new FieldViolation("roles", "must not contain null"));
             assertThat(data.count("invitations")).isZero();
         }
@@ -207,7 +208,7 @@ class InvitationAdministrationServiceTests {
         void refusesTheEmailOfAnActiveUserIgnoringCase() {
             UUID active = users.create("ivan@x.test", UserStatus.ACTIVE);
 
-            assertThatThrownBy(() -> service.create("IVAN@x.test", Set.of()))
+            assertThatThrownBy(() -> service.create("IVAN@x.test", Set.of(), false))
                     .isInstanceOfSatisfying(ConflictException.class, exception -> {
                         assertThat(exception.type()).isEqualTo(InvitationProblems.USER_ACTIVE);
                         assertThat(exception.extensions()).isEqualTo(Map.of("userId", active));
@@ -221,7 +222,9 @@ class InvitationAdministrationServiceTests {
         void invitesTheEmailOfADisabledUser() {
             users.create("ivan@x.test", UserStatus.DISABLED);
 
-            assertThat(service.create("ivan@x.test", Set.of()).invitation().status())
+            assertThat(service.create("ivan@x.test", Set.of(), false)
+                            .invitation()
+                            .status())
                     .isEqualTo(InvitationStatus.PENDING);
         }
 
@@ -229,12 +232,13 @@ class InvitationAdministrationServiceTests {
         @ParameterizedTest
         @ValueSource(booleans = {false, true})
         void refusesASecondOpenInvitationForTheEmailIgnoringCase(boolean expired) {
-            UUID open = service.create("ivan@x.test", Set.of()).invitation().id();
+            UUID open =
+                    service.create("ivan@x.test", Set.of(), false).invitation().id();
             if (expired) {
                 data.expire(open);
             }
 
-            assertThatThrownBy(() -> service.create("Ivan@X.test", Set.of(Role.MENTOR)))
+            assertThatThrownBy(() -> service.create("Ivan@X.test", Set.of(Role.MENTOR), false))
                     .isInstanceOfSatisfying(ConflictException.class, exception -> {
                         assertThat(exception.type()).isEqualTo(InvitationProblems.INVITATION_EXISTS);
                         assertThat(exception.extensions()).isEqualTo(Map.of("invitationId", open));
@@ -248,11 +252,13 @@ class InvitationAdministrationServiceTests {
         void invitesAgainAfterTheEarlierInvitationsClosed() {
             UUID formerUser = users.create("ivan@x.test", UserStatus.DISABLED);
             data.markAccepted(
-                    service.create("ivan@x.test", Set.of()).invitation().id(), formerUser);
+                    service.create("ivan@x.test", Set.of(), false).invitation().id(), formerUser);
             data.markRevoked(
-                    service.create("ivan@x.test", Set.of()).invitation().id(), admin);
+                    service.create("ivan@x.test", Set.of(), false).invitation().id(), admin);
 
-            assertThat(service.create("ivan@x.test", Set.of()).invitation().status())
+            assertThat(service.create("ivan@x.test", Set.of(), false)
+                            .invitation()
+                            .status())
                     .isEqualTo(InvitationStatus.PENDING);
             assertThat(data.count("invitations")).isEqualTo(3);
         }
@@ -407,7 +413,7 @@ class InvitationAdministrationServiceTests {
         // AC-17: a stored role the code does not know is skipped on reads.
         @Test
         void leavesOutStoredRolesTheCodeDoesNotKnow() {
-            UUID invitation = service.create("ivan@x.test", Set.of(Role.MENTOR))
+            UUID invitation = service.create("ivan@x.test", Set.of(Role.MENTOR), false)
                     .invitation()
                     .id();
             data.addStoredRole(invitation, "AUDITOR");
@@ -467,11 +473,11 @@ class InvitationAdministrationServiceTests {
         // AC-7
         @Test
         void replacesTheTokenAndRenewsTheExpiry() {
-            IssuedInvitation created = service.create("ivan@x.test", Set.of(Role.MENTOR));
+            IssuedInvitation created = service.create("ivan@x.test", Set.of(Role.MENTOR), false);
             UUID invitation = created.invitation().id();
             data.expire(invitation);
 
-            IssuedInvitation reissued = service.reissueLink(invitation);
+            IssuedInvitation reissued = service.reissueLink(invitation, false);
 
             String newToken = token(reissued.link());
             assertThat(reissued.link().toString())
@@ -502,14 +508,14 @@ class InvitationAdministrationServiceTests {
             String token = data.storedToken(invitation);
             close(invitation, accepted);
 
-            assertConflict(() -> service.reissueLink(invitation), InvitationProblems.INVITATION_CLOSED);
+            assertConflict(() -> service.reissueLink(invitation, false), InvitationProblems.INVITATION_CLOSED);
             assertThat(data.storedToken(invitation)).isEqualTo(token);
         }
 
         // AC-7
         @Test
         void unknownIdIsNotFound() {
-            assertThatThrownBy(() -> service.reissueLink(ANY_ID)).isInstanceOf(NotFoundException.class);
+            assertThatThrownBy(() -> service.reissueLink(ANY_ID, false)).isInstanceOf(NotFoundException.class);
         }
     }
 
@@ -520,7 +526,7 @@ class InvitationAdministrationServiceTests {
         // invitation-links AC-1
         @Test
         void returnsTheLinkOfTheCreatedInvitation() {
-            IssuedInvitation created = service.create("Ivan@x.test", Set.of(Role.MENTOR));
+            IssuedInvitation created = service.create("Ivan@x.test", Set.of(Role.MENTOR), false);
 
             PendingInvitationLink link = service.link(created.invitation().id());
 
@@ -534,7 +540,7 @@ class InvitationAdministrationServiceTests {
         void returnsTheLinkOfTheLatestNewLink() {
             UUID invitation = create("ivan@x.test");
             data.expire(invitation);
-            IssuedInvitation reissued = service.reissueLink(invitation);
+            IssuedInvitation reissued = service.reissueLink(invitation, false);
 
             PendingInvitationLink link = service.link(invitation);
 
@@ -545,7 +551,7 @@ class InvitationAdministrationServiceTests {
         // invitation-links AC-1: any holder of USERS_INVITE, not only the creator.
         @Test
         void anotherAdministratorGetsTheSameLink() {
-            IssuedInvitation created = service.create("ivan@x.test", Set.of());
+            IssuedInvitation created = service.create("ivan@x.test", Set.of(), false);
             actAs(users.create("other@x.test", UserStatus.ACTIVE, Role.ADMIN), Permission.USERS_INVITE);
 
             assertThat(service.link(created.invitation().id()).link()).isEqualTo(created.link());
@@ -613,7 +619,8 @@ class InvitationAdministrationServiceTests {
 
             assertThat(service.list(query(null, null, 0, 25)).items().getFirst().lastEmail())
                     .isNull();
-            assertThat(service.reissueLink(invitation).invitation().lastEmail()).isNull();
+            assertThat(service.reissueLink(invitation, false).invitation().lastEmail())
+                    .isNull();
             assertThat(service.revoke(invitation).lastEmail()).isNull();
         }
 
@@ -645,7 +652,7 @@ class InvitationAdministrationServiceTests {
             emails.markFailed(request, InvitationEmailFailure.of("550 mailbox unavailable"));
 
             InvitationEmailDetails reissued =
-                    service.reissueLink(invitation).invitation().lastEmail();
+                    service.reissueLink(invitation, false).invitation().lastEmail();
             InvitationEmailDetails revoked = service.revoke(invitation).lastEmail();
 
             for (InvitationEmailDetails email : Arrays.asList(reissued, revoked)) {
@@ -668,6 +675,94 @@ class InvitationAdministrationServiceTests {
             assertThat(items)
                     .extracting(InvitationDetails::email, item -> item.lastEmail() == null)
                     .containsExactlyInAnyOrder(tuple("a@x.test", false), tuple("b@x.test", true));
+        }
+    }
+
+    /** Spec invitation-emails with the default test configuration, which has no mail server. */
+    @Nested
+    class EmailDisabled {
+
+        // invitation-emails AC-1: nothing is created, audited or queued.
+        @Test
+        void creatingWithAnEmailIsUnavailable() {
+            assertConflict(() -> service.create("ivan@x.test", Set.of(), true), InvitationProblems.EMAIL_UNAVAILABLE);
+
+            assertThat(data.count("invitations")).isZero();
+            assertThat(data.count("audit_log")).isZero();
+            assertThat(data.count("invitation_emails")).isZero();
+        }
+
+        // invitation-emails AC-1: the token and the expiry stay unchanged.
+        @Test
+        void aNewLinkWithAnEmailIsUnavailable() {
+            UUID invitation = create("ivan@x.test");
+            String token = data.storedToken(invitation);
+
+            assertConflict(() -> service.reissueLink(invitation, true), InvitationProblems.EMAIL_UNAVAILABLE);
+
+            assertThat(data.storedToken(invitation)).isEqualTo(token);
+            assertThat(data.auditEntries(invitation)).hasSize(1);
+            assertThat(data.count("invitation_emails")).isZero();
+        }
+
+        // invitation-emails AC-1
+        @Test
+        void sendingAnEmailIsUnavailable() {
+            UUID invitation = create("ivan@x.test");
+
+            assertConflict(() -> service.sendEmail(invitation), InvitationProblems.EMAIL_UNAVAILABLE);
+
+            assertThat(data.auditEntries(invitation)).hasSize(1);
+            assertThat(data.count("invitation_emails")).isZero();
+        }
+
+        // invitation-emails AC-1: without an email the operations work as before.
+        @Test
+        void operationsWithoutAnEmailWork() {
+            UUID invitation = create("ivan@x.test");
+
+            assertThat(service.reissueLink(invitation, false).invitation().lastEmail())
+                    .isNull();
+            assertThat(data.count("invitation_emails")).isZero();
+        }
+
+        // invitation-emails AC-6: validation, then the invitation's own conflicts, then email-unavailable.
+        @Test
+        void creatingChecksTheInvitationBeforeTheEmail() {
+            assertValidationErrors(
+                    () -> service.create("not-an-email", Set.of(), true),
+                    new FieldViolation("email", "must be a well-formed email address"));
+            users.create("active@x.test", UserStatus.ACTIVE);
+            assertConflict(() -> service.create("active@x.test", Set.of(), true), InvitationProblems.USER_ACTIVE);
+            create("open@x.test");
+            assertConflict(() -> service.create("open@x.test", Set.of(), true), InvitationProblems.INVITATION_EXISTS);
+        }
+
+        // invitation-emails AC-6
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void aNewLinkChecksTheInvitationBeforeTheEmail(boolean accepted) {
+            UUID invitation = create("ivan@x.test");
+            close(invitation, accepted);
+
+            assertConflict(() -> service.reissueLink(invitation, true), InvitationProblems.INVITATION_CLOSED);
+            assertThatThrownBy(() -> service.reissueLink(UUID.randomUUID(), true))
+                    .isInstanceOf(NotFoundException.class);
+        }
+
+        // invitation-emails AC-4, AC-6: not-found, closed and expired come before email-unavailable.
+        @Test
+        void sendingChecksTheInvitationBeforeTheEmail() {
+            assertThatThrownBy(() -> service.sendEmail(UUID.randomUUID())).isInstanceOf(NotFoundException.class);
+            UUID accepted = create("accepted@x.test");
+            close(accepted, true);
+            assertConflict(() -> service.sendEmail(accepted), InvitationProblems.INVITATION_CLOSED);
+            UUID revoked = create("revoked@x.test");
+            close(revoked, false);
+            assertConflict(() -> service.sendEmail(revoked), InvitationProblems.INVITATION_CLOSED);
+            UUID expired = create("expired@x.test");
+            data.expire(expired);
+            assertConflict(() -> service.sendEmail(expired), InvitationProblems.INVITATION_EXPIRED);
         }
     }
 
@@ -695,12 +790,16 @@ class InvitationAdministrationServiceTests {
 
     static Stream<Arguments> operations() {
         return Stream.of(
-                operation(service -> service.create("new@x.test", Set.of())),
+                operation(service -> service.create("new@x.test", Set.of(), false)),
                 operation(service -> service.list(new InvitationQuery(null, null, 0, 25))),
                 operation(service -> service.revoke(ANY_ID)),
-                operation(service -> service.reissueLink(ANY_ID)),
+                operation(service -> service.reissueLink(ANY_ID, false)),
                 // invitation-links AC-3
-                operation(service -> service.link(ANY_ID)));
+                operation(service -> service.link(ANY_ID)),
+                // invitation-emails AC-7: refused before email-unavailable, whether or not email is enabled.
+                operation(service -> service.create("new@x.test", Set.of(), true)),
+                operation(service -> service.reissueLink(ANY_ID, true)),
+                operation(service -> service.sendEmail(ANY_ID)));
     }
 
     private static Arguments operation(Consumer<InvitationAdministrationService> operation) {
@@ -708,7 +807,7 @@ class InvitationAdministrationServiceTests {
     }
 
     private UUID create(String email) {
-        return service.create(email, Set.of()).invitation().id();
+        return service.create(email, Set.of(), false).invitation().id();
     }
 
     private void close(UUID invitation, boolean accepted) {

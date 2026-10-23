@@ -326,7 +326,7 @@ class InvitationAcceptanceServiceTests {
                 invalid("replaced by a new link", test -> {
                     Invited invited = test.invite("ivan@x.test");
                     test.actAsAdmin();
-                    test.administration.reissueLink(invited.details().id());
+                    test.administration.reissueLink(invited.details().id(), false);
                     return invited.token();
                 }),
                 invalid("expired", test -> {
@@ -360,7 +360,7 @@ class InvitationAcceptanceServiceTests {
 
     Invited invite(String email, Role... roles) {
         actAsAdmin();
-        IssuedInvitation issued = administration.create(email, Set.of(roles));
+        IssuedInvitation issued = administration.create(email, Set.of(roles), false);
         String path = issued.link().getPath();
         return new Invited(path.substring(path.lastIndexOf('/') + 1), issued.invitation());
     }

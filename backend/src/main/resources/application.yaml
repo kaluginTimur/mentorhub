@@ -18,6 +18,12 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+  # The async executor runs event listeners such as invitation emails; on shutdown, sends in progress may finish.
+  task:
+    execution:
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
   # The event publication registry (spec invitation-emails, Asynchronous delivery). Modulith creates its tables itself,
   # not Flyway; completed publications are deleted, incomplete ones are published again on startup.
   modulith:
