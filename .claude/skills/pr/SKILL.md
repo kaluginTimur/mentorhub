@@ -36,4 +36,5 @@ After the user approves:
 1. `git push -u origin <branch>`.
 2. `gh pr create --base <base> --title "<title>" --body "<description>"` (add `--draft` if chosen), passing the description through a quoted heredoc.
 3. Give the user the pull request URL.
+   If you can subscribe to the pull request's activity, do not subscribe while it is green and only waits on reviewers: every event wakes the session and re-reads its whole context. Offer it for red CI or review work, or when the user asks.
 4. If this session ran the `review` phase of `/feature` for this pull request, record the session again as its `review` phase (`node .claude/scripts/agent-usage.mjs --record <feature> review`, without a session id; it replaces this session's earlier record), so the record covers the work after the final commit. Check that the session it prints is this one, and offer to commit the record on the branch and push it.

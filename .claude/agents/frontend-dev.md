@@ -39,7 +39,7 @@ A maintenance brief (bug fix, refactoring) is a single step B unless it says oth
 
 - Follow `docs/development/frontend.md`: conventions, API client usage, styling only through theme tokens (the brand will change later and must stay a theme change).
 - Never edit generated code. Never change the API contract or anything outside `frontend/`. If the contract does not fit the UI (a missing field, an awkward shape), stop and report it as a question; the backend owns the contract.
-- To check what a package exports or which version is installed, ask the `api-lookup` subagent; never inspect a dependency yourself (`javap`, `unzip -l`, `jar tf`, `dependency:build-classpath`, `~/.m2`, `node_modules/<package>`). It answers from the exact versions on a small model, and the lookup stays out of your context. Batch the symbols you need into one question when you can.
+- To check what a package exports or which version is installed, ask the `api-lookup` subagent; never inspect a dependency yourself (`javap`, `unzip -l`, `jar tf`, `dependency:build-classpath`, `~/.m2`, `node_modules/<package>`). It answers from the exact versions on a small model, and the lookup stays out of your context. Batch the symbols you need into one question when you can. If you have no tool to start a subagent (a cloud session gives subagents none), do not work around it by compiling probes: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - UI text in English. Comments only for non-obvious points.
 - No commits, no pushes, no destructive commands.
 
