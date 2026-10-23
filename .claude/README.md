@@ -112,7 +112,6 @@ Every tool call re-sends the agent's whole context; prompt caching makes the re-
 | Manual browser checks run on Haiku, and `/pr` does not watch a green pull request | A clear test case needs no stronger model (invitation-emails AC-19 ran on inherited Opus, 0.42M); every pull request event wakes the session and re-reads its whole context. |
 | `/spec` records its own `spec` phase | Otherwise the spec's work lands in the feature's `contract` record (invitation-emails: about 1M). |
 
-In a cloud session the environment's Stop hook (`~/.claude/stop-hook-git-check.sh`, registered in `~/.claude/launcher-settings.json`) asks to commit and push whenever a turn ends with uncommitted or untracked changes, because the container and anything unpushed in it are discarded later. During `/feature` changes stay uncommitted until the user approves them, so each such turn adds one coordinator call at the full context: 32 in invitation-emails, about 0.4–0.5M by estimate. The hook belongs to the environment; the repository can only turn it off with `disableAllHooks`, which would also disable the project hooks. `/feature` answers it in one line, without tool calls, and commits only with the user's consent (`AGENTS.md`).
 
 ### Measuring a session
 

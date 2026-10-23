@@ -47,8 +47,6 @@ Before every brief or `SendMessage`, check that the current branch is the one in
 
 Show the user a short summary of each report: what was done, the places to look first and the verification result. Show the decisions, deviations from the spec and questions in full; never shorten a question. The full report stays available to quote on request.
 
-In a cloud session a Stop hook asks to commit and push whenever a turn ends with uncommitted changes. Answer it in one line, without tool calls: name what is uncommitted and the decision it waits for. Commit and push only with the user's consent.
-
 When an agent or `verifier` reports a failure it attributes to the environment (network, Docker, tool versions), do not investigate it yourself: brief a `general-purpose` agent with the `model` parameter set to `sonnet` to find the cause and a workaround, and relay its answer. Until the cause is confirmed, record the failure in the log as an open question, not as a fact.
 
 ## Backend: a checkpoint after every step
