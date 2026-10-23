@@ -1,6 +1,6 @@
 # Invitation emails
 
-Status: draft
+Status: approved
 Stage: tracking core (users, roles, audit log)
 Related: ADR 0001, ADR 0002, ADR 0006, ADR 0007, ADR 0008 (planned), `docs/features/invitations.md` (changes its requirements, see below), `docs/features/invitation-links.md`, `docs/architecture/invariants.md`.
 Reconstructed: 2026-10-23. The first draft stayed in an unpushed local branch; this version is rebuilt from what the repository records about it, and the user confirmed the proposals of the reconstruction on 2026-10-23 (see Decisions).
