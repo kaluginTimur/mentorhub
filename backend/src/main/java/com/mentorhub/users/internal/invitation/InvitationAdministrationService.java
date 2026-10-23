@@ -6,9 +6,11 @@ import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.StoredRoles;
 import com.mentorhub.users.internal.persistence.InvitationAuditTrail;
+import com.mentorhub.users.internal.persistence.InvitationEmailRepository;
 import com.mentorhub.users.internal.persistence.InvitationRepository;
 import com.mentorhub.users.internal.persistence.InvitationSearch;
 import com.mentorhub.users.internal.persistence.StoredInvitation;
+import com.mentorhub.users.internal.persistence.StoredInvitationEmail;
 import com.mentorhub.users.internal.persistence.StoredInvitationLink;
 import com.mentorhub.users.internal.persistence.UserName;
 import com.mentorhub.users.internal.persistence.UserRepository;
@@ -55,6 +57,7 @@ public class InvitationAdministrationService {
 
     private final CurrentUserProvider currentUser;
     private final InvitationRepository invitations;
+    private final InvitationEmailRepository emails;
     private final UserRepository users;
     private final StoredRoles storedRoles;
     private final InvitationAuditTrail auditTrail;
@@ -64,6 +67,7 @@ public class InvitationAdministrationService {
     InvitationAdministrationService(
             CurrentUserProvider currentUser,
             InvitationRepository invitations,
+            InvitationEmailRepository emails,
             UserRepository users,
             StoredRoles storedRoles,
             InvitationAuditTrail auditTrail,
@@ -71,6 +75,7 @@ public class InvitationAdministrationService {
             Validator validator) {
         this.currentUser = currentUser;
         this.invitations = invitations;
+        this.emails = emails;
         this.users = users;
         this.storedRoles = storedRoles;
         this.auditTrail = auditTrail;
@@ -253,9 +258,13 @@ public class InvitationAdministrationService {
     }
 
     private List<InvitationDetails> details(List<StoredInvitation> found) {
-        Map<UUID, UserName> names = users.findNames(found.stream()
-                .flatMap(invitation ->
-                        Stream.of(invitation.createdBy(), invitation.acceptedUserId(), invitation.revokedBy()))
+        Map<UUID, StoredInvitationEmail> lastEmails =
+                emails.findLatest(found.stream().map(StoredInvitation::id).toList());
+        Map<UUID, UserName> names = users.findNames(Stream.concat(
+                        found.stream()
+                                .flatMap(invitation -> Stream.of(
+                                        invitation.createdBy(), invitation.acceptedUserId(), invitation.revokedBy())),
+                        lastEmails.values().stream().map(StoredInvitationEmail::requestedBy))
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
@@ -271,8 +280,17 @@ public class InvitationAdministrationService {
                         invitation.acceptedAt(),
                         nullableActor(invitation.acceptedUserId(), names),
                         invitation.revokedAt(),
-                        nullableActor(invitation.revokedBy(), names)))
+                        nullableActor(invitation.revokedBy(), names),
+                        lastEmail(lastEmails.get(invitation.id()), names)))
                 .toList();
+    }
+
+    private static @Nullable InvitationEmailDetails lastEmail(
+            @Nullable StoredInvitationEmail email, Map<UUID, UserName> names) {
+        return email == null
+                ? null
+                : new InvitationEmailDetails(
+                        email.status(), email.requestedAt(), actor(email.requestedBy(), names), email.finishedAt());
     }
 
     private List<Role> knownRoles(Collection<String> roleNames) {
@@ -285,7 +303,7 @@ public class InvitationAdministrationService {
 
     private static HistoryActor actor(UUID userId, Map<UUID, UserName> names) {
         UserName user = names.get(userId);
-        // The invitation's user columns reference users, which are never deleted.
+        // The invitation's and its emails' user columns reference users, which are never deleted.
         if (user == null) {
             throw new IllegalStateException("Invitation user " + userId + " is not a stored user");
         }

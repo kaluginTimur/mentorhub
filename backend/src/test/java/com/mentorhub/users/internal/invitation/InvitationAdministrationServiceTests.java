@@ -2,15 +2,20 @@ package com.mentorhub.users.internal.invitation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 
 import com.mentorhub.TestcontainersConfiguration;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.InvitationAuditAction;
+import com.mentorhub.users.internal.domain.InvitationEmailFailure;
+import com.mentorhub.users.internal.domain.InvitationEmailReason;
+import com.mentorhub.users.internal.domain.InvitationEmailStatus;
 import com.mentorhub.users.internal.domain.InvitationStatus;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.invitation.InvitationTestData.AuditRow;
+import com.mentorhub.users.internal.persistence.InvitationEmailRepository;
 import com.mentorhub.users.internal.security.TestAuthentications;
 import com.mentorhub.users.internal.security.TestUsers;
 import com.mentorhub.users.internal.service.HistoryActor;
@@ -66,6 +71,9 @@ class InvitationAdministrationServiceTests {
 
     @Autowired
     JsonMapper jsonMapper;
+
+    @Autowired
+    InvitationEmailRepository emails;
 
     TestUsers users;
     InvitationTestData data;
@@ -592,6 +600,74 @@ class InvitationAdministrationServiceTests {
             create("ivan@x.test");
 
             assertThatThrownBy(() -> service.link(ANY_ID)).isInstanceOf(NotFoundException.class);
+        }
+    }
+
+    // Spec invitation-emails, AC-16.
+    @Nested
+    class LastEmail {
+
+        @Test
+        void isAbsentWithoutEmailRequests() {
+            UUID invitation = create("ivan@x.test");
+
+            assertThat(service.list(query(null, null, 0, 25)).items().getFirst().lastEmail())
+                    .isNull();
+            assertThat(service.reissueLink(invitation).invitation().lastEmail()).isNull();
+            assertThat(service.revoke(invitation).lastEmail()).isNull();
+        }
+
+        @Test
+        void showsTheLatestRequestWithItsRequester() {
+            UUID invitation = create("ivan@x.test");
+            UUID otherAdmin = users.create("other@x.test", UserStatus.ACTIVE, Role.ADMIN);
+            UUID earlier = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
+            emails.markSent(earlier);
+            jdbc.sql("update invitation_emails set requested_at = now() - interval '1 hour' where id = :id")
+                    .param("id", earlier)
+                    .update();
+            emails.insertQueued(invitation, InvitationEmailReason.RESENT, otherAdmin);
+
+            InvitationEmailDetails queued =
+                    service.list(query(null, null, 0, 25)).items().getFirst().lastEmail();
+
+            assertThat(queued).isNotNull();
+            assertThat(queued.status()).isEqualTo(InvitationEmailStatus.QUEUED);
+            assertThat(queued.requestedBy()).isEqualTo(new HistoryActor(otherAdmin, "Anna Petrova"));
+            assertThat(queued.requestedAt()).isCloseTo(Instant.now(), within(1, ChronoUnit.MINUTES));
+            assertThat(queued.finishedAt()).isNull();
+        }
+
+        @Test
+        void showsTheOutcomeOnEveryResponseWithAnInvitation() {
+            UUID invitation = create("ivan@x.test");
+            UUID request = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
+            emails.markFailed(request, InvitationEmailFailure.of("550 mailbox unavailable"));
+
+            InvitationEmailDetails reissued =
+                    service.reissueLink(invitation).invitation().lastEmail();
+            InvitationEmailDetails revoked = service.revoke(invitation).lastEmail();
+
+            for (InvitationEmailDetails email : Arrays.asList(reissued, revoked)) {
+                assertThat(email).isNotNull();
+                assertThat(email.status()).isEqualTo(InvitationEmailStatus.FAILED);
+                assertThat(email.requestedBy()).isEqualTo(new HistoryActor(admin, "Anna Petrova"));
+                assertThat(email.finishedAt()).isNotNull();
+            }
+        }
+
+        @Test
+        void eachInvitationShowsItsOwnLatestRequest() {
+            UUID withEmail = create("a@x.test");
+            create("b@x.test");
+            emails.insertQueued(withEmail, InvitationEmailReason.CREATED, admin);
+
+            List<InvitationDetails> items =
+                    service.list(query(null, null, 0, 25)).items();
+
+            assertThat(items)
+                    .extracting(InvitationDetails::email, item -> item.lastEmail() == null)
+                    .containsExactlyInAnyOrder(tuple("a@x.test", false), tuple("b@x.test", true));
         }
     }
 

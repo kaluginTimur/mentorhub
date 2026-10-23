@@ -93,6 +93,7 @@ class InvitationsControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 
@@ -343,6 +344,7 @@ class InvitationsControllerTest {
                     CREATED_AT,
                     new HistoryActor(OTHER_ID, "Maria K."),
                     null,
+                    null,
                     null);
             given(administration.list(any())).willReturn(new ResultPage<>(List.of(pending(), accepted), 0, 25, 2));
 
@@ -419,7 +421,8 @@ class InvitationsControllerTest {
                     null,
                     null,
                     CREATED_AT,
-                    new HistoryActor(CALLER_ID, "Anna Petrova"));
+                    new HistoryActor(CALLER_ID, "Anna Petrova"),
+                    null);
             given(administration.revoke(INVITATION_ID)).willReturn(revoked);
 
             MvcTestResult result =
