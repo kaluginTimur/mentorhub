@@ -11,8 +11,8 @@ Started: 2026-10-23
 | 1 contract | approved | cf555bd | 2026-10-23 |
 | 2 migration | approved | cf555bd | 2026-10-23 |
 | 3a domain and persistence | approved | 946e10b | 2026-10-23 |
-| 3b services, authorization and audit | approved | (this commit) | 2026-10-23 |
-| 4 api | pending | | |
+| 3b services, authorization and audit | approved | 1046ded | 2026-10-23 |
+| 4 api | approved | (this commit) | 2026-10-23 |
 | frontend A (prototype) | skipped | | 2026-10-23 |
 | frontend B | approved | 95f64fc | 2026-10-23 |
 | review | pending | | |
@@ -32,21 +32,18 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 - 2026-10-23, frontend B review: "все 4 замечания отдай фронтенд агенту": `@Service()` for `ClientConfigService`; update `docs/ui/guidelines.md` and `docs/development/frontend.md`; add `confirm-dialog.spec.ts`; add tests for snackbar politeness, disabled row actions while sending, and replace the weak `not.toContain('mail')` assertion. The frontend commit includes those two docs files.
 - 2026-10-23, step 3a: "Все остальное одобряю".
 - 2026-10-23, step 3b: "Одобряю, доки пусть допишет агент на шаге 4. Коммить и пуш": step 4 also adds the remaining `docs/development/backend.md` items from the spec's Documentation updates (the `mail` module; events through the registry, `@EnableAsync` as a pitfall and the single-instance assumption; mail configuration; the `FAILED` emails of `TestMentorHubApplication`; the `mail.debug` warning).
+- 2026-10-23, step 4: "Одобряю, коммить и пуш".
 - 2026-10-23, frontend B: review fixes applied (plus Cancel in `confirm-dialog` now closes with `undefined` instead of `''`, and `sessionStorage.clear()` in `access.guard.spec.ts` to fix an order-dependent test); "Коммить оба, фронтенд одобряю, пуш".
 
 ## Handoff notes
 
 <!-- From each approved step's "Notes for the next step": what a fresh agent or session needs that the spec, decisions and diff do not show (temporary stubs, pitfalls found, conventions adopted, deferred follow-ups). Remove a note when it no longer applies. -->
 
-- Step 4 owns: remove the three `TODO(invitation-emails step 4)` 501 stubs in `InvitationsController` (the `false` literals 3b passed are placeholders); `SystemController.getClientConfig` reads `MailDelivery.isEnabled()`; map `details.lastEmail()` in `InvitationsMapper.invitation`; a NON_NULL `@JacksonMixin` for the `InvitationEmail` DTO so an absent `finishedAt` is omitted (`InvitationJsonMixin` already omits a null `lastEmail`); the remaining `docs/development/backend.md` items (see Decisions), each checked against the code.
-- Service API for the controllers: `administration.create(email, roles, sendEmail)` → `IssuedInvitation`, pass `Boolean.TRUE.equals(invitationCreate.getSendEmail())` (`null` means false); `administration.reissueLink(id, sendEmail)` → `IssuedInvitation`, body optional: `body != null && Boolean.TRUE.equals(body.getSendEmail())`; `administration.sendEmail(id)` → `InvitationDetails`, answer 202 with `InvitationsMapper.invitation(...)` and no `Cache-Control: no-store`.
-- Generated signatures: `reissueInvitationLink(UUID id, @Nullable InvitationLinkReissue)`; `sendInvitationEmail(UUID id)` responds 202; `ClientConfig` has a 4-argument constructor.
-- Errors: services throw `ConflictException` with `InvitationProblems.EMAIL_UNAVAILABLE` ("Sending email is not available.") / `EMAIL_QUEUED` ("An email for this invitation is already queued."); `ProblemDetailsAdvice` renders 409. Contract 409s: `InvitationLinkReissueConflict` (`invitation-closed`, `email-unavailable`), `InvitationEmailConflict` (`invitation-closed`, `invitation-expired`, `email-unavailable`, `email-queued`), `InvitationCreateConflict` also lists `email-unavailable`; revoke and `GET .../link` unchanged. Permission comes first (`@RequirePermission(USERS_INVITE)` on controller and service): 403 whether or not email is enabled.
-- AC coverage left for step 4: AC-1 (`client-config` flag), web-layer checks of AC-2 to AC-7 (201/202 shapes, `lastEmail` JSON, 403 for the flag and the endpoint, gate refusals), AC-16 serialization. Services, sender, resubmission and AC-8 to AC-15 are covered by 3b tests (`InvitationEmailTests`, `InvitationEmailMailServerTimeoutTests`, `InvitationEmailRestartTests`, `InvitationEmailTextTests`).
-- Testing pitfalls: default test config has email disabled, so 409 `email-unavailable` is testable end to end there; `@WebMvcTest` mocks `InvitationAdministrationService`. Mail-enabled `@SpringBootTest` classes reuse `InvitationEmailTests`' pattern (Mailpit started lazily from `@DynamicPropertySource`, `com.mentorhub.support.Mailpit`, clear `event_publication` before each test). `SpringApplicationBuilder.properties(...)` are defaults that `application.yaml` overrides: pass settings as `--args`. Two audit entries in one transaction share `occurred_at`; don't assert their order.
-- 3b design: listener `InvitationEmailSender` (`@ApplicationModuleListener(propagation = NOT_SUPPORTED)`, `TransactionTemplate`; lock+read, send outside a transaction, mark) marks a replayed request `FAILED` when no mail server is configured; `InvitationEmailResubmission` resubmits every incomplete registry publication older than 5 min every 5 min. `MailDeliveryException` messages never contain the body; the sender redacts token and link.
-- API names verified: `republish-outstanding-events-on-restart` and `completion-mode: delete` effective (tests); `resubmitIncompletePublicationsOlderThan(Duration)` exists; AC-13 needs no staleness settings. `api-lookup`: `spring-boot-docker-compose` 4.1.1 has no mail connection factory, so Mailpit is not wired from compose; `application-dev.yaml` sets `spring.mail.host: localhost`, `port: 1025` explicitly. `backend-dev` had no `api-lookup` tool in 3a and 3b: the coordinator runs lookups on request.
-- V6 schema rules: `failure` set exactly when `FAILED`, 1–500 chars; `finished_at` set exactly when not `QUEUED`; one `QUEUED` row per invitation (`invitation_emails_queued_uq`).
+- Implementation is complete (steps 1–4, frontend B). Next: the `review` phase — review loop on all feature changes, then `verifier` with scope `all`, then the manual checks per AC (frontend-dev's list for AC-17 to AC-19, with the backend running and Mailpit).
+- Documentation still owed by the coordinator at the final spec update: ADR 0008 (event publication registry; `docs/development/backend.md` already says "ADR 0008 planned" and no file exists), the ADR 0001 line, `docs/features/invitations.md`, README, the compose comment, and the spec's Configuration table row for `management.health.mail.enabled: false`. Check the spec's Documentation updates section for the full list.
+- Step 4 decisions: `InvitationEmailsEndpointTests` holds `MailDelivery.send` with a `@MockitoSpyBean` latch (context sets `spring.mail.host=localhost`, never connects; `@AfterEach` releases the latch); the 202 has no `Cache-Control` assertion because Spring Security always adds one. Step 4's last `backend.md` edit came after its green verify run (docs only).
+- Test support and pitfalls: `com.mentorhub.support.Mailpit`; mail-enabled tests clear `event_publication`; `SpringApplicationBuilder.properties(...)` are overridden by `application.yaml` (use `--args`); audit entries in one transaction have no stable order.
+- `backend-dev` had no `api-lookup` tool in 3a, 3b and 4; the coordinator ran the one open lookup (no Docker Compose mail connection in Boot 4.1.1; `dev` sets the Mailpit host explicitly).
 - Docker: the first Mailpit pull can exceed Testcontainers' 2-minute limit; run `docker pull axllent/mailpit:v1.31.4` once.
 - Environment: if verification fails with "Could not find a valid Docker environment", start `dockerd` first.
 - Frontend is done (step A skipped, mock mode not implemented); screens are checked manually per AC after backend step 4, using frontend-dev's manual check list (AC-17, AC-18, AC-19).
@@ -73,3 +70,4 @@ Status: `pending`, `in progress`, `in review` (report shown, waiting for the use
 | reviewer (frontend) | opus | a73598105dbd26fbd | implementation | 67k |
 | backend-dev (3b) | opus | a1c42c4c723af9b6e | implementation | 174k |
 | api-lookup | haiku | a7bea7c539bfb1bca | implementation | 31k |
+| backend-dev (4) | sonnet | a921837e9d96fcc14 | implementation | 98k |

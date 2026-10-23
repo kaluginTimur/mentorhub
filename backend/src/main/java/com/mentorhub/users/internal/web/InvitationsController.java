@@ -22,9 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Invitations} tag: managing invitations, and the public preview and the acceptance of a link. Parameter
@@ -54,17 +52,13 @@ class InvitationsController implements InvitationsApi {
     @Override
     @RequirePermission(Permission.USERS_INVITE)
     public CreatedInvitation createInvitation(InvitationCreate invitationCreate) {
-        // TODO(invitation-emails step 4): request the email.
-        if (Boolean.TRUE.equals(invitationCreate.getSendEmail())) {
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
-        }
         // Bean validation checks the set, not its items: `[null]` binds to a set containing null, which the service
         // reports together with the email's violations.
         List<com.mentorhub.users.@Nullable Role> roles = invitationCreate.getRoles().stream()
                 .map(role -> role == null ? null : UsersMapper.role(role))
                 .toList();
-        CreatedInvitation created =
-                InvitationsMapper.created(administration.create(invitationCreate.getEmail(), roles, false));
+        CreatedInvitation created = InvitationsMapper.created(administration.create(
+                invitationCreate.getEmail(), roles, Boolean.TRUE.equals(invitationCreate.getSendEmail())));
         noStore();
         return created;
     }
@@ -86,11 +80,8 @@ class InvitationsController implements InvitationsApi {
     @Override
     @RequirePermission(Permission.USERS_INVITE)
     public CreatedInvitation reissueInvitationLink(UUID id, @Nullable InvitationLinkReissue invitationLinkReissue) {
-        // TODO(invitation-emails step 4): request the email.
-        if (invitationLinkReissue != null && Boolean.TRUE.equals(invitationLinkReissue.getSendEmail())) {
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
-        }
-        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id, false));
+        boolean sendEmail = invitationLinkReissue != null && Boolean.TRUE.equals(invitationLinkReissue.getSendEmail());
+        CreatedInvitation created = InvitationsMapper.created(administration.reissueLink(id, sendEmail));
         noStore();
         return created;
     }
@@ -106,8 +97,7 @@ class InvitationsController implements InvitationsApi {
     @Override
     @RequirePermission(Permission.USERS_INVITE)
     public Invitation sendInvitationEmail(UUID id) {
-        // TODO(invitation-emails step 4): implement.
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+        return InvitationsMapper.invitation(administration.sendEmail(id));
     }
 
     @Override

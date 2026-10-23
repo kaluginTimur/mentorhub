@@ -3,6 +3,7 @@ package com.mentorhub.system.internal.web;
 import com.mentorhub.api.SystemApi;
 import com.mentorhub.api.model.ClientConfig;
 import com.mentorhub.api.model.SystemInfo;
+import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.NoPermissionRequired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,16 +18,19 @@ class SystemController implements SystemApi {
     private final String name;
     private final String version;
     private final ClientProperties client;
+    private final MailDelivery mail;
 
     SystemController(
             @Value("${spring.application.name}") String name,
             ObjectProvider<BuildProperties> buildProperties,
-            ClientProperties client) {
+            ClientProperties client,
+            MailDelivery mail) {
         this.name = name;
         // build-info.properties is produced by the Maven build; absent when running from an IDE
         BuildProperties build = buildProperties.getIfAvailable();
         this.version = build != null ? build.getVersion() : "dev";
         this.client = client;
+        this.mail = mail;
     }
 
     @Override
@@ -38,7 +42,6 @@ class SystemController implements SystemApi {
     @Override
     @NoPermissionRequired
     public ClientConfig getClientConfig() {
-        // TODO(invitation-emails step 4): read from MailDelivery.isEnabled().
-        return new ClientConfig(client.issuerUri(), client.clientId(), SCOPE, false);
+        return new ClientConfig(client.issuerUri(), client.clientId(), SCOPE, mail.isEnabled());
     }
 }
