@@ -38,6 +38,7 @@ Continue from the first step that is not approved; `$step`, when given, override
 Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id, model, phase and, after each report, its context size in the log, with the next checkpoint write; the completion notification gives the size. Take the model from the `model` parameter of the call, or else from the `model:` line of the agent's definition in `.claude/agents/`; never write it from memory.
 
 - **Within a step** (the user's feedback, rework): continue the same agent with `SendMessage`.
+- **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): a `/clear` there starts a local session file while the conversation stays in the cloud session's transcript, and an agent started meanwhile has its transcript only in that file's folder. Continued with `SendMessage`, such an agent runs as `general-purpose`, without its definition's model and 1-hour cache (in invitation-emails, `frontend-dev` resumed on Opus, and two agents rewrote their whole cache). Before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` (from the repository root) names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If it does not, start a fresh agent of the same type instead, briefed with its last report, the user's feedback and the log.
 - **Between steps:** continue the same agent while its last context size is under about 150k tokens. Above that, start a fresh agent for the next step. Its old context is mostly earlier steps' reasoning, which it no longer needs, and every call re-reads it.
 
 Before every brief or `SendMessage`, check that the current branch is the one in the log. If not, stop and ask the user. Never switch branches while an agent is running: background agents write to the same working tree.
@@ -99,6 +100,7 @@ After the backend and the frontend are approved:
 
 1. Run the review loop on all changes of the feature.
 2. Run `verifier` with scope `all`.
+   Manual checks the user cannot run (a cloud session has no browser for them) go to a `general-purpose` agent with the `model` parameter set to `haiku`: brief it with the AC's steps as a numbered test case, the run commands from the development guides, a headless browser (Playwright with the pre-installed Chromium), screenshots in the session's scratchpad, no edits to tracked files, and PASS / FAIL / NOT RUN per step. Send the user the screenshots.
 3. Report to the user:
    - what was built, per scenario;
    - AC coverage: every AC-n with its tests and its manual check;
