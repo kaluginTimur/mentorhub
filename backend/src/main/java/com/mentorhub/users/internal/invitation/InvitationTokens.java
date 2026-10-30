@@ -1,17 +1,13 @@
 package com.mentorhub.users.internal.invitation;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Invitation tokens: 32 random bytes, base64url without padding (43 characters). Only the SHA-256 hash of the token,
- * in lowercase hex, is stored and looked up.
+ * Invitation tokens: 32 random bytes, base64url without padding (43 characters). The token is stored and looked up
+ * as is.
  */
 final class InvitationTokens {
 
@@ -27,17 +23,8 @@ final class InvitationTokens {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    static String hash(String token) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.US_ASCII));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is not available", exception);
-        }
-    }
-
-    /** The hash to look up, or empty for a token that cannot exist, so it needs no query. */
-    static Optional<String> hashIfWellFormed(String token) {
-        return FORMAT.matcher(token).matches() ? Optional.of(hash(token)) : Optional.empty();
+    /** The token to look up, or empty for a token that cannot exist, so it needs no query. */
+    static Optional<String> ifWellFormed(String token) {
+        return FORMAT.matcher(token).matches() ? Optional.of(token) : Optional.empty();
     }
 }

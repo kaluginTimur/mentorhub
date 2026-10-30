@@ -112,7 +112,7 @@ class InvitationConcurrencyTests {
                 as(caller("subject-a"), () -> acceptance.accept(token)),
                 as(
                         adminAuthentication(),
-                        () -> administration.reissueLink(invited.invitation().id())));
+                        () -> administration.reissueLink(invited.invitation().id(), false)));
 
         assertThat(outcomes).isIn(List.of(OK, CLOSED), List.of(INVALID, OK));
         assertThat(userAuditEntries()).isEqualTo(OK.equals(outcomes.getFirst()) ? 1 : 0);
@@ -121,8 +121,8 @@ class InvitationConcurrencyTests {
     @RepeatedTest(10)
     void parallelCreatesForOneEmailCreateOne() throws Exception {
         List<String> outcomes = inParallel(
-                as(adminAuthentication(), () -> administration.create("ivan@x.test", Set.of())),
-                as(adminAuthentication(), () -> administration.create("IVAN@x.test", Set.of(Role.MENTOR))));
+                as(adminAuthentication(), () -> administration.create("ivan@x.test", Set.of(), false)),
+                as(adminAuthentication(), () -> administration.create("IVAN@x.test", Set.of(Role.MENTOR), false)));
 
         assertThat(outcomes).containsExactlyInAnyOrder(OK, EXISTS);
         assertThat(users.count("invitations")).isEqualTo(1);
@@ -131,7 +131,7 @@ class InvitationConcurrencyTests {
     private IssuedInvitation invite(String email) {
         SecurityContextHolder.getContext().setAuthentication(adminAuthentication());
         try {
-            return administration.create(email, Set.of(Role.MENTOR));
+            return administration.create(email, Set.of(Role.MENTOR), false);
         } finally {
             SecurityContextHolder.clearContext();
         }

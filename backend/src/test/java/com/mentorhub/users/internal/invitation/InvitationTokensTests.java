@@ -22,16 +22,10 @@ class InvitationTokensTests {
     }
 
     @Test
-    void theHashIsLowercaseHexSha256OfTheToken() {
-        assertThat(InvitationTokens.hash("abc"))
-                .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-    }
-
-    @Test
-    void aWellFormedTokenIsHashed() {
+    void aWellFormedTokenIsLookedUpAsIs() {
         String token = InvitationTokens.newToken();
 
-        assertThat(InvitationTokens.hashIfWellFormed(token)).contains(InvitationTokens.hash(token));
+        assertThat(InvitationTokens.ifWellFormed(token)).contains(token);
     }
 
     // Spec, Tokens and links: anything else is invalid without a query.
@@ -46,7 +40,7 @@ class InvitationTokensTests {
                 "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9w+/",
                 "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9w Q"
             })
-    void aMalformedTokenHasNoHash(String token) {
-        assertThat(InvitationTokens.hashIfWellFormed(token)).isEmpty();
+    void aMalformedTokenIsNotLookedUp(String token) {
+        assertThat(InvitationTokens.ifWellFormed(token)).isEmpty();
     }
 }

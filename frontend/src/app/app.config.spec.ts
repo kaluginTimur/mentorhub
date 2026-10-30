@@ -31,6 +31,20 @@ describe('oidcConfigLoader', () => {
     controller.expectNone('/api/v1/system/client-config');
   });
 
+  it('reports the client config to the callback', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const onConfig = vi.fn();
+    const loader = oidcConfigLoader(TestBed.inject(HttpClient), onConfig);
+    const first = firstValueFrom(loader.loadConfigs());
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/v1/system/client-config')
+      .flush({ ...clientConfig, invitationEmails: true });
+    await first;
+    expect(onConfig).toHaveBeenCalledWith(expect.objectContaining({ invitationEmails: true }));
+  });
+
   it('retries after a failure', async () => {
     const { loader, controller } = setup();
     const failed = firstValueFrom(loader.loadConfigs()).catch(() => 'failed');

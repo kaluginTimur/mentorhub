@@ -19,7 +19,7 @@ services:
       retries: 10
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8.1
+    image: keycloak/keycloak:26.8.1
     # Development mode keeps its data inside the container. --import-realm skips a realm that already exists, so a
     # changed realm file takes effect only in a recreated container.
     command: ["start-dev", "--import-realm"]
@@ -37,7 +37,7 @@ services:
       org.springframework.boot.readiness-check.disable: "true"
 
   mailpit:
-    # Catches all local email (Keycloak verification and password reset); nothing leaves the machine
+    # Catches all local email (MentorHub invitation emails, Keycloak verification and password reset); nothing leaves the machine
     image: axllent/mailpit:v1.31.4
     ports:
       - "127.0.0.1:1025:1025"

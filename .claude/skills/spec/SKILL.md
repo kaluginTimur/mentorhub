@@ -32,4 +32,4 @@ Write the file in English as the sections become clear, so progress is not lost.
 
 When the draft is complete, run the `reviewer` subagent in spec mode with the prompt `docs/features/$feature.md`. Show the user its findings, agree on changes and apply them.
 
-The spec becomes `approved` only when the user says so and no open question blocks implementation. Then tell the user that `/feature $feature` starts the implementation.
+The spec becomes `approved` only when the user says so and no open question blocks implementation. Record the session as the feature's `spec` phase (`node .claude/scripts/agent-usage.mjs --record $feature spec --force`, without a session id: there is no progress log yet, so the Agents check cannot pass) and offer to commit the record with the spec. Then tell the user to run `/clear` and `/feature $feature` to start the implementation in a fresh context.

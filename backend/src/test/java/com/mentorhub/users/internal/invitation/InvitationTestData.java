@@ -52,25 +52,11 @@ final class InvitationTestData {
                 .update();
     }
 
-    String tokenHash(UUID invitationId) {
-        return jdbc.sql("select token_hash from invitations where id = :id")
+    String storedToken(UUID invitationId) {
+        return jdbc.sql("select token from invitations where id = :id")
                 .param("id", invitationId)
                 .query(String.class)
                 .single();
-    }
-
-    /** Every column of every invitation and invitation role, as text. */
-    String allInvitationData() {
-        return String.join(
-                        "\n",
-                        jdbc.sql("select i::text from invitations i")
-                                .query(String.class)
-                                .list())
-                + String.join(
-                        "\n",
-                        jdbc.sql("select r::text from invitation_roles r")
-                                .query(String.class)
-                                .list());
     }
 
     String allAuditDetails() {

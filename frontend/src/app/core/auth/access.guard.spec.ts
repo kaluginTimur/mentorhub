@@ -36,6 +36,8 @@ describe('accessGuard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // other spec files can leave an invitation token behind in the shared test environment
+    sessionStorage.clear();
     currentUser.failedUrl = null;
     auth.ensureSignedIn.mockResolvedValue({ kind: 'signed-in', returnUrl: null } as SignInResult);
     TestBed.configureTestingModule({

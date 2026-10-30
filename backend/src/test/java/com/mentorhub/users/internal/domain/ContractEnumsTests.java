@@ -23,4 +23,12 @@ class ContractEnumsTests {
                         .map(Enum::name)
                         .toArray(String[]::new));
     }
+
+    @Test
+    void invitationEmailStatusesEqualTheContracts() {
+        assertThat(Arrays.stream(InvitationEmailStatus.values()).map(Enum::name))
+                .containsExactly(Arrays.stream(com.mentorhub.api.model.InvitationEmailStatus.values())
+                        .map(Enum::name)
+                        .toArray(String[]::new));
+    }
 }

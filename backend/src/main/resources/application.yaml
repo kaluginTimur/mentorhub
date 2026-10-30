@@ -9,6 +9,30 @@ spring:
     open-in-view: false
   flyway:
     locations: classpath:db/migration
+  # Email is enabled only when spring.mail.host is set; then mentorhub.mail.from is required. The timeouts (ms) keep a
+  # hung mail server from holding a sending thread. Never enable mail.debug: it logs whole messages, links included.
+  mail:
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  # The async executor runs event listeners such as invitation emails; on shutdown, sends in progress may finish.
+  task:
+    execution:
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+  # The event publication registry (spec invitation-emails, Asynchronous delivery). Modulith creates its tables itself,
+  # not Flyway; completed publications are deleted, incomplete ones are published again on startup.
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
+      completion-mode: delete
+      republish-outstanding-events-on-restart: true
 
 # Production defaults: only health, without details, and no API docs. The dev profile serves the rest.
 management:
@@ -19,6 +43,10 @@ management:
   endpoint:
     health:
       show-details: never
+  # The mail server is optional: an unreachable one must not make the application unhealthy.
+  health:
+    mail:
+      enabled: false
 
 springdoc:
   api-docs:

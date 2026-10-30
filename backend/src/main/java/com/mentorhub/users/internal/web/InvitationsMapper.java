@@ -3,12 +3,17 @@ package com.mentorhub.users.internal.web;
 import com.mentorhub.api.model.CreatedInvitation;
 import com.mentorhub.api.model.HistoryActor;
 import com.mentorhub.api.model.Invitation;
+import com.mentorhub.api.model.InvitationEmail;
+import com.mentorhub.api.model.InvitationEmailStatus;
+import com.mentorhub.api.model.InvitationLink;
 import com.mentorhub.api.model.InvitationPage;
 import com.mentorhub.api.model.InvitationPreview;
 import com.mentorhub.api.model.InvitationStatus;
 import com.mentorhub.api.model.Role;
 import com.mentorhub.users.internal.invitation.InvitationDetails;
+import com.mentorhub.users.internal.invitation.InvitationEmailDetails;
 import com.mentorhub.users.internal.invitation.IssuedInvitation;
+import com.mentorhub.users.internal.invitation.PendingInvitationLink;
 import com.mentorhub.users.internal.invitation.PreviewedInvitation;
 import com.mentorhub.users.internal.service.ResultPage;
 import java.time.Instant;
@@ -38,7 +43,17 @@ final class InvitationsMapper {
         invitation.setAcceptedUser(details.acceptedUser() == null ? null : actor(details.acceptedUser()));
         invitation.setRevokedAt(details.revokedAt() == null ? null : dateTime(details.revokedAt()));
         invitation.setRevokedBy(details.revokedBy() == null ? null : actor(details.revokedBy()));
+        invitation.setLastEmail(details.lastEmail() == null ? null : email(details.lastEmail()));
         return invitation;
+    }
+
+    private static InvitationEmail email(InvitationEmailDetails email) {
+        InvitationEmail result = new InvitationEmail(
+                InvitationEmailStatus.valueOf(email.status().name()),
+                dateTime(email.requestedAt()),
+                actor(email.requestedBy()));
+        result.setFinishedAt(email.finishedAt() == null ? null : dateTime(email.finishedAt()));
+        return result;
     }
 
     static InvitationPage invitationPage(ResultPage<InvitationDetails> page) {
@@ -47,6 +62,10 @@ final class InvitationsMapper {
                 page.page(),
                 page.size(),
                 page.totalItems());
+    }
+
+    static InvitationLink link(PendingInvitationLink link) {
+        return new InvitationLink(link.link(), link.email(), dateTime(link.expiresAt()));
     }
 
     static InvitationPreview preview(PreviewedInvitation preview) {

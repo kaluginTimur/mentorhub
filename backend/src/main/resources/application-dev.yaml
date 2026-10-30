@@ -5,6 +5,13 @@ management:
       exposure:
         include: health,info,modulith
 
+# Mailpit from infra/compose.yaml; its web UI is http://localhost:8025. TestMentorHubApplication starts no Mailpit, so
+# emails sent there end FAILED.
+spring:
+  mail:
+    host: localhost
+    port: 1025
+
 springdoc:
   api-docs:
     enabled: true
@@ -15,6 +22,8 @@ springdoc:
 mentorhub:
   # The frontend dev server; invitation links point to it.
   app-url: http://localhost:4200
+  mail:
+    from: MentorHub <no-reply@mentorhub.local>
   security:
     trusted-issuers:
       - issuer-uri: http://localhost:8180/realms/mentorhub

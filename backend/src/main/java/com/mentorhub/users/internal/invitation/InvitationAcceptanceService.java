@@ -67,8 +67,8 @@ public class InvitationAcceptanceService {
     /** AC-8, AC-9. @throws NotFoundException {@link InvitationProblems#INVITATION_INVALID} unless pending */
     @Transactional(readOnly = true)
     public PreviewedInvitation preview(String token) {
-        StoredInvitation invitation = InvitationTokens.hashIfWellFormed(token)
-                .flatMap(invitations::findByTokenHash)
+        StoredInvitation invitation = InvitationTokens.ifWellFormed(token)
+                .flatMap(invitations::findByToken)
                 .filter(found -> found.status() == InvitationStatus.PENDING)
                 .orElseThrow(InvitationAcceptanceService::invalid);
         return new PreviewedInvitation(invitation.email(), invitation.expiresAt());
@@ -86,8 +86,8 @@ public class InvitationAcceptanceService {
     @Transactional
     public MeDetails accept(String token) {
         Caller caller = currentCaller.caller();
-        StoredInvitation invitation = InvitationTokens.hashIfWellFormed(token)
-                .flatMap(invitations::lockByTokenHash)
+        StoredInvitation invitation = InvitationTokens.ifWellFormed(token)
+                .flatMap(invitations::lockByToken)
                 .orElseThrow(InvitationAcceptanceService::invalid);
         // Read after the invitation lock, not taken from the authentication: a parallel first acceptance may have
         // linked the identity since the request was authenticated.

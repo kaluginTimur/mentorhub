@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 // Token usage of a Claude Code session and its subagents, read from the local transcripts.
-// Usage: node .claude/scripts/agent-usage.mjs [session-id | path/to/<session>.jsonl] [--record <feature> <phase> [--force]]
+// Usage: node .claude/scripts/agent-usage.mjs [session-id | path/to/<session>.jsonl] [--record <feature> <phase> [--until <time>] [--force]]
 //   Without a session it reads the latest session of this repository.
 //   Claude Code can continue a conversation in a new session (a `continued-in` entry in the old transcript, whose
 //   history the new one repeats); the whole chain of such sessions is read as one, each API call counted once.
-//   --record appends the chain to .claude/usage/<feature>.jsonl (replacing an earlier record of any of its sessions)
-//   together with the feature's current size, and prints one line per session. It refuses a chain none of whose agents is listed in
-//   docs/features/<feature>.progress.md, or that ended before another recorded session of the feature; --force overrides.
+//   --record appends the chain to .claude/usage/<feature>.jsonl together with the feature's current size, and prints one
+//   line per session. One session can hold several phases: /clear keeps the session id in a cloud session. A record
+//   therefore covers only the API calls after the chain's latest record of another phase, and replaces an earlier record
+//   of the same phase of the chain. --until <time> (ISO 8601) ends the window earlier, to rebuild a missed record. It
+//   refuses a chain none of whose agents (in the window) is listed in docs/features/<feature>.progress.md, one that ended
+//   before another recorded session of the feature, or (without --until) a phase recorded again after a later phase;
+//   --force overrides.
 // Transcripts are local to the machine that ran the session and are deleted after cleanupPeriodDays (30 by default);
 // the records are what persists.
 // Weighted = input-token equivalents at API price ratios: input 1, cache read 0.1, 5-minute write 1.25, 1-hour write 2.
@@ -44,6 +48,14 @@ if (recordAt >= 0) {
   if (!feature || !phase || feature.startsWith('-') || phase.startsWith('-')) fail('--record needs <feature> <phase>');
   record = { feature, phase };
   args.splice(recordAt, 3);
+}
+let until = null;
+const untilAt = args.indexOf('--until');
+if (untilAt >= 0) {
+  until = args[untilAt + 1];
+  if (!record || !until || Number.isNaN(Date.parse(until))) fail('--until needs --record and an ISO 8601 time');
+  until = new Date(until).toISOString();
+  args.splice(untilAt, 2);
 }
 const forceAt = args.indexOf('--force');
 const force = forceAt >= 0;
@@ -124,7 +136,7 @@ const dependencyInspection = /\bjavap\b|\bunzip -l\b|\bjar tf\b|dependency:build
 const inspectsDependency = (input) =>
   [input?.command, input?.file_path, input?.path, input?.pattern].some((v) => typeof v === 'string' && dependencyInspection.test(v));
 
-function analyse(files) {
+function analyse(files, window = {}) {
   const seen = new Set();
   const tools = new Set();
   const models = new Set();
@@ -134,13 +146,14 @@ function analyse(files) {
   let prev = null;
   for (const line of files.flatMap(readLines)) {
     if (!line) continue;
-    for (const m of line.matchAll(/"effort":"(low|medium|high|xhigh|max)"/g)) efforts.add(m[1]);
     let e;
     try {
       e = JSON.parse(line);
     } catch {
       continue;
     }
+    if (e.timestamp && ((window.since && e.timestamp <= window.since) || (window.until && e.timestamp > window.until))) continue;
+    for (const m of line.matchAll(/"effort":"(low|medium|high|xhigh|max)"/g)) efforts.add(m[1]);
     const m = e.message;
     // A streamed message is written several times under one id; the last copy has the final output count.
     if (e.type === 'assistant' && m?.usage) output.set(m.id, Math.max(output.get(m.id) ?? 0, m.usage.output_tokens ?? 0));
@@ -184,12 +197,51 @@ function analyse(files) {
   return s;
 }
 
-const chain = chainOf(sessionFile(args[0]));
+const callIds = (file) => {
+  const ids = new Set();
+  for (const line of readLines(file)) {
+    if (!line.includes('"usage"')) continue;
+    try {
+      const e = JSON.parse(line);
+      if (e.type === 'assistant' && e.message?.usage) ids.add(e.message.id);
+    } catch {}
+  }
+  return ids;
+};
+
+// In a cloud session /clear starts a new local session file but the conversation stays in the cloud session's
+// transcript, which repeats the new file's calls; subagents started meanwhile can be only in the new file's folder.
+// Such fragments (every call also in the chain) are read with the chain.
+function withFragments(chain) {
+  if (!projectDirs.length) return chain;
+  const known = new Set(chain.flatMap((f) => [...callIds(f)]));
+  const fragments = sessions().filter((f) => {
+    if (chain.includes(f)) return false;
+    const ids = callIds(f);
+    return ids.size > 0 && [...ids].every((id) => known.has(id));
+  });
+  return [...chain, ...fragments.sort()];
+}
+
+const chain = withFragments(chainOf(sessionFile(args[0])));
 const chainIds = chain.map(sessionIdOf);
 const sessionId = chainIds[0];
-const rows = [{ agent: 'main', description: 'main session', ...analyse(chain) }];
+
+const usageFile = record && path.join(root, '.claude', 'usage', `${record.feature}.jsonl`);
+const existing = usageFile && existsSync(usageFile) ? readFileSync(usageFile, 'utf8').split('\n').filter(Boolean).map((l) => [l, JSON.parse(l)]) : [];
+const ofChain = (r) => (r.sessions ?? [r.session]).some((id) => chainIds.includes(id));
+const recordedAt = until ?? new Date().toISOString();
+// The chain's records of other phases that ended before this window; this record starts after the latest of them.
+const otherPhases = existing.map(([, r]) => r).filter((r) => r.type === 'size' && ofChain(r) && r.phase !== record.phase);
+const since = otherPhases.filter((r) => r.recordedAt < recordedAt).reduce((a, r) => (r.recordedAt > a ? r.recordedAt : a), '') || null;
+const window = { since, until };
+
+const rows = [{ agent: 'main', description: 'main session', ...analyse(chain, window) }];
 const agentIds = [];
-const perSession = chain.map((main) => ({ id: sessionIdOf(main), ...analyse([main]), agents: 0 }));
+const perSession = chain.map((main) => ({ id: sessionIdOf(main), ...analyse([main], window), agents: 0 }));
+// One subagent can have a transcript in several folders of the chain (a fragment's and the cloud session's); its calls
+// are counted once, and the fullest meta (the one with a description) names it.
+const subagents = new Map();
 for (const [i, main] of chain.entries()) {
   const subDir = path.join(main.replace(/\.jsonl$/, ''), 'subagents');
   if (!existsSync(subDir)) continue;
@@ -197,12 +249,19 @@ for (const [i, main] of chain.entries()) {
     const metaFile = path.join(subDir, f.replace(/\.jsonl$/, '.meta.json'));
     const meta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : {};
     const id = f.replace(/^agent-|\.jsonl$/g, '');
-    agentIds.push(id);
-    const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? f, id, parentId: meta.parentAgentId ?? null, ...analyse([path.join(subDir, f)]), output: null };
-    rows.push(row);
-    perSession[i].agents++;
-    if (row.last && (!perSession[i].last || row.last > perSession[i].last)) perSession[i].last = row.last;
+    const s = subagents.get(id) ?? { files: [], meta: {}, session: i };
+    s.files.push(path.join(subDir, f));
+    if (!s.meta.description) s.meta = meta;
+    subagents.set(id, s);
   }
+}
+for (const [id, { files, meta, session }] of subagents) {
+  const row = { agent: meta.agentType ?? 'agent', description: meta.description ?? id, id, parentId: meta.parentAgentId ?? null, ...analyse(files, window), output: null };
+  if (!row.calls) continue;
+  agentIds.push(id);
+  rows.push(row);
+  perSession[session].agents++;
+  if (row.last && (!perSession[session].last || row.last > perSession[session].last)) perSession[session].last = row.last;
 }
 rows.sort((a, b) => (a.first ?? '').localeCompare(b.first ?? ''));
 // An agent spawned by another agent lands in the same subagents folder; its meta names the parent. spawnedBy is the
@@ -235,12 +294,9 @@ function featureSize(feature) {
 const k = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : `${Math.round(n / 1000)}k`);
 
 if (record) {
-  const dir = path.join(root, '.claude', 'usage');
-  const file = path.join(dir, `${record.feature}.jsonl`);
-  mkdirSync(dir, { recursive: true });
-  const existing = existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => [l, JSON.parse(l)]) : [];
-  const ofChain = (r) => (r.sessions ?? [r.session]).some((id) => chainIds.includes(id));
-  const kept = existing.filter(([, r]) => !ofChain(r)).map(([l]) => l);
+  const file = usageFile;
+  mkdirSync(path.dirname(file), { recursive: true });
+  const kept = existing.filter(([, r]) => !ofChain(r) || r.phase !== record.phase).map(([l]) => l);
 
   const progressLog = `docs/features/${record.feature}.progress.md`;
   const problems = [];
@@ -249,16 +305,19 @@ if (record) {
   if (!agentIds.some((id) => log.includes(id))) problems.push(`none of its agents is in the Agents table of ${progressLog}`);
   const later = existing.map(([, r]) => r).filter((r) => r.type === 'size' && !ofChain(r) && r.recordedAt > chainLast);
   if (later.length) problems.push(`it ended (${chainLast}) before ${record.feature}/${later[0].phase} was recorded (${later[0].recordedAt})`);
+  const samePhase = existing.map(([, r]) => r).filter((r) => r.type === 'size' && ofChain(r) && r.phase === record.phase);
+  const after = !until && otherPhases.find((r) => samePhase.some((p) => p.recordedAt < r.recordedAt) || r.recordedAt >= recordedAt);
+  if (after) problems.push(`${record.feature}/${after.phase} of this session was recorded (${after.recordedAt}) after ${record.phase}; recording ${record.phase} again would mix the phases`);
   if (problems.length && !force) fail(`refusing to record session ${chainIds.join(' -> ')}: ${problems.join('; ')}. Pass --force if it is right.`);
 
-  const recordedAt = new Date().toISOString();
-  const base = { feature: record.feature, phase: record.phase, session: sessionId, sessions: chainIds, recordedAt };
+  const base = { feature: record.feature, phase: record.phase, session: sessionId, sessions: chainIds, since, recordedAt };
   const lines = rows.map(({ first, last, context, ...r }) => JSON.stringify({ type: 'agent', ...base, ...r, lastContext: context, start: first, end: last }));
   lines.push(JSON.stringify({ type: 'size', ...base, ...featureSize(record.feature) }));
   writeFileSync(file, [...kept, ...lines].join('\n') + '\n');
   const total = rows.reduce((a, r) => a + r.weighted, 0);
   console.log(`agent-usage: recorded ${rows.length} agents (${k(total)} weighted) as ${record.feature}/${record.phase} in ${path.relative(root, file)}:`);
-  for (const p of perSession) console.log(`  session ${p.id}  ${p.first ?? '-'} to ${p.last ?? '-'}  ${p.agents} subagents`);
+  for (const p of perSession.filter((p) => p.first || p.agents)) console.log(`  session ${p.id}  ${p.first ?? '-'} to ${p.last ?? '-'}  ${p.agents} subagents`);
+  if (since) console.log(`  calls after ${since}, the session's record of ${otherPhases.find((r) => r.recordedAt === since).phase}`);
   process.exit(0);
 }
 
