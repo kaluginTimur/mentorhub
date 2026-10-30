@@ -13,6 +13,7 @@ import com.mentorhub.users.internal.security.TestAuthentications;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -23,17 +24,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Spec invitation-emails, AC-13 and AC-12 ("never sent again"): the stale resubmission picks up a publication whose
- * send is still in progress (a backlog makes it look stale), and that must not send the email a second time.
+ * send is still in progress (a backlog makes it look stale), and that must not send the email a second time. It
+ * resubmits only invitation email publications.
  */
 @SpringBootTest(properties = {"spring.mail.host=localhost", "mentorhub.mail.from=no-reply@mentorhub.test"})
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, InvitationEmailResubmissionTests.FailingListener.class})
 class InvitationEmailResubmissionTests {
 
     @Autowired
@@ -44,6 +49,15 @@ class InvitationEmailResubmissionTests {
 
     @Autowired
     InvitationEmailResubmission resubmission;
+
+    @Autowired
+    ApplicationEventPublisher events;
+
+    @Autowired
+    TransactionTemplate transactions;
+
+    @Autowired
+    FailingListener otherListener;
 
     @MockitoSpyBean
     MailDelivery mail;
@@ -96,6 +110,24 @@ class InvitationEmailResubmissionTests {
         assertThat(sends).hasValue(1);
     }
 
+    @Test
+    void otherEventsAreNotResubmitted() {
+        transactions.executeWithoutResult(status -> events.publishEvent(new OtherEvent()));
+        await(() -> otherListener.calls() == 1
+                && jdbc.sql("select status from event_publication")
+                        .query(String.class)
+                        .list()
+                        .equals(List.of("FAILED")));
+        jdbc.sql("update event_publication set publication_date = publication_date - interval '6 minutes'")
+                .update();
+
+        resubmission.resubmitStalePublications();
+        sleep(Duration.ofSeconds(1));
+        assertThat(otherListener.calls()).isEqualTo(1);
+
+        jdbc.sql("delete from event_publication").update();
+    }
+
     private void create(String email) {
         SecurityContextHolder.getContext()
                 .setAuthentication(TestAuthentications.activeUserAuthentication(admin, Permission.USERS_INVITE));
@@ -120,6 +152,23 @@ class InvitationEmailResubmissionTests {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(e);
+        }
+    }
+
+    record OtherEvent() {}
+
+    static class FailingListener {
+
+        private final AtomicInteger calls = new AtomicInteger();
+
+        int calls() {
+            return calls.get();
+        }
+
+        @ApplicationModuleListener
+        void on(OtherEvent event) {
+            calls.incrementAndGet();
+            throw new IllegalStateException("unexpected failure");
         }
     }
 }
