@@ -22,7 +22,7 @@ cd frontend && npm ci && npm start
 - Swagger UI (API contract, `dev` profile only): http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
 - Keycloak admin console: http://localhost:8180 (user `admin`, password `admin`)
-- Mailpit (all local email, e.g. Keycloak verification and password reset): http://localhost:8025
+- Mailpit (all local email: MentorHub invitation emails, Keycloak verification and password reset): http://localhost:8025
 
 ## Sign-in and development users
 
@@ -45,7 +45,7 @@ Every development user has the password `mentorhub`:
 
 ### Inviting and accepting locally
 
-1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant, then copy the link from the "Invitation link" dialog (you can copy it again later with "Copy link" in the invitations list while it is pending).
+1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant. "Send the invitation by email" is checked by default: the email arrives in Mailpit. You can also copy the link from the "Invitation link" dialog, copy it again later with "Copy link", or send it again with "Send email" in the invitations list while it is pending.
 2. Sign out, open the link and sign in with the invited email, or choose "Create an account" and verify the email through Mailpit. Accepting needs an email that Keycloak has verified; `stranger@mentorhub.local` is already verified.
 3. After accepting, you land on the home page with the invited roles; the user's page shows the acceptance in its history.
 

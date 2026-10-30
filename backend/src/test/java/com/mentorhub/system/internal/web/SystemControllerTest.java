@@ -1,13 +1,16 @@
 package com.mentorhub.system.internal.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
+import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.internal.security.WebSliceSecurity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 @WebMvcTest(
@@ -21,6 +24,9 @@ class SystemControllerTest {
 
     @Autowired
     MockMvcTester mvc;
+
+    @MockitoBean
+    MailDelivery mail;
 
     @Test
     void returnsNameAndVersion() {
@@ -40,9 +46,22 @@ class SystemControllerTest {
                         {
                           "issuer": "http://localhost:8180/realms/mentorhub",
                           "clientId": "mentorhub-web",
-                          "scope": "openid profile email"
+                          "scope": "openid profile email",
+                          "invitationEmails": false
                         }
                         """);
+    }
+
+    // invitation-emails AC-1
+    @Test
+    void reportsEnabledEmail() {
+        given(mail.isEnabled()).willReturn(true);
+
+        assertThat(mvc.get().uri("/api/v1/system/client-config"))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.invitationEmails")
+                .isEqualTo(true);
     }
 
     // AC-24

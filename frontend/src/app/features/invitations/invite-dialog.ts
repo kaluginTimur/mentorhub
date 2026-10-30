@@ -6,6 +6,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { ClientConfigService } from '../../core/client-config.service';
 import { Api } from '../../core/api/api';
 import { createInvitation } from '../../core/api/fn/invitations/create-invitation';
 import { InvitationLink } from '../../core/api/models/invitation-link';
@@ -21,11 +22,14 @@ export interface InviteDialogData {
   created?: CreatedInvitation;
   /** Opens the copy view directly, when the clipboard could not be written. */
   copy?: InvitationLink;
+  /** With `created`: the email was requested together with the new link. */
+  emailRequested?: boolean;
 }
 
 interface LinkShown {
   link: InvitationLink;
   mode: 'new' | 'copy';
+  emailRequested: boolean;
 }
 
 function toLink(created: CreatedInvitation): InvitationLink {
@@ -38,12 +42,18 @@ function toLink(created: CreatedInvitation): InvitationLink {
 
 function initialView(data: InviteDialogData | null): LinkShown | null {
   if (data?.created) {
-    return { link: toLink(data.created), mode: 'new' };
+    return {
+      link: toLink(data.created),
+      mode: 'new',
+      emailRequested: data.emailRequested === true,
+    };
   }
-  return data?.copy ? { link: data.copy, mode: 'copy' } : null;
+  return data?.copy ? { link: data.copy, mode: 'copy', emailRequested: false } : null;
 }
 
 type Conflict = { kind: 'user-active'; userId: string } | { kind: 'invitation-exists' };
+
+const EMAIL_UNAVAILABLE = 'Sending email is not available. Reload the page and try again.';
 
 const EMAIL_LIMIT = 254;
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,7 +72,12 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   ],
   template: `
     @if (shown(); as s) {
-      <app-link-view [link]="s.link" [mode]="s.mode" (done)="ref.close()" />
+      <app-link-view
+        [link]="s.link"
+        [mode]="s.mode"
+        [emailRequested]="s.emailRequested"
+        (done)="ref.close()"
+      />
     } @else {
       <h2 mat-dialog-title>Invite a person</h2>
       <form novalidate (submit)="onSubmit($event)">
@@ -93,6 +108,16 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             }
           </fieldset>
 
+          @if (emailEnabled) {
+            <mat-checkbox
+              class="send-email"
+              [checked]="sendEmail()"
+              (change)="sendEmail.set($event.checked)"
+            >
+              Send the invitation by email to this address
+            </mat-checkbox>
+          }
+
           @if (conflict(); as c) {
             <div class="conflict" role="alert">
               @if (c.kind === 'user-active') {
@@ -109,6 +134,9 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 >
               }
             </div>
+          }
+          @if (emailUnavailable()) {
+            <p class="error" role="alert">{{ emailUnavailableText }}</p>
           }
           @if (failure()) {
             <p class="error" role="alert">Something went wrong. Try again.</p>
@@ -136,6 +164,10 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       font: var(--mat-sys-title-small);
       padding: 0 0 4px;
     }
+    .send-email {
+      display: block;
+      margin-top: 8px;
+    }
     .hint {
       margin: 4px 0 0;
       color: var(--mat-sys-on-surface-variant);
@@ -161,6 +193,10 @@ export class InviteDialog {
   private readonly data = inject<InviteDialogData | null>(MAT_DIALOG_DATA, { optional: true });
   protected readonly ref = inject<MatDialogRef<InviteDialog>>(MatDialogRef);
 
+  protected readonly emailEnabled = inject(ClientConfigService).invitationEmails();
+  protected readonly emailUnavailableText = EMAIL_UNAVAILABLE;
+  protected readonly sendEmail = signal(true);
+  protected readonly emailUnavailable = signal(false);
   protected readonly roles = ROLE;
   protected readonly labels = ROLE_LABELS;
   protected readonly shown = signal<LinkShown | null>(initialView(this.data));
@@ -205,14 +241,20 @@ export class InviteDialog {
     this.saving.set(true);
     this.conflict.set(null);
     this.failure.set(false);
+    this.emailUnavailable.set(false);
     this.rolesError.set('');
     try {
       await submit(this.inviteForm, async (field) => {
         try {
+          const emailRequested = this.emailEnabled && this.sendEmail();
           const result = await this.api.invoke(createInvitation, {
-            body: { email: field().value().email.trim(), roles: this.selected() },
+            body: {
+              email: field().value().email.trim(),
+              roles: this.selected(),
+              ...(this.emailEnabled ? { sendEmail: emailRequested } : {}),
+            },
           });
-          this.shown.set({ link: toLink(result), mode: 'new' });
+          this.shown.set({ link: toLink(result), mode: 'new', emailRequested });
           return undefined;
         } catch (error) {
           return this.fail(error, field);
@@ -243,6 +285,8 @@ export class InviteDialog {
       this.conflict.set({ kind: 'user-active', userId: problem.userId });
     } else if (problem?.type === PROBLEM.invitationExists) {
       this.conflict.set({ kind: 'invitation-exists' });
+    } else if (problem?.type === PROBLEM.emailUnavailable) {
+      this.emailUnavailable.set(true);
     } else if (problem?.status !== 403) {
       this.failure.set(true);
     }

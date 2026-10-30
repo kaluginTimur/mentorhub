@@ -4,6 +4,7 @@ import com.mentorhub.audit.AuditEntry;
 import com.mentorhub.audit.AuditLog;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.InvitationAuditAction;
+import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
@@ -42,6 +43,14 @@ public class InvitationAuditTrail {
 
     public void revoked(UUID actorUserId, UUID invitationId) {
         record(actorUserId, invitationId, InvitationAuditAction.INVITATION_REVOKED, Map.of());
+    }
+
+    public void emailRequested(UUID actorUserId, UUID invitationId, InvitationEmailReason reason) {
+        record(
+                actorUserId,
+                invitationId,
+                InvitationAuditAction.INVITATION_EMAIL_REQUESTED,
+                Map.of("reason", reason.name()));
     }
 
     private void record(UUID actorUserId, UUID invitationId, InvitationAuditAction action, Map<String, ?> details) {

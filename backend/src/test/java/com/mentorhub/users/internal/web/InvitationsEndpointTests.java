@@ -78,6 +78,11 @@ class InvitationsEndpointTests {
                     new String[] {"GET", "/api/v1/invitations", ""},
                     new String[] {"POST", "/api/v1/invitations/{id}/revoke", ""},
                     new String[] {"POST", "/api/v1/invitations/{id}/link", ""},
+                    new String[] {"POST", "/api/v1/invitations/{id}/link", "{\"sendEmail\": true}"},
+                    new String[] {
+                        "POST", "/api/v1/invitations", "{\"email\": \"a@x.test\", \"roles\": [], \"sendEmail\": true}"
+                    },
+                    new String[] {"POST", "/api/v1/invitations/{id}/email", ""},
                     new String[] {"GET", "/api/v1/invitations/{id}/link", ""})) {
                 calls.add(Arguments.of(
                         role == null ? "no roles" : role.name(), operation[0], operation[1], operation[2]));
@@ -352,6 +357,91 @@ class InvitationsEndpointTests {
                 send(HttpMethod.POST, "/api/v1/invitations/" + UUID.randomUUID() + "/revoke", "", "admin"),
                 HttpStatus.NOT_FOUND,
                 Problems.NOT_FOUND);
+    }
+
+    // AC-1: without a mail server the flag is refused and nothing changes; false and a missing flag are accepted.
+    @Test
+    void emailIsUnavailableWithoutAMailServer() {
+        assertThat(send(HttpMethod.GET, "/api/v1/system/client-config", "", "admin"))
+                .bodyJson()
+                .extractingPath("$.invitationEmails")
+                .isEqualTo(false);
+        InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\"]");
+        assertThat(send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations",
+                        "{\"email\": \"a@x.test\", \"roles\": [], \"sendEmail\": false}",
+                        "admin"))
+                .hasStatus(HttpStatus.CREATED);
+        int audit = users.count("audit_log");
+        assertThat(users.count("invitations")).isEqualTo(2);
+
+        assertProblem(
+                send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations",
+                        "{\"email\": \"b@x.test\", \"roles\": [], \"sendEmail\": true}",
+                        "admin"),
+                HttpStatus.CONFLICT,
+                InvitationProblems.EMAIL_UNAVAILABLE);
+        assertProblem(
+                send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations/" + invitation.id() + "/link",
+                        "{\"sendEmail\": true}",
+                        "admin"),
+                HttpStatus.CONFLICT,
+                InvitationProblems.EMAIL_UNAVAILABLE);
+        assertProblem(
+                send(HttpMethod.POST, "/api/v1/invitations/" + invitation.id() + "/email", "", "admin"),
+                HttpStatus.CONFLICT,
+                InvitationProblems.EMAIL_UNAVAILABLE);
+
+        assertThat(users.count("invitations")).isEqualTo(2);
+        assertThat(users.count("audit_log")).isEqualTo(audit);
+        assertThat(users.count("invitation_emails")).isZero();
+        assertThat(send(HttpMethod.GET, "/api/v1/invitations/" + invitation.id() + "/link", "", "admin"))
+                .bodyJson()
+                .extractingPath("$.link")
+                .isEqualTo(invitation.link());
+        assertThat(send(HttpMethod.POST, "/api/v1/invitations/" + invitation.id() + "/link", "{}", "admin"))
+                .hasStatusOk();
+        assertThat(send(HttpMethod.GET, "/api/v1/invitations", "", "admin"))
+                .bodyJson()
+                .doesNotHavePath("$.items[0].lastEmail");
+    }
+
+    // AC-6: the invitation's own errors come before email-unavailable.
+    @Test
+    void invitationErrorsComeBeforeEmailUnavailable() {
+        InvitationRef invitation = create(INVITED_EMAIL, "[]");
+        assertThat(send(HttpMethod.POST, "/api/v1/invitations/" + invitation.id() + "/revoke", "", "admin"))
+                .hasStatusOk();
+
+        assertProblem(
+                send(HttpMethod.POST, "/api/v1/invitations/" + invitation.id() + "/email", "", "admin"),
+                HttpStatus.CONFLICT,
+                InvitationProblems.INVITATION_CLOSED);
+        assertProblem(
+                send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations/" + invitation.id() + "/link",
+                        "{\"sendEmail\": true}",
+                        "admin"),
+                HttpStatus.CONFLICT,
+                InvitationProblems.INVITATION_CLOSED);
+        assertProblem(
+                send(HttpMethod.POST, "/api/v1/invitations/" + UUID.randomUUID() + "/email", "", "admin"),
+                HttpStatus.NOT_FOUND,
+                Problems.NOT_FOUND);
+        assertProblem(
+                send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations",
+                        "{\"email\": \"nope\", \"roles\": [], \"sendEmail\": true}",
+                        "admin"),
+                HttpStatus.BAD_REQUEST,
+                Problems.VALIDATION_FAILED);
     }
 
     // AC-17: a stored role the code does not know is skipped on reads.

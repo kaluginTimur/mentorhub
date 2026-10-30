@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { ClientConfigService } from '../../core/client-config.service';
 import { Api } from '../../core/api/api';
 import { createInvitation } from '../../core/api/fn/invitations/create-invitation';
 import { InviteDialog } from './invite-dialog';
@@ -229,5 +230,75 @@ describe('InviteDialog', () => {
     expect((root.querySelector('input[type=email]') as HTMLInputElement).value).toBe(
       'ivan@example.com',
     );
+  });
+
+  describe('with email enabled (AC-17)', () => {
+    beforeEach(() =>
+      TestBed.overrideProvider(ClientConfigService, { useValue: { invitationEmails: () => true } }),
+    );
+
+    const emailBox = (root: HTMLElement) =>
+      checkbox(root, 'Send the invitation by email to this address');
+
+    it('shows the checkbox, checked by default, below the roles', async () => {
+      const { root } = await open();
+      expect(emailBox(root).checked).toBe(true);
+      const labels = [...root.querySelectorAll('mat-checkbox')].map((c) => c.textContent?.trim());
+      expect(labels.at(-1)).toBe('Send the invitation by email to this address');
+    });
+
+    it('requests the email and tells the link view so', async () => {
+      api.invoke.mockResolvedValue(created());
+      const { root } = await open();
+      type(root, 'ivan@example.com');
+      await submitForm(root);
+      expect(api.invoke).toHaveBeenCalledWith(createInvitation, {
+        body: { email: 'ivan@example.com', roles: [], sendEmail: true },
+      });
+      expect(root.textContent).toContain(
+        'An email with this link is on its way to ivan@example.com. It expires on 25 Oct 2026. You can also copy the link, and copy it again from the invitations list while it is pending.',
+      );
+      expect(root.querySelector('button[aria-label="Copy invitation link"]')).toBeTruthy();
+    });
+
+    it('sends sendEmail false and shows the usual text when unchecked', async () => {
+      api.invoke.mockResolvedValue(created());
+      const { root } = await open();
+      type(root, 'ivan@example.com');
+      emailBox(root).click();
+      await submitForm(root);
+      expect(api.invoke).toHaveBeenCalledWith(createInvitation, {
+        body: { email: 'ivan@example.com', roles: [], sendEmail: false },
+      });
+      expect(root.textContent).toContain('Send this link to ivan@example.com.');
+    });
+
+    it('shows an inline alert on 409 email-unavailable and keeps the values', async () => {
+      api.invoke.mockRejectedValue(
+        problem(409, { type: 'urn:mentorhub:problem:email-unavailable' }),
+      );
+      const { root } = await open();
+      type(root, 'ivan@example.com');
+      checkbox(root, 'Mentor').click();
+      await submitForm(root);
+      expect(root.querySelector('.error[role=alert]')?.textContent).toContain(
+        'Sending email is not available. Reload the page and try again.',
+      );
+      expect((root.querySelector('input[type=email]') as HTMLInputElement).value).toBe(
+        'ivan@example.com',
+      );
+      expect(checkbox(root, 'Mentor').checked).toBe(true);
+      expect(root.querySelector('app-link-view')).toBeNull();
+    });
+  });
+
+  it('renders no email checkbox and sends no flag when email is disabled (AC-17)', async () => {
+    api.invoke.mockResolvedValue(created());
+    const { root } = await open();
+    expect(root.textContent).not.toContain('by email');
+    type(root, 'ivan@example.com');
+    await submitForm(root);
+    expect(api.invoke.mock.calls[0][1]).toEqual({ body: { email: 'ivan@example.com', roles: [] } });
+    expect(Object.keys(api.invoke.mock.calls[0][1].body)).not.toContain('sendEmail');
   });
 });
