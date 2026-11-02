@@ -8,7 +8,7 @@ The record of who changed what in MentorHub, and when. Every audited change leav
 
 ### AUD-1 A change and its entry are stored together
 
-The system SHALL store the entry of an audited change together with the change: either both are stored, or neither is (decision 0006). An entry SHALL NOT be written without a change that is being stored.
+The system SHALL store the entry of an audited change together with the change: either both are stored, or neither is (decision 0005). An entry SHALL NOT be written without a change that is being stored.
 
 #### AUD-1.1 A change that fails leaves no entry
 
@@ -26,7 +26,7 @@ The system SHALL store the entry of an audited change together with the change: 
 
 ### AUD-2 What an entry holds
 
-The system SHALL record, in each entry, the time of the change, the actor, the action, the subject (its type and id) and the details. The actor is a user, or none for a change made by the system. The details hold what a reader needs to understand the change (decision 0006).
+The system SHALL record, in each entry, the time of the change, the actor, the action, the subject (its type and id) and the details. The actor is a user, or none for a change made by the system. The details hold what a reader needs to understand the change (decision 0005).
 
 #### AUD-2.1 An entry has the actor, the action, the subject and the details
 
@@ -36,7 +36,7 @@ The system SHALL record, in each entry, the time of the change, the actor, the a
 
 ### AUD-3 Entries cannot be changed or deleted
 
-The system SHALL keep the audit log append-only: a stored entry SHALL NOT be updated or deleted by the application or by any statement against the log, whatever the code path (decision 0006).
+The system SHALL keep the audit log append-only: a stored entry SHALL NOT be updated or deleted by the application or by any statement against the log, whatever the code path (decision 0005).
 
 #### AUD-3.1 An entry cannot be updated or deleted
 
@@ -70,7 +70,7 @@ The system SHALL write an entry only for a change that was made. A refused reque
 
 ### AUD-5 Details never copy secrets or protected content
 
-The system SHALL NOT copy into the details of an entry a secret or content that has its own visibility rules. The entry names the subject instead; whoever may see the subject sees the content through the subject. In particular the token of an invitation, and so its link, SHALL NOT appear in any entry (decision 0006).
+The system SHALL NOT copy into the details of an entry a secret or content that has its own visibility rules. The entry names the subject instead; whoever may see the subject sees the content through the subject. In particular the token of an invitation, and so its link, SHALL NOT appear in any entry (decision 0005).
 
 #### AUD-5.1 The invitation token is not in any entry
 
@@ -80,7 +80,7 @@ The system SHALL NOT copy into the details of an entry a secret or content that 
 
 ### AUD-6 Entries are read only through the history of a subject
 
-The system SHALL offer no operation that reads the entries of several subjects at once. An entry SHALL be readable only through the history of its own subject, served under the access rules of that subject, and a history SHALL hold only the entries about its subject (decision 0006). A history is ordered newest first. The entries about invitations are stored but have no history. A history SHALL leave out an entry whose action the running version does not know, instead of failing, and SHALL log one warning for each such action. An entry of a known action whose details cannot be read SHALL be left out in the same way, with a warning.
+The system SHALL offer no operation that reads the entries of several subjects at once. An entry SHALL be readable only through the history of its own subject, served under the access rules of that subject, and a history SHALL hold only the entries about its subject (decision 0005). A history is ordered newest first. The entries about invitations are stored but have no history. A history SHALL leave out an entry whose action the running version does not know, instead of failing, and SHALL log one warning for each such action. An entry of a known action whose details cannot be read SHALL be left out in the same way, with a warning.
 
 #### AUD-6.1 There is no global audit view
 

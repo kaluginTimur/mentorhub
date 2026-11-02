@@ -1,4 +1,4 @@
-# 0008. Asynchronous events through the Modulith event publication registry
+# 0006. Asynchronous events through the Modulith event publication registry
 
 ## Context
 

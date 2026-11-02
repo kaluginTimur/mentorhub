@@ -10,7 +10,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - `com.mentorhub.api` is the generated contract, an open module. No hand-written code there except `package-info.java`.
 - Every package has a `package-info.java` with `@NullMarked` (JSpecify), internal subpackages included: `@NullMarked` does not apply to subpackages. Mark nullable values with `@org.jspecify.annotations.Nullable`.
 - `com.mentorhub.mail` is an infrastructure module without domain knowledge and depends on no other module. Its public API is `MailDelivery` (`isEnabled()`, and a synchronous `send(MailMessage)` that throws `MailDeliveryException`), `MailMessage` and `MailDeliveryException`; the `JavaMailSender` adapter and `MailSenderProperties` are internal. Callers decide what to send (the invitation text lives in `users`) and call `send` outside database transactions.
-- Events between and inside modules go through the Spring Modulith event publication registry (JDBC, decision 0008): `ApplicationEventPublisher` inside the changing transaction, `@ApplicationModuleListener` after the commit on the async executor. A listener that fails by throwing leaves its publication incomplete, to be published again; a listener that handles a business failure itself (as `InvitationEmailSender` records `FAILED`) completes. Delivery assumes a single application instance; the limits of invitation email delivery are listed with the registry settings under Configuration and profiles.
+- Events between and inside modules go through the Spring Modulith event publication registry (JDBC, decision 0006): `ApplicationEventPublisher` inside the changing transaction, `@ApplicationModuleListener` after the commit on the async executor. A listener that fails by throwing leaves its publication incomplete, to be published again; a listener that handles a business failure itself (as `InvitationEmailSender` records `FAILED`) completes. Delivery assumes a single application instance; the limits of invitation email delivery are listed with the registry settings under Configuration and profiles.
 - `ModularityTests` verifies the boundaries and must stay green.
 
 ## API (decision 0002)
@@ -86,7 +86,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - The database's `now()` is the one clock for expiry, status and audit. An invitation's status is derived from its timestamps, not stored, and its list filters on the same expressions.
 - Row locks on a table that foreign keys reference use `for no key update`, unless a key column changes: `for update` conflicts with the `for key share` that every referencing insert takes, so two transactions that each lock a row the other's insert references deadlock (`UserRepository.lockUser` and the `audit_log` actor).
 
-## Audit (decision 0006)
+## Audit (decision 0005)
 
 - Record an audited change with `com.mentorhub.audit.AuditLog.record(new AuditEntry(actorUserId, action, subjectType, subjectId, details))` inside the changing `@Transactional` method; `record` joins the transaction (`Propagation.MANDATORY`) and fails without one. The actor is `users.id`, or `null` for the system.
 - The action and subject type are string constants owned by the writing module (`UserAuditAction`, subject type `USER`). Details are a JSON-serializable map and never copy content with its own visibility rules.

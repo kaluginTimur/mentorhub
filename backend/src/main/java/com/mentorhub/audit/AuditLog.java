@@ -3,7 +3,7 @@ package com.mentorhub.audit;
 import java.util.UUID;
 
 /**
- * Writes and reads the audit log (decision 0006). There is no global read: each module serves the entries about its
+ * Writes and reads the audit log (decision 0005). There is no global read: each module serves the entries about its
  * subjects under the subjects' own access rules.
  */
 public interface AuditLog {

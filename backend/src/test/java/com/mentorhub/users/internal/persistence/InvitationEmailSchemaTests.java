@@ -24,7 +24,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-/** V6 (spec invitation-emails, Data model). */
+/** The schema of invitation emails. */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @Transactional

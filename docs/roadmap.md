@@ -32,7 +32,7 @@ No commitment and no order.
 
 - Corporate SSO auto-provisioning, with role mapping through Keycloak identity provider mappers. An exception to invitation-only registration; needs its own decision.
 - Roles as data, editable in the UI (deferred in decision 0004).
-- A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0006).
+- A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0005).
 
 ## Product decisions
 
