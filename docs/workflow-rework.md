@@ -6,7 +6,7 @@ Status: temporary. This document hands over the context for reworking the docume
 
 Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 (composition of the constitution).
 
-**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). The constitution draft has 13 rules and is not committed yet (`docs/constitution.md`, planned as a stage 1 commit); `docs/roadmap.md` and `docs/architecture/decisions/` (planned) come next.
+**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). `docs/constitution.md` is written and approved (10 rules). Still to do in stage 1: `docs/roadmap.md` and `docs/architecture/decisions/` (planned), then `CLAUDE.md` and `AGENTS.md`.
 
 Not discussed yet: the skills and agents of the new process (the last discussion item), including the agent review of the spec and the agent-neutral process description (see **Open questions**). They are needed before migration stage 5, not before stage 1.
 
@@ -97,8 +97,9 @@ Order of discussion: document model → life cycle of a change → format → to
 
 - `docs/constitution.md` (planned), for humans and agents alike. The split test: "would this rule still hold if a team of people ran the project without Claude Code?" If yes, it belongs in the constitution; if it is about how an agent works in the repository, it belongs in `AGENTS.md`.
   - **Two more tests (user decision, 2026-11-02):** the constitution holds no domain-specific principles and no common knowledge about tools or frameworks.
-  - Constitution (user decision, 2026-11-02, applying these tests): what the product is and is not; resource-level access checks and negative authorization tests, stated generally; contract first, module boundaries, vertical slices, done means verified; spec-driven principles; the language of artifacts.
-  - Rules that left it: no passwords and `users.id` over `sub` stay in decision 0003; permissions over role names stay in decision 0004; the audit rules stay in decision 0006 and go to the `audit` requirements; 404 versus 403 goes to the `authorization` requirements; "generated code is never edited" is common knowledge. Known cost (Claude's assessment): these rules stop loading into every session, so tests with scenario ids and the review checklist have to catch violations, which holds only after migration stages 4 and 5.
+  - **A rule of one area goes to that area's guide, and the mechanics of a decision stay in the decision.** The user asked why contract first and module boundaries were not in `docs/development/backend.md`; the wording of this test is Claude's, and the user applied it to the rules below.
+  - Constitution (user decision, 2026-11-02, applying these tests): what the product is and is not; contract first (the order of work only, without the generator mechanics); vertical slices; done means verified; spec-driven principles; the language of artifacts.
+  - Rules that left it: module boundaries stay in `docs/development/backend.md` and decision 0001; resource-level access checks and negative authorization tests moved to `docs/development/backend.md`; no passwords and `users.id` over `sub` stay in decision 0003; permissions over role names stay in decision 0004; the audit rules stay in decision 0006 and go to the `audit` requirements; 404 versus 403 goes to the `authorization` requirements; "generated code is never edited" is common knowledge. Known cost (Claude's assessment): these rules stop loading into every session, so tests with scenario ids and the review checklist have to catch violations, which holds only after migration stages 4 and 5.
   - `AGENTS.md`: the map, the agent workflow, what to read before planning, asking before destructive actions, explaining what a suggested destructive command destroys, the default about applied migrations.
   - Domain facts in `docs/architecture/invariants.md` (roles, `user_identities`, invitation token storage, gate rules) move to living requirements. Plans (feature order, the planned domain model, undefined observer rights) move to the roadmap. Claude's proposal: notes and their visibility levels also go to the roadmap, because notes are not implemented.
 - Style conventions (for example "comment sparingly") go to the development guides. The language of artifacts stays in the constitution.
@@ -108,9 +109,10 @@ Order of discussion: document model → life cycle of a change → format → to
   - Applied migrations are not in the constitution: a developer is expected to know how Flyway works, and the rule reads as an instruction for an agent. The agent's default stays in `AGENTS.md`: applied migrations are never edited; editing or squashing needs the user's word and explicit confirmation. The agent cannot know whether a migration was applied or what editing it costs (possibly nothing, for a migration that reached no database or only a disposable local one).
   - Note visibility is not in the constitution, as a domain-specific rule.
   - Invitations stay out of the constitution: "today they exist, tomorrow they don't".
-  - Module boundaries may be mentioned in the constitution.
   - Personal data rules are dropped entirely, from the constitution and the roadmap: keeping data out of foreign SaaS, Kazakhstan specifics, and anything else not covered by the implementation of users.
   - An amendment leaves no dated line in the constitution.
+  - `C-n` numbers are only a label for review reports and conversation, with no numbering rule: living documents and skills do not cite them, because the constitution is always loaded, so the numbers can change freely. "Living documents do not cite them" goes to the process description.
+  - The constitution holds no agent instructions and no obligations a human team could not meet: "stop and report" reads as an instruction for an agent, since a developer stops only at really disputed points, and few human teams can separate the authors of tests and code. The constitution must not become a second `AGENTS.md`; these things are still described, on another level. So the test-engineer and developer split, the proof of the red phase and the decision-conflict report stay in force and move to the process description and the agent configuration.
 
 ### Architecture decisions
 
