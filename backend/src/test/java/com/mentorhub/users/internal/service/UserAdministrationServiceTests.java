@@ -32,6 +32,7 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,8 +91,8 @@ class UserAdministrationServiceTests {
     @Nested
     class Listing {
 
-        // AC-1
         @Test
+        @DisplayName("USR-2.1 Users are sorted by name and email")
         void sortsByLastFirstNameAndEmailIgnoringCaseWithMissingNamesLast() {
             UUID ivan = user("b@x.test", "Ivan", "sidorov", UserStatus.ACTIVE);
             UUID anna = user("a@x.test", "anna", "Sidorov", UserStatus.ACTIVE);
@@ -111,8 +112,8 @@ class UserAdministrationServiceTests {
                             admin, "admin@x.test", "Ada", "Admin", UserStatus.ACTIVE, List.of(Role.ADMIN)));
         }
 
-        // AC-1
         @Test
+        @DisplayName("PLT-3.2 A requested page is returned with the total")
         void returnsTheRequestedPageWithTheTotal() {
             user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID c = user("c@x.test", "C", "C", UserStatus.ACTIVE);
@@ -124,15 +125,21 @@ class UserAdministrationServiceTests {
             assertThat(page.page()).isEqualTo(1);
             assertThat(page.size()).isEqualTo(2);
             assertThat(page.totalItems()).isEqualTo(4);
+
+            ResultPage<UserListEntry> pastTheEnd = service.list(query(null, null, null, 5, 2));
+
+            assertThat(pastTheEnd.items()).isEmpty();
+            assertThat(pastTheEnd.totalItems()).isEqualTo(4);
         }
 
-        // AC-2
         @Test
+        @DisplayName("USR-2.2 The text matches email and names")
         void searchesEmailAndNamesIgnoringCaseAfterTrimming() {
             UUID byLastName = user("b@x.test", "Ivan", "Sidorov", UserStatus.ACTIVE);
             UUID byFirstName = user("c@x.test", "Sidor", "Ivanov", UserStatus.ACTIVE);
             UUID byEmail = user("SIDOROVA@x.test", null, null, UserStatus.ACTIVE);
             user("d@x.test", "Maria", "Petrova", UserStatus.ACTIVE);
+            UUID byPercentInName = user("e@x.test", "Fifty%", "Off", UserStatus.ACTIVE);
 
             ResultPage<UserListEntry> page = service.list(query("  sIdOr \t", null, null, 0, 25));
 
@@ -140,9 +147,9 @@ class UserAdministrationServiceTests {
                     .extracting(UserListEntry::id)
                     .containsExactlyInAnyOrder(byLastName, byFirstName, byEmail);
             assertThat(page.totalItems()).isEqualTo(3);
+            assertThat(ids(service.list(query("%", null, null, 0, 25)))).containsExactly(byPercentInName);
         }
 
-        // AC-2
         @Test
         void wildcardsMatchThemselves() {
             UUID percent = user("100%@x.test", null, null, UserStatus.ACTIVE);
@@ -155,8 +162,8 @@ class UserAdministrationServiceTests {
             assertThat(ids(service.list(query("\\", null, null, 0, 25)))).containsExactly(backslash);
         }
 
-        // AC-2
         @Test
+        @DisplayName("USR-2.3 Status and role filters combine")
         void filtersByStatusAndRoleCombinedWithAnd() {
             UUID activeMentor = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
             UUID disabledMentor = user("c@x.test", "C", "C", UserStatus.DISABLED, Role.MENTOR, Role.STUDENT);
@@ -176,7 +183,26 @@ class UserAdministrationServiceTests {
                     .containsExactly(unknownRoleOnly);
         }
 
-        // AC-12: an unknown stored role is never reported
+        @Test
+        @DisplayName("USR-2.4 NONE finds users without a known role")
+        void noneFindsUsersWithoutAKnownRole() {
+            UUID noRole = user("b@x.test", "B", "B", UserStatus.ACTIVE);
+            UUID unknownOnly = user("c@x.test", "C", "C", UserStatus.ACTIVE);
+            storeUnknownRole(unknownOnly);
+            UUID knownAndUnknown = user("d@x.test", "D", "D", UserStatus.ACTIVE, Role.MENTOR);
+            storeUnknownRole(knownAndUnknown);
+
+            ResultPage<UserListEntry> none = service.list(query(null, null, new RoleFilter.WithoutRoles(), 0, 25));
+            ResultPage<UserListEntry> all = service.list(query(null, null, null, 0, 25));
+
+            assertThat(ids(none)).containsExactly(noRole, unknownOnly);
+            assertThat(all.items())
+                    .filteredOn(entry -> entry.id().equals(knownAndUnknown))
+                    .singleElement()
+                    .satisfies(entry -> assertThat(entry.roles()).containsExactly(Role.MENTOR));
+        }
+
+        // An unknown stored role is never reported
         @Test
         void listsOnlyKnownRoles() {
             UUID mentor = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
@@ -189,7 +215,6 @@ class UserAdministrationServiceTests {
                     .containsExactly(Role.MENTOR);
         }
 
-        // AC-3
         @Test
         void queryMayHave100CharactersAfterTrimming() {
             assertThatCode(() -> service.list(query("  " + "q".repeat(100) + "  ", null, null, 0, 25)))
@@ -199,7 +224,6 @@ class UserAdministrationServiceTests {
                     new FieldViolation("q", "must be at most 100 characters"));
         }
 
-        // AC-3
         @Test
         void rejectsInvalidPagesWithoutClamping() {
             assertValidationErrors(
@@ -215,8 +239,8 @@ class UserAdministrationServiceTests {
     @Nested
     class Reading {
 
-        // AC-4
         @Test
+        @DisplayName("USR-3.1 The reason is shown for a disabled user only")
         void returnsTheDetailsOfADisabledUser() {
             UUID user = user("b@x.test", "Ivan", "Sidorov", UserStatus.ACTIVE, Role.STUDENT, Role.MENTOR);
             storeUnknownRole(user);
@@ -226,7 +250,11 @@ class UserAdministrationServiceTests {
                     .update();
 
             ManagedUser details = service.get(user);
+            ManagedUser active = service.get(admin);
 
+            assertThat(active.status()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(active.disabledReason()).isNull();
+            assertThat(active.disabledComment()).isNull();
             assertThat(details)
                     .usingRecursiveComparison()
                     .ignoringFields("createdAt")
@@ -244,7 +272,6 @@ class UserAdministrationServiceTests {
             assertThat(details.createdAt()).isNotNull();
         }
 
-        // AC-4
         @Test
         void anActiveUserHasNoReason() {
             ManagedUser details = service.get(admin);
@@ -255,7 +282,6 @@ class UserAdministrationServiceTests {
             assertThat(details.phone()).isNull();
         }
 
-        // AC-4
         @Test
         void unknownIdIsNotFound() {
             assertThatThrownBy(() -> service.get(UUID.randomUUID())).isInstanceOf(NotFoundException.class);
@@ -266,8 +292,8 @@ class UserAdministrationServiceTests {
     @Nested
     class Disabling {
 
-        // AC-6
         @Test
+        @DisplayName("USR-4.1 A user is disabled with a reason and a comment")
         void disablesWithTheReasonAndTrimmedCommentAndAudits() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
 
@@ -285,7 +311,6 @@ class UserAdministrationServiceTests {
                             Map.of("reason", "GRADUATED", "comment", "Finished the spring cohort")));
         }
 
-        // AC-6
         @Test
         void blankCommentIsStoredAsNull() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -297,7 +322,6 @@ class UserAdministrationServiceTests {
                     .containsExactly(new Entry("USER_DISABLED", admin, Map.of("reason", "SECURITY")));
         }
 
-        // AC-7
         @Test
         void otherRequiresAComment() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -310,7 +334,6 @@ class UserAdministrationServiceTests {
             assertUnchanged(user);
         }
 
-        // AC-7
         @Test
         void commentMayHave500CharactersAfterTrimming() {
             UUID tooLong = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -325,8 +348,8 @@ class UserAdministrationServiceTests {
             assertThat(disabled.disabledComment()).hasSize(500);
         }
 
-        // AC-9
         @Test
+        @DisplayName("USR-4.3 Disabling a disabled user changes nothing")
         void disablingADisabledUserChangesNothing() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             service.disable(user, GRADUATED, "First");
@@ -338,7 +361,6 @@ class UserAdministrationServiceTests {
             assertThat(auditEntries(user)).hasSize(1);
         }
 
-        // AC-13
         @Test
         void administratorCannotDisableThemselves() {
             user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.ADMIN);
@@ -347,7 +369,7 @@ class UserAdministrationServiceTests {
             assertUnchanged(admin);
         }
 
-        // AC-14: unreachable through the API (only an administrator has USERS_MANAGE), but the rule holds alone.
+        // Unreachable through the API (only an administrator has USERS_MANAGE), but the rule holds alone.
         @Test
         void lastActiveAdministratorCannotBeDisabled() {
             UUID manager = user("manager@x.test", "M", "M", UserStatus.ACTIVE);
@@ -375,8 +397,8 @@ class UserAdministrationServiceTests {
     @Nested
     class Enabling {
 
-        // AC-8
         @Test
+        @DisplayName("USR-5.1 A user is enabled and keeps the roles")
         void enablesClearsTheReasonAndAuditsWhatItWas() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.STUDENT);
             service.disable(user, DisableReason.LEFT_PROGRAM, "Moved abroad");
@@ -395,9 +417,14 @@ class UserAdministrationServiceTests {
             assertThat(auditEntries(user).getLast())
                     .isEqualTo(new Entry(
                             "USER_ENABLED", admin, Map.of("reason", "LEFT_PROGRAM", "comment", "Moved abroad")));
+
+            ManagedUser again = service.enable(user);
+
+            assertThat(again.status()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(again.roles()).containsExactly(Role.STUDENT);
+            assertThat(auditEntries(user)).hasSize(2);
         }
 
-        // AC-9
         @Test
         void enablingAnActiveUserChangesNothing() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -415,8 +442,8 @@ class UserAdministrationServiceTests {
     @Nested
     class SettingRoles {
 
-        // AC-10
         @Test
+        @DisplayName("USR-6.1 The roles become exactly the requested set")
         void storesExactlyTheRequestedRolesAndAuditsTheDifference() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR, Role.STUDENT);
 
@@ -435,8 +462,33 @@ class UserAdministrationServiceTests {
                                     List.of("STUDENT"))));
         }
 
-        // AC-10
         @Test
+        @DisplayName("AUD-2.1 An entry has the actor, the action, the subject and the details")
+        void anEntryHoldsTheTimeActorActionSubjectAndDetails() {
+            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.STUDENT);
+            OffsetDateTime before = OffsetDateTime.now().minusMinutes(1);
+
+            service.setRoles(user, Set.of(Role.MENTOR));
+
+            var row = jdbc.sql("""
+                            select occurred_at, actor_user_id, action, subject_type, subject_id, details::text as details
+                            from audit_log where subject_id = :subject
+                            """).param("subject", user).query().singleRow();
+            assertThat(((java.sql.Timestamp) row.get("occurred_at")).toInstant())
+                    .isBetween(
+                            before.toInstant(),
+                            OffsetDateTime.now().plusMinutes(1).toInstant());
+            assertThat(row)
+                    .containsEntry("actor_user_id", admin)
+                    .containsEntry("action", "USER_ROLES_CHANGED")
+                    .containsEntry("subject_type", "USER")
+                    .containsEntry("subject_id", user);
+            assertThat(jsonMapper.readValue((String) row.get("details"), new TypeReference<Map<String, Object>>() {}))
+                    .isEqualTo(Map.of("rolesAdded", List.of("MENTOR"), "rolesRemoved", List.of("STUDENT")));
+        }
+
+        @Test
+        @DisplayName("AUD-4.2 A change that alters nothing writes no entry")
         void sameRolesWriteNoEntry() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
 
@@ -445,7 +497,6 @@ class UserAdministrationServiceTests {
             assertThat(auditEntries(user)).isEmpty();
         }
 
-        // AC-11
         @Test
         void emptySetLeavesTheUserActiveWithoutRoles() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
@@ -457,8 +508,8 @@ class UserAdministrationServiceTests {
             assertThat(testUsers.roles(user)).isEmpty();
         }
 
-        // AC-12
         @Test
+        @DisplayName("USR-6.3 A stored role the version does not know stays")
         void leavesUnknownStoredRolesUntouchedAndUnreported() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
             storeUnknownRole(user);
@@ -474,7 +525,6 @@ class UserAdministrationServiceTests {
                             Map.of("rolesAdded", List.of("STUDENT"), "rolesRemoved", List.of("MENTOR"))));
         }
 
-        // AC-13
         @Test
         void administratorCannotRemoveTheirOwnAdminRole() {
             user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.ADMIN);
@@ -491,7 +541,6 @@ class UserAdministrationServiceTests {
             assertThat(changed.roles()).containsExactly(Role.ADMIN, Role.MENTOR);
         }
 
-        // AC-14
         @Test
         void lastActiveAdministratorCannotLoseTheRole() {
             UUID manager = user("manager@x.test", "M", "M", UserStatus.ACTIVE);
@@ -526,7 +575,6 @@ class UserAdministrationServiceTests {
     @Nested
     class EditingProfiles {
 
-        // AC-16, AC-18
         @Test
         void storesNormalizedValuesAndAuditsEachChangedField() {
             UUID user = user("b@x.test", "Anna", "Petrova", UserStatus.ACTIVE);
@@ -548,7 +596,6 @@ class UserAdministrationServiceTests {
                                             change("phone", null, "+77011234567")))));
         }
 
-        // AC-16
         @Test
         void unchangedValuesWriteNoEntry() {
             UUID user = user("b@x.test", "Anna", null, UserStatus.ACTIVE);
@@ -561,7 +608,6 @@ class UserAdministrationServiceTests {
             assertThat(auditEntries(user)).isEmpty();
         }
 
-        // AC-18
         @Test
         void blankValuesClearTheFields() {
             UUID user = user("b@x.test", "Anna", "Petrova", UserStatus.ACTIVE);
@@ -572,7 +618,6 @@ class UserAdministrationServiceTests {
             assertThat(changed.lastName()).isNull();
         }
 
-        // AC-18
         @Test
         void invalidValuesStoreNothing() {
             UUID user = user("b@x.test", "Anna", "Petrova", UserStatus.ACTIVE);
@@ -597,7 +642,6 @@ class UserAdministrationServiceTests {
     @ExtendWith(OutputCaptureExtension.class)
     class History {
 
-        // AC-19
         @Test
         void returnsTheEntriesNewestFirstWithActorsAndDetails() {
             UUID user = user("b@x.test", "Anna", null, UserStatus.ACTIVE, Role.STUDENT);
@@ -628,7 +672,6 @@ class UserAdministrationServiceTests {
                             new HistoryActor(admin, "Ada Admin"));
         }
 
-        // AC-19
         @Test
         void pagesTheEntries() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -644,8 +687,8 @@ class UserAdministrationServiceTests {
             assertThat(second.totalItems()).isEqualTo(3);
         }
 
-        // Invitations AC-16, AC-17: the inviter is resolved and only known roles remain.
         @Test
+        @DisplayName("USR-10.3 An acceptance entry names the administrator who invited")
         void invitationAcceptedEntryHasTheInviterAndKnownRoles() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID invitation = UUID.fromString("5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
@@ -660,8 +703,8 @@ class UserAdministrationServiceTests {
                             invitation, admin, false, true, true, List.of("MENTOR"), List.of("ADMIN")));
         }
 
-        // Invitations AC-16: an inviter that cannot be resolved leaves the entry without one.
         @Test
+        @DisplayName("USR-10.3 An acceptance entry names the administrator who invited (unresolved inviter)")
         void invitationAcceptedEntryWithAnUnknownInviterHasNoInviter() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID unknown = UUID.fromString("00000000-0000-4000-8000-0000000000aa");
@@ -673,7 +716,6 @@ class UserAdministrationServiceTests {
             assertThat(entry.change()).isInstanceOf(UserChange.InvitationAccepted.class);
         }
 
-        // AC-19, AC-20
         @Test
         void bootstrapEntryHasNoActor() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -690,8 +732,8 @@ class UserAdministrationServiceTests {
             assertThat(entry.change()).isEqualTo(new UserChange.BootstrappedAdmin(false, true, false, true));
         }
 
-        // AC-19
         @Test
+        @DisplayName("AUD-6.4 An action the version does not know is left out")
         void leavesOutUnknownActionsAndWarnsOncePerAction(CapturedOutput output) {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             String action = "USER_TELEPORTED_" + UUID.randomUUID();
@@ -708,7 +750,7 @@ class UserAdministrationServiceTests {
             assertThat(output.getOut()).containsOnlyOnce(action);
         }
 
-        // AC-12 for the history: a role the code does not know is not reported
+        // A role the code does not know is not reported
         @Test
         void leavesOutUnknownRolesOfARoleChange() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
@@ -724,6 +766,21 @@ class UserAdministrationServiceTests {
         }
 
         @Test
+        @DisplayName("AUD-6.5 An entry whose details cannot be read is left out")
+        void leavesOutAnEntryWhoseDetailsCannotBeRead(CapturedOutput output) {
+            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
+            storeEntry(user, admin, "USER_ROLES_CHANGED", "{\"rolesAdded\": 5, \"rolesRemoved\": \"x\"}", 0);
+            storeEntry(user, admin, "USER_ENABLED", "{\"reason\": \"SECURITY\"}", 1);
+
+            ResultPage<UserHistoryEntry> history = service.history(user, 0, 25);
+
+            assertThat(history.items())
+                    .extracting(UserHistoryEntry::change)
+                    .containsExactly(new UserChange.Enabled(DisableReason.SECURITY, null));
+            assertThat(output.getOut()).contains("USER_ROLES_CHANGED");
+        }
+
+        @Test
         void rejectsInvalidPages() {
             assertValidationErrors(
                     () -> service.history(admin, -1, 0),
@@ -732,8 +789,8 @@ class UserAdministrationServiceTests {
         }
     }
 
-    // AC-21
     @Test
+    @DisplayName("AUD-1.1 A change that fails leaves no entry")
     void failedTransactionStoresNeitherTheChangeNorItsEntry() {
         UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
 
@@ -747,7 +804,6 @@ class UserAdministrationServiceTests {
         assertThat(testUsers.roles(user)).containsExactly("MENTOR");
     }
 
-    // AC-5 at the service: reads need USERS_READ
     @ParameterizedTest
     @MethodSource("reads")
     void readsNeedUsersRead(Consumer<UserAdministrationService> read) {
@@ -759,7 +815,6 @@ class UserAdministrationServiceTests {
         assertThatThrownBy(() -> read.accept(service)).isInstanceOf(AccessDeniedException.class);
     }
 
-    // AC-5 at the service: changes need USERS_MANAGE, also with USERS_READ
     @ParameterizedTest
     @MethodSource("changes")
     void changesNeedUsersManage(Consumer<UserAdministrationService> change) {

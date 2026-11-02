@@ -6,7 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.mentorhub.TestcontainersConfiguration;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -41,22 +44,14 @@ class AuditLogSchemaTests {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    // AC-21
-    @Test
-    void rejectsUpdate() {
+    @ParameterizedTest(name = "AUD-3.1 An entry cannot be updated or deleted: {0}")
+    @ValueSource(
+            strings = {"update audit_log set action = 'CHANGED' where id = ?", "delete from audit_log where id = ?"})
+    @DisplayName("AUD-3.1 An entry cannot be updated or deleted")
+    void rejectsUpdateAndDelete(String statement) {
         UUID id = insertEntry(null, "{}");
 
-        assertThatThrownBy(() -> jdbc.update("update audit_log set action = 'CHANGED' where id = ?", id))
-                .isInstanceOf(DataAccessException.class)
-                .hasMessageContaining("append-only");
-    }
-
-    // AC-21
-    @Test
-    void rejectsDelete() {
-        UUID id = insertEntry(null, "{}");
-
-        assertThatThrownBy(() -> jdbc.update("delete from audit_log where id = ?", id))
+        assertThatThrownBy(() -> jdbc.update(statement, id))
                 .isInstanceOf(DataAccessException.class)
                 .hasMessageContaining("append-only");
     }

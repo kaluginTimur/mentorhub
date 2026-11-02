@@ -23,7 +23,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Spec invitation-emails, Data model; the request rows behind AC-2 to AC-5, AC-8 to AC-11 and AC-16. */
+/** The request rows of invitation emails (Data model). */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @Transactional
@@ -64,7 +64,6 @@ class InvitationEmailRepositoryTests {
         assertThat(queued.finishedAt()).isNull();
     }
 
-    // AC-5
     @Test
     void aSecondQueuedRequestIsADuplicateKey() {
         emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -82,7 +81,6 @@ class InvitationEmailRepositoryTests {
         assertThat(emails.findQueued(newInvitation())).isEmpty();
     }
 
-    // AC-8
     @Test
     void marksSentWithTheTime() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -95,7 +93,6 @@ class InvitationEmailRepositoryTests {
         assertThat(failure(id)).isNull();
     }
 
-    // AC-10
     @Test
     void marksSkipped() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.RESENT, admin);
@@ -105,7 +102,6 @@ class InvitationEmailRepositoryTests {
         assertThat(emails.lock(id).orElseThrow().status()).isEqualTo(InvitationEmailStatus.SKIPPED);
     }
 
-    // AC-11
     @Test
     void marksFailedWithTheReason() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.RESENT, admin);
@@ -119,7 +115,7 @@ class InvitationEmailRepositoryTests {
         assertThat(failure(id)).isEqualTo("550 mailbox unavailable");
     }
 
-    // AC-12: a request that already has an outcome keeps it.
+    // A request that already has an outcome keeps it.
     @Test
     void onlyAQueuedRequestChanges() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -150,7 +146,6 @@ class InvitationEmailRepositoryTests {
         assertThat(emails.findQueued(invitation).orElseThrow().id()).isEqualTo(second);
     }
 
-    // AC-16
     @Test
     void findsTheLatestRequestOfEachInvitation() {
         UUID sent = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);

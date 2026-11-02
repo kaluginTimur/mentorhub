@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
-/** Spec invitation-emails, AC-14. */
+/** The text of the invitation email. */
 class InvitationEmailTextTests {
 
     /** The expected rendering of an expiry, written independently of the production formatter's pattern. */

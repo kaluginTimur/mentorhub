@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,6 +44,7 @@ class AuditLogServiceTests {
     }
 
     @Test
+    @DisplayName("AUD-1.2 An entry cannot be written outside a change")
     void recordFailsOutsideATransaction() {
         assertThatThrownBy(() -> auditLog.record(entry("TEST_CHANGED", Map.of())))
                 .isInstanceOf(IllegalTransactionStateException.class);
@@ -50,7 +52,6 @@ class AuditLogServiceTests {
         assertThat(count()).isZero();
     }
 
-    // AC-21
     @Test
     void entryRollsBackWithItsTransaction() {
         transactions.executeWithoutResult(status -> {
@@ -83,7 +84,8 @@ class AuditLogServiceTests {
     }
 
     @Test
-    void readsOnlyTheSubjectsEntriesNewestFirstInPages() {
+    @DisplayName("AUD-6.3 A history is newest first")
+    void readsTheSubjectsEntriesNewestFirstInPages() {
         for (String action : List.of("FIRST", "SECOND", "THIRD")) {
             transactions.executeWithoutResult(status -> auditLog.record(entry(action, Map.of())));
         }
@@ -96,6 +98,23 @@ class AuditLogServiceTests {
         assertThat(first.items()).extracting(RecordedAuditEntry::action).containsExactly("THIRD", "SECOND");
         assertThat(second.items()).extracting(RecordedAuditEntry::action).containsExactly("FIRST");
         assertThat(first.totalItems()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("AUD-6.2 A history holds only entries about its subject")
+    void readsOnlyTheSubjectsEntries() {
+        for (String action : List.of("FIRST", "SECOND", "THIRD")) {
+            transactions.executeWithoutResult(status -> auditLog.record(entry(action, Map.of())));
+        }
+        transactions.executeWithoutResult(
+                status -> auditLog.record(new AuditEntry(null, "OTHER_SUBJECT", "TEST", UUID.randomUUID(), Map.of())));
+
+        AuditPage all = auditLog.findBySubject("TEST", subject, 0, 10);
+
+        assertThat(all.items())
+                .extracting(RecordedAuditEntry::action)
+                .containsExactlyInAnyOrder("FIRST", "SECOND", "THIRD");
+        assertThat(all.totalItems()).isEqualTo(3);
         assertThat(auditLog.findBySubject("OTHER", subject, 0, 2).items()).isEmpty();
     }
 

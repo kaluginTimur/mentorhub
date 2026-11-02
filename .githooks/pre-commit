@@ -7,4 +7,4 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 root="$(git rev-parse --show-toplevel)"
 node "$root/scripts/check-docs.mjs" --staged || exit 1
-exec node "$root/scripts/requirements.mjs" validate
+exec node "$root/scripts/requirements.mjs" trace

@@ -38,7 +38,7 @@ describe('shell', () => {
     });
   });
 
-  it('shows the name in the account menu and signs out (AC-6, AC-8)', async () => {
+  it('IDN-11.2 shows the name and email in the account menu and signs out', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
@@ -57,7 +57,7 @@ describe('shell', () => {
     expect(auth.signOut).toHaveBeenCalledOnce();
   });
 
-  it('shows only the email when no name is set (AC-6)', async () => {
+  it('shows only the email when no name is set', async () => {
     user.update((u) => ({ ...u, firstName: null, lastName: null }));
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
@@ -67,7 +67,25 @@ describe('shell', () => {
     user.update((u) => ({ ...u, firstName: 'Anna', lastName: 'Petrova' }));
   });
 
-  it('greets the user and shows the version on the home page', async () => {
+  it.each([
+    ['both names', 'Anna', 'Petrova', 'Anna Petrova'],
+    ['only the first name', 'Anna', null, 'Anna'],
+    ['only the last name', null, 'Petrova', 'Petrova'],
+    ['the email when no name is set', null, null, 'anna@example.com'],
+  ])('IDN-11.1 shows %s in the account menu', async (_case, firstName, lastName, expected) => {
+    user.update((u) => ({ ...u, firstName, lastName }));
+    try {
+      const fixture = TestBed.createComponent(Shell);
+      await fixture.whenStable();
+      const trigger = (fixture.nativeElement as HTMLElement).querySelector('button');
+      expect(trigger?.textContent).toContain(expected);
+      expect(trigger?.getAttribute('aria-label')).toBe(`Account menu for ${expected}`);
+    } finally {
+      user.update((u) => ({ ...u, firstName: 'Anna', lastName: 'Petrova' }));
+    }
+  });
+
+  it('IDN-11.2 greets the user and shows the version on the home page', async () => {
     api.invoke.mockResolvedValue({ name: 'MentorHub', version: '0.1.0' });
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
@@ -94,7 +112,7 @@ describe('shell', () => {
     ).not.toBeNull();
   });
 
-  it('shows the Users link only with USERS_READ (AC-22)', async () => {
+  it('shows the Users link only with USERS_READ', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Users');
     const original = user();
@@ -109,7 +127,7 @@ describe('shell', () => {
     expect(link(fixture.nativeElement)).toBeUndefined();
   });
 
-  it('shows the Invitations link only with USERS_INVITE (AC-18)', async () => {
+  it('PERM-7.1 shows the Invitations link only with USERS_INVITE', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
     const original = user();
@@ -125,7 +143,23 @@ describe('shell', () => {
     user.set(original);
   });
 
-  it('has Profile above Sign out in the account menu (AC-27)', async () => {
+  it('INV-16.1 offers Invitations in the toolbar to a holder of USERS_INVITE only', async () => {
+    const link = (element: HTMLElement) =>
+      [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
+    const original = user();
+    user.set({ ...original, permissions: ['USERS_READ', 'USERS_INVITE'] as never[] });
+    let fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    expect(link(fixture.nativeElement)?.getAttribute('href')).toBe('/invitations');
+
+    user.set({ ...original, permissions: ['USERS_READ'] as never[] });
+    fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    expect(link(fixture.nativeElement)).toBeUndefined();
+    user.set(original);
+  });
+
+  it('has Profile above Sign out in the account menu', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     (fixture.nativeElement as HTMLElement).querySelector('button')?.click();

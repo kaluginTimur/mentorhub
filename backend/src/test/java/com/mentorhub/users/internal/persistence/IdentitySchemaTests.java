@@ -24,7 +24,6 @@ class IdentitySchemaTests {
     @Autowired
     JdbcTemplate jdbc;
 
-    // AC-21
     @Test
     void rolesTableEqualsRoleEnum() {
         assertThat(jdbc.queryForList("select name from roles", String.class))

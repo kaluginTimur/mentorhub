@@ -22,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.Executor;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -33,7 +34,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Spec invitation-emails, AC-12: requests committed by a run that stopped before sending them are sent once by the next
+ * Requests committed by a run that stopped before sending them are sent once by the next
  * start, through the event publication registry. Two application runs share one database.
  */
 class InvitationEmailRestartTests {
@@ -55,6 +56,7 @@ class InvitationEmailRestartTests {
     }
 
     @Test
+    @DisplayName("IEM-6.5 An email left unsent by a stop is sent once after the next start")
     void theNextStartSendsTheEmailsOfTheStoppedRun() {
         UUID inProgress;
         try (ConfigurableApplicationContext stopped = run(MentorHubApplication.class, LostAsyncTasks.class)) {

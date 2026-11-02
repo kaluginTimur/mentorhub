@@ -83,7 +83,7 @@ describe('InvitationsList', () => {
     }),
   ];
 
-  it('shows invitations with status lines and row actions by status (AC-20)', async () => {
+  it('INV-16.2 shows invitations with status lines and row actions by status', async () => {
     api.invoke.mockResolvedValue(page(rowsOf));
     const { element } = await open();
     expect(element.querySelectorAll('h1')).toHaveLength(1);
@@ -118,7 +118,7 @@ describe('InvitationsList', () => {
     expect(rowButtons(element, 3)).toEqual([]);
   });
 
-  it('restores search, status and page from the URL (AC-20)', async () => {
+  it('restores search, status and page from the URL', async () => {
     api.invoke.mockResolvedValue(page([invitation()], 60));
     const { element } = await open('/invitations?q=ivan%40example.com&status=EXPIRED&page=1');
     expect(listParams()).toEqual({
@@ -130,7 +130,7 @@ describe('InvitationsList', () => {
     expect((element.querySelector('input') as HTMLInputElement).value).toBe('ivan@example.com');
   });
 
-  it('writes the search to the URL 300 ms after typing stops (AC-20)', async () => {
+  it('writes the search to the URL 300 ms after typing stops', async () => {
     api.invoke.mockResolvedValue(page([invitation()]));
     const { harness, element } = await open('/invitations?page=2');
     const input = element.querySelector('input') as HTMLInputElement;
@@ -151,7 +151,7 @@ describe('InvitationsList', () => {
     expect(element.querySelector('input')?.getAttribute('maxlength')).toBe('254');
   });
 
-  it('filters by status through the URL (AC-20)', async () => {
+  it('filters by status through the URL', async () => {
     api.invoke.mockResolvedValue(page([invitation()]));
     const { harness, element } = await open();
     (element.querySelector('mat-select .mat-mdc-select-trigger') as HTMLElement).click();
@@ -163,14 +163,14 @@ describe('InvitationsList', () => {
     expect(TestBed.inject(Router).url).toBe('/invitations?status=ACCEPTED');
   });
 
-  it('shows the empty state without filters (AC-20)', async () => {
+  it('shows the empty state without filters', async () => {
     api.invoke.mockResolvedValue(page([]));
     const { element } = await open();
     expect(element.textContent).toContain('No invitations yet.');
     expect(element.textContent).not.toContain('Clear filters');
   });
 
-  it('shows the empty state with filters and clears them (AC-20)', async () => {
+  it('shows the empty state with filters and clears them', async () => {
     api.invoke.mockResolvedValue(page([]));
     const { harness, element } = await open('/invitations?q=zzz&status=PENDING');
     expect(element.textContent).toContain('No invitations match the filters.');
@@ -181,7 +181,7 @@ describe('InvitationsList', () => {
     expect(TestBed.inject(Router).url).toBe('/invitations');
   });
 
-  it('shows the progress bar and keeps the rows while loading (AC-20)', async () => {
+  it('shows the progress bar and keeps the rows while loading', async () => {
     api.invoke.mockResolvedValueOnce(page([invitation()]));
     const { harness, element } = await open();
     let release!: (value: unknown) => void;
@@ -200,7 +200,7 @@ describe('InvitationsList', () => {
     expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(2);
   });
 
-  it('shows the unavailable card and retries (AC-20)', async () => {
+  it('shows the unavailable card and retries', async () => {
     api.invoke.mockRejectedValueOnce(new Error('down'));
     const { harness, element } = await open();
     expect(element.querySelector('[role=alert]')?.textContent).toContain(
@@ -238,7 +238,7 @@ describe('InvitationsList', () => {
         .find((b) => b.textContent?.trim() === label)
         ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    it('revokes after a confirmation and reloads the list (AC-20)', async () => {
+    it('INV-18.1 revokes after a confirmation and reloads the list', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() =>
@@ -263,7 +263,7 @@ describe('InvitationsList', () => {
       expect(document.body.textContent).toContain('Invitation revoked');
     });
 
-    it('does nothing when the confirmation is cancelled', async () => {
+    it('INV-18.1 does nothing when the confirmation is cancelled', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Cancel')).toBeTruthy());
@@ -272,7 +272,7 @@ describe('InvitationsList', () => {
       expect(api.invoke).toHaveBeenCalledTimes(1);
     });
 
-    it('shows the closed message and reloads on 409 invitation-closed (AC-20)', async () => {
+    it('shows the closed message and reloads on 409 invitation-closed', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
@@ -286,7 +286,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('handles a 404 like a closed invitation (AC-20)', async () => {
+    it('handles a 404 like a closed invitation', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
@@ -297,7 +297,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('shows a generic message on other errors and leaves the row (AC-20)', async () => {
+    it('shows a generic message on other errors and leaves the row', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
@@ -310,7 +310,7 @@ describe('InvitationsList', () => {
       expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
     });
 
-    it('issues a new link after a confirmation and shows it once (AC-19, AC-20)', async () => {
+    it('INV-18.1 issues a new link after a confirmation and shows it in the link view', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Get a new link');
       await vi.waitFor(() =>
@@ -340,7 +340,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    describe('Copy link (AC-8)', () => {
+    describe('Copy link', () => {
       const linkResponse = {
         link: 'http://localhost:4200/invite/Xf3abc',
         email: 'p@example.com',
@@ -357,7 +357,7 @@ describe('InvitationsList', () => {
         return result;
       };
 
-      it('starts the clipboard item write inside the click, before the link arrives', async () => {
+      it('INV-17.1 starts the clipboard item write inside the click, before the link arrives', async () => {
         class FakeItem {
           constructor(readonly data: Record<string, Promise<Blob>>) {}
         }
@@ -413,7 +413,7 @@ describe('InvitationsList', () => {
         await vi.waitFor(() => expect(document.body.textContent).toContain('Link copied'));
       });
 
-      it('opens the copy view when no clipboard write works', async () => {
+      it('INV-17.1 opens the copy view when no clipboard write works', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', {});
         const { element } = await pending();
@@ -529,7 +529,7 @@ describe('InvitationsList', () => {
         releases['p'](linkResponse);
       });
 
-      it('shows the expired message and reloads on 409 invitation-expired', async () => {
+      it('INV-17.1 shows the expired message and reloads on 409 invitation-expired', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
         const { element } = await openWithOnePending();
@@ -548,7 +548,7 @@ describe('InvitationsList', () => {
       it.each([
         [409, 'urn:mentorhub:problem:invitation-closed'],
         [404, 'urn:mentorhub:problem:not-found'],
-      ])('shows the closed message and reloads on %i', async (status, type) => {
+      ])('INV-17.1 shows the closed message and reloads on %i', async (status, type) => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
         const { element } = await openWithOnePending();
@@ -574,7 +574,7 @@ describe('InvitationsList', () => {
       });
     });
 
-    it('reloads the list when the link dialog closes', async () => {
+    it('INV-18.1 reloads the list when the link dialog closes', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
@@ -594,7 +594,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('shows the closed message when the new link is refused with 409 (AC-20)', async () => {
+    it('shows the closed message when the new link is refused with 409', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
@@ -605,7 +605,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('opens the invite dialog from the Invite button (AC-19)', async () => {
+    it('opens the invite dialog from the Invite button', async () => {
       const { element } = await openWithOnePending();
       (
         [...element.querySelectorAll('button')].find(
@@ -620,7 +620,7 @@ describe('InvitationsList', () => {
     });
   });
 
-  describe('invitation emails (AC-17, AC-18)', () => {
+  describe('invitation emails', () => {
     const emailOn = () =>
       TestBed.overrideProvider(ClientConfigService, { useValue: { invitationEmails: () => true } });
     const pending = () => invitation({ id: 'p', email: 'p@example.com' });
@@ -637,7 +637,7 @@ describe('InvitationsList', () => {
     const snackSpy = () => vi.spyOn(TestBed.inject(MatSnackBar), 'open');
     const listCalls = () => api.invoke.mock.calls.filter(([fn]) => fn === listInvitations).length;
 
-    it('shows "Send email" before "Copy link" on pending rows only', async () => {
+    it('IEM-12.1 shows "Send email" before "Copy link" on pending rows only', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page(rowsOf));
       const { element } = await open();
@@ -653,13 +653,13 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('hides the email action when email is disabled', async () => {
+    it('IEM-10.1 hides the email action when email is disabled', async () => {
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
       expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
     });
 
-    it('shows the email line for every status of lastEmail', async () => {
+    it('IEM-13.1 shows the email line for every status of lastEmail', async () => {
       const requestedBy = { id: 'a1', name: 'Ada Admin' };
       const requestedAt = '2026-10-18T09:00:00Z';
       const mail = (status: string, finishedAt?: string) => ({
@@ -680,6 +680,11 @@ describe('InvitationsList', () => {
             lastEmail: mail('SKIPPED', requestedAt) as never,
           }),
           invitation({ id: '6' }),
+          invitation({
+            id: '7',
+            status: 'ACCEPTED',
+            lastEmail: mail('SENT', '2026-10-18T09:05:00Z') as never,
+          }),
         ]),
       );
       const { element } = await open();
@@ -695,9 +700,10 @@ describe('InvitationsList', () => {
       expect(statusLines(rows[0])).toBe(2);
       expect(statusLines(rows[5])).toBe(1);
       expect(rows[1].querySelector('.failed')).toBeNull();
+      expect(rows[6].textContent).toContain('Email sent 18 Oct 2026');
     });
 
-    it('sends without a confirmation, replaces the row and confirms (AC-18)', async () => {
+    it('IEM-12.1 sends without a confirmation, replaces the row and confirms', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -730,7 +736,7 @@ describe('InvitationsList', () => {
       expect(listCalls()).toBe(1);
     });
 
-    it('explains 409 email-queued and reloads (AC-18)', async () => {
+    it('IEM-12.2 explains 409 email-queued and reloads', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -750,7 +756,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('explains 409 email-unavailable (AC-18)', async () => {
+    it('IEM-12.2 explains 409 email-unavailable', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -769,7 +775,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('disables the row actions while the email request runs (AC-18)', async () => {
+    it('disables the row actions while the email request runs', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -794,7 +800,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('treats an expired invitation like Copy link (AC-18)', async () => {
+    it('treats an expired invitation like Copy link', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -806,7 +812,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('treats a closed invitation like Copy link (AC-18)', async () => {
+    it('IEM-12.2 treats a closed invitation like Copy link', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -818,7 +824,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('treats a 404 like Copy link (AC-18)', async () => {
+    it('IEM-12.2 treats a 404 like Copy link', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -830,7 +836,24 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('offers the email checkbox in the new-link confirmation, checked, and requests it (AC-17)', async () => {
+    it('IEM-10.1 offers no email choice in the new-link confirmation when email is disabled', async () => {
+      api.invoke.mockResolvedValue(page([pending()]));
+      const { harness, element } = await open();
+      click(element, 'Get a new link');
+      await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
+      expect(document.querySelector('mat-dialog-container mat-checkbox')).toBeNull();
+      api.invoke.mockImplementation(async (fn) =>
+        fn === reissueInvitationLink ? created({ id: 'p' }) : page([pending()]),
+      );
+      await confirmDialog(harness, 'Get a new link');
+      await vi.waitFor(() =>
+        expect(api.invoke.mock.calls.some(([fn]) => fn === reissueInvitationLink)).toBe(true),
+      );
+      const call = api.invoke.mock.calls.find(([fn]) => fn === reissueInvitationLink);
+      expect(JSON.stringify(call?.[1])).not.toContain('sendEmail');
+    });
+
+    it('IEM-11.1 offers the email checkbox in the new-link confirmation, checked, and requests it', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -858,7 +881,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('requests no email when the box is unchecked (AC-17)', async () => {
+    it('IEM-11.1 requests no email when the box is unchecked', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -880,7 +903,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('shows a snackbar when the new link cannot be emailed (AC-17)', async () => {
+    it('shows a snackbar when the new link cannot be emailed', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();

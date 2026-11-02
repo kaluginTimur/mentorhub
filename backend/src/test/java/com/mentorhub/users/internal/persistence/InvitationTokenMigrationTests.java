@@ -20,7 +20,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Spec invitation-links, AC-6: V5 gives every invitation stored with a token hash a new plaintext token, which "Copy
+ * V5 gives every invitation stored with a token hash a new plaintext token, which "Copy
  * link" returns for a pending one.
  */
 @Testcontainers

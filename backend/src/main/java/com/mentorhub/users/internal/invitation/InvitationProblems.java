@@ -2,7 +2,7 @@ package com.mentorhub.users.internal.invitation;
 
 import java.net.URI;
 
-/** The problem types of invitations (spec invitations, API). */
+/** The problem types of invitations. */
 public final class InvitationProblems {
 
     /** 404: the same for a token that is unknown, malformed, replaced, or of an expired, revoked or accepted one. */
@@ -13,12 +13,12 @@ public final class InvitationProblems {
     public static final URI INVITATION_EXISTS = URI.create("urn:mentorhub:problem:invitation-exists");
 
     public static final URI INVITATION_CLOSED = URI.create("urn:mentorhub:problem:invitation-closed");
-    /** 409: the link of an expired invitation is not returned (spec invitation-links, AC-2). */
+    /** 409: the link of an expired invitation is not returned. */
     public static final URI INVITATION_EXPIRED = URI.create("urn:mentorhub:problem:invitation-expired");
 
-    /** 409: an email is requested but no mail server is configured (spec invitation-emails, AC-1). */
+    /** 409: an email is requested but no mail server is configured. */
     public static final URI EMAIL_UNAVAILABLE = URI.create("urn:mentorhub:problem:email-unavailable");
-    /** 409: the invitation's latest email is still queued (spec invitation-emails, AC-5). */
+    /** 409: the invitation's latest email is still queued. */
     public static final URI EMAIL_QUEUED = URI.create("urn:mentorhub:problem:email-queued");
 
     public static final URI INVITATION_EMAIL_MISMATCH = URI.create("urn:mentorhub:problem:invitation-email-mismatch");

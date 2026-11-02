@@ -85,7 +85,7 @@ public sealed interface UserChange {
     }
 
     /**
-     * What accepting an invitation did (spec invitations, AC-16). Role names as stored; a reader keeps only the roles
+     * What accepting an invitation did. Role names as stored; a reader keeps only the roles
      * it knows.
      *
      * @param invitedBy {@code users.id} of the administrator who created the invitation

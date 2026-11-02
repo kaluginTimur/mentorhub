@@ -17,10 +17,12 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -91,7 +93,7 @@ class UsersEndpointTests {
         return calls.stream();
     }
 
-    // AC-5: permissions come from the stored roles; only ADMIN has them. Nothing changes and nothing is audited.
+    // Permissions come from the stored roles; only ADMIN has them. Nothing changes and nothing is audited.
     @ParameterizedTest(name = "{0}: {1} {2}")
     @MethodSource("forbiddenCalls")
     void callersWithoutTheUsersPermissionsAreForbidden(String role, String method, String path, String body) {
@@ -109,7 +111,7 @@ class UsersEndpointTests {
         assertThat(users.count("audit_log")).isZero();
     }
 
-    // AC-3 through the full application: method validation, conversion and service validation.
+    // Through the full application: method validation, conversion and service validation.
     @Test
     void invalidParametersAreValidationProblemsNamingTheParameter() {
         assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?size=101", "", "admin"), "size");
@@ -125,7 +127,6 @@ class UsersEndpointTests {
                 "reason");
     }
 
-    // AC-1, AC-2 through the full application.
     @Test
     void listsAndFiltersUsers() {
         UUID withoutRoles = users.create("maria@x.test", UserStatus.ACTIVE);
@@ -142,7 +143,22 @@ class UsersEndpointTests {
         assertThat(search).bodyJson().extractingPath("$.items[*].id").asArray().containsExactly(mentor.toString());
     }
 
-    // AC-4
+    @Test
+    @DisplayName("PLT-3.1 Defaults apply when no paging is requested")
+    void listsTheFirst25UsersByDefault() {
+        for (int i = 0; i < 30; i++) {
+            users.create("extra%02d@x.test".formatted(i), UserStatus.ACTIVE);
+        }
+
+        MvcTestResult result = send(HttpMethod.GET, "/api/v1/users", "", "admin");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.items").asArray().hasSize(25);
+        assertThat(result).bodyJson().extractingPath("$.page").isEqualTo(0);
+        assertThat(result).bodyJson().extractingPath("$.size").isEqualTo(25);
+        assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(32);
+    }
+
     @Test
     void unknownUserIsNotFound() {
         assertProblem(
@@ -151,7 +167,6 @@ class UsersEndpointTests {
                 Problems.NOT_FOUND);
     }
 
-    // AC-6, AC-8, AC-19
     @Test
     void disabledUserIsRefusedOnTheNextRequestAndEnabledAgainWithItsHistory() {
         MvcTestResult disabled = send(
@@ -201,8 +216,9 @@ class UsersEndpointTests {
         assertThat(history).bodyJson().doesNotHavePath("$.items[0].rolesAdded");
     }
 
-    // AC-10, AC-11: role changes take effect on the user's next request.
+    // Role changes take effect on the user's next request.
     @Test
+    @DisplayName("USR-6.2 An empty set leaves an active user without roles")
     void roleChangesTakeEffectOnTheNextRequest() {
         assertProblem(send(HttpMethod.GET, "/api/v1/users", "", "mentor"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
 
@@ -232,8 +248,9 @@ class UsersEndpointTests {
                 .containsOnly("USER_ROLES_CHANGED");
     }
 
-    // AC-13: the API answers lockout with 409 and changes nothing.
+    // The API answers lockout with 409 and changes nothing.
     @Test
+    @DisplayName("USR-7.1 An administrator cannot lock themselves out")
     void administratorCannotLockThemselvesOut() {
         MvcTestResult disable =
                 send(HttpMethod.POST, "/api/v1/users/" + admin + "/disable", "{\"reason\": \"SECURITY\"}", "admin");
@@ -248,7 +265,16 @@ class UsersEndpointTests {
         assertThat(users.count("audit_log")).isZero();
     }
 
-    // AC-16, AC-18
+    @Test
+    @DisplayName("AUD-4.1 A refused change writes no entry")
+    void aRefusedChangeWritesNoEntry() {
+        MvcTestResult disable =
+                send(HttpMethod.POST, "/api/v1/users/" + admin + "/disable", "{\"reason\": \"SECURITY\"}", "admin");
+
+        assertProblem(disable, HttpStatus.CONFLICT, LockoutProblems.SELF_LOCKOUT);
+        assertThat(users.count("audit_log")).isZero();
+    }
+
     @Test
     void administratorUpdatesAnotherUsersProfile() {
         MvcTestResult result = send(HttpMethod.PUT, "/api/v1/users/" + mentor + "/profile", PROFILE_BODY, "admin");
@@ -265,7 +291,7 @@ class UsersEndpointTests {
                 .containsExactlyInAnyOrder("firstName", "lastName", "phone");
     }
 
-    // AC-17: a user without roles changes their own profile; GET /me returns the new values.
+    // A user without roles changes their own profile; GET /me returns the new values.
     @Test
     void userWithoutRolesUpdatesTheirOwnProfile() {
         UUID maria = users.create("maria@x.test", UserStatus.ACTIVE);
@@ -282,7 +308,6 @@ class UsersEndpointTests {
         assertThat(users.count("audit_log")).isEqualTo(1);
     }
 
-    // AC-18
     @Test
     void invalidOwnProfileStoresNothing() {
         MvcTestResult result = send(
@@ -302,6 +327,72 @@ class UsersEndpointTests {
                 .bodyJson()
                 .extractingPath("$.user.lastName")
                 .isEqualTo("Petrova");
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    @Test
+    @DisplayName("USR-2.5 A text that is too long is rejected")
+    void aTooLongTextIsRejectedNamingQ() {
+        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?q=" + "x".repeat(101), "", "admin"), "q");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{}",
+                "{\"reason\": \"RETIRED\"}",
+                "{\"reason\": \"OTHER\", \"comment\": \"   \"}",
+                "{\"reason\": \"GRADUATED\", \"comment\": \"%s\"}"
+            })
+    @DisplayName("USR-4.2 An invalid disabling is rejected")
+    void anInvalidDisablingIsRejectedAndChangesNothing(String body) {
+        String field = body.contains("comment") ? "comment" : "reason";
+
+        MvcTestResult result =
+                send(HttpMethod.POST, "/api/v1/users/" + mentor + "/disable", body.formatted("c".repeat(501)), "admin");
+
+        assertValidationProblem(result, field);
+        assertThat(users.status(mentor)).isEqualTo("ACTIVE");
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    @Test
+    @DisplayName("USR-8.1 A profile is saved in its normal form")
+    void aProfileIsSavedInItsNormalForm() {
+        MvcTestResult result = send(
+                HttpMethod.PUT,
+                "/api/v1/users/" + mentor + "/profile",
+                "{\"firstName\": \"  Ivan \", \"lastName\": \"    \", \"phone\": \"8 701 123 45 67\"}",
+                "admin");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.firstName").isEqualTo("Ivan");
+        assertThat(result).bodyJson().extractingPath("$.lastName").isNull();
+        assertThat(result).bodyJson().extractingPath("$.phone").isEqualTo("+77011234567");
+        assertThat(result).bodyJson().extractingPath("$.email").isEqualTo("mentor@x.test");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"12", "+77011234567 ext. 12"})
+    @DisplayName("USR-8.2 Invalid values are rejected")
+    void invalidProfileValuesAreRejectedAndNothingIsStored(String phone) {
+        var before = jdbc.sql("select first_name, last_name, phone from users where id = :id")
+                .param("id", mentor)
+                .query()
+                .singleRow();
+
+        MvcTestResult result = send(
+                HttpMethod.PUT,
+                "/api/v1/users/" + mentor + "/profile",
+                "{\"firstName\": \"%s\", \"lastName\": null, \"phone\": \"%s\"}".formatted("x".repeat(101), phone),
+                "admin");
+
+        assertValidationProblem(result, "firstName", "phone");
+        assertThat(jdbc.sql("select first_name, last_name, phone from users where id = :id")
+                        .param("id", mentor)
+                        .query()
+                        .singleRow())
+                .isEqualTo(before);
         assertThat(users.count("audit_log")).isZero();
     }
 

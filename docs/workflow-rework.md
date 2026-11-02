@@ -11,18 +11,13 @@ Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternative
 - Stage 1: `docs/constitution.md` (10 rules), `docs/roadmap.md`, `docs/architecture/decisions/`, `CLAUDE.md` and `AGENTS.md`.
 - Stage 2: `scripts/requirements.mjs` with `validate` and `trace`, reviewed by a subagent and fixed. `validate` is wired into the pre-commit hook, CI and the verification in `docs/development/docs.md`, where the format is now described. JUnit tests carry the id in `@DisplayName`.
 
-**Done, not committed: migration stage 3.** The index and seven capability files in `docs/requirements/`: 204 scenarios, 1963 lines (against 1119 lines for the Requirements and UI sections of the specs, and about 1070 lines in the pilot, which had no UI). `docs/workflow-rework-stage3.md` holds the decided disputed points and the map of acceptance criteria to scenarios; it is the input for stage 4 and is deleted at its end. The specs, the progress logs, the invariants and decision 0005 are deleted; they remain in git.
+**Done: migration stage 3.** The index and seven capability files in `docs/requirements/`: 204 scenarios, 1963 lines (against 1119 lines for the Requirements and UI sections of the specs, and about 1070 lines in the pilot, which had no UI). `docs/workflow-rework-stage3.md` holds the decided disputed points and the map of acceptance criteria to scenarios; it is the input for stage 4 and is deleted at its end. The specs, the progress logs, the invariants and decision 0005 are deleted; they remain in git.
 
 - User decisions of 2026-11-03: the first pass (3780 lines, 479 scenarios) was too large and was compressed; every disputed point keeps the code as it is.
 - The first pass was large because of Claude's brief, which carried the observable UI into scenarios and asked for one scenario per checked behavior. The compression rules are Claude's proposal: one shared requirement for list pages (PLT-9); UI scenarios only for behavior a user relies on; no exact strings, timings or field limits that the contract holds. Dropped UI detail stays in the code, its tests and `docs/ui/guidelines.md`.
 - References in the skills and agents were only repointed so the check passes; they are rewritten in stage 5.
 
-**Next: migration stage 4.**
-
-**At the end of stage 4:**
-
-- Wire `trace` into the hook, CI and the verification. A strict `trace` would fail every commit of stages 3 and 4.
-- Make a missing `docs/requirements/` fail, because today it passes as "nothing yet".
+**In progress: migration stage 4,** run by subagents per capability on Sonnet, one after another. Every scenario without `(manual)` now has a test (199, plus 5 manual), `AC-n` is gone from code and tests, `trace` runs in the hook, CI and the verification, and missing requirements fail. Gaps between code and requirements are collected in `docs/workflow-rework-stage3.md`. Left: the last step of stage 4, the squash of migrations and the renumbering of decisions.
 
 **In stage 5:**
 

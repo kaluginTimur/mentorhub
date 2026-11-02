@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,8 +67,8 @@ class AdministratorBootstrapTests {
         users.deleteAll();
     }
 
-    // AC-11
     @Test
+    @DisplayName("IDN-6.1 The first administrator is created")
     void createsAndLinksTheAdministratorOnFirstSignIn(CapturedOutput output) {
         String token = issuer.token("first-admin")
                 .email("Bootstrap@MentorHub.TEST", true)
@@ -92,8 +93,43 @@ class AdministratorBootstrapTests {
         assertThat(bootstrapEntries(userId)).containsExactly(changes(true, true, false, true));
     }
 
-    // AC-12
     @Test
+    @DisplayName("AUD-7.1 The administrator bootstrap is audited without an actor")
+    void bootstrapIsAuditedWithoutAnActor() {
+        String token = issuer.token("audited-admin")
+                .email(TestIssuer.BOOTSTRAP_EMAIL, true)
+                .bearer();
+
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+
+        UUID userId = userIdByEmail(TestIssuer.BOOTSTRAP_EMAIL);
+        assertThat(jdbc.sql("select actor_user_id from audit_log where action = 'USER_BOOTSTRAPPED_ADMIN'"
+                                + " and subject_id = :id")
+                        .param("id", userId)
+                        .query()
+                        .listOfRows())
+                .singleElement()
+                .satisfies(row -> assertThat(row.get("actor_user_id")).isNull());
+        assertThat(users.count("audit_log")).isOne();
+        assertThat(bootstrapEntries(userId)).containsExactly(changes(true, true, false, true));
+    }
+
+    @Test
+    @DisplayName("AUD-7.2 A bootstrap that changes nothing writes no entry")
+    void bootstrapThatChangesNothingWritesNoEntry() {
+        UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.ACTIVE, Role.ADMIN);
+        users.link(userId, "settled-admin");
+        String token = issuer.token("settled-admin")
+                .email(TestIssuer.BOOTSTRAP_EMAIL, true)
+                .bearer();
+
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    @Test
+    @DisplayName("IDN-6.2 An existing user is recovered (identity not linked)")
     void enablesAndLinksAnExistingDisabledUser() {
         UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.DISABLED, Role.MENTOR);
         String token = issuer.token("returning-admin")
@@ -108,7 +144,6 @@ class AdministratorBootstrapTests {
         assertThat(users.count("users")).isEqualTo(1);
     }
 
-    // AC-12
     @Test
     void grantsAdminToTheLinkedUserWhoLostIt(CapturedOutput output) {
         UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.ACTIVE);
@@ -123,7 +158,6 @@ class AdministratorBootstrapTests {
         assertThat(output.getOut()).contains(APPLIED + userId);
     }
 
-    // AC-12
     @Test
     void enablesTheLinkedDisabledUser(CapturedOutput output) {
         UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.DISABLED);
@@ -141,8 +175,8 @@ class AdministratorBootstrapTests {
         assertThat(bootstrapEntries(userId)).containsExactly(changes(false, false, true, true));
     }
 
-    // user-administration AC-20
     @Test
+    @DisplayName("IDN-6.2 An existing user is recovered (identity linked, reason and comment cleared)")
     void enablingClearsTheDisableReasonAndComment() {
         UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "recovering-admin");
@@ -166,8 +200,8 @@ class AdministratorBootstrapTests {
         assertThat(bootstrapEntries(userId)).containsExactly(changes(false, false, true, false));
     }
 
-    // AC-13
     @Test
+    @DisplayName("IDN-6.7 An identity linked to another user is never moved")
     void neverMovesAnIdentityLinkedToAnotherUser(CapturedOutput output) {
         UUID otherUser = users.create("someone@example.com", UserStatus.ACTIVE);
         users.link(otherUser, "someone");
@@ -183,8 +217,8 @@ class AdministratorBootstrapTests {
         assertThat(output.getOut()).doesNotContain(APPLIED);
     }
 
-    // AC-14
     @Test
+    @DisplayName("IDN-6.3 An active administrator switches the rule off for an identity that is not linked")
     void grantsNothingWhileAnActiveAdministratorExists(CapturedOutput output) {
         UUID admin = users.create("admin@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(admin, "admin");
@@ -209,7 +243,6 @@ class AdministratorBootstrapTests {
         assertThat(users.count("audit_log")).isZero();
     }
 
-    // AC-14: an administrator who is disabled does not count.
     @Test
     void disabledAdministratorDoesNotBlockTheRule() {
         users.create("admin@example.com", UserStatus.DISABLED, Role.ADMIN);
@@ -220,8 +253,8 @@ class AdministratorBootstrapTests {
         assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
     }
 
-    // AC-15
     @Test
+    @DisplayName("IDN-6.5 An email that is not verified grants nothing")
     void unverifiedOrMissingEmailGrantsNothing(CapturedOutput output) {
         String unverified = issuer.token("unverified")
                 .email(TestIssuer.BOOTSTRAP_EMAIL, false)
@@ -238,8 +271,8 @@ class AdministratorBootstrapTests {
         assertThat(output.getOut()).doesNotContain(APPLIED);
     }
 
-    // AC-16; repeated because a race shows only in some runs.
     @RepeatedTest(5)
+    @DisplayName("IDN-6.9 Parallel first requests create one administrator")
     void parallelFirstRequestsCreateExactlyOneAdministrator(CapturedOutput output) throws Exception {
         String token = issuer.token("parallel-admin")
                 .email(TestIssuer.BOOTSTRAP_EMAIL, true)
@@ -265,6 +298,57 @@ class AdministratorBootstrapTests {
         assertThat(users.roles(userIdByEmail(TestIssuer.BOOTSTRAP_EMAIL))).containsExactly("ADMIN");
         assertThat(output.getOut()).containsOnlyOnce(APPLIED);
         assertThat(users.count("audit_log")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("IDN-6.4 An active administrator switches the rule off for a linked user")
+    void linkedDisabledUserStaysDisabledWhileAnActiveAdministratorExists() {
+        UUID admin = users.create("admin@example.com", UserStatus.ACTIVE, Role.ADMIN);
+        users.link(admin, "admin");
+        UUID disabled = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.DISABLED, Role.MENTOR);
+        users.link(disabled, "linked-disabled");
+        String token = issuer.token("linked-disabled")
+                .email(TestIssuer.BOOTSTRAP_EMAIL, true)
+                .bearer();
+
+        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
+
+        assertThat(users.status(disabled)).isEqualTo("DISABLED");
+        assertThat(users.roles(disabled)).containsExactly("MENTOR");
+    }
+
+    @Test
+    @DisplayName("IDN-6.6 Another email grants nothing")
+    void verifiedEmailOtherThanTheBootstrapAddressGrantsNothing(CapturedOutput output) {
+        String token =
+                issuer.token("someone").email("someone@example.com", true).bearer();
+
+        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.NOT_INVITED);
+
+        assertThat(users.count("users")).isZero();
+        assertThat(users.count("user_identities")).isZero();
+        assertThat(users.count("user_roles")).isZero();
+        assertThat(output.getOut()).doesNotContain(APPLIED);
+    }
+
+    @Test
+    @DisplayName("IDN-6.8 A repeated sign-in changes nothing")
+    void repeatedSignInChangesNothing(CapturedOutput output) {
+        String token = issuer.token("repeat-admin")
+                .email(TestIssuer.BOOTSTRAP_EMAIL, true)
+                .bearer();
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+        UUID userId = userIdByEmail(TestIssuer.BOOTSTRAP_EMAIL);
+        List<Map<String, Object>> entries = bootstrapEntries(userId);
+
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+
+        assertThat(users.count("users")).isOne();
+        assertThat(users.count("user_identities")).isOne();
+        assertThat(users.roles(userId)).containsExactly("ADMIN");
+        assertThat(output.getOut()).containsOnlyOnce(APPLIED);
+        assertThat(users.count("audit_log")).isOne();
+        assertThat(bootstrapEntries(userId)).isEqualTo(entries);
     }
 
     private MvcTestResult get(String path, String authorization) {

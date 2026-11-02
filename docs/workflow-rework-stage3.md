@@ -15,6 +15,14 @@ User decision, 2026-11-03: every point below keeps the code as it is, and the do
 | USR-D1 | USR-8 | docs/features/user-administration.md:89 (AC-18) says the phone must be a valid number and is stored in E.164; extensions are not mentioned | `backend/src/main/java/com/mentorhub/users/internal/service/ProfileRules.java:57` rejects a valid number that has an extension | A phone with an extension is rejected as invalid | Keep the rejection and state it as a rule; or accept extensions and decide how they are stored |
 | IEM-D1 | IEM-6.7 | docs/features/invitation-emails.md does not say what happens to a queued email replayed when no mail server is configured (AC-12, AC-8 only describe sending) | `backend/src/main/java/com/mentorhub/users/internal/invitation/InvitationEmailSender.java:126` records such an email as failed with a warning and sends nothing; no test covers it | The email is recorded as failed without sending | Keep it as a requirement; or leave the email queued until a mail server is configured again |
 
+## Stage 4 gaps
+
+A scenario the code does not satisfy, or an existing test that contradicts its scenario. User decision, 2026-11-03: IEM-G1 was an error in the requirement, which now says 200 for the new link, as the contract and the code do.
+
+| Id | Scenario | What the scenario says | What the code does | Test |
+|---|---|---|---|---|
+| IEM-G1 | IEM-3.1 | A new link given with `sendEmail` true is answered 201, as without the flag | The new link operation answers 200 (`api/openapi.yaml` reissueInvitationLink; INV-7 states no code); only creating answers 201 | `backend/src/test/java/com/mentorhub/users/internal/web/InvitationEmailsEndpointTests.java:102` (the test asserts 200 for the new link, the scenario says 201) |
+
 ## Acceptance criteria map
 
 Every criterion of the five specs, by spec. Scenarios, or the reason it was not moved.

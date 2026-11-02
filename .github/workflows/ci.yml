@@ -47,4 +47,4 @@ jobs:
         with:
           node-version-file: frontend/.nvmrc
       - run: node --test scripts/requirements.test.mjs
-      - run: node scripts/requirements.mjs validate
+      - run: node scripts/requirements.mjs trace

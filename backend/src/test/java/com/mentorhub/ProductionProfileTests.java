@@ -9,6 +9,7 @@ import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springdoc.webmvc.api.OpenApiWebMvcResource;
 import org.springdoc.webmvc.ui.SwaggerWelcomeWebMvc;
@@ -24,7 +25,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-/** AC-25: without the dev profile only health is served, without details. */
+/** Without the dev profile only health is served, without details. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
@@ -66,6 +67,7 @@ class ProductionProfileTests {
     }
 
     @Test
+    @DisplayName("PLT-6.2 Health is public and shows no details")
     void healthShowsNoDetails() {
         MvcTestResult result = mvc.get().uri("/actuator/health").exchange();
 
@@ -75,6 +77,7 @@ class ProductionProfileTests {
     }
 
     @Test
+    @DisplayName("PLT-6.1 Development tools are not served in production")
     void developmentPathsAreDeniedEvenToAnAdministrator() {
         var users = new TestUsers(jdbc);
         users.deleteAll();

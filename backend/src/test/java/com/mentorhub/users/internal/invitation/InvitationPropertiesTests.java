@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.time.Duration;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,6 +21,7 @@ class InvitationPropertiesTests {
 
     // Spec, Configuration: mentorhub.app-url is required.
     @Test
+    @DisplayName("INV-4.1 A missing address stops the application")
     void missingAppUrlFailsStartup(CapturedOutput output) {
         assertStartupFailsNaming(output, InvitationPropertiesOnly.class, "mentorhub.appUrl");
     }
@@ -43,6 +45,7 @@ class InvitationPropertiesTests {
     }
 
     @Test
+    @DisplayName("INV-4.1 A lifetime that is not positive stops the application")
     void theLinkLifetimeMustBePositive() {
         assertThatThrownBy(() -> new InvitationProperties.Invitations(Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class)

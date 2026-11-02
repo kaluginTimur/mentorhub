@@ -22,6 +22,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +36,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * Spec invitation-emails, AC-8 and AC-11 against a mail server that accepts connections and never answers: the request
- * returns at once, and the email fails after the mail timeouts.
+ * A mail server that accepts connections and never answers: the request returns at once, and the email fails after
+ * the mail timeouts.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -72,6 +73,7 @@ class InvitationEmailMailServerTimeoutTests {
     }
 
     @Test
+    @DisplayName("IEM-6.2 The request does not wait for the mail server")
     void theRequestDoesNotWaitForAHungMailServer(CapturedOutput output) throws Exception {
         TestUsers users = new TestUsers(jdbc);
         users.deleteAll();

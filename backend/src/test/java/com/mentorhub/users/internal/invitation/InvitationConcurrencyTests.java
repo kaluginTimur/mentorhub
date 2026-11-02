@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,7 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
- * AC-15: parallel operations on one invitation or one email are serialized; the loser gets its documented error,
+ * Parallel operations on one invitation or one email are serialized; the loser gets its documented error,
  * never a deadlock or another exception.
  */
 @Import(TestcontainersConfiguration.class)
@@ -63,6 +64,7 @@ class InvitationConcurrencyTests {
 
     // Repeated because a race shows only in some runs.
     @RepeatedTest(10)
+    @DisplayName("INV-15.1 Parallel acceptances by one identity change once")
     void parallelAcceptsOfOneTokenChangeOnce() throws Exception {
         IssuedInvitation invited = invite("ivan@x.test");
         String token = token(invited);
@@ -77,6 +79,7 @@ class InvitationConcurrencyTests {
 
     // Two identities with the same verified email: the second finds the invitation accepted by someone else.
     @RepeatedTest(10)
+    @DisplayName("INV-15.1 Parallel acceptances by two identities let one win")
     void parallelAcceptsByDifferentIdentitiesLetOneWin() throws Exception {
         String token = token(invite("ivan@x.test"));
 
@@ -89,6 +92,7 @@ class InvitationConcurrencyTests {
     }
 
     @RepeatedTest(10)
+    @DisplayName("INV-15.1 Acceptance and revocation in parallel let one win")
     void acceptAndRevokeInParallelLetOneWin() throws Exception {
         IssuedInvitation invited = invite("ivan@x.test");
         String token = token(invited);
@@ -104,6 +108,7 @@ class InvitationConcurrencyTests {
     }
 
     @RepeatedTest(10)
+    @DisplayName("INV-15.1 Acceptance and a new link in parallel let one win")
     void acceptAndNewLinkInParallelLetOneWin() throws Exception {
         IssuedInvitation invited = invite("ivan@x.test");
         String token = token(invited);
@@ -119,6 +124,7 @@ class InvitationConcurrencyTests {
     }
 
     @RepeatedTest(10)
+    @DisplayName("INV-3.4 Two parallel invitations for one email create one")
     void parallelCreatesForOneEmailCreateOne() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminAuthentication(), () -> administration.create("ivan@x.test", Set.of(), false)),

@@ -3,7 +3,7 @@ package com.mentorhub.users.internal.domain;
 /**
  * The stored reason of a {@link InvitationEmailStatus#FAILED} email: one line of 1 to {@value #MAX_LENGTH} characters,
  * as the {@code failure} check of {@code invitation_emails} requires. Build it with {@link #of(String, String...)}, which
- * removes the token and the link (AC-15); the database cannot check that.
+ * removes the token and the link; the database cannot check that.
  *
  * @param text the reason, without control characters
  */

@@ -4,7 +4,7 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@a
 import { CurrentUserService } from './current-user.service';
 import { requirePermission } from './permission.guard';
 
-describe('requirePermission (AC-22)', () => {
+describe('requirePermission', () => {
   const permissions = signal<string[] | null>(null);
 
   beforeEach(() => {
@@ -32,9 +32,20 @@ describe('requirePermission (AC-22)', () => {
     expect(run()).toBe(true);
   });
 
-  it('redirects users without the permission to the home page', () => {
+  it('PERM-7.2 redirects users without the permission to the home page', () => {
     permissions.set([]);
     expect(run()).toEqual({ url: '/' });
+  });
+
+  it('INV-16.1 opens the invitations page for USERS_INVITE and takes others to the home page', () => {
+    const runInvite = () =>
+      TestBed.runInInjectionContext(() =>
+        requirePermission('USERS_INVITE')({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+      );
+    permissions.set(['USERS_INVITE']);
+    expect(runInvite()).toBe(true);
+    permissions.set(['USERS_READ']);
+    expect(runInvite()).toEqual({ url: '/' });
   });
 
   it('redirects when nobody is loaded', () => {

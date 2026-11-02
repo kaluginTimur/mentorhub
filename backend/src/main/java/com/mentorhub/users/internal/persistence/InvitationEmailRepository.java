@@ -19,7 +19,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * Invitation email requests (spec invitation-emails, Data model). A row stores no link or token. Times come from the
+ * Invitation email requests. A row stores no link or token. Times come from the
  * database's {@code now()}. Rows are never deleted.
  */
 @Repository

@@ -50,14 +50,14 @@ The system SHALL, when an administrator creates an invitation or gives a new lin
 
 - GIVEN email is enabled and a pending invitation
 - WHEN an administrator creates an invitation with `sendEmail` true, and gives the pending invitation a new link with `sendEmail` true
-- THEN the responses are 201, as without the flag, with the link
+- THEN creating answers 201 and the new link answers 200, as without the flag, each with the link
 - AND the latest email of each invitation is queued, with the time and the administrator
 
 #### IEM-3.2 Without the flag no email is requested
 
 - GIVEN email is enabled
 - WHEN an administrator creates an invitation without the flag, or gives a pending invitation a new link without a request body
-- THEN the responses are 201 with the link
+- THEN creating answers 201 and the new link answers 200, each with the link
 - AND the invitations have no latest email
 - AND no email is sent
 

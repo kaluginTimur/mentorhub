@@ -3,13 +3,18 @@ package com.mentorhub.users.internal.web;
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
 
 import com.mentorhub.TestcontainersConfiguration;
 import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.Role;
+import com.mentorhub.users.internal.domain.InvitationEmailFailure;
+import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.invitation.InvitationProblems;
+import com.mentorhub.users.internal.persistence.InvitationEmailRepository;
 import com.mentorhub.users.internal.security.TestIssuer;
 import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
@@ -21,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,12 +41,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MockMvcTester.MockMvcRequestBuilder;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Invitation emails through the real chain with a configured mail server whose delivery is held and then released
- * (the mail server itself is covered by {@code InvitationEmailTests}): the web-layer side of invitation-emails AC-1 to
- * AC-7 and AC-16.
+ * (the mail server itself is covered by {@code InvitationEmailTests}).
  */
 @SpringBootTest(properties = {"spring.mail.host=localhost", "mentorhub.mail.from=MentorHub <no-reply@mentorhub.test>"})
 @AutoConfigureMockMvc
@@ -58,6 +64,9 @@ class InvitationEmailsEndpointTests {
 
     @Autowired
     JsonMapper jsonMapper;
+
+    @Autowired
+    InvitationEmailRepository emails;
 
     @MockitoSpyBean
     MailDelivery mail;
@@ -89,14 +98,13 @@ class InvitationEmailsEndpointTests {
     }
 
     @Test
-    void emailFlowFromQueuedToSent() {
-        // AC-1
+    @DisplayName("IEM-3.1 An email is queued with a new invitation or a new link")
+    void emailIsQueuedWithANewInvitationOrANewLink() {
         assertThat(send(HttpMethod.GET, "/api/v1/system/client-config", "", "admin"))
                 .bodyJson()
                 .extractingPath("$.invitationEmails")
                 .isEqualTo(true);
 
-        // AC-2: 201 with the link and the queued email.
         MvcTestResult created = send(
                 HttpMethod.POST,
                 "/api/v1/invitations",
@@ -109,34 +117,85 @@ class InvitationEmailsEndpointTests {
                 .bodyJson()
                 .extractingPath("$.invitation.lastEmail.status")
                 .isEqualTo("QUEUED");
+        assertThat(created).bodyJson().hasPath("$.invitation.lastEmail.requestedAt");
         assertThat(created)
                 .bodyJson()
                 .extractingPath("$.invitation.lastEmail.requestedBy.id")
                 .isEqualTo(admin.toString());
         assertThat(created).bodyJson().doesNotHavePath("$.invitation.lastEmail.finishedAt");
-        String id = text(created, "/invitation/id");
-        String link = text(created, "/link");
-        String path = "/api/v1/invitations/" + id;
 
-        // AC-5: a second request while one is queued stores nothing.
+        MvcTestResult other =
+                send(HttpMethod.POST, "/api/v1/invitations", "{\"email\": \"petr@x.test\", \"roles\": []}", "admin");
+        MvcTestResult reissued = send(
+                HttpMethod.POST,
+                "/api/v1/invitations/" + text(other, "/invitation/id") + "/link",
+                "{\"sendEmail\": true}",
+                "admin");
+        assertThat(reissued).hasStatusOk();
+        assertThat(reissued).bodyJson().hasPath("$.link");
+        assertThat(reissued)
+                .bodyJson()
+                .extractingPath("$.invitation.lastEmail.status")
+                .isEqualTo("QUEUED");
+        assertThat(reissued).bodyJson().hasPath("$.invitation.lastEmail.requestedAt");
+        assertThat(reissued)
+                .bodyJson()
+                .extractingPath("$.invitation.lastEmail.requestedBy.id")
+                .isEqualTo(admin.toString());
+        assertThat(users.count("invitation_emails")).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("IEM-3.2 Without the flag no email is requested")
+    void withoutTheFlagNoEmailIsRequested() {
+        MvcTestResult created =
+                send(HttpMethod.POST, "/api/v1/invitations", "{\"email\": \"ivan@x.test\", \"roles\": []}", "admin");
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        assertThat(created).bodyJson().hasPath("$.link");
+        assertThat(created).bodyJson().doesNotHavePath("$.invitation.lastEmail");
+
+        MvcTestResult reissued =
+                send(HttpMethod.POST, "/api/v1/invitations/" + text(created, "/invitation/id") + "/link", "", "admin");
+        assertThat(reissued).hasStatusOk();
+        assertThat(reissued).bodyJson().hasPath("$.link");
+        assertThat(reissued).bodyJson().doesNotHavePath("$.invitation.lastEmail");
+
+        assertThat(users.count("invitation_emails")).isZero();
+        verify(mail, after(300).never()).send(any());
+    }
+
+    @Test
+    @DisplayName("IEM-4.3 A queued email is not queued twice")
+    void aQueuedEmailIsNotQueuedTwice() {
+        String id = text(createWithEmail(), "/invitation/id");
+
         assertProblem(
-                send(HttpMethod.POST, path + "/email", "", "admin"),
+                send(HttpMethod.POST, "/api/v1/invitations/" + id + "/email", "", "admin"),
                 HttpStatus.CONFLICT,
                 InvitationProblems.EMAIL_QUEUED);
         assertThat(users.count("invitation_emails")).isEqualTo(1);
+    }
 
-        // AC-3: a new link with the flag while queued returns the queued email and requests no second one.
+    @Test
+    @DisplayName("IEM-3.3 A new link while an email is queued requests no second one")
+    void aNewLinkWhileAnEmailIsQueuedRequestsNoSecondOne() {
+        MvcTestResult created = createWithEmail();
+        String path = "/api/v1/invitations/" + text(created, "/invitation/id");
+
         MvcTestResult reissued = send(HttpMethod.POST, path + "/link", "{\"sendEmail\": true}", "admin");
         assertThat(reissued).hasStatusOk();
         assertThat(reissued)
                 .bodyJson()
                 .extractingPath("$.invitation.lastEmail.status")
                 .isEqualTo("QUEUED");
-        assertThat(text(reissued, "/link")).isNotEqualTo(link);
+        assertThat(text(reissued, "/link")).isNotEqualTo(text(created, "/link"));
         assertThat(users.count("invitation_emails")).isEqualTo(1);
-        link = text(reissued, "/link");
+    }
 
-        // AC-16: the list shows the queued email, then the sent one with its time.
+    @Test
+    void theListShowsTheQueuedEmailAndThenTheSentOne() {
+        createWithEmail();
+
         assertThat(send(HttpMethod.GET, "/api/v1/invitations", "", "admin"))
                 .bodyJson()
                 .extractingPath("$.items[0].lastEmail.status")
@@ -150,12 +209,23 @@ class InvitationEmailsEndpointTests {
                 .isEqualTo("SENT");
         assertThat(list).bodyJson().hasPath("$.items[0].lastEmail.finishedAt");
         assertThat(list).bodyText().doesNotContain("failure");
+    }
 
-        // AC-4: 202 with the invitation; the link stays the same and is not in the response.
+    @Test
+    @DisplayName("IEM-4.1 A pending invitation is sent again")
+    void aPendingInvitationIsSentAgain() {
+        MvcTestResult created = createWithEmail();
+        String id = text(created, "/invitation/id");
+        String link = text(created, "/link");
+        String path = "/api/v1/invitations/" + id;
+        release.countDown();
+        await(() -> "SENT".equals(latestStatus()));
+
         MvcTestResult resent = send(HttpMethod.POST, path + "/email", "", "admin");
         assertThat(resent).hasStatus(HttpStatus.ACCEPTED);
         assertThat(resent).bodyJson().extractingPath("$.id").isEqualTo(id);
         assertThat(resent).bodyJson().extractingPath("$.lastEmail.status").isIn("QUEUED", "SENT");
+        assertThat(resent).bodyJson().extractingPath("$.expiresAt").isEqualTo(text(created, "/invitation/expiresAt"));
         assertThat(resent).bodyJson().doesNotHavePath("$.link");
         assertThat(resent).bodyText().doesNotContain(link.substring(link.lastIndexOf('/') + 1));
         assertThat(send(HttpMethod.GET, path + "/link", "", "admin"))
@@ -165,7 +235,69 @@ class InvitationEmailsEndpointTests {
         assertThat(users.count("invitation_emails")).isEqualTo(2);
     }
 
-    // AC-6: the invitation's errors come before email-queued.
+    @Test
+    @DisplayName("IEM-9.1 The list shows only the latest email")
+    void theListShowsOnlyTheLatestEmail() {
+        UUID twice = newInvitation("twice@x.test");
+        UUID first = emails.insertQueued(twice, InvitationEmailReason.CREATED, admin);
+        emails.markFailed(first, InvitationEmailFailure.of("550 refused"));
+        jdbc.sql("update invitation_emails set requested_at = now() - interval '1 hour' where id = :id")
+                .param("id", first)
+                .update();
+        emails.markSent(emails.insertQueued(twice, InvitationEmailReason.RESENT, admin));
+        UUID queued = newInvitation("queued@x.test");
+        emails.insertQueued(queued, InvitationEmailReason.CREATED, admin);
+        UUID failed = newInvitation("failed@x.test");
+        emails.markFailed(
+                emails.insertQueued(failed, InvitationEmailReason.CREATED, admin),
+                InvitationEmailFailure.of("550 refused"));
+        newInvitation("none@x.test");
+
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/invitations", "", "admin");
+
+        assertThat(list).hasStatusOk();
+        JsonNode items =
+                jsonMapper.readTree(list.getResponse().getContentAsByteArray()).at("/items");
+        assertThat(items).hasSize(4);
+        for (JsonNode item : items) {
+            JsonNode lastEmail = item.get("lastEmail");
+            switch (item.get("email").asString()) {
+                case "twice@x.test" -> {
+                    assertThat(lastEmail.get("status").asString()).isEqualTo("SENT");
+                    assertThat(lastEmail.has("requestedAt")).isTrue();
+                    assertThat(lastEmail.at("/requestedBy/id").asString()).isEqualTo(admin.toString());
+                    assertThat(lastEmail.has("finishedAt")).isTrue();
+                }
+                case "queued@x.test" -> {
+                    assertThat(lastEmail.get("status").asString()).isEqualTo("QUEUED");
+                    assertThat(lastEmail.has("finishedAt")).isFalse();
+                }
+                case "failed@x.test" -> {
+                    assertThat(lastEmail.get("status").asString()).isEqualTo("FAILED");
+                    assertThat(lastEmail.has("failure")).isFalse();
+                }
+                default -> assertThat(lastEmail).isNull();
+            }
+        }
+        assertThat(list).bodyText().doesNotContain("550 refused").doesNotContain("failure");
+    }
+
+    @Test
+    @DisplayName("IEM-2.2 Any holder sends the email of any invitation")
+    void anyHolderSendsTheEmailOfAnyInvitation() {
+        MvcTestResult created =
+                send(HttpMethod.POST, "/api/v1/invitations", "{\"email\": \"ivan@x.test\", \"roles\": []}", "admin");
+        UUID other = users.create("other@x.test", UserStatus.ACTIVE, Role.ADMIN);
+        users.link(other, "other");
+
+        assertThat(send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations/" + text(created, "/invitation/id") + "/email",
+                        "",
+                        "other"))
+                .hasStatus(HttpStatus.ACCEPTED);
+    }
+
     @Test
     void closedAndUnknownInvitationsAreRefusedBeforeTheQueue() {
         MvcTestResult created = send(
@@ -187,8 +319,8 @@ class InvitationEmailsEndpointTests {
                 Problems.NOT_FOUND);
     }
 
-    // AC-7: the permission check comes first, also when email is enabled.
     @Test
+    @DisplayName("IEM-2.1 Requesting an email needs the permission")
     void callerWithoutThePermissionIsForbidden() {
         MvcTestResult created =
                 send(HttpMethod.POST, "/api/v1/invitations", "{\"email\": \"ivan@x.test\", \"roles\": []}", "admin");
@@ -201,6 +333,10 @@ class InvitationEmailsEndpointTests {
                 HttpStatus.FORBIDDEN,
                 Problems.FORBIDDEN);
         assertProblem(
+                send(HttpMethod.POST, "/api/v1/invitations/" + id + "/link", "{\"sendEmail\": true}", "mentor"),
+                HttpStatus.FORBIDDEN,
+                Problems.FORBIDDEN);
+        assertProblem(
                 send(
                         HttpMethod.POST,
                         "/api/v1/invitations",
@@ -209,6 +345,22 @@ class InvitationEmailsEndpointTests {
                 HttpStatus.FORBIDDEN,
                 Problems.FORBIDDEN);
         assertThat(users.count("invitation_emails")).isZero();
+    }
+
+    private MvcTestResult createWithEmail() {
+        MvcTestResult created = send(
+                HttpMethod.POST,
+                "/api/v1/invitations",
+                "{\"email\": \"ivan@x.test\", \"roles\": [\"MENTOR\"], \"sendEmail\": true}",
+                "admin");
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        return created;
+    }
+
+    private UUID newInvitation(String email) {
+        return UUID.fromString(text(
+                send(HttpMethod.POST, "/api/v1/invitations", "{\"email\": \"" + email + "\", \"roles\": []}", "admin"),
+                "/invitation/id"));
     }
 
     private String text(MvcTestResult result, String pointer) {

@@ -70,8 +70,9 @@ test('an unknown command is a usage error', () => {
   assert.equal(run('nonsense', {}).status, 2);
 });
 
-test('validate passes when there are no requirements yet', () => {
-  assert.equal(run('validate', {}).status, 0);
+test('validate and trace fail when there are no requirements', () => {
+  assertFails(run('validate', {}), /README\.md.*missing/);
+  assertFails(run('trace', {}), /README\.md.*missing/);
 });
 
 test('validate passes a valid capability with optional sections and references', () => {

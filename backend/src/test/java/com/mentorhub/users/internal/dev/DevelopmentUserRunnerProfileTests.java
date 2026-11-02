@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mentorhub.TestcontainersConfiguration;
 import com.mentorhub.users.internal.security.TestIssuerConfiguration;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,6 +22,7 @@ class DevelopmentUserRunnerProfileTests {
     ApplicationContext context;
 
     @Test
+    @DisplayName("IDN-7.2 Development users exist only in development mode")
     void runnerExistsOnlyInTheDevProfile() {
         assertThat(context.getBeanNamesForType(DevelopmentUserRunner.class)).isEmpty();
         assertThat(context.getBeanNamesForType(DevelopmentUsersProperties.class))

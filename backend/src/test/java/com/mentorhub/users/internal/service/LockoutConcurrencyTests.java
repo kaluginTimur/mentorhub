@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,7 +30,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
- * AC-15: parallel changes that can remove an administrator never leave the installation without one, and parallel
+ * Parallel changes that can remove an administrator never leave the installation without one, and parallel
  * changes never fail with a deadlock.
  */
 @Import(TestcontainersConfiguration.class)
@@ -58,6 +59,7 @@ class LockoutConcurrencyTests {
 
     // Repeated because a race shows only in some runs.
     @RepeatedTest(10)
+    @DisplayName("USR-7.2 Two administrators cannot remove each other at the same moment")
     void administratorsDisablingEachOtherLeaveOneActive() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.disable(adminB, DisableReason.SECURITY, null)),
@@ -79,6 +81,8 @@ class LockoutConcurrencyTests {
     }
 
     @RepeatedTest(10)
+    @DisplayName(
+            "USR-7.2 Two administrators cannot remove each other at the same moment (disable and role removal of one administrator)")
     void disableAndRoleRemovalOfTheSameAdministratorBothSucceed() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.disable(adminB, DisableReason.SECURITY, null)),

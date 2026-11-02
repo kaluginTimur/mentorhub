@@ -19,7 +19,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-/** Spec invitation-emails, AC-1 and the {@code mail} module (Design, Modules). */
+/** The {@code mail} module (Design, Modules). */
 class JavaMailDeliveryTests {
 
     static final MailMessage MESSAGE =

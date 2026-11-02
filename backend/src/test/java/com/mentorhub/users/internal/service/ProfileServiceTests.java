@@ -13,6 +13,7 @@ import com.mentorhub.web.ValidationException;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,7 +21,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-// AC-17
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class ProfileServiceTests {
@@ -54,6 +54,7 @@ class ProfileServiceTests {
     }
 
     @Test
+    @DisplayName("USR-9.1 A user without roles saves their own profile")
     void storesTheCallersOwnProfileAndAuditsWithTheCallerAsActor() {
         profiles.updateOwnProfile(new ProfileInput(" Ivan ", "Petrova", "8 701 123 45 67"));
 

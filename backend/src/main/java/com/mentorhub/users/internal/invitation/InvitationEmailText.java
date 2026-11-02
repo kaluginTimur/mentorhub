@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * The invitation email (spec invitation-emails, AC-14): plain text in English, impersonal, with the link alone on its
+ * The invitation email: plain text in English, impersonal, with the link alone on its
  * line so no mail client takes punctuation into it.
  */
 final class InvitationEmailText {

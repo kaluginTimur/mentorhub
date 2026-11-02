@@ -24,14 +24,13 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Sends stored invitation email requests after the requesting transaction commits, on the async executor (spec
- * invitation-emails, AC-8 to AC-15). Three steps, so that no transaction or connection is held while the mail server is
+ * Sends stored invitation email requests after the requesting transaction commits, on the async executor. Three steps, so that no transaction or connection is held while the mail server is
  * contacted: a short transaction reads the request and the invitation, the send runs outside any transaction, and a
  * second short transaction records the outcome.
  *
  * <p>A mail failure is recorded as {@link InvitationEmailStatus#FAILED} and completes the publication, so it is not
- * retried (AC-11). Any other exception leaves the publication incomplete for {@link InvitationEmailResubmission} or the
- * next start (AC-12, AC-13); a request that is no longer queued is never sent again.
+ * retried. Any other exception leaves the publication incomplete for {@link InvitationEmailResubmission} or the
+ * next start; a request that is no longer queued is never sent again.
  *
  * <p>Deliveries of one request run one at a time in this process: a resubmitted publication can be delivered while the
  * first delivery is still sending (a backlog in the executor makes the publication look stale), and the row lock of the
@@ -104,7 +103,7 @@ class InvitationEmailSender {
                     String.valueOf(e.getMessage()),
                     delivery.token(),
                     delivery.link().toString());
-            // Neither the exception nor the message: only the redacted reason (AC-15).
+            // Neither the exception nor the message: only the redacted reason.
             log.warn("Invitation email {} failed: {}", event.emailRequestId(), failure.text());
             transaction.executeWithoutResult(status -> emails.markFailed(event.emailRequestId(), failure));
             return;

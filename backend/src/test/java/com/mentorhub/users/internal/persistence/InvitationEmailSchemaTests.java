@@ -121,7 +121,6 @@ class InvitationEmailSchemaTests {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    // AC-5
     @Test
     void rejectsASecondQueuedRequestForAnInvitation() {
         insert("CREATED", "QUEUED", false, null);

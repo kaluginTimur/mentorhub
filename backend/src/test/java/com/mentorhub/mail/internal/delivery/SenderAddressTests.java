@@ -3,6 +3,7 @@ package com.mentorhub.mail.internal.delivery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -22,8 +23,8 @@ class SenderAddressTests {
         assertThat(SenderAddress.parse(from).getAddress()).isIn("no-reply@example.org", "no-reply@mentorhub.local");
     }
 
-    // Spec invitation-emails, AC-1.
     @ParameterizedTest
+    @DisplayName("IEM-1.2 A mail server needs exactly one sender address")
     @NullAndEmptySource
     @ValueSource(
             strings = {

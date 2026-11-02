@@ -40,6 +40,7 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -98,8 +99,8 @@ class InvitationAdministrationServiceTests {
     @Nested
     class Creating {
 
-        // AC-1
         @Test
+        @DisplayName("INV-2.1 An invitation is created with its link and expiry")
         void createsAPendingInvitationWithALinkAndAnAuditEntry() {
             IssuedInvitation issued = service.create("ivan@x.test", Set.of(Role.STUDENT, Role.MENTOR), false);
 
@@ -124,7 +125,7 @@ class InvitationAdministrationServiceTests {
                             Map.of("email", "ivan@x.test", "roles", List.of("MENTOR", "STUDENT"))));
         }
 
-        // Spec invitation-links: the token is stored in plaintext; audit details never contain it (AC-7).
+        // The token is stored in plaintext; audit details never contain it.
         @Test
         void storesTheTokenOfTheLink() {
             IssuedInvitation issued = service.create("ivan@x.test", Set.of(), false);
@@ -134,7 +135,6 @@ class InvitationAdministrationServiceTests {
             assertThat(data.allAuditDetails()).doesNotContain(token);
         }
 
-        // AC-1
         @Test
         void acceptsAnEmptyRoleSet() {
             IssuedInvitation issued = service.create("ivan@x.test", Set.of(), false);
@@ -144,15 +144,14 @@ class InvitationAdministrationServiceTests {
                     .isEqualTo(Map.of("email", "ivan@x.test", "roles", List.of()));
         }
 
-        // AC-2
         @Test
+        @DisplayName("INV-2.2 The email is trimmed and kept as entered")
         void storesTheEmailAsEnteredAfterTrimming() {
             IssuedInvitation issued = service.create(" \tIvan.Sidorov@Example.COM  ", Set.of(), false);
 
             assertThat(issued.invitation().email()).isEqualTo("Ivan.Sidorov@Example.COM");
         }
 
-        // AC-2
         @Test
         void acceptsAnEmailOf254Characters() {
             String email = longEmail(254);
@@ -161,7 +160,6 @@ class InvitationAdministrationServiceTests {
                     .isEqualTo(email);
         }
 
-        // AC-2
         @ParameterizedTest
         @NullSource
         @ValueSource(strings = {"", "   "})
@@ -171,7 +169,6 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitations")).isZero();
         }
 
-        // AC-2
         @ParameterizedTest
         @ValueSource(strings = {"not-an-email", "a@b@x.test", "ivan @x.test", "@x.test", "ivan@"})
         void rejectsAnInvalidEmail(String email) {
@@ -181,7 +178,6 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitations")).isZero();
         }
 
-        // AC-2
         @Test
         void rejectsAnEmailLongerThan254Characters() {
             assertValidationErrors(
@@ -190,7 +186,7 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitations")).isZero();
         }
 
-        // AC-2: one error per invalid field.
+        // One error per invalid field.
         @Test
         void reportsANullRoleTogetherWithAnInvalidEmail() {
             assertValidationErrors(
@@ -203,8 +199,8 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitations")).isZero();
         }
 
-        // AC-3
         @Test
+        @DisplayName("INV-3.1 An active user is not invited")
         void refusesTheEmailOfAnActiveUserIgnoringCase() {
             UUID active = users.create("ivan@x.test", UserStatus.ACTIVE);
 
@@ -217,8 +213,8 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("audit_log")).isZero();
         }
 
-        // AC-3, S9
         @Test
+        @DisplayName("INV-3.3 A disabled user does not block")
         void invitesTheEmailOfADisabledUser() {
             users.create("ivan@x.test", UserStatus.DISABLED);
 
@@ -228,9 +224,9 @@ class InvitationAdministrationServiceTests {
                     .isEqualTo(InvitationStatus.PENDING);
         }
 
-        // AC-3
         @ParameterizedTest
         @ValueSource(booleans = {false, true})
+        @DisplayName("INV-3.2 An open invitation blocks another one")
         void refusesASecondOpenInvitationForTheEmailIgnoringCase(boolean expired) {
             UUID open =
                     service.create("ivan@x.test", Set.of(), false).invitation().id();
@@ -247,8 +243,9 @@ class InvitationAdministrationServiceTests {
             assertThat(data.auditEntries(open)).hasSize(1);
         }
 
-        // AC-3: accepted and revoked invitations are closed and do not block a new one.
+        // Accepted and revoked invitations are closed and do not block a new one.
         @Test
+        @DisplayName("INV-3.3 A closed invitation does not block")
         void invitesAgainAfterTheEarlierInvitationsClosed() {
             UUID formerUser = users.create("ivan@x.test", UserStatus.DISABLED);
             data.markAccepted(
@@ -267,7 +264,6 @@ class InvitationAdministrationServiceTests {
     @Nested
     class Listing {
 
-        // AC-4
         @Test
         void sortsNewestFirstThenById() {
             UUID first = create("a@x.test");
@@ -291,7 +287,6 @@ class InvitationAdministrationServiceTests {
             assertThat(page.totalItems()).isEqualTo(3);
         }
 
-        // AC-4
         @Test
         void showsWhoAcceptedAndWhoRevoked() {
             UUID accepted = create("a@x.test");
@@ -316,7 +311,6 @@ class InvitationAdministrationServiceTests {
             assertThat(acceptedItem.revokedBy()).isNull();
         }
 
-        // AC-4
         @Test
         void returnsTheRequestedPageWithTheTotal() {
             UUID a = create("a@x.test");
@@ -332,7 +326,6 @@ class InvitationAdministrationServiceTests {
             assertThat(page.totalItems()).isEqualTo(4);
         }
 
-        // AC-4
         @Test
         void searchesTheEmailIgnoringCaseAfterTrimming() {
             UUID match = create("Ivan.Sidorov@x.test");
@@ -344,7 +337,6 @@ class InvitationAdministrationServiceTests {
             assertThat(page.totalItems()).isEqualTo(1);
         }
 
-        // AC-4
         @ParameterizedTest
         @ValueSource(strings = {"%", "_"})
         void searchMatchesWildcardsLiterally(String wildcard) {
@@ -356,7 +348,7 @@ class InvitationAdministrationServiceTests {
                     .containsExactly(match);
         }
 
-        // AC-4: an unescaped backslash would escape the next character and match "ab".
+        // An unescaped backslash would escape the next character and match "ab".
         @Test
         void searchMatchesABackslashLiterally() {
             create("ab@x.test");
@@ -364,7 +356,7 @@ class InvitationAdministrationServiceTests {
             assertThat(service.list(query("a\\b", null, 0, 25)).items()).isEmpty();
         }
 
-        // AC-4: the status filter uses the same derivation as the status itself.
+        // The status filter uses the same derivation as the status itself.
         @ParameterizedTest
         @EnumSource(InvitationStatus.class)
         void filtersByStatus(InvitationStatus status) {
@@ -390,14 +382,12 @@ class InvitationAdministrationServiceTests {
             assertThat(page.totalItems()).isEqualTo(1);
         }
 
-        // AC-4
         @Test
         void acceptsASearchOf254Characters() {
             assertThat(service.list(query("x".repeat(254), null, 0, 25)).items())
                     .isEmpty();
         }
 
-        // AC-4
         @Test
         void rejectsInvalidParametersWithAnErrorEach() {
             assertValidationErrors(
@@ -410,7 +400,7 @@ class InvitationAdministrationServiceTests {
                     new FieldViolation("size", "must be between 1 and 100"));
         }
 
-        // AC-17: a stored role the code does not know is skipped on reads.
+        // A stored role the code does not know is skipped on reads.
         @Test
         void leavesOutStoredRolesTheCodeDoesNotKnow() {
             UUID invitation = service.create("ivan@x.test", Set.of(Role.MENTOR), false)
@@ -426,9 +416,9 @@ class InvitationAdministrationServiceTests {
     @Nested
     class Revoking {
 
-        // AC-6
         @ParameterizedTest
         @ValueSource(booleans = {false, true})
+        @DisplayName("INV-6.1 An open invitation is revoked")
         void revokesAnOpenInvitation(boolean expired) {
             UUID invitation = create("ivan@x.test");
             if (expired) {
@@ -447,7 +437,6 @@ class InvitationAdministrationServiceTests {
                     .isEqualTo(new AuditRow("INVITATION_REVOKED", admin, "INVITATION", invitation, Map.of()));
         }
 
-        // AC-6
         @ParameterizedTest
         @ValueSource(booleans = {false, true})
         void refusesAClosedInvitation(boolean accepted) {
@@ -460,7 +449,6 @@ class InvitationAdministrationServiceTests {
             assertThat(data.auditEntries(invitation)).hasSize(1);
         }
 
-        // AC-6
         @Test
         void unknownIdIsNotFound() {
             assertThatThrownBy(() -> service.revoke(ANY_ID)).isInstanceOf(NotFoundException.class);
@@ -470,7 +458,6 @@ class InvitationAdministrationServiceTests {
     @Nested
     class NewLinks {
 
-        // AC-7
         @Test
         void replacesTheTokenAndRenewsTheExpiry() {
             IssuedInvitation created = service.create("ivan@x.test", Set.of(Role.MENTOR), false);
@@ -500,7 +487,6 @@ class InvitationAdministrationServiceTests {
             assertThat(data.allAuditDetails()).doesNotContain(newToken);
         }
 
-        // AC-7
         @ParameterizedTest
         @ValueSource(booleans = {false, true})
         void refusesAClosedInvitation(boolean accepted) {
@@ -512,18 +498,15 @@ class InvitationAdministrationServiceTests {
             assertThat(data.storedToken(invitation)).isEqualTo(token);
         }
 
-        // AC-7
         @Test
         void unknownIdIsNotFound() {
             assertThatThrownBy(() -> service.reissueLink(ANY_ID, false)).isInstanceOf(NotFoundException.class);
         }
     }
 
-    /** Spec invitation-links. */
     @Nested
     class Links {
 
-        // invitation-links AC-1
         @Test
         void returnsTheLinkOfTheCreatedInvitation() {
             IssuedInvitation created = service.create("Ivan@x.test", Set.of(Role.MENTOR), false);
@@ -535,7 +518,7 @@ class InvitationAdministrationServiceTests {
                             created.link(), "Ivan@x.test", created.invitation().expiresAt()));
         }
 
-        // invitation-links AC-1: after a new link, the new one is returned.
+        // After a new link, the new one is returned.
         @Test
         void returnsTheLinkOfTheLatestNewLink() {
             UUID invitation = create("ivan@x.test");
@@ -548,7 +531,7 @@ class InvitationAdministrationServiceTests {
             assertThat(link.expiresAt()).isEqualTo(reissued.invitation().expiresAt());
         }
 
-        // invitation-links AC-1: any holder of USERS_INVITE, not only the creator.
+        // Any holder of USERS_INVITE, not only the creator.
         @Test
         void anotherAdministratorGetsTheSameLink() {
             IssuedInvitation created = service.create("ivan@x.test", Set.of(), false);
@@ -557,7 +540,6 @@ class InvitationAdministrationServiceTests {
             assertThat(service.link(created.invitation().id()).link()).isEqualTo(created.link());
         }
 
-        // invitation-links AC-7
         @Test
         void writesNoAuditEntry() {
             UUID invitation = create("ivan@x.test");
@@ -569,7 +551,7 @@ class InvitationAdministrationServiceTests {
                     .containsExactly("INVITATION_CREATED");
         }
 
-        // invitation-links AC-2: expiry is decided with the database's now().
+        // Expiry is decided with the database's now().
         @Test
         void refusesAnExpiredInvitation() {
             UUID invitation = create("ivan@x.test");
@@ -581,7 +563,7 @@ class InvitationAdministrationServiceTests {
             assertThat(data.auditEntries(invitation)).hasSize(1);
         }
 
-        // invitation-links AC-2: closed wins over expired, as in the status derivation.
+        // Closed wins over expired, as in the status derivation.
         @ParameterizedTest
         @ValueSource(booleans = {false, true})
         void refusesAClosedInvitation(boolean accepted) {
@@ -600,7 +582,6 @@ class InvitationAdministrationServiceTests {
             assertConflict(() -> service.link(expired), InvitationProblems.INVITATION_CLOSED);
         }
 
-        // invitation-links AC-2
         @Test
         void unknownIdIsNotFound() {
             create("ivan@x.test");
@@ -609,7 +590,6 @@ class InvitationAdministrationServiceTests {
         }
     }
 
-    // Spec invitation-emails, AC-16.
     @Nested
     class LastEmail {
 
@@ -682,7 +662,7 @@ class InvitationAdministrationServiceTests {
     @Nested
     class EmailDisabled {
 
-        // invitation-emails AC-1: nothing is created, audited or queued.
+        // Nothing is created, audited or queued.
         @Test
         void creatingWithAnEmailIsUnavailable() {
             assertConflict(() -> service.create("ivan@x.test", Set.of(), true), InvitationProblems.EMAIL_UNAVAILABLE);
@@ -692,7 +672,7 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitation_emails")).isZero();
         }
 
-        // invitation-emails AC-1: the token and the expiry stay unchanged.
+        // The token and the expiry stay unchanged.
         @Test
         void aNewLinkWithAnEmailIsUnavailable() {
             UUID invitation = create("ivan@x.test");
@@ -705,7 +685,6 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitation_emails")).isZero();
         }
 
-        // invitation-emails AC-1
         @Test
         void sendingAnEmailIsUnavailable() {
             UUID invitation = create("ivan@x.test");
@@ -716,7 +695,7 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitation_emails")).isZero();
         }
 
-        // invitation-emails AC-1: without an email the operations work as before.
+        // Without an email the operations work as before.
         @Test
         void operationsWithoutAnEmailWork() {
             UUID invitation = create("ivan@x.test");
@@ -726,7 +705,7 @@ class InvitationAdministrationServiceTests {
             assertThat(data.count("invitation_emails")).isZero();
         }
 
-        // invitation-emails AC-6: validation, then the invitation's own conflicts, then email-unavailable.
+        // Validation, then the invitation's own conflicts, then email-unavailable.
         @Test
         void creatingChecksTheInvitationBeforeTheEmail() {
             assertValidationErrors(
@@ -738,7 +717,6 @@ class InvitationAdministrationServiceTests {
             assertConflict(() -> service.create("open@x.test", Set.of(), true), InvitationProblems.INVITATION_EXISTS);
         }
 
-        // invitation-emails AC-6
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void aNewLinkChecksTheInvitationBeforeTheEmail(boolean accepted) {
@@ -750,7 +728,7 @@ class InvitationAdministrationServiceTests {
                     .isInstanceOf(NotFoundException.class);
         }
 
-        // invitation-emails AC-4, AC-6: not-found, closed and expired come before email-unavailable.
+        // Not-found, closed and expired come before email-unavailable.
         @Test
         void sendingChecksTheInvitationBeforeTheEmail() {
             assertThatThrownBy(() -> service.sendEmail(UUID.randomUUID())).isInstanceOf(NotFoundException.class);
@@ -765,7 +743,7 @@ class InvitationAdministrationServiceTests {
             assertConflict(() -> service.sendEmail(expired), InvitationProblems.INVITATION_EXPIRED);
         }
 
-        // invitation-emails AC-6: email-unavailable comes before email-queued.
+        // Email-unavailable comes before email-queued.
         @Test
         void sendingIsUnavailableBeforeAQueuedEmailIsChecked() {
             UUID invitation = create("ivan@x.test");
@@ -777,7 +755,7 @@ class InvitationAdministrationServiceTests {
         }
     }
 
-    // AC-5: every management operation needs USERS_INVITE; other permissions do not grant it.
+    // Every management operation needs USERS_INVITE; other permissions do not grant it.
     @ParameterizedTest
     @MethodSource("operations")
     void callersWithoutTheInvitePermissionAreRefused(Consumer<InvitationAdministrationService> operation) {
@@ -805,9 +783,8 @@ class InvitationAdministrationServiceTests {
                 operation(service -> service.list(new InvitationQuery(null, null, 0, 25))),
                 operation(service -> service.revoke(ANY_ID)),
                 operation(service -> service.reissueLink(ANY_ID, false)),
-                // invitation-links AC-3
                 operation(service -> service.link(ANY_ID)),
-                // invitation-emails AC-7: refused before email-unavailable, whether or not email is enabled.
+                // Refused before email-unavailable, whether or not email is enabled.
                 operation(service -> service.create("new@x.test", Set.of(), true)),
                 operation(service -> service.reissueLink(ANY_ID, true)),
                 operation(service -> service.sendEmail(ANY_ID)));

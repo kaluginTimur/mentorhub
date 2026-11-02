@@ -6,7 +6,7 @@ import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The latest email of an invitation as administrators see it (spec invitation-emails, AC-16); never the failure reason.
+ * The latest email of an invitation as administrators see it; never the failure reason.
  *
  * @param finishedAt present once the status is not {@link InvitationEmailStatus#QUEUED}
  */

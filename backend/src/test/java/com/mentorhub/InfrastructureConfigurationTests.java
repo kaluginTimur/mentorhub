@@ -20,7 +20,6 @@ class InfrastructureConfigurationTests {
     @Autowired
     JdbcClient jdbc;
 
-    // AC-1
     @Test
     void emailIsDisabledWithoutAMailHost() {
         assertThat(mail.isEnabled()).isFalse();

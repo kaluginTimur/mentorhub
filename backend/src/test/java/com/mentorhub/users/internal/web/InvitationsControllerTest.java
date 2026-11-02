@@ -158,7 +158,6 @@ class InvitationsControllerTest {
     @Nested
     class Authorization {
 
-        // AC-5
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
         void callerWithoutTheInvitePermissionIsForbidden(HttpMethod method, String uri, String body) {
@@ -204,7 +203,6 @@ class InvitationsControllerTest {
             verifyNoInteractions(administration);
         }
 
-        // AC-17
         @Test
         void acceptRequiresAuthentication() {
             MvcTestResult result = mvc.post()
@@ -217,7 +215,7 @@ class InvitationsControllerTest {
             verifyNoInteractions(acceptance);
         }
 
-        // AC-17: the gate admits callers in every access status.
+        // The gate admits callers in every access status.
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#callersInAnyStatus")
         void acceptAdmitsCallersInAnyStatus(String name, RequestPostProcessor caller) {
@@ -229,7 +227,7 @@ class InvitationsControllerTest {
             then(acceptance).should().accept(TOKEN);
         }
 
-        // AC-8: public, and a bearer token is ignored, even a bad one (the slice rejects every bearer token).
+        // Public, and a bearer token is ignored, even a bad one (the slice rejects every bearer token).
         @ParameterizedTest
         @ValueSource(strings = {"", "Bearer not-a-valid-token"})
         void previewIsPublicAndIgnoresTheBearerToken(String authorization) {
@@ -258,9 +256,8 @@ class InvitationsControllerTest {
     @Nested
     class Create {
 
-        // AC-1
         @Test
-        void createsAnInvitationAndReturnsItsLinkOnce() {
+        void createsAnInvitationAndReturnsItsLink() {
             given(administration.create("ivan@example.com", List.of(Role.MENTOR), false))
                     .willReturn(issued());
 
@@ -284,7 +281,7 @@ class InvitationsControllerTest {
                     """.formatted(TOKEN));
         }
 
-        // AC-2: the flag reaches the service; absent and false mean no email.
+        // The flag reaches the service; absent and false mean no email.
         @Test
         void passesTheEmailFlagToTheService() {
             given(administration.create(any(), any(), anyBoolean())).willReturn(issued());
@@ -301,7 +298,7 @@ class InvitationsControllerTest {
             then(administration).should(times(2)).create("ivan@example.com", List.of(Role.MENTOR), false);
         }
 
-        // AC-2, AC-16: 201 as today, the link, and the queued email without finishedAt.
+        // 201 as today, the link, and the queued email without finishedAt.
         @Test
         void responseCarriesTheQueuedEmail() {
             given(administration.create("ivan@example.com", List.of(Role.MENTOR), true))
@@ -323,7 +320,6 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.invitation.lastEmail.finishedAt");
         }
 
-        // AC-1, AC-6
         @Test
         void unavailableEmailIsAConflict() {
             given(administration.create(any(), any(), anyBoolean()))
@@ -347,7 +343,7 @@ class InvitationsControllerTest {
             verifyNoInteractions(administration);
         }
 
-        // AC-2: the service reports a null role together with the email's violations.
+        // The service reports a null role together with the email's violations.
         @Test
         void nullRoleIsPassedToTheService() {
             given(administration.create("ivan@example.com", Arrays.asList((Role) null), false))
@@ -362,7 +358,6 @@ class InvitationsControllerTest {
             assertValidationProblem(result, "roles");
         }
 
-        // AC-2
         @Test
         void unknownRoleAndMissingFieldsAreValidationProblems() {
             assertValidationProblem(
@@ -376,7 +371,6 @@ class InvitationsControllerTest {
             verifyNoInteractions(administration);
         }
 
-        // AC-3
         @Test
         void activeUserConflictCarriesTheUserId() {
             given(administration.create(any(), any(), anyBoolean()))
@@ -392,7 +386,6 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.invitationId");
         }
 
-        // AC-3
         @Test
         void existingInvitationConflictCarriesTheInvitationId() {
             given(administration.create(any(), any(), anyBoolean()))
@@ -412,7 +405,6 @@ class InvitationsControllerTest {
     @Nested
     class ListInvitations {
 
-        // AC-4
         @Test
         void returnsAPageWithDefaultsAndOmitsInapplicableProperties() {
             InvitationDetails accepted = new InvitationDetails(
@@ -455,7 +447,7 @@ class InvitationsControllerTest {
             then(administration).should().list(new InvitationQuery(null, null, 0, 25));
         }
 
-        // AC-16: every status maps; finishedAt only when present.
+        // Every status maps; finishedAt only when present.
         @Test
         void itemsCarryTheLatestEmail() {
             Instant finished = Instant.parse("2026-10-12T09:01:00Z");
@@ -491,7 +483,6 @@ class InvitationsControllerTest {
             assertThat(result).bodyText().doesNotContain("failure");
         }
 
-        // AC-4
         @Test
         void passesSearchFiltersAndPage() {
             given(administration.list(any())).willReturn(new ResultPage<>(List.of(), 2, 100, 0));
@@ -505,7 +496,6 @@ class InvitationsControllerTest {
             then(administration).should().list(new InvitationQuery(" ivan ", InvitationStatus.EXPIRED, 2, 100));
         }
 
-        // AC-4
         @Test
         void invalidParametersAreValidationProblemsNamingTheParameter() {
             assertValidationProblem(
@@ -525,7 +515,6 @@ class InvitationsControllerTest {
     @Nested
     class RevokeAndReissue {
 
-        // AC-6
         @Test
         void revokesAndShowsWhoAndWhen() {
             InvitationDetails revoked = new InvitationDetails(
@@ -552,7 +541,6 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.acceptedAt");
         }
 
-        // AC-6
         @Test
         void closedInvitationIsAConflictAndUnknownIdIsNotFound() {
             given(administration.revoke(INVITATION_ID))
@@ -569,7 +557,6 @@ class InvitationsControllerTest {
                     Problems.NOT_FOUND);
         }
 
-        // AC-7
         @Test
         void reissuesTheLink() {
             given(administration.reissueLink(INVITATION_ID, false)).willReturn(issued());
@@ -582,7 +569,7 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().extractingPath("$.invitation.id").isEqualTo(INVITATION_ID.toString());
         }
 
-        // AC-3: with the flag, without a body and with an empty object.
+        // With the flag, without a body and with an empty object.
         @Test
         void reissueWithTheEmailFlag() {
             given(administration.reissueLink(any(), anyBoolean())).willReturn(issued());
@@ -597,7 +584,6 @@ class InvitationsControllerTest {
             then(administration).should(times(3)).reissueLink(INVITATION_ID, false);
         }
 
-        // AC-3
         @Test
         void reissueResponseCarriesTheQueuedEmail() {
             given(administration.reissueLink(INVITATION_ID, true))
@@ -618,7 +604,6 @@ class InvitationsControllerTest {
                     .isEqualTo("QUEUED");
         }
 
-        // AC-1, AC-6
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#reissueConflicts")
         void reissueConflictsAreProblemsWithTheirType(URI type) {
@@ -657,7 +642,6 @@ class InvitationsControllerTest {
 
         static final String PATH = "/api/v1/invitations/" + INVITATION_ID + "/link";
 
-        // AC-1, AC-4
         @Test
         void returnsTheLinkWithoutCaching() {
             given(administration.link(INVITATION_ID))
@@ -677,7 +661,6 @@ class InvitationsControllerTest {
                     """.formatted(TOKEN));
         }
 
-        // AC-2
         @Test
         void unknownInvitationIsNotFound() {
             given(administration.link(INVITATION_ID)).willThrow(new NotFoundException());
@@ -685,7 +668,6 @@ class InvitationsControllerTest {
             assertProblem(send(HttpMethod.GET, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
         }
 
-        // AC-2
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#unavailableLinkTypes")
         void closedOrExpiredInvitationIsAConflict(URI type) {
@@ -712,7 +694,7 @@ class InvitationsControllerTest {
 
         static final String PATH = "/api/v1/invitations/" + INVITATION_ID + "/email";
 
-        // AC-4: 202 with the invitation, which carries the queued email; no link, no token.
+        // 202 with the invitation, which carries the queued email; no link, no token.
         @Test
         void answersAcceptedWithTheInvitation() {
             given(administration.sendEmail(INVITATION_ID)).willReturn(pending(queued()));
@@ -730,7 +712,6 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.lastEmail.finishedAt");
         }
 
-        // AC-4
         @Test
         void unknownInvitationIsNotFound() {
             given(administration.sendEmail(INVITATION_ID)).willThrow(new NotFoundException());
@@ -738,7 +719,6 @@ class InvitationsControllerTest {
             assertProblem(send(HttpMethod.POST, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
         }
 
-        // AC-4, AC-5, AC-1
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#sendEmailConflicts")
         void conflictsAreProblemsWithTheirType(URI type) {
@@ -768,7 +748,6 @@ class InvitationsControllerTest {
     @Nested
     class PreviewAndAccept {
 
-        // AC-8
         @Test
         void previewReturnsTheEmailAndExpiry() {
             given(acceptance.preview(TOKEN)).willReturn(new PreviewedInvitation("ivan@example.com", EXPIRES_AT));
@@ -784,7 +763,6 @@ class InvitationsControllerTest {
                     """);
         }
 
-        // AC-9
         @ParameterizedTest
         @ValueSource(strings = {"/api/v1/invitations/preview", "/api/v1/invitations/accept"})
         void invalidInvitationIsANotFoundProblemWithItsOwnType(String uri) {
@@ -813,7 +791,6 @@ class InvitationsControllerTest {
             verifyNoInteractions(acceptance);
         }
 
-        // AC-12, AC-13
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#acceptConflicts")
         void acceptConflictsAreProblemsWithTheirType(URI type) {
@@ -825,7 +802,6 @@ class InvitationsControllerTest {
             assertProblem(result, HttpStatus.CONFLICT, type);
         }
 
-        // AC-10
         @Test
         void acceptReturnsMe() {
             given(acceptance.accept(TOKEN)).willReturn(activeMe());

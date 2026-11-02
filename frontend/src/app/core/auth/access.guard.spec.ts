@@ -83,21 +83,21 @@ describe('accessGuard', () => {
       '/access/invitation-only',
     ],
   ] as [string, Me, string, boolean | string][])(
-    'routes %s',
+    'IDN-10.2 routes %s',
     async (_name, me, access, expected) => {
       currentUser.load.mockResolvedValue(me);
       expect(await run(access)).toBe(expected);
     },
   );
 
-  it('reloads the caller on every navigation', async () => {
+  it('IDN-10.3 reloads the caller on every navigation', async () => {
     currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
     await run('full');
     await run('full');
     expect(currentUser.load).toHaveBeenCalledTimes(2);
   });
 
-  it('returns to the route the visitor opened after sign-in (AC-1)', async () => {
+  it('IDN-9.1 returns to the route the visitor opened after sign-in', async () => {
     auth.ensureSignedIn.mockResolvedValue({ kind: 'signed-in', returnUrl: '/students' });
     currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
     expect(await run('full', '/?code=a&state=b')).toBe('/students');
@@ -208,7 +208,7 @@ describe('accessGuard', () => {
       expect(currentUser.load).toHaveBeenCalledTimes(1);
     });
 
-    it('does not change the address when the load fails', async () => {
+    it('PLT-8.2 does not change the address when the load fails', async () => {
       currentUser.load.mockRejectedValue(new HttpErrorResponse({ status: 500 }));
       const harness = await RouterTestingHarness.create();
       await harness.navigateByUrl('/students');

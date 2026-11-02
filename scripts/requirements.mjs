@@ -162,12 +162,11 @@ function loadRequirements(root) {
   const errors = [];
   const empty = { capabilities: new Map(), scenarios: new Map(), knownIds: new Set(), errors };
   const directory = path.join(root, REQUIREMENTS_DIR);
-  if (!existsSync(directory)) return empty;
-  const files = readdirSync(directory).filter((name) => name.endsWith('.md') && name !== 'README.md');
   if (!existsSync(path.join(root, INDEX_FILE))) {
-    if (files.length) errors.push(`${INDEX_FILE}: the index is missing`);
+    errors.push(`${INDEX_FILE}: the index is missing`);
     return empty;
   }
+  const files = readdirSync(directory).filter((name) => name.endsWith('.md') && name !== 'README.md');
 
   const { capabilities, seenFiles } = parseIndex(root, errors);
   for (const file of files) {

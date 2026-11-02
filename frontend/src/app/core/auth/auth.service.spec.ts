@@ -40,7 +40,7 @@ describe('AuthService', () => {
     oidc.preloadAuthWellKnownDocument.mockReturnValue(of({}));
   });
 
-  it('starts sign-in for a visitor and remembers the route (AC-1)', async () => {
+  it('starts sign-in for a visitor and remembers the route', async () => {
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     const result = await create().ensureSignedIn('/students');
     expect(result).toEqual({ kind: 'redirecting' });
@@ -108,7 +108,7 @@ describe('AuthService', () => {
     expect(sessionStorage.getItem('mentorhub.invitation-token')).toBe('tok');
   });
 
-  it('returns the remembered route after the sign-in callback (AC-1)', async () => {
+  it('returns the remembered route after the sign-in callback', async () => {
     sessionStorage.setItem('mentorhub.return-url', '/students');
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: true }));
     const result = await create().ensureSignedIn('/?code=abc&state=xyz');
@@ -126,7 +126,7 @@ describe('AuthService', () => {
     expect(oidc.checkAuth).toHaveBeenCalledOnce();
   });
 
-  it('restarts sign-in once when the callback has no session (opened in another tab)', async () => {
+  it('IDN-9.2 restarts sign-in once when the callback has no session (opened in another tab)', async () => {
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     const result = await create().ensureSignedIn('/?code=abc&state=xyz');
     expect(result).toEqual({ kind: 'redirecting' });
@@ -141,7 +141,7 @@ describe('AuthService', () => {
     expect(oidc.authorize).toHaveBeenCalledOnce();
   });
 
-  it('restarts sign-in once when the identity provider reports an expired authentication', async () => {
+  it('IDN-9.2 restarts sign-in once when the identity provider reports an expired authentication', async () => {
     sessionStorage.setItem('mentorhub.return-url', '/students');
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     const url = '/?error=temporarily_unavailable&error_description=authentication_expired&state=x';
@@ -160,7 +160,7 @@ describe('AuthService', () => {
     expect(sessionStorage.getItem('mentorhub.invitation-auto-accept')).toBe('1');
   });
 
-  it('fails when the retried callback fails again, and allows a later retry', async () => {
+  it('IDN-9.3 fails when the retried callback fails again, and allows a later retry', async () => {
     sessionStorage.setItem('mentorhub.callback-retry', '1');
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     const result = await create().ensureSignedIn('/?error=temporarily_unavailable&state=x');
@@ -185,7 +185,7 @@ describe('AuthService', () => {
     expect(sessionStorage.getItem('mentorhub.callback-retry')).toBeNull();
   });
 
-  it('does not retry when the user cancelled sign-in', async () => {
+  it('IDN-9.3 does not retry when the user cancelled sign-in', async () => {
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     const result = await create().ensureSignedIn('/?error=access_denied&state=xyz');
     expect(result).toEqual({ kind: 'failed' });
@@ -204,7 +204,7 @@ describe('AuthService', () => {
     expect(await create().ensureSignedIn('/')).toEqual({ kind: 'failed' });
   });
 
-  it('fails instead of waiting forever when discovery cannot be loaded', async () => {
+  it('PLT-8.1 fails instead of waiting forever when discovery cannot be loaded', async () => {
     oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     oidc.preloadAuthWellKnownDocument.mockReturnValue(throwError(() => new Error('down')));
     const service = create();
@@ -221,12 +221,18 @@ describe('AuthService', () => {
     expect(oidc.authorize).not.toHaveBeenCalled();
   });
 
-  it('signs in again once on 401, keeping the route, then shows the startup error (AC-28)', async () => {
+  it('IDN-9.4 signs in again once on 401, keeping the route', async () => {
     const service = create();
     service.handleUnauthorized();
     await vi.waitFor(() => expect(oidc.authorize).toHaveBeenCalledOnce());
     expect(oidc.authorize).toHaveBeenCalledOnce();
     expect(sessionStorage.getItem('mentorhub.return-url')).toBe('/students');
+  });
+
+  it('IDN-9.5 shows the startup error on a 401 right after a fresh sign-in', async () => {
+    const service = create();
+    service.handleUnauthorized();
+    await vi.waitFor(() => expect(oidc.authorize).toHaveBeenCalledOnce());
     service.redirecting.set(false); // the page was reloaded after the redirect
 
     service.handleUnauthorized();
@@ -245,7 +251,7 @@ describe('AuthService', () => {
     expect(service.startupError()).toBe(false);
   });
 
-  it('signs out at the identity provider (AC-8)', () => {
+  it('signs out at the identity provider', () => {
     const assign = vi.fn();
     vi.spyOn(globalThis, 'location', 'get').mockReturnValue({ assign } as unknown as Location);
     oidc.logoff.mockImplementation((_id, options) => {
@@ -268,7 +274,7 @@ describe('AuthService', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
 
-  it('ends the local session and shows the error when logoff fails', () => {
+  it('IDN-9.7 ends the local session and shows the error when logoff fails', () => {
     oidc.logoff.mockReturnValue(throwError(() => new Error('down')));
     const service = create();
     service.signOut();

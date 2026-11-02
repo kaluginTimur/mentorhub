@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A user as administrators see it (AC-4). The reason is present only when disabled, the comment only when disabled
+ * A user as administrators see it. The reason is present only when disabled, the comment only when disabled
  * and set. Roles are the known ones, in enum order.
  */
 public record ManagedUser(

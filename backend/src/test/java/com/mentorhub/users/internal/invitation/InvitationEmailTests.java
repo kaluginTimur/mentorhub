@@ -18,6 +18,7 @@ import com.mentorhub.support.Mailpit;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.InvitationAuditAction;
+import com.mentorhub.users.internal.domain.InvitationEmailFailure;
 import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.InvitationEmailStatus;
 import com.mentorhub.users.internal.domain.InvitationStatus;
@@ -47,6 +48,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,8 +71,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Spec invitation-emails with a mail server (Mailpit): requesting emails (AC-2 to AC-6) and delivering them after the
- * commit (AC-8 to AC-15). Data is committed; each test waits until the event publication registry is empty, which also
+ * Invitation emails with a mail server (Mailpit): requesting emails and delivering them after the commit. Data is committed; each test waits until the event publication registry is empty, which also
  * shows that completed publications are deleted.
  */
 @Import(TestcontainersConfiguration.class)
@@ -159,7 +160,6 @@ class InvitationEmailTests {
     @Nested
     class Requesting {
 
-        // AC-2: stored, audited, queued in the response, with the link as before; then sent (AC-8).
         @Test
         void creatingWithAnEmailQueuesItInTheSameTransaction() {
             IssuedInvitation issued = service.create("ivan@x.test", Set.of(Role.MENTOR), true);
@@ -193,7 +193,6 @@ class InvitationEmailTests {
                             assertThat(message.text()).contains(issued.link().toString()));
         }
 
-        // AC-2
         @Test
         void creatingWithoutAnEmailRequestsNone() {
             IssuedInvitation issued = service.create("ivan@x.test", Set.of(), false);
@@ -204,7 +203,23 @@ class InvitationEmailTests {
             verify(mail, after(300).never()).send(any());
         }
 
-        // AC-2: a failed create requests no email.
+        @Test
+        @DisplayName("AUD-5.1 The invitation token is not in any entry")
+        void noEntryHoldsTheTokenOrTheLink() {
+            IssuedInvitation issued = service.create("ivan@x.test", Set.of(Role.MENTOR), true);
+            UUID invitation = issued.invitation().id();
+            awaitLatestStatus(invitation, InvitationEmailStatus.SENT);
+            IssuedInvitation reissued = service.reissueLink(invitation, true);
+            awaitLatestStatus(invitation, InvitationEmailStatus.SENT);
+
+            assertThat(data.auditEntries(invitation)).hasSizeGreaterThanOrEqualTo(4);
+            String details = data.allAuditDetails();
+            assertThat(details).doesNotContain(token(issued.link()));
+            assertThat(details).doesNotContain(token(reissued.link()));
+            assertThat(details).doesNotContain(issued.link().toString());
+            assertThat(details).doesNotContain(reissued.link().toString());
+        }
+
         @Test
         void aFailedCreateRequestsNoEmail() {
             create("ivan@x.test");
@@ -214,7 +229,6 @@ class InvitationEmailTests {
             assertThat(data.count("invitation_emails")).isZero();
         }
 
-        // AC-3: the email carries the new link.
         @Test
         void aNewLinkWithAnEmailSendsTheNewLink() {
             UUID invitation = create("ivan@x.test");
@@ -241,7 +255,6 @@ class InvitationEmailTests {
                             assertThat(message.text()).contains(reissued.link().toString()));
         }
 
-        // AC-3: the link is issued, no second request or audit entry, and the queued request is returned.
         @Test
         void aNewLinkWithAnEmailWhileOneIsQueuedKeepsTheQueuedOne() {
             UUID invitation = create("ivan@x.test");
@@ -260,7 +273,6 @@ class InvitationEmailTests {
                             InvitationAuditAction.INVITATION_LINK_REISSUED.name());
         }
 
-        // AC-4: the current link again, token and expiry unchanged; any administrator, not only the inviter.
         @Test
         void sendingAnEmailSendsTheCurrentLink() {
             IssuedInvitation created = service.create("ivan@x.test", Set.of(), false);
@@ -289,8 +301,8 @@ class InvitationEmailTests {
                             assertThat(message.text()).contains(created.link().toString()));
         }
 
-        // AC-4, AC-6: the invitation's errors come before email-queued, and nothing is stored.
         @Test
+        @DisplayName("IEM-4.2 An invitation that is not pending is refused")
         void sendingRefusesUnknownClosedAndExpiredInvitations() {
             assertThatThrownBy(() -> service.sendEmail(UUID.randomUUID())).isInstanceOf(NotFoundException.class);
             UUID accepted = queuedInvitation("accepted@x.test");
@@ -308,7 +320,6 @@ class InvitationEmailTests {
                     .isZero();
         }
 
-        // AC-5: nothing is stored.
         @Test
         void sendingWhileAnEmailIsQueuedIsRefused() {
             UUID invitation = queuedInvitation("ivan@x.test");
@@ -320,9 +331,9 @@ class InvitationEmailTests {
                     .isZero();
         }
 
-        // AC-5: two parallel calls end in one request and one email-queued, never a 500. Repeated because a race shows
-        // only in some runs; the send is held so the first request stays queued.
+        // Repeated because a race shows only in some runs; the send is held so the first request stays queued.
         @ParameterizedTest
+        @DisplayName("IEM-4.4 Two requests at the same moment queue one email")
         @ValueSource(ints = {1, 2, 3, 4, 5})
         void parallelSendsQueueOneEmail(int run) throws Exception {
             UUID invitation = create("ivan" + run + "@x.test");
@@ -347,8 +358,8 @@ class InvitationEmailTests {
     @Nested
     class Delivering {
 
-        // AC-8, AC-14: one plain text email from the sender to the invitation's address; the request becomes SENT.
         @Test
+        @DisplayName("IEM-7.1 The sender, the recipient and the body")
         void sendsTheInvitationEmailAndMarksItSent() {
             IssuedInvitation issued = service.create("Ivan.Sidorov@x.test", Set.of(), true);
             UUID invitation = issued.invitation().id();
@@ -383,7 +394,6 @@ class InvitationEmailTests {
             verify(mail, times(1)).send(any());
         }
 
-        // AC-9
         @Test
         void aRolledBackRequestSendsNothing() {
             transaction.executeWithoutResult(status -> {
@@ -396,8 +406,8 @@ class InvitationEmailTests {
             assertThat(data.count("event_publication")).isZero();
         }
 
-        // AC-10: an invitation that is no longer pending is skipped.
         @ParameterizedTest
+        @DisplayName("IEM-6.3 An invitation that is no longer pending is skipped")
         @ValueSource(strings = {"ACCEPTED", "REVOKED", "EXPIRED"})
         void skipsAnInvitationThatIsNoLongerPending(InvitationStatus status) {
             UUID invitation = create("ivan@x.test");
@@ -413,10 +423,16 @@ class InvitationEmailTests {
             awaitLatestStatus(invitation, InvitationEmailStatus.SKIPPED);
             verify(mail, never()).send(any());
             assertThat(mailpit.awaitMessages(0)).isEmpty();
+            assertThat(service.list(new InvitationQuery(null, null, 0, 25))
+                            .items()
+                            .getFirst()
+                            .lastEmail()
+                            .finishedAt())
+                    .isNotNull();
         }
 
-        // AC-10: the link that is current when the email is built.
         @Test
+        @DisplayName("IEM-6.1 A queued email is sent with the current link and recorded")
         void sendsTheLinkThatIsCurrentWhenTheEmailIsBuilt() {
             UUID invitation = create("ivan@x.test");
             UUID request = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -425,14 +441,19 @@ class InvitationEmailTests {
             publish(request);
 
             awaitLatestStatus(invitation, InvitationEmailStatus.SENT);
-            assertThat(mailpit.awaitMessages(1))
-                    .singleElement()
-                    .satisfies(message -> assertThat(message.text()).contains(newLink.toString()));
+            assertThat(mailpit.awaitMessages(1)).singleElement().satisfies(message -> {
+                assertThat(message.to()).containsExactly("ivan@x.test");
+                assertThat(message.text()).contains(newLink.toString());
+            });
+            InvitationDetails details =
+                    service.list(new InvitationQuery(null, null, 0, 25)).items().getFirst();
+            assertThat(details.lastEmail().finishedAt()).isNotNull();
+            assertThat(details.status()).isEqualTo(InvitationStatus.PENDING);
+            assertThat(data.storedToken(invitation)).isEqualTo(token(newLink));
         }
 
-        // AC-11, AC-15: FAILED with a reason without the token, a warning without the token or the body, no retry,
-        // and the invitation is unchanged.
         @Test
+        @DisplayName("IEM-6.4 A refused email is recorded as failed and not sent again")
         void aRefusedMessageIsMarkedFailed(CapturedOutput output) {
             doAnswer(invocation -> {
                         MailMessage message = invocation.getArgument(0);
@@ -462,6 +483,12 @@ class InvitationEmailTests {
                     .doesNotContain(token)
                     .doesNotContain("Open this link");
             verify(mail, after(500).times(1)).send(any());
+            assertThat(service.list(new InvitationQuery(null, null, 0, 25))
+                            .items()
+                            .getFirst()
+                            .lastEmail()
+                            .finishedAt())
+                    .isNotNull();
             assertThat(data.storedToken(invitation)).isEqualTo(token);
             assertThat(service.list(new InvitationQuery(null, null, 0, 25))
                             .items()
@@ -470,16 +497,16 @@ class InvitationEmailTests {
                     .isEqualTo(InvitationStatus.PENDING);
         }
 
-        // AC-12: a publication replayed after the outcome was recorded sends nothing.
         @ParameterizedTest
-        @ValueSource(strings = {"SENT", "SKIPPED"})
+        @DisplayName("IEM-6.5 An email left unsent by a stop is sent once after the next start")
+        @ValueSource(strings = {"SENT", "FAILED", "SKIPPED"})
         void aRequestThatIsNoLongerQueuedIsNeverSentAgain(InvitationEmailStatus outcome) {
             UUID invitation = create("ivan@x.test");
             UUID request = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
-            if (outcome == InvitationEmailStatus.SENT) {
-                emails.markSent(request);
-            } else {
-                emails.markSkipped(request);
+            switch (outcome) {
+                case SENT -> emails.markSent(request);
+                case FAILED -> emails.markFailed(request, InvitationEmailFailure.of("refused"));
+                default -> emails.markSkipped(request);
             }
 
             publish(request);
@@ -489,9 +516,8 @@ class InvitationEmailTests {
             assertThat(latestStatus(invitation)).isEqualTo(outcome);
         }
 
-        // AC-13: an unexpected failure leaves the request queued until stale publications are resubmitted; a recent
-        // publication is not resubmitted, so a send in progress does not start twice.
         @Test
+        @DisplayName("IEM-6.6 An unexpected failure is processed again")
         void anUnexpectedFailureIsProcessedAgainWhenStale() {
             doThrow(new IllegalStateException("database unavailable"))
                     .doCallRealMethod()
@@ -513,9 +539,36 @@ class InvitationEmailTests {
 
             awaitLatestStatus(invitation, InvitationEmailStatus.SENT);
             assertThat(mailpit.awaitMessages(1)).hasSize(1);
+            assertThat(service.sendEmail(invitation).lastEmail().status()).isEqualTo(InvitationEmailStatus.QUEUED);
+            awaitLatestStatus(invitation, InvitationEmailStatus.SENT);
         }
 
-        // AC-15: the token is in no log line, audit detail, request row or registry row.
+        @Test
+        @DisplayName("IEM-8.1 Sending and failing leave no token in the logs")
+        void sendingAndFailingLeaveNoTokenInTheLogs(CapturedOutput output) {
+            doAnswer(invocation -> {
+                        MailMessage message = invocation.getArgument(0);
+                        if (message.to().equals("refused@x.test")) {
+                            throw new MailDeliveryException(
+                                    "550 rejected " + link(message), new IllegalStateException("refused"));
+                        }
+                        return invocation.callRealMethod();
+                    })
+                    .when(mail)
+                    .send(any());
+
+            IssuedInvitation sent = service.create("sent@x.test", Set.of(), true);
+            IssuedInvitation refused = service.create("refused@x.test", Set.of(), true);
+
+            awaitLatestStatus(sent.invitation().id(), InvitationEmailStatus.SENT);
+            awaitLatestStatus(refused.invitation().id(), InvitationEmailStatus.FAILED);
+            assertThat(output.getAll())
+                    .doesNotContain(token(sent.link()))
+                    .doesNotContain(token(refused.link()))
+                    .doesNotContain(sent.link().toString())
+                    .doesNotContain(refused.link().toString());
+        }
+
         @Test
         void theTokenIsStoredNowhereElse(CapturedOutput output) {
             CountDownLatch release = holdSends();

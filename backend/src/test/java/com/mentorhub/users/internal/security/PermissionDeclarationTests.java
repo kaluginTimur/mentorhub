@@ -19,7 +19,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-/** AC-18: every {@code /api/v1/**} operation declares a permission or that it needs none, and exactly one of them. */
+/** Every {@code /api/v1/**} operation declares a permission or that it needs none, and exactly one of them. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})

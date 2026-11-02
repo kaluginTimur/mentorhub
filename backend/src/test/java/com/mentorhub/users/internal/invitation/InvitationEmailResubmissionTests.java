@@ -33,7 +33,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Spec invitation-emails, AC-13 and AC-12 ("never sent again"): the stale resubmission picks up a publication whose
+ * The stale resubmission picks up a publication whose
  * send is still in progress (a backlog makes it look stale), and that must not send the email a second time. It
  * resubmits only invitation email publications.
  */

@@ -29,6 +29,7 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -84,7 +85,6 @@ class InvitationAcceptanceServiceTests {
     @Nested
     class Previewing {
 
-        // AC-8
         @Test
         void showsTheEmailAndExpiryOfAValidLink() {
             Invited invited = invite("Ivan@x.test", Role.MENTOR);
@@ -97,9 +97,9 @@ class InvitationAcceptanceServiceTests {
                             "Ivan@x.test", invited.details().expiresAt()));
         }
 
-        // AC-9
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.invitation.InvitationAcceptanceServiceTests#invalidTokens")
+        @DisplayName("INV-10.2 Every invalid link is previewed alike")
         void anInvalidLinkIsTheSameNotFoundInEveryCase(Function<InvitationAcceptanceServiceTests, String> token) {
             String value = token.apply(InvitationAcceptanceServiceTests.this);
             SecurityContextHolder.clearContext();
@@ -111,7 +111,6 @@ class InvitationAcceptanceServiceTests {
     @Nested
     class Accepting {
 
-        // AC-10, AC-16
         @Test
         void createsTheUserLinksTheIdentityAndAssignsTheRoles() {
             Invited invited = invite("ivan@x.test", Role.MENTOR, Role.STUDENT);
@@ -145,10 +144,17 @@ class InvitationAcceptanceServiceTests {
             assertThat(data.allAuditDetails()).doesNotContain(invited.token());
         }
 
-        // AC-11: the roles become exactly the invitation's known roles; unknown stored roles stay.
         @Test
+        @DisplayName("INV-12.1 A disabled user is reactivated with the roles of the invitation")
         void reactivatesADisabledUserWithExactlyTheInvitationsRoles() {
             UUID former = users.create("ivan@x.test", UserStatus.DISABLED, Role.ADMIN, Role.STUDENT);
+            jdbc.sql("update users set disabled_comment = 'Left the program' where id = :id")
+                    .param("id", former)
+                    .update();
+            jdbc.sql("""
+                            insert into audit_log (actor_user_id, action, subject_type, subject_id, details)
+                            values (:actor, 'USER_DISABLED', 'USER', :subject, '{}'::jsonb)
+                            """).param("actor", admin).param("subject", former).update();
             jdbc.sql("insert into roles (name) values ('AUDITOR') on conflict do nothing")
                     .update();
             users.assignStoredRole(former, "AUDITOR");
@@ -162,18 +168,27 @@ class InvitationAcceptanceServiceTests {
             assertThat(me.user().id()).isEqualTo(former);
             assertThat(users.status(former)).isEqualTo("ACTIVE");
             assertThat(disableReason(former)).isEmpty();
+            assertThat(jdbc.sql("select disabled_comment from users where id = :id")
+                            .param("id", former)
+                            .query(String.class)
+                            .optional())
+                    .isEmpty();
             assertThat(users.roles(former)).containsExactly("AUDITOR", "MENTOR", "STUDENT");
             // The profile stays unchanged: names from the token are not applied.
             assertThat(me.user().firstName()).isEqualTo("Anna");
             assertThat(linkedUser(SUBJECT)).isEqualTo(former);
             assertAccepted(invited, former);
             assertThat(data.auditEntries(former))
+                    .extracting(AuditRow::action)
+                    .containsExactly("USER_DISABLED", "USER_INVITATION_ACCEPTED");
+            assertThat(data.auditEntries(former))
                     .extracting(AuditRow::details)
-                    .containsExactly(acceptance(invited, false, true, true, List.of("MENTOR"), List.of("ADMIN")));
+                    .contains(acceptance(invited, false, true, true, List.of("MENTOR"), List.of("ADMIN")));
         }
 
-        // AC-11: a disabled caller whose identity is already linked to that user.
+        // A disabled caller whose identity is already linked to that user.
         @Test
+        @DisplayName("INV-12.2 An identity that was linked already is not linked twice")
         void reactivatesTheDisabledCallerWithoutLinkingAgain() {
             UUID former = users.create("ivan@x.test", UserStatus.DISABLED, Role.STUDENT);
             users.link(former, SUBJECT);
@@ -190,8 +205,9 @@ class InvitationAcceptanceServiceTests {
                     .containsExactly(acceptance(invited, false, false, true, List.of(), List.of("STUDENT")));
         }
 
-        // AC-11: a user who became active since the invitation was created only gains roles.
+        // A user who became active since the invitation was created only gains roles.
         @Test
+        @DisplayName("INV-12.3 An active user only gains roles")
         void addsTheRolesToAUserWhoBecameActive() {
             UUID user = users.create("ivan@x.test", UserStatus.DISABLED, Role.ADMIN);
             Invited invited = invite("ivan@x.test", Role.MENTOR);
@@ -210,7 +226,7 @@ class InvitationAcceptanceServiceTests {
                     .containsExactly(acceptance(invited, false, true, false, List.of("MENTOR"), List.of()));
         }
 
-        // AC-17: a stored role the code does not know is skipped on acceptance.
+        // A stored role the code does not know is skipped on acceptance.
         @Test
         void skipsStoredRolesTheCodeDoesNotKnow() {
             Invited invited = invite("ivan@x.test", Role.MENTOR);
@@ -226,7 +242,35 @@ class InvitationAcceptanceServiceTests {
                     .containsExactly(acceptance(invited, true, true, false, List.of("MENTOR"), List.of()));
         }
 
-        // AC-12
+        @Test
+        @DisplayName("INV-11.2 The email is compared ignoring case, and an unknown stored role is skipped")
+        void emailIsComparedIgnoringCaseAndUnknownStoredRoleIsSkipped() {
+            Invited invited = invite("Anna@Example.com", Role.STUDENT);
+            data.addStoredRole(invited.details().id(), "AUDITOR");
+            signIn(AccessStatus.NOT_INVITED, null, "anna@example.com", true);
+
+            service.accept(invited.token());
+
+            UUID userId = userId("anna@example.com");
+            assertAccepted(invited, userId);
+            assertThat(users.roles(userId)).containsExactly("STUDENT");
+        }
+
+        @Test
+        @DisplayName("INV-12.2 A second identity is linked to the user")
+        void aSecondIdentityIsLinkedToTheUser() {
+            UUID user = users.create("ivan@x.test", UserStatus.DISABLED);
+            users.link(user, "first-subject");
+            Invited invited = invite("ivan@x.test", Role.MENTOR);
+            signIn(AccessStatus.NOT_INVITED, null, "ivan@x.test", true);
+
+            service.accept(invited.token());
+
+            assertThat(linkedUser("first-subject")).isEqualTo(user);
+            assertThat(linkedUser(SUBJECT)).isEqualTo(user);
+            assertThat(users.count("user_identities")).isEqualTo(2);
+        }
+
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.invitation.InvitationAcceptanceServiceTests#mismatchedEmails")
         void refusesAnUnverifiedOrDifferentEmail(@Nullable String email, boolean verified) {
@@ -237,8 +281,8 @@ class InvitationAcceptanceServiceTests {
             assertNothingChanged(invited);
         }
 
-        // AC-13
         @Test
+        @DisplayName("INV-13.2 An identity linked to another user is refused")
         void refusesAnIdentityLinkedToAnotherUser(CapturedOutput output) {
             UUID invitedUser = users.create("ivan@x.test", UserStatus.DISABLED);
             UUID other = users.create("other@x.test", UserStatus.ACTIVE);
@@ -253,8 +297,9 @@ class InvitationAcceptanceServiceTests {
                     .contains("the identity is linked to user " + other + ", not to user " + invitedUser);
         }
 
-        // AC-13: when no user has the invited email, a linked identity is linked elsewhere too.
+        // When no user has the invited email, a linked identity is linked elsewhere too.
         @Test
+        @DisplayName("INV-13.2 An identity linked to a user while no user has the email is refused")
         void refusesALinkedIdentityWhenNoUserHasTheEmail(CapturedOutput output) {
             UUID other = users.create("other@x.test", UserStatus.ACTIVE);
             users.link(other, SUBJECT);
@@ -268,8 +313,8 @@ class InvitationAcceptanceServiceTests {
                     .contains("the identity is linked to user " + other + ", and no user has the invited email");
         }
 
-        // AC-14
         @Test
+        @DisplayName("INV-14.1 The same user accepts again")
         void acceptingAgainAsTheSameUserChangesNothing() {
             Invited invited = invite("ivan@x.test", Role.MENTOR);
             signIn(AccessStatus.NOT_INVITED, null, "ivan@x.test", true);
@@ -285,7 +330,6 @@ class InvitationAcceptanceServiceTests {
             assertThat(users.roles(userId)).containsExactly("MENTOR");
         }
 
-        // AC-14 applies only to the user who accepted.
         @Test
         void anInvitationAcceptedByAnotherUserIsInvalid() {
             Invited invited = invite("ivan@x.test", Role.MENTOR);
@@ -300,9 +344,9 @@ class InvitationAcceptanceServiceTests {
             assertThat(users.count("user_identities")).isEqualTo(1);
         }
 
-        // AC-9
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.invitation.InvitationAcceptanceServiceTests#invalidTokens")
+        @DisplayName("INV-10.2 Every invalid link is accepted alike")
         void anInvalidLinkIsTheSameNotFoundInEveryCase(Function<InvitationAcceptanceServiceTests, String> token) {
             String value = token.apply(InvitationAcceptanceServiceTests.this);
             int invitations = data.count("invitations");
@@ -316,7 +360,7 @@ class InvitationAcceptanceServiceTests {
         }
     }
 
-    /** Tokens that are invalid for every reason AC-9 lists; each builds its own state. */
+    /** Tokens that are invalid for every reason; each builds its own state. */
     static Stream<Arguments> invalidTokens() {
         return Stream.of(
                 invalid("unknown", test -> InvitationTokens.newToken()),

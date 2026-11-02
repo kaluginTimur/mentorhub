@@ -8,7 +8,7 @@ import { CurrentUserService } from '../../core/auth/current-user.service';
 import { MyProfile } from './my-profile';
 import { meUser } from '../users/test-data';
 
-describe('MyProfile (AC-27)', () => {
+describe('MyProfile', () => {
   const api = { invoke: vi.fn() };
   const me = signal<{ status: string; user?: MeUser }>({ status: 'ACTIVE', user: meUser() });
   const currentUser = { me, user: () => me().user ?? null };
@@ -45,7 +45,7 @@ describe('MyProfile (AC-27)', () => {
     expect(el.textContent).not.toContain('Cancel');
   });
 
-  it('saves and updates the current user, so the toolbar name changes', async () => {
+  it('USR-18.2 saves and updates the current user, so the toolbar name changes', async () => {
     api.invoke.mockResolvedValue({
       status: 'ACTIVE',
       user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),
@@ -67,6 +67,11 @@ describe('MyProfile (AC-27)', () => {
     });
     expect(me().user?.firstName).toBe('Anya');
     expect(inputs[2].value).toBe('+77011234567');
+    expect(document.querySelector('mat-snack-bar-container')?.textContent).toContain(
+      'Profile saved',
+    );
+    expect(el.textContent).not.toContain('Student');
+    expect(el.textContent).not.toContain('Active');
   });
 
   it('shows the server error under the phone field', async () => {

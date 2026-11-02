@@ -9,6 +9,7 @@ import com.mentorhub.web.NotFoundException;
 import java.util.Map;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +40,13 @@ class PermissionProbeController {
     @GetMapping("/missing")
     @NoPermissionRequired
     public void missing() {
+        throw new NotFoundException();
+    }
+
+    /** The resource "restricted" exists but the caller may not access it; the service answers as for a missing one. */
+    @GetMapping("/resources/{name}")
+    @NoPermissionRequired
+    public void resource(@PathVariable String name) {
         throw new NotFoundException();
     }
 

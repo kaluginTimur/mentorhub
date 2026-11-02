@@ -70,10 +70,10 @@ The system SHALL create an invitation for a new email (decision 0003).
 ```bash
 node scripts/check-docs.mjs
 node --test scripts/requirements.test.mjs
-node scripts/requirements.mjs validate
+node scripts/requirements.mjs trace
 ```
 
-`scripts/requirements.mjs validate` fails (exit code 1) on requirements and an index that break the **Requirements** format, on duplicate ids and on references that do not resolve. `scripts/requirements.mjs trace` also fails on a scenario without a test and on a test that cites a missing scenario.
+`scripts/requirements.mjs trace` fails (exit code 1) on everything `validate` fails on, and on a scenario without a test and a test that cites a missing scenario. `scripts/requirements.mjs validate` alone fails on requirements and an index that are missing or break the **Requirements** format, on duplicate ids and on references that do not resolve.
 
 `scripts/check-docs.mjs` fails (exit code 1) on broken references:
 - a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` or `.claude/` that does not exist and is not gitignored;
@@ -91,7 +91,7 @@ node scripts/check-docs.mjs --since <ref>
 ## Change tracking
 
 - The last checked commit is stored locally in `.git/docs-check-base` (not versioned).
-- `.githooks/pre-commit` runs `scripts/requirements.mjs validate` and the check on every commit. The check covers all changes since the last checked commit plus the staged ones, and blocks the commit on broken references. `.githooks/post-commit` then records the new commit as checked, but only if pre-commit checked exactly this commit; a `git commit --no-verify` leaves the marker where it was, so the next check still covers it.
+- `.githooks/pre-commit` runs `scripts/requirements.mjs trace` and the check on every commit. The check covers all changes since the last checked commit plus the staged ones, and blocks the commit on broken references. `.githooks/post-commit` then records the new commit as checked, but only if pre-commit checked exactly this commit; a `git commit --no-verify` leaves the marker where it was, so the next check still covers it.
 - Enable the hooks once per clone: `git config core.hooksPath .githooks`. Git never enables repository hooks by itself.
 - To accept the current state without committing: `node scripts/check-docs.mjs --mark`.
 - The check follows references only. Whether a statement in a document is still true is part of the review (`/review`).

@@ -12,7 +12,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-// AC-18
 class ProfileRulesTests {
 
     private final ProfileRules rules = new ProfileRules(new UsersProperties("KZ"));

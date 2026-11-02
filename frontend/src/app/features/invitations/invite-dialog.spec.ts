@@ -53,7 +53,7 @@ describe('InviteDialog', () => {
       .find((c) => c.textContent?.trim() === label)
       ?.querySelector('input') as HTMLInputElement;
 
-  it('shows the fields, the roles and the hint (AC-19)', async () => {
+  it('shows the fields, the roles and the hint', async () => {
     const { root } = await open();
     expect(root.textContent).toContain('Invite a person');
     expect(root.querySelector('mat-label')?.textContent).toBe('Email');
@@ -72,7 +72,7 @@ describe('InviteDialog', () => {
     ['   ', 'Enter an email'],
     ['not-an-email', 'Enter a valid email address'],
     [`${'a'.repeat(250)}@example.com`, 'Use at most 254 characters'],
-  ])('validates the email %j on the client (AC-19)', async (value, message) => {
+  ])('INV-19.1 validates the email %j on the client', async (value, message) => {
     const { root } = await open();
     type(root, value);
     await submitForm(root);
@@ -80,7 +80,7 @@ describe('InviteDialog', () => {
     expect(api.invoke).not.toHaveBeenCalled();
   });
 
-  it('creates the invitation with the trimmed email and the chosen roles, then shows the link once (AC-19)', async () => {
+  it('INV-19.1 creates the invitation with the trimmed email and the chosen roles, then shows the link', async () => {
     api.invoke.mockResolvedValue(created({ email: 'ivan@example.com' }));
     const { root } = await open();
     type(root, '  ivan@example.com ');
@@ -101,15 +101,16 @@ describe('InviteDialog', () => {
       'Copy link',
     );
     expect(root.querySelector('mat-label')?.textContent).toBe('Invitation link');
+    expect(root.textContent).not.toContain('once');
   });
 
-  it('opens the link view directly for an issued link (AC-19)', async () => {
+  it('opens the link view directly for an issued link', async () => {
     const { root } = await open({ created: created() });
     expect(root.textContent).toContain('Invitation link');
     expect(root.querySelector('input[type=email]')).toBeNull();
   });
 
-  it('opens the copy view for a link fetched from the list (AC-8)', async () => {
+  it('opens the copy view for a link fetched from the list', async () => {
     const { root } = await open({
       copy: {
         link: 'http://localhost:4200/invite/Xf3abc',
@@ -124,7 +125,7 @@ describe('InviteDialog', () => {
     expect(root.textContent).toContain('Done');
   });
 
-  it('copies the link and confirms with a snackbar (AC-19)', async () => {
+  it('copies the link and confirms with a snackbar', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const { root } = await open({ created: created() });
@@ -135,7 +136,7 @@ describe('InviteDialog', () => {
     vi.unstubAllGlobals();
   });
 
-  it('selects the link when the clipboard is not available (AC-19)', async () => {
+  it('selects the link when the clipboard is not available', async () => {
     vi.stubGlobal('navigator', {});
     const { root } = await open({ created: created() });
     const field = root.querySelector('input[readonly]') as HTMLInputElement;
@@ -155,7 +156,7 @@ describe('InviteDialog', () => {
     await vi.waitFor(() => expect(closed).toHaveBeenCalled());
   });
 
-  it('shows the active-user conflict with a link to the user and keeps the values (AC-19)', async () => {
+  it('INV-19.2 shows the active-user conflict with a link to the user and keeps the values', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
     );
@@ -174,7 +175,7 @@ describe('InviteDialog', () => {
     expect(checkbox(root, 'Mentor').checked).toBe(true);
   });
 
-  it('shows the existing-invitation conflict with a link to the list (AC-19)', async () => {
+  it('INV-19.2 shows the existing-invitation conflict with a link to the list', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:invitation-exists', invitationId: 'i7' }),
     );
@@ -188,7 +189,7 @@ describe('InviteDialog', () => {
     expect(link.getAttribute('href')).toBe('/invitations?q=ivan@example.com');
   });
 
-  it('shows server field errors under their fields (AC-19)', async () => {
+  it('shows server field errors under their fields', async () => {
     api.invoke.mockRejectedValue(
       problem(400, {
         type: 'urn:mentorhub:problem:validation-failed',
@@ -204,7 +205,7 @@ describe('InviteDialog', () => {
     expect(root.querySelector('.error[role=alert]')).toBeNull();
   });
 
-  it('shows a role error under the roles (AC-19)', async () => {
+  it('shows a role error under the roles', async () => {
     api.invoke.mockRejectedValue(
       problem(400, {
         type: 'urn:mentorhub:problem:validation-failed',
@@ -219,7 +220,7 @@ describe('InviteDialog', () => {
     );
   });
 
-  it('shows a generic inline alert on other errors and keeps the form (AC-19)', async () => {
+  it('shows a generic inline alert on other errors and keeps the form', async () => {
     api.invoke.mockRejectedValue(problem(500, { type: 'about:blank' }));
     const { root } = await open();
     type(root, 'ivan@example.com');
@@ -232,7 +233,7 @@ describe('InviteDialog', () => {
     );
   });
 
-  describe('with email enabled (AC-17)', () => {
+  describe('with email enabled', () => {
     beforeEach(() =>
       TestBed.overrideProvider(ClientConfigService, { useValue: { invitationEmails: () => true } }),
     );
@@ -240,14 +241,14 @@ describe('InviteDialog', () => {
     const emailBox = (root: HTMLElement) =>
       checkbox(root, 'Send the invitation by email to this address');
 
-    it('shows the checkbox, checked by default, below the roles', async () => {
+    it('IEM-10.1 shows the checkbox, checked by default, below the roles', async () => {
       const { root } = await open();
       expect(emailBox(root).checked).toBe(true);
       const labels = [...root.querySelectorAll('mat-checkbox')].map((c) => c.textContent?.trim());
       expect(labels.at(-1)).toBe('Send the invitation by email to this address');
     });
 
-    it('requests the email and tells the link view so', async () => {
+    it('IEM-11.1 requests the email and tells the link view so when the choice is on', async () => {
       api.invoke.mockResolvedValue(created());
       const { root } = await open();
       type(root, 'ivan@example.com');
@@ -261,7 +262,7 @@ describe('InviteDialog', () => {
       expect(root.querySelector('button[aria-label="Copy invitation link"]')).toBeTruthy();
     });
 
-    it('sends sendEmail false and shows the usual text when unchecked', async () => {
+    it('IEM-11.1 sends sendEmail false and shows the usual text when the choice is off', async () => {
       api.invoke.mockResolvedValue(created());
       const { root } = await open();
       type(root, 'ivan@example.com');
@@ -292,7 +293,7 @@ describe('InviteDialog', () => {
     });
   });
 
-  it('renders no email checkbox and sends no flag when email is disabled (AC-17)', async () => {
+  it('IEM-10.1 renders no email checkbox and sends no flag when email is disabled', async () => {
     api.invoke.mockResolvedValue(created());
     const { root } = await open();
     expect(root.textContent).not.toContain('by email');

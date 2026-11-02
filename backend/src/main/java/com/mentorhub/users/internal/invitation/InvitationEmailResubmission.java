@@ -8,8 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Resubmits invitation email publications whose processing failed unexpectedly, without waiting for a restart (spec
- * invitation-emails, AC-13). Only {@link InvitationEmailRequested} publications are resubmitted: other listeners may
+ * Resubmits invitation email publications whose processing failed unexpectedly, without waiting for a restart. Only {@link InvitationEmailRequested} publications are resubmitted: other listeners may
  * not tolerate a delivery while one is still running. The age counts from the publication, so a publication still
  * waiting in the executor or still sending is resubmitted too; {@link InvitationEmailSender} runs the deliveries of one
  * request one at a time, and a request that is no longer queued is not sent again. Assumes a single application

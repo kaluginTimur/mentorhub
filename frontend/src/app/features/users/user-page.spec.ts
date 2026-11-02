@@ -8,12 +8,14 @@ import { disableUser } from '../../core/api/fn/users/disable-user';
 import { enableUser } from '../../core/api/fn/users/enable-user';
 import { getUserHistory } from '../../core/api/fn/users/get-user-history';
 import { getUser } from '../../core/api/fn/users/get-user';
+import { listUsers } from '../../core/api/fn/users/list-users';
 import { setUserRoles } from '../../core/api/fn/users/set-user-roles';
 import { updateUserProfile } from '../../core/api/fn/users/update-user-profile';
 import { MeUser } from '../../core/api/models/me-user';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { ADMIN_ID, USER_ID, meUser, userDetails } from './test-data';
 import { UserPage } from './user-page';
+import { UsersList } from './users-list';
 
 const problem = (status: number, type: string, errors?: unknown[]) =>
   new HttpErrorResponse({ status, error: { type, status, title: 't', errors } });
@@ -44,6 +46,7 @@ describe('UserPage', () => {
     responses = new Map<unknown, (params: Record<string, unknown>) => unknown>([
       [getUser, () => userDetails()],
       [getUserHistory, () => historyPage([])],
+      [listUsers, () => historyPage([])],
     ]);
     api.invoke.mockImplementation(async (fn: unknown, params: Record<string, unknown>) => {
       const handler = responses.get(fn);
@@ -54,6 +57,7 @@ describe('UserPage', () => {
       providers: [
         provideRouter([
           { path: 'users/:id', component: UserPage },
+          { path: 'users', component: UsersList },
           { path: '', children: [] },
         ]),
         { provide: Api, useValue: api },
@@ -83,7 +87,7 @@ describe('UserPage', () => {
     document.querySelector('.cdk-overlay-container')?.replaceChildren();
   });
 
-  it('shows the profile, access, roles and history (AC-24)', async () => {
+  it('shows the profile, access, roles and history', async () => {
     responses.set(getUserHistory, () =>
       historyPage([
         {
@@ -110,7 +114,7 @@ describe('UserPage', () => {
     expect(element.querySelector('.back')?.getAttribute('href')).toBe('/users');
   });
 
-  it('shows the not found state for an unknown id (AC-24)', async () => {
+  it('USR-14.2 shows the not found state for an unknown id', async () => {
     responses.set(getUser, () => {
       throw problem(404, 'urn:mentorhub:problem:not-found');
     });
@@ -119,13 +123,14 @@ describe('UserPage', () => {
     expect(element.querySelector('a')?.getAttribute('href')).toBe('/users');
   });
 
-  it('shows the not found state for an id that is not a UUID without calling the API (AC-24)', async () => {
+  it('USR-14.2 shows the not found state for an id that is not a UUID without calling the API', async () => {
     const { element } = await open('abc');
     expect(element.querySelector('h1')?.textContent).toBe('User not found');
+    expect(element.querySelector('a')?.getAttribute('href')).toBe('/users');
     expect(api.invoke).not.toHaveBeenCalled();
   });
 
-  it('shows the unavailable card and retries (AC-24)', async () => {
+  it('shows the unavailable card and retries', async () => {
     responses.set(getUser, () => {
       throw new Error('down');
     });
@@ -173,7 +178,7 @@ describe('UserPage', () => {
     expect(element.querySelectorAll('.history li')).toHaveLength(1);
   });
 
-  describe('disabling (AC-24, AC-26)', () => {
+  describe('disabling', () => {
     async function openDialog() {
       const page = await open();
       click(buttonByText(page.element, 'Disable user'));
@@ -181,7 +186,7 @@ describe('UserPage', () => {
       return page;
     }
 
-    it('requires a reason and a comment for "Other", then disables', async () => {
+    it('USR-15.1 requires a reason and a comment for "Other", then disables', async () => {
       responses.set(disableUser, (p) =>
         userDetails({
           status: 'DISABLED',
@@ -257,7 +262,7 @@ describe('UserPage', () => {
       expect(overlay().querySelector('textarea')?.getAttribute('aria-invalid')).toBe('true');
     });
 
-    it('shows the 409 message in a snackbar and keeps the dialog open', async () => {
+    it('USR-17.2 shows the 409 message in a snackbar and keeps the dialog open', async () => {
       responses.set(disableUser, () => {
         throw problem(409, 'urn:mentorhub:problem:last-admin');
       });
@@ -270,10 +275,11 @@ describe('UserPage', () => {
       await settle();
       expect(snack()).toContain('MentorHub must keep at least one active administrator.');
       expect(overlay().textContent).toContain('Disable Ivan Sidorov?');
+      expect(overlay().querySelector('mat-select')?.textContent).toContain('Graduated');
     });
   });
 
-  it('enables a disabled user after confirmation (AC-24)', async () => {
+  it('USR-15.2 enables a disabled user after confirmation', async () => {
     responses.set(getUser, () =>
       userDetails({ status: 'DISABLED', disabledReason: 'GRADUATED', disabledComment: 'Done' }),
     );
@@ -284,11 +290,13 @@ describe('UserPage', () => {
     await settle();
     expect(overlay().textContent).toContain('Enable Ivan Sidorov?');
     expect(overlay().textContent).toContain('They will be able to sign in again.');
+    expect(api.invoke).not.toHaveBeenCalledWith(enableUser, expect.anything());
     click(buttonByText(overlay(), 'Enable'));
     await vi.waitFor(() => expect(api.invoke).toHaveBeenCalledWith(enableUser, { id: USER_ID }));
     await vi.waitFor(() => expect(snack()).toContain('User enabled'));
     await settle();
     expect(buttonByText(element, 'Disable user')).toBeDefined();
+    expect(api.invoke.mock.calls.filter(([fn]) => fn === getUserHistory)).toHaveLength(2);
   });
 
   it('does not enable when the confirmation is cancelled', async () => {
@@ -301,8 +309,8 @@ describe('UserPage', () => {
     expect(api.invoke).not.toHaveBeenCalledWith(enableUser, expect.anything());
   });
 
-  describe('roles (AC-24)', () => {
-    it('saves the selection and shows the hint without roles', async () => {
+  describe('roles', () => {
+    it('USR-16.1 saves the selection and shows the hint without roles', async () => {
       responses.set(setUserRoles, () => userDetails({ roles: [] }));
       const { element, settle } = await open();
       const save = () => buttonByText(element, 'Save') as HTMLButtonElement;
@@ -321,6 +329,25 @@ describe('UserPage', () => {
       expect(api.invoke).toHaveBeenCalledWith(setUserRoles, { id: USER_ID, body: { roles: [] } });
       expect(snack()).toContain('Roles saved');
       expect(currentUser.load).not.toHaveBeenCalled();
+      expect(api.invoke.mock.calls.filter(([fn]) => fn === getUserHistory)).toHaveLength(2);
+    });
+
+    it('USR-16.1 saves a chosen role and shows it', async () => {
+      responses.set(getUser, () => userDetails({ roles: [] }));
+      responses.set(setUserRoles, () => userDetails({ roles: ['MENTOR'] }));
+      const { element, settle } = await open();
+      const boxes = [...element.querySelectorAll('mat-checkbox input')] as HTMLInputElement[];
+      click(boxes[2]);
+      await settle();
+      click(buttonByText(element, 'Save'));
+      await settle();
+      expect(api.invoke).toHaveBeenCalledWith(setUserRoles, {
+        id: USER_ID,
+        body: { roles: ['MENTOR'] },
+      });
+      expect(snack()).toContain('Roles saved');
+      expect(boxes.map((b) => b.checked)).toEqual([false, false, true, false, false]);
+      expect(api.invoke.mock.calls.filter(([fn]) => fn === getUserHistory)).toHaveLength(2);
     });
 
     it('resets the selection', async () => {
@@ -335,7 +362,7 @@ describe('UserPage', () => {
       expect((buttonByText(element, 'Save') as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('shows a 409 in a snackbar and keeps the selection (AC-26)', async () => {
+    it('USR-17.2 shows a 409 in a snackbar and keeps the selection', async () => {
       responses.set(setUserRoles, () => {
         throw problem(409, 'urn:mentorhub:problem:self-lockout');
       });
@@ -350,8 +377,8 @@ describe('UserPage', () => {
     });
   });
 
-  describe('profile (AC-24, AC-26)', () => {
-    it('edits, shows server field errors and then the stored values', async () => {
+  describe('profile', () => {
+    it('USR-18.1 edits, shows server field errors and then the stored values', async () => {
       const { element, settle } = await open();
       click(buttonByText(element, 'Edit'));
       await settle();
@@ -386,7 +413,7 @@ describe('UserPage', () => {
       expect(element.textContent).toContain('+77017654321');
     });
 
-    it('rejects names over 100 characters before sending', async () => {
+    it('USR-18.1 rejects names over 100 characters before sending', async () => {
       const { element, settle } = await open();
       click(buttonByText(element, 'Edit'));
       await settle();
@@ -410,14 +437,14 @@ describe('UserPage', () => {
     });
   });
 
-  describe('own page (AC-25)', () => {
+  describe('own page', () => {
     beforeEach(() => {
       responses.set(getUser, () =>
         userDetails({ id: ADMIN_ID, email: 'anna@example.com', roles: ['ADMIN'] }),
       );
     });
 
-    it('disables "Disable user" and the Administrator checkbox with reachable hints', async () => {
+    it('USR-17.1 disables "Disable user" and the Administrator checkbox with reachable hints', async () => {
       const { element } = await open(ADMIN_ID);
       const disable = buttonByText(element, 'Disable user') as HTMLButtonElement;
       expect(disable.getAttribute('aria-disabled')).toBe('true');
@@ -500,14 +527,154 @@ describe('UserPage', () => {
     expect(harness.routeNativeElement?.textContent ?? '').not.toContain('unavailable');
   });
 
-  it('shows every card read-only without USERS_MANAGE (AC-22)', async () => {
-    me.set(meUser({ permissions: ['USERS_READ'] }));
+  it.each(['ACTIVE', 'DISABLED'] as const)(
+    'USR-14.3 shows every card read-only without USERS_MANAGE (%s user)',
+    async (status) => {
+      responses.set(getUser, () =>
+        userDetails({ status, ...(status === 'DISABLED' ? { disabledReason: 'GRADUATED' } : {}) }),
+      );
+      me.set(meUser({ permissions: ['USERS_READ'] }));
+      const { element } = await open();
+      expect(buttonByText(element, 'Edit')).toBeUndefined();
+      expect(buttonByText(element, 'Disable user')).toBeUndefined();
+      expect(buttonByText(element, 'Enable user')).toBeUndefined();
+      expect(buttonByText(element, 'Save')).toBeUndefined();
+      expect(element.querySelector('mat-checkbox')).toBeNull();
+      expect(element.querySelector('ul')?.textContent).toContain('Mentor');
+    },
+  );
+
+  it('USR-14.1 shows the user and leads back to the list with its search, filters and page', async () => {
+    responses.set(listUsers, () =>
+      historyPage(
+        [
+          {
+            id: USER_ID,
+            email: 'ivan@example.com',
+            firstName: 'Ivan',
+            lastName: 'Sidorov',
+            status: 'ACTIVE',
+            roles: ['MENTOR'],
+          },
+        ],
+        60,
+      ),
+    );
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/users?q=ivan&status=ACTIVE&role=MENTOR&page=1');
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    click((harness.routeNativeElement as HTMLElement).querySelector('tbody a'));
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const element = harness.routeNativeElement as HTMLElement;
+    expect(element.querySelector('h1')?.textContent).toBe('Ivan Sidorov');
+    expect(element.querySelector('mat-chip')?.textContent).toContain('Active');
+    expect(element.textContent).toContain('ivan@example.com');
+    expect(element.textContent).toContain('+77011234567');
+
+    click(element.querySelector('.back'));
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const router = TestBed.inject(Router);
+    expect(router.url.startsWith('/users?')).toBe(true);
+    expect(router.parseUrl(router.url).queryParams).toEqual({
+      q: 'ivan',
+      status: 'ACTIVE',
+      role: 'MENTOR',
+      page: '1',
+    });
+  });
+
+  it('USR-11.1 tells each action in its own sentence', async () => {
+    responses.set(getUserHistory, () =>
+      historyPage([
+        {
+          id: 'h5',
+          action: 'USER_BOOTSTRAPPED_ADMIN',
+          occurredAt: '2026-10-17T10:12:00Z',
+          actor: null,
+          bootstrap: { userCreated: true, identityLinked: true, enabled: true, adminAdded: true },
+          rolesAdded: ['ADMIN'],
+        },
+        {
+          id: 'h4',
+          action: 'USER_PROFILE_UPDATED',
+          occurredAt: '2026-10-16T10:12:00Z',
+          actor: { id: ADMIN_ID, name: 'Anna Petrova' },
+          changes: [{ field: 'lastName', oldValue: null, newValue: 'Sidorov' }],
+        },
+        {
+          id: 'h3',
+          action: 'USER_ROLES_CHANGED',
+          occurredAt: '2026-10-15T10:12:00Z',
+          actor: { id: ADMIN_ID, name: 'Anna Petrova' },
+          rolesAdded: ['MENTOR'],
+          rolesRemoved: ['STUDENT'],
+        },
+        {
+          id: 'h2',
+          action: 'USER_ENABLED',
+          occurredAt: '2026-10-14T10:12:00Z',
+          actor: { id: ADMIN_ID, name: 'Anna Petrova' },
+        },
+        {
+          id: 'h1',
+          action: 'USER_DISABLED',
+          occurredAt: '2026-10-13T10:12:00Z',
+          actor: { id: ADMIN_ID, name: 'Anna Petrova' },
+          reason: 'OTHER',
+          comment: 'Moved away',
+        },
+      ]),
+    );
     const { element } = await open();
-    expect(buttonByText(element, 'Edit')).toBeUndefined();
-    expect(buttonByText(element, 'Disable user')).toBeUndefined();
-    expect(buttonByText(element, 'Enable user')).toBeUndefined();
-    expect(buttonByText(element, 'Save')).toBeUndefined();
-    expect(element.querySelector('mat-checkbox')).toBeNull();
-    expect(element.querySelector('ul')?.textContent).toContain('Mentor');
+    const entries = [...element.querySelectorAll('.history li')].map((li) => li.textContent ?? '');
+    expect(entries).toHaveLength(5);
+    expect(entries[0]).toContain('System');
+    expect(entries[0]).toContain(
+      'Granted administrator access by bootstrap (created the user, linked the sign-in identity, enabled the user)',
+    );
+    expect(entries[1]).toContain('Profile updated: last name (empty) → Sidorov');
+    expect(entries[2]).toContain('Roles changed: added Mentor; removed Student');
+    expect(entries[3]).toContain('Enabled');
+    expect(entries[4]).toContain('Disabled: Other — Moved away');
+  });
+
+  it('USR-11.2 names the inviter in the sentence of an acceptance', async () => {
+    const invitation = (userCreated: boolean, enabled: boolean) => ({
+      invitationId: 'i1',
+      invitedBy: { id: ADMIN_ID, name: 'Ada Admin' },
+      userCreated,
+      identityLinked: true,
+      enabled,
+    });
+    responses.set(getUserHistory, () =>
+      historyPage([
+        {
+          id: 'h2',
+          action: 'USER_INVITATION_ACCEPTED',
+          occurredAt: '2026-10-18T10:12:00Z',
+          actor: { id: USER_ID, name: 'Ivan Sidorov' },
+          invitation: invitation(false, true),
+        },
+        {
+          id: 'h1',
+          action: 'USER_INVITATION_ACCEPTED',
+          occurredAt: '2026-10-17T10:12:00Z',
+          actor: { id: USER_ID, name: 'Ivan Sidorov' },
+          invitation: invitation(true, false),
+          rolesAdded: ['MENTOR', 'STUDENT'],
+        },
+      ]),
+    );
+    const { element } = await open();
+    const entries = [...element.querySelectorAll('.history li')].map((li) => li.textContent ?? '');
+    expect(entries[0]).toContain('Reactivated by invitation from Ada Admin');
+    expect(entries[1]).toContain(
+      'Joined by invitation from Ada Admin; roles added: Mentor, Student',
+    );
   });
 });
