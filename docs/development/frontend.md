@@ -20,6 +20,7 @@ Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angul
 
 TypeScript:
 - Strict type checking; prefer inference when the type is obvious; no `any` (use `unknown`).
+- Comment sparingly: only non-obvious infrastructure or algorithmic points. No comments that restate the code.
 
 Components and templates:
 - Standalone components; do not set `standalone: true` (default since v20) or `changeDetection: ChangeDetectionStrategy.OnPush` (default since v22).

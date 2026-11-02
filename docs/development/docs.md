@@ -6,9 +6,11 @@ How project knowledge is kept consistent with the code. Paths in this document a
 
 | Place | Contents |
 |---|---|
-| `AGENTS.md` | Map and project-wide rules for any AI client; Claude Code loads it into every session through the one-line `CLAUDE.md`, so it stays short |
+| `docs/constitution.md` | The rules every change must keep, for people and agents alike |
+| `AGENTS.md` | Map and working rules for any AI client. Claude Code loads it and the constitution into every session through `CLAUDE.md`, so both stay short |
+| `docs/roadmap.md` | What is planned: stages, feature order, ideas, preliminary product decisions |
 | `docs/development/` | One guide per area (`backend.md`, `frontend.md`, this file): stack, conventions, commands, verification, pitfalls |
-| `docs/architecture/invariants.md` | Domain model, authorization, visibility |
+| `docs/architecture/invariants.md` | Identity, authorization, audit |
 | `docs/architecture/decisions/`, `docs/features/` | Architecture decisions, feature specs and their progress logs (`<feature>.progress.md`: step statuses, decisions at checkpoints, step commits) |
 | `.claude/` | The Claude Code workflow: agents and skills describe roles and processes and point to the documents above; hooks and settings enforce rules (see `.claude/README.md`) |
 
