@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The audit entries about users (subject type {@link UserAuditAction#SUBJECT_TYPE}). Writing joins the caller's
  * transaction. Reading skips entries whose action this version does not know, with one warning per action, as
- * {@code StoredRoles} does for unknown roles (ADR 0004, ADR 0006).
+ * {@code StoredRoles} does for unknown roles (decision 0004, decision 0006).
  */
 @Component
 public class UserAuditTrail {

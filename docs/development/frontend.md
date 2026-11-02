@@ -8,7 +8,7 @@ Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angul
 - `frontend/src/app/shared/`: reusable components (`loading`, `unavailable`, `confirm-dialog`, `profile-form`).
 - `frontend/src/app/features/<feature>/`: one lazy-loaded route tree per feature.
 
-## API client (ADR 0002)
+## API client (decision 0002)
 
 - `ng-openapi-gen` generates the client from `api/openapi.yaml` into `frontend/src/app/core/api/` (`npm run generate:api`, run automatically before `start`, `build`, `test` and `lint`). It is gitignored; never edit or commit it.
 - Calls: `inject(Api).invoke(fn, params)` with functions from `frontend/src/app/core/api/fn/**`. Load data in components with `resource()`, as in `frontend/src/app/features/shell/home.ts`. Guard `value()` with `hasValue()` (or check `error()` first): in the error state `value()` throws.

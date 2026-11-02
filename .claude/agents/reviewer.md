@@ -32,7 +32,7 @@ Read the rules sources only for the areas the findings and the fix diff touch, a
 Read before reviewing; they define what is right here:
 - `AGENTS.md`: the project-wide rules;
 - `docs/architecture/invariants.md`: domain model, authorization, visibility, audit;
-- `docs/adr/`: architecture decisions;
+- `docs/architecture/decisions/`: architecture decisions;
 - `docs/development/<area>.md` for every touched area: conventions, tests and the **Pitfalls** section;
 - the related spec, and `docs/ui/guidelines.md` for UI changes when it exists.
 

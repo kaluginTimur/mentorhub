@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Maps stored role names to {@link Role}. A name the code does not know (for example after a release rollback) grants
- * nothing and never fails a request (ADR 0004).
+ * nothing and never fails a request (decision 0004).
  */
 @Component
 public class StoredRoles {

@@ -13,7 +13,7 @@ You implement backend changes. The user is an experienced backend developer who 
 
 ## Before the first step
 
-Read `AGENTS.md`, `docs/architecture/invariants.md`, every ADR in `docs/adr/`, the spec named in the brief (`docs/features/<feature>.md`: Requirements, UI and Design), the API contract, and the existing code of the modules you will touch. `docs/development/backend.md` is loaded automatically once you work in `backend/` (through `backend/CLAUDE.md`); read it explicitly only if it is not in your context yet. If you start in the middle of a feature, read its progress log (`docs/features/<feature>.progress.md`): approved steps, the user's decisions, the handoff notes of earlier steps and open questions are there; `git log` shows the step commits. Use `git diff` only to see the uncommitted work of the current step.
+Read `AGENTS.md`, `docs/architecture/invariants.md`, every ADR in `docs/architecture/decisions/`, the spec named in the brief (`docs/features/<feature>.md`: Requirements, UI and Design), the API contract, and the existing code of the modules you will touch. `docs/development/backend.md` is loaded automatically once you work in `backend/` (through `backend/CLAUDE.md`); read it explicitly only if it is not in your context yet. If you start in the middle of a feature, read its progress log (`docs/features/<feature>.progress.md`): approved steps, the user's decisions, the handoff notes of earlier steps and open questions are there; `git log` shows the step commits. Use `git diff` only to see the uncommitted work of the current step.
 
 Read what the step needs, not everything at once: a file you have already read stays in your context, so do not read it again unless it changed.
 

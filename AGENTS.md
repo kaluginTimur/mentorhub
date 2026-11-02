@@ -4,10 +4,10 @@ An internal platform for the mentors of a training center (SWE, QA, DevOps track
 
 ## Map
 
-- `api/openapi.yaml`: the API contract, **the source of truth** (ADR 0002).
+- `api/openapi.yaml`: the API contract, **the source of truth** (decision 0002).
 - `backend/`, `frontend/`: stack, conventions, commands and verification are in `docs/development/backend.md` and `docs/development/frontend.md`. Read the guide before working in its folder. How documentation is kept consistent with the code: `docs/development/docs.md`.
 - `infra/compose.yaml`: local environment.
-- `docs/adr/`: architecture decisions. **Read before planning changes.**
+- `docs/architecture/decisions/`: architecture decisions. **Read before planning changes.**
 - `docs/architecture/invariants.md`: domain model, authorization and visibility rules.
 - `docs/features/`: feature specs (scenarios per role, acceptance criteria, UI, design).
 - `.claude/`: the Claude Code workflow (agents, skills, hooks); see `.claude/README.md`.

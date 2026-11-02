@@ -2,7 +2,7 @@
 
 Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`. Followed by `invitations` (invitations with a copyable link) and `invitation-emails` (Mailpit and invitation emails).
+Related: Decision 0001, decision 0002, decision 0003, decision 0004, decision 0005, decision 0006, decision 0007, `docs/features/identity-foundation.md`. Followed by `invitations` (invitations with a copyable link) and `invitation-emails` (Mailpit and invitation emails).
 
 ## 1. Requirements
 
@@ -18,7 +18,7 @@ Administrators need to see who has access to MentorHub and control it without to
 - Assigning and removing roles.
 - Editing a profile (first name, last name, optional phone): administrators edit anyone's, every active user edits their own.
 - Protection against locking the installation out: an administrator cannot disable themselves or remove their own ADMIN role, and the last active administrator cannot be disabled or lose the role.
-- The `audit` module: an append-only log of the changes this feature makes, plus the administrator bootstrap (ADR 0005).
+- The `audit` module: an append-only log of the changes this feature makes, plus the administrator bootstrap (decision 0005).
 
 ### Roles and scenarios
 
@@ -56,7 +56,7 @@ Each criterion is marked **auto** (automated tests) or **manual** (checked by ha
 Users list and page:
 
 - AC-1 (S1, auto): Given users exist, when an administrator calls `GET /api/v1/users`, then the response is a page of users (id, email, first and last name, status, roles), 25 per page by default and at most 100, with the total count. Users are sorted by last name, then first name, then email, case-insensitive, with a missing name sorted after present ones in its own column, and by id last so pages are stable.
-- AC-2 (S1, auto): Given the `q` parameter, then only users whose email, first name or last name contains it (case-insensitive, after trimming; `%`, `_` and `\` match themselves) are returned. Given `status`, only users with that status. Given `role`, only users with that role; `role=NONE` returns only users without any role the code knows (ADR 0004). Filters combine with AND.
+- AC-2 (S1, auto): Given the `q` parameter, then only users whose email, first name or last name contains it (case-insensitive, after trimming; `%`, `_` and `\` match themselves) are returned. Given `status`, only users with that status. Given `role`, only users with that role; `role=NONE` returns only users without any role the code knows (decision 0004). Filters combine with AND.
 - AC-3 (S1, S2, auto): Given an invalid parameter (`size` outside 1 to 100, a negative `page`, an unknown `status` or `role`, a `q` longer than 100 characters, or an `{id}` that is not a UUID) on any `/api/v1/users/**` operation, then the response is 400 `validation-failed` with an error naming the parameter. Values are never clamped.
 - AC-4 (S2, auto): Given a user, when an administrator calls `GET /api/v1/users/{id}`, then the response contains the id, email, first and last name, phone, status, disable reason and comment (present only when disabled; the comment only when set), roles and the creation time. An unknown id responds 404 `not-found`.
 - AC-5 (S1, S2, auto): Given a caller without `USERS_READ` (any role other than ADMIN, or no roles), when they call any `/api/v1/users/**` operation, then the response is 403 `forbidden`.
@@ -72,7 +72,7 @@ Roles:
 
 - AC-10 (S5, auto): Given a user, when an administrator sets their roles with `PUT /api/v1/users/{id}/roles`, then the stored roles equal the requested set, one audit entry `USER_ROLES_CHANGED` lists the added and removed roles, and the change takes effect on the user's next request. Setting the same roles writes no entry.
 - AC-11 (S5, auto): Given an empty role set, then the user stays active with no roles and gets "Your access is being set up" on their next request.
-- AC-12 (S5, auto): Given a user with a stored role the code does not know (ADR 0004), when their roles are set, then the unknown stored role is left untouched and is not reported in the response or the audit entry.
+- AC-12 (S5, auto): Given a user with a stored role the code does not know (decision 0004), when their roles are set, then the unknown stored role is left untouched and is not reported in the response or the audit entry.
 
 Lockout protection:
 
@@ -95,7 +95,7 @@ Profile:
 History and audit:
 
 - AC-19 (S2, auto): Given audit entries about a user, when an administrator calls `GET /api/v1/users/{id}/history`, then the entries about that user are returned newest first, 25 per page, each with the time, the action, the actor (id and name, or none for the system) and the action's details (reason and comment, added and removed roles, changed fields with old and new values, or what the bootstrap did). An entry whose action the code does not know is left out, and a warning is logged once per unknown action.
-- AC-20 (S2, auto): Given the administrator bootstrap (ADR 0005) changed something, then besides the existing warning, an audit entry `USER_BOOTSTRAPPED_ADMIN` without an actor is written about that user. When it changed nothing, no entry is written. When it enables a user who was disabled with a reason and comment, both are cleared.
+- AC-20 (S2, auto): Given the administrator bootstrap (decision 0005) changed something, then besides the existing warning, an audit entry `USER_BOOTSTRAPPED_ADMIN` without an actor is written about that user. When it changed nothing, no entry is written. When it enables a user who was disabled with a reason and comment, both are cleared.
 - AC-21 (auto): Given an audited change whose transaction fails, then neither the change nor its audit entry is stored. Given any `UPDATE` or `DELETE` on `audit_log`, then the database rejects it.
 
 UI:
@@ -282,11 +282,11 @@ Shared by the user page and the own profile page.
 - `com.mentorhub.audit` (new):
   - public API: `AuditLog.record(AuditEntry)`, which joins the caller's transaction (`Propagation.MANDATORY`), and a query `AuditLog.findBySubject(subjectType, subjectId, page, size)`;
   - `AuditEntry`: actor id (nullable), action, subject type and id, details as a JSON-serializable map. The action is a `String` constant owned by the calling module, so `audit` depends on no other module;
-  - internal `persistence` with a `JdbcClient` repository (ADR 0007). No endpoints: each module that shows history serves it under its own access rules.
+  - internal `persistence` with a `JdbcClient` repository (decision 0007). No endpoints: each module that shows history serves it under its own access rules.
 - `com.mentorhub.users` gains:
   - `service`: `UserAdministrationService` (list, get, disable, enable, set roles, update profile, history) and `ProfileService` (own profile), both writing audit entries in the same transaction; the lockout rules; phone normalization;
   - `web`: one contract tag `Users`, so `UsersController` implements the generated `UsersApi`: the administration operations, `getMe` (formerly `MeController`) and `updateMyProfile`; `UsersMapper` maps by hand (convention per tag `Foo`: `FooApi`, `FooController`, `FooMapper`);
-  - `persistence`: `users` stays on `JdbcClient` (ADR 0007);
+  - `persistence`: `users` stays on `JdbcClient` (decision 0007);
   - the bootstrap writes `USER_BOOTSTRAPPED_ADMIN`;
   - `users` → `audit` is the only new module dependency.
 - `com.mentorhub.web` gains two generic exceptions next to `NotFoundException`, so it never depends on a feature module: `ConflictException(type, detail)` (409 with the given problem type) and `ValidationException(errors)` (400 `validation-failed` with field errors). `ProblemDetailsAdvice` renders them, and bean validation and parameter conversion failures also map to `validation-failed`. The `users` module throws them with its own types `self-lockout` and `last-admin`.
@@ -312,7 +312,7 @@ Migration `V3` (`V2__identity.sql` exists):
 
   - a trigger `audit_log_append_only` (`before update or delete`, for each statement) raises an exception, so the log is append-only in the database, not only by convention (AC-21). `truncate` is not covered; it is not part of any application path.
 
-  `audit_log` has no FK on `subject_id`, because subjects live in different modules' tables. The FK on `actor_user_id` is intentional although `audit` has no code dependency on `users`: actors are always users, users are never deleted, and the FK keeps every actor resolvable. Cross-module foreign keys are allowed; `subject_id` has none because it is polymorphic (ADR 0006).
+  `audit_log` has no FK on `subject_id`, because subjects live in different modules' tables. The FK on `actor_user_id` is intentional although `audit` has no code dependency on `users`: actors are always users, users are never deleted, and the FK keeps every actor resolvable. Cross-module foreign keys are allowed; `subject_id` has none because it is polymorphic (decision 0006).
 - Every write of `users.status` sets the reason and comment with it, so the check constraint always holds. `UserRepository.setStatus` is replaced by `enable(userId)` (status `ACTIVE`, reason and comment cleared) and `disable(userId, reason, comment)`:
   - the bootstrap uses `enable`, so recovering a disabled administrator clears the reason (AC-20);
   - the development user runner uses `enable` for active users and `disable` for disabled ones, with the reason and comment from `mentorhub.development-users.users[]` (`disabled@mentorhub.local`: `OTHER`, `Development user`). It may also set phones from there. A development user an administrator disabled locally is enabled again, with its reason cleared, on the next start.
@@ -343,7 +343,7 @@ Schemas:
 - `ProfileUpdate`: `firstName`, `lastName`, `phone`, all required and nullable, so the client always sends the whole profile.
 - `MeUser` gains `phone` (required, nullable).
 - `HistoryEntry`: `id`, `occurredAt`, `action` (`HistoryAction` enum: the five actions), `actor` (`{id, name}` or null), and optional detail properties: `reason` (`DisableReason`), `comment`, `rolesAdded`, `rolesRemoved`, `changes` (`[{field, oldValue, newValue}]`), `bootstrap` (`{userCreated, identityLinked, enabled, adminAdded}`); absent detail properties are left out of the JSON. `HistoryPage` as `UserPage`.
-  - The contract's `HistoryAction` lists the actions the `users` history can show. A module that writes a new action about a user (for example the `invitations` feature) extends this enum in the same change. Entries with an action the code does not know are skipped (AC-19), as ADR 0004 does for unknown roles.
+  - The contract's `HistoryAction` lists the actions the `users` history can show. A module that writes a new action about a user (for example the `invitations` feature) extends this enum in the same change. Entries with an action the code does not know are skipped (AC-19), as decision 0004 does for unknown roles.
   - Known limitation (user decision): unknown actions are filtered after paging, so such a page can hold fewer than `size` items while `totalItems` counts every entry. It happens only when the log holds actions the running code does not know, for example after rolling back a release that wrote a new action.
 - Optional properties (`disabledReason`, `disabledComment`, the `HistoryEntry` details) are left out with a `@JacksonMixin` and `@JsonInclude(NON_NULL)` per DTO, as `MeJsonMixin` does for `Me` (see the Jackson pitfall in `docs/development/backend.md`); required nullable properties stay explicit `null`.
 - The contract has no `maxLength` on names, `q`, or the comment: the service trims first and then checks the length, so surrounding whitespace never causes a rejection (AC-7, AC-18).
@@ -365,7 +365,7 @@ Schemas:
   2. the user row (`select ... for no key update`), then the current state is read, so the role diff and the audit entry match what is stored.
 
   Enable, profile updates and set roles that keep ADMIN take only the row lock. The row lock is `for no key update`, not `for update`: the audit entry's `actor_user_id` foreign key takes `for key share` on the caller's row, which `for update` blocks, so two administrators changing each other would deadlock.
-- The ADR 0005 bootstrap runs its existing unlocked check for an active administrator first; only when none exists does it take the administrator lock and check again. Requests of an existing administrator are therefore never serialized, and a bootstrap racing a lockout change cannot see a stale count. (The bootstrap only adds an administrator, so the lock is for the re-check, not for its own safety.)
+- The decision 0005 bootstrap runs its existing unlocked check for an active administrator first; only when none exists does it take the administrator lock and check again. Requests of an existing administrator are therefore never serialized, and a bootstrap racing a lockout change cannot see a stale count. (The bootstrap only adds an administrator, so the lock is for the re-check, not for its own safety.)
 - Frontend permission checks (convenience only; the backend enforces every rule):
   - the permissions come from `GET /api/v1/me`, which the application already reloads on every navigation, so a change of roles shows on the user's next navigation;
   - one check in `CurrentUserService` answers "does the current user have permission X", typed with the generated `Permission`; templates and guards use only that check, never role names;
@@ -403,7 +403,7 @@ None. Audit entries are written synchronously in the changing transaction (AC-21
 - `docs/development/backend.md`: the `audit` module and how to record an entry; pagination parameters and the page schema; the `validation-failed` problem and its `errors`; the advisory lock for lockout rules and `for no key update` row locks.
 - `docs/development/frontend.md`: the permission check and guard (the algorithm above); the list query in the URL.
 - `docs/ui/guidelines.md`: toolbar navigation, list page (filters, table, paginator, empty state), detail page with cards, confirmation and reason dialogs, 409 snackbar.
-- `docs/architecture/invariants.md`: already updated with the audit rules of ADR 0006 when it was accepted; no change needed.
+- `docs/architecture/invariants.md`: already updated with the audit rules of decision 0006 when it was accepted; no change needed.
 - `README.md`: the user administration screen in the walkthrough of the development users.
 
 ### Decisions
@@ -417,8 +417,8 @@ None. Audit entries are written synchronously in the changing transaction (AC-21
 - The disable reason is required, chosen from a predefined list, with an optional comment that `OTHER` requires; both are visible to administrators only (user decision).
 - Staff who stop working in the program and staff who leave the company share `STAFF_OFFBOARDED`. A separate value (for example for deprovisioning through a corporate identity provider) is deferred to the corporate SSO ADR; adding one is a code change and a constraint migration.
 - Phones are strict E.164, normalized with libphonenumber and a configurable default region (user decision).
-- The audit design (synchronous in the changing transaction, actions as strings owned by the calling module, append-only enforced by a trigger, no global read endpoint): ADR 0006.
-- Persistence is chosen per module; `users` and `audit` use `JdbcClient` (user decision, ADR 0007).
+- The audit design (synchronous in the changing transaction, actions as strings owned by the calling module, append-only enforced by a trigger, no global read endpoint): Decision 0006.
+- Persistence is chosen per module; `users` and `audit` use `JdbcClient` (user decision, decision 0007).
 - Pagination and the `validation-failed` problem are new API conventions; they are recorded in the contract and `docs/development/backend.md` rather than an ADR.
 
 ## 4. Open questions

@@ -2,7 +2,7 @@
 
 Status: implemented
 Stage: tracking core (users, roles)
-Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005
+Related: Decision 0001, decision 0002, decision 0003, decision 0004, decision 0005
 Revised: 2026-10-23 by `invitation-emails`: `ClientConfig` also has the required `invitationEmails`, and `application-dev.yaml` also configures Mailpit (Design: API, Development profile; the Design section is otherwise a snapshot).
 
 ## 1. Requirements
@@ -15,12 +15,12 @@ MentorHub must be closed to everyone except people the training center has let i
 
 - Keycloak in the local environment, with the realm stored as JSON in the repository and development users for every access status.
 - Sign-in and sign-out in the frontend (OIDC Authorization Code + PKCE) and an application shell with the current user.
-- Users, external identities and role assignments in the database. Permissions and roles as enums in code (ADR 0004), kept consistent with the stored assignments.
+- Users, external identities and role assignments in the database. Permissions and roles as enums in code (decision 0004), kept consistent with the stored assignments.
 - The gate:
   - an identity that is not linked to a user is refused ("not invited");
   - a disabled user is refused;
   - an active user without roles is admitted but has no permissions.
-- The administrator bootstrap (ADR 0005).
+- The administrator bootstrap (decision 0005).
 - The profile (email, first name, last name) is copied from the token when the user is created. After that the application owns it: later changes at the identity provider do not update it.
 - `GET /api/v1/me` with the caller's access status and, for an active user, the user, roles and permissions.
 - The building blocks later features use:
@@ -77,7 +77,7 @@ Sign-in and the gate:
 - AC-9 (S4, auto): Given an active user, when `GET /api/v1/me` is called, then it returns status `ACTIVE`, the user's id, email, first and last name, roles and the union of the roles' permissions.
 - AC-10 (S4, auto): Given a user whose first name, last name or email changed at the identity provider after the user was created, when they sign in, then the stored profile is unchanged.
 
-Bootstrap (ADR 0005):
+Bootstrap (decision 0005):
 
 - AC-11 (S7, auto): Given the bootstrap email is configured and no active user has the ADMIN role, when someone signs in with an unlinked identity whose verified email equals it (case-insensitive), then:
   - the user with that email is created (or found) and the identity is linked to it;
@@ -111,7 +111,7 @@ Frontend behavior:
 
 ### Access matrix
 
-The only data this feature exposes is the caller's own user. Permissions are added by the features that check them (ADR 0004).
+The only data this feature exposes is the caller's own user. Permissions are added by the features that check them (decision 0004).
 
 | Action | Not signed in | Not invited / disabled | Active, no roles | Active with roles |
 |---|---|---|---|---|
@@ -238,7 +238,7 @@ Text: "MentorHub is unavailable. Try again later." The "Retry" action reloads th
 ### Modules
 
 - `com.mentorhub.users` (new) owns users, identities, role assignments and request authentication. Public API:
-  - the `Permission` and `Role` enums (ADR 0004);
+  - the `Permission` and `Role` enums (decision 0004);
   - `CurrentUser` (user id and permissions) and a way to get it in services. The gate guarantees that services other than `GET /api/v1/me` only ever see an active user;
   - the typed permission annotation and the "no permission required" marker.
 
@@ -246,7 +246,7 @@ Text: "MentorHub is unavailable. Try again later." The "Retry" action reloads th
   - `domain`: `UserStatus`, `AccessStatus`, `Caller`, `StoredRoles`;
   - `persistence`: `UserRepository` (JdbcClient) and its records;
   - `security`: the filter chains and the gate, token validation per trusted issuer, the user resolution, the 401 and 403 handlers, `CurrentCaller`;
-  - `bootstrap`: the administrator bootstrap (ADR 0005);
+  - `bootstrap`: the administrator bootstrap (decision 0005);
   - `service` and `web`: `MeService` and `MeController`;
   - `dev`: the development user runner, created only in the `dev` profile.
 - `com.mentorhub.web` (new, open module like `com.mentorhub.api`) holds what every module with endpoints shares: Problem Details error handling (`ProblemDetailsAdvice`, `ProblemErrorController`, `ProblemResponseWriter`) and `NotFoundException` for missing and inaccessible resources.
@@ -278,7 +278,7 @@ The migration adds:
   - PK (`user_id`, `role`), `created_at timestamptz not null default now()`;
   - index `user_roles_role_idx` on `role`, for the bootstrap's "is there an active ADMIN" check.
 
-The `roles` table is a `text` reference table with a foreign key rather than a PostgreSQL `enum` type; the rationale is in ADR 0004 (user decision).
+The `roles` table is a `text` reference table with a foreign key rather than a PostgreSQL `enum` type; the rationale is in decision 0004 (user decision).
 
 Users are never deleted in this feature, so foreign keys restrict deletion. An unknown identity creates no rows. Only the bootstrap rule and the development user runner link identities; invitations follow in the next feature.
 
@@ -324,7 +324,7 @@ Schemas:
   - discovery and JWK set requests use a connect and a read timeout, so an unreachable or hung identity provider fails the request with a 500 Problem instead of holding the request thread.
 - **The JWT converter** resolves the caller on every request:
   - `(iss, sub)` → `user_identities` → `users`;
-  - the bootstrap rule (ADR 0005, AC-11 to AC-16) runs before the status check;
+  - the bootstrap rule (decision 0005, AC-11 to AC-16) runs before the status check;
   - roles from `user_roles` are expanded into permissions as granted authorities; unknown stored roles are skipped (AC-20);
   - the resulting authentication carries the access status and, for a linked user, the `CurrentUser`. For a caller that is not invited it has no user id.
 - **Bootstrap writes** are one transaction and idempotent: inserts use `on conflict do nothing` and re-read. The warning is logged only when the transaction changed rows (AC-16).
@@ -335,7 +335,7 @@ Schemas:
   - lists filter inaccessible items out;
   - a missing permission is Spring Security's `AccessDeniedException` (403 `forbidden`).
 - **Permissions**: the `Permission` enum starts with `USERS_READ` and `USERS_MANAGE`, both on ADMIN only, for the next feature.
-- **Refinements of ADR 0004**, noted in its status line:
+- **Refinements of decision 0004**, noted in its status line:
   - not invited and disabled callers get 200 with their status from `GET /api/v1/me`;
   - inaccessible resources respond 404.
 
@@ -347,7 +347,7 @@ Schemas:
 | `mentorhub.security.trusted-issuers[].audience` | The audience its tokens must carry |
 | `mentorhub.security.trusted-issuers[].jwk-set-uri` | Optional; skips discovery (tests) |
 | `mentorhub.security.issuer-connect-timeout`, `issuer-read-timeout` | Timeouts for discovery and JWK set requests (default 2s and 5s) |
-| `mentorhub.security.bootstrap-admin-email` | ADR 0005; empty disables the rule |
+| `mentorhub.security.bootstrap-admin-email` | decision 0005; empty disables the rule |
 | `mentorhub.security.client.issuer-uri`, `client-id` | Returned by `GET /api/v1/system/client-config` (owned by `system`) |
 | `mentorhub.development-users.issuer-uri`, `.users[]` (subject, email, names, status, roles) | `dev` only: the development users the runner keeps in sync |
 
@@ -436,7 +436,7 @@ In every profile, a missing trusted issuer list or client configuration fails st
   - the `resource()` example reference, now `frontend/src/app/features/shell/home.ts`.
 - `README.md`: Keycloak, the development users and password, the profile, Swagger being development-only, recreating the Keycloak container after realm changes.
 - `docs/ui/guidelines.md`: shell, access screens, startup error.
-- ADR 0003: status implemented.
+- Decision 0003: status implemented.
 
 ### Events
 
@@ -445,7 +445,7 @@ None.
 ### Decisions
 
 - Profile data is copied from the token once, when the user is created; afterwards the application owns it (user decision).
-- Bootstrap rule: ADR 0005, including recovery when no active administrator exists (user decision). An identity linked to another user is never moved by it.
+- Bootstrap rule: Decision 0005, including recovery when no active administrator exists (user decision). An identity linked to another user is never moved by it.
 - Sign-out ends the Keycloak session (user decision).
 - Separate screens for "not invited" and "access ended" (user decision).
 - ADMIN gets an explicit permission list (user decision).
@@ -455,7 +455,7 @@ None.
 - Errors use RFC 9457 Problem Details with fixed `type` values.
 - The frontend reads its OIDC configuration from the backend at runtime, so the issuer can change without a rebuild.
 - Development users come from a `dev`-profile runner, not from migrations.
-- Stored roles are a `text` reference table, not a PostgreSQL `enum`; the rationale is in ADR 0004 (user decision).
+- Stored roles are a `text` reference table, not a PostgreSQL `enum`; the rationale is in decision 0004 (user decision).
 - Internal code is split into layer subpackages; this is now the backend convention (user decision).
 - Required settings fail startup in every profile, not only outside `dev` (accepted deviation).
 - `about:blank` is written explicitly for problems without a specific type (user decision).

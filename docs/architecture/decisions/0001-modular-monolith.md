@@ -1,10 +1,8 @@
 # 0001. Modular monolith on Spring Modulith
 
-Status: accepted, 2026-10-11
-
 ## Context
 
-The platform covers several domains: cohorts and students, notes and feedback, assignments, solution checking, scheduling. There is one developer, working together with AI agents. Microservices would add operational complexity without benefit, while a monolith without explicit boundaries quickly turns into a tangle, especially when agents write the code.
+The platform covers several domains: cohorts and students, notes and feedback, assignments, solution checking, scheduling. There is one developer, working together with AI agents.
 
 ## Decision
 
@@ -13,8 +11,12 @@ The platform covers several domains: cohorts and students, notes and feedback, a
 - Boundaries are verified by `ModularityTests` (`ApplicationModules.verify()`), which runs as part of `./mvnw verify`.
 - Exception: the future executor of student code (SQL/Java/Python). It is a security boundary, so it will be a separate process on an isolated host.
 
-## Consequences
+## Why
 
-- Violating module boundaries breaks the build.
+- Violating module boundaries breaks the build, so agents cannot quietly tangle the code.
 - A module can later be extracted into a service without rewriting the rest.
-- The Modulith event publication registry was added with JDBC instead of JPA when the first asynchronous events appeared (ADR 0008).
+
+## Rejected alternatives
+
+- **Microservices.** Operational complexity without benefit for one developer.
+- **A monolith without explicit boundaries.** It quickly turns into a tangle, especially when agents write the code.

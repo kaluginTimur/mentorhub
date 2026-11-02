@@ -9,7 +9,7 @@ How project knowledge is kept consistent with the code. Paths in this document a
 | `AGENTS.md` | Map and project-wide rules for any AI client; Claude Code loads it into every session through the one-line `CLAUDE.md`, so it stays short |
 | `docs/development/` | One guide per area (`backend.md`, `frontend.md`, this file): stack, conventions, commands, verification, pitfalls |
 | `docs/architecture/invariants.md` | Domain model, authorization, visibility |
-| `docs/adr/`, `docs/features/` | Architecture decisions, feature specs and their progress logs (`<feature>.progress.md`: step statuses, decisions at checkpoints, step commits) |
+| `docs/architecture/decisions/`, `docs/features/` | Architecture decisions, feature specs and their progress logs (`<feature>.progress.md`: step statuses, decisions at checkpoints, step commits) |
 | `.claude/` | The Claude Code workflow: agents and skills describe roles and processes and point to the documents above; hooks and settings enforce rules (see `.claude/README.md`) |
 
 ## Conventions

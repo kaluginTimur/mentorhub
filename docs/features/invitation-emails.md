@@ -2,7 +2,7 @@
 
 Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0001, ADR 0002, ADR 0006, ADR 0007, ADR 0008, `docs/features/invitations.md` (changes its requirements, see below), `docs/features/invitation-links.md`, `docs/architecture/invariants.md`.
+Related: Decision 0001, decision 0002, decision 0006, decision 0007, decision 0008, `docs/features/invitations.md` (changes its requirements, see below), `docs/features/invitation-links.md`, `docs/architecture/invariants.md`.
 Reconstructed: 2026-10-23. The first draft stayed in an unpushed local branch; this version is rebuilt from what the repository records about it, and the user confirmed the proposals of the reconstruction on 2026-10-23 (see Decisions).
 
 ## 1. Requirements
@@ -68,7 +68,7 @@ Delivery:
 
   Accepted edge case: the invitation is read once before the mail server is contacted, not locked during the send. A revoke, acceptance or new link that commits while the email is being handed to the mail server (at most the mail timeouts) is not seen: the email carries the link read just before, which may already be dead. The administrator then sends again (as in `invitation-links`, where a copy can race a new link).
 - AC-11 (S4, auto): Given the mail server refuses the message or cannot be reached within the configured timeouts, then the request becomes `FAILED` with the time and a short reason without the token, a warning is logged without the token or the message body, and the invitation is unchanged. There is no automatic retry; the administrator sends again.
-- AC-12 (auto): Given the application stops after the commit but before the email was sent, then after the next start the email is sent once (event publication registry, ADR 0008). A request that is no longer `QUEUED` is never sent again, so a publication replayed after `SENT` was recorded sends nothing. An email may be sent twice if the application stops between handing it to the mail server and recording `SENT`; that is accepted.
+- AC-12 (auto): Given the application stops after the commit but before the email was sent, then after the next start the email is sent once (event publication registry, decision 0008). A request that is no longer `QUEUED` is never sent again, so a publication replayed after `SENT` was recorded sends nothing. An email may be sent twice if the application stops between handing it to the mail server and recording `SENT`; that is accepted.
 - AC-13 (auto): Given a request stays `QUEUED` because its processing failed unexpectedly (for example the database was unavailable when the result was recorded), then within 10 minutes, without a restart, it is processed again (stale incomplete publications are resubmitted, see Design), so neither the row nor AC-5 stay blocked.
 - AC-14 (S6, auto): The email is plain text in English:
   - From: `mentorhub.mail.from`; To: the invitation's email; Subject: "You're invited to MentorHub";
@@ -209,15 +209,15 @@ The outcome (`SENT`, `FAILED`, `SKIPPED`) is a system result, not an administrat
 - `com.mentorhub.system`: `ClientConfig` gains `invitationEmails`, read from `MailDelivery.isEnabled()` (`system` → `mail`).
 - Frontend: the checkboxes, the row action and the status line in `frontend/src/app/features/invitations/`; the client config flag next to the OIDC settings.
 
-### Asynchronous delivery (ADR 0008)
+### Asynchronous delivery (decision 0008)
 
-- `spring-modulith-starter-jdbc` adds the event publication registry (JDBC fits ADR 0007; one transaction manager serves both). ADR 0001 expected the JPA starter here; ADR 0008 records the change.
+- `spring-modulith-starter-jdbc` adds the event publication registry (JDBC fits decision 0007; one transaction manager serves both). Decision 0001 expected the JPA starter here; decision 0008 records the change.
 - The registry's tables are created by Modulith's schema initialization (`spring.modulith.events.jdbc.schema-initialization.enabled: true`), not by a Flyway migration.
 - Incomplete publications are resubmitted on startup (`spring.modulith.events.republish-outstanding-events-on-restart: true`), which gives AC-12. Completed publications are deleted (`spring.modulith.events.completion-mode: delete`), so the table does not grow.
 - A scheduled job (every 5 minutes) resubmits incomplete `InvitationEmailRequested` publications older than 5 minutes (`IncompleteEventPublications.resubmitIncompletePublications` with a filter on the event type and the publication date), which gives AC-13 without a restart. Publications of other events are left to their own modules. The age counts from the publication, and a publication stays incomplete while it waits in the executor's queue and while it sends, so during a backlog (for example a hanging mail server) publications still being delivered are resubmitted too; the sender's guard and the `QUEUED` check keep them from sending twice. A delivery waiting on the guard holds an executor thread for at most the rest of the running send.
 - The listener records `FAILED` and completes instead of throwing, so a mail failure is not replayed (AC-11). It throws only on unexpected errors (for example the database is down), which leaves the publication incomplete for the scheduled job or the next start.
 - `@EnableAsync` and `@EnableScheduling` on `MentorHubApplication`. Without `@EnableAsync`, `@ApplicationModuleListener` silently runs in the request thread after the commit, and the response waits for the mail server (AC-8). Boot's `applicationTaskExecutor` runs the listener; `spring.task.execution.shutdown.await-termination: true` with a 30 s period lets sends in progress finish on shutdown.
-- **Single instance.** Resubmission on startup and by the job does not know about other instances, and the sender's guard is in memory per process, so with several instances an email in progress could be sent twice. MentorHub runs as one instance; running several needs a new decision (recorded in ADR 0008).
+- **Single instance.** Resubmission on startup and by the job does not know about other instances, and the sender's guard is in memory per process, so with several instances an email in progress could be sent twice. MentorHub runs as one instance; running several needs a new decision (recorded in decision 0008).
 - `spring-boot-starter-mail`. Spring Boot creates the `JavaMailSender` only when `spring.mail.host` is set; that is the "mail server configured" switch.
 - Mail timeouts: `spring.mail.properties.mail.smtp.connectiontimeout`, `timeout` and `writetimeout` default to 5 s in `application.yaml`, so a hung server frees the listener thread.
 
@@ -283,8 +283,8 @@ Migration `V6__invitation_emails.sql`:
 
 ### Documentation updates
 
-- `docs/adr/0008-asynchronous-events.md`: the event publication registry with JDBC, its schema initialization, completion mode and the restart policy.
-- `docs/adr/0001-modular-monolith.md`: the consequence line points to ADR 0008.
+- `docs/architecture/decisions/0008-asynchronous-events.md`: the event publication registry with JDBC, its schema initialization, completion mode and the restart policy.
+- `docs/architecture/decisions/0001-modular-monolith.md`: the consequence line points to decision 0008.
 - `docs/development/backend.md`: the `mail` module, events through the registry (`@EnableAsync` as a pitfall, the single-instance assumption), mail configuration and the optional mail server, the `FAILED` emails of `TestMentorHubApplication`, and `mail.debug` next to the bind-parameter logging warning.
 - `docs/features/invitations.md`: the changes listed in "Changes to `docs/features/invitations.md`", with a "Revised" line.
 - `api/openapi.yaml`: the descriptions listed under API.
@@ -303,7 +303,7 @@ Recovered from the repository:
 
 Proposed in this reconstruction and confirmed by the user (2026-10-23):
 
-- Durable asynchronous delivery through the Spring Modulith event publication registry, as ADR 0001 anticipated, but with the JDBC starter instead of the JPA one (ADR 0007); recorded in ADR 0008.
+- Durable asynchronous delivery through the Spring Modulith event publication registry, as decision 0001 anticipated, but with the JDBC starter instead of the JPA one (decision 0007); recorded in decision 0008.
 - A separate `mail` infrastructure module; the invitation text and the decision what to send stay in `users`.
 - The email request row stores no link; the link is built from the current token when the email is sent, and closed invitations are skipped.
 - One queued email per invitation; no automatic retries; failures are shown in the list.

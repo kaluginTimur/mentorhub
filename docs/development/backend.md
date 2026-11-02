@@ -2,7 +2,7 @@
 
 Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wrapper `./mvnw`), springdoc, Spotless (palantir-java-format), Testcontainers 2, JSpecify, libphonenumber (phone parsing and E.164 normalization). Commands run from `backend/`; paths in this document are relative to the repository root.
 
-## Modules (ADR 0001)
+## Modules (decision 0001)
 
 - A module is a direct subpackage of `com.mentorhub` (e.g. `com.mentorhub.cohorts`). Its public API is the types in its root package; the implementation lives in `<module>.internal`.
 - Internal code is split into layer subpackages: `domain` (domain types and rules), `persistence` (repositories and their row types), `service`, `web` (controllers), plus module-specific technical ones such as `security`. A type is `public` only when another subpackage uses it; controllers are `public` only if the split requires it. Dependencies between the subpackages stay acyclic. Tests sit in the package of the class they test.
@@ -10,10 +10,10 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - `com.mentorhub.api` is the generated contract, an open module. No hand-written code there except `package-info.java`.
 - Every package has a `package-info.java` with `@NullMarked` (JSpecify), internal subpackages included: `@NullMarked` does not apply to subpackages. Mark nullable values with `@org.jspecify.annotations.Nullable`.
 - `com.mentorhub.mail` is an infrastructure module without domain knowledge and depends on no other module. Its public API is `MailDelivery` (`isEnabled()`, and a synchronous `send(MailMessage)` that throws `MailDeliveryException`), `MailMessage` and `MailDeliveryException`; the `JavaMailSender` adapter and `MailSenderProperties` are internal. Callers decide what to send (the invitation text lives in `users`) and call `send` outside database transactions.
-- Events between and inside modules go through the Spring Modulith event publication registry (JDBC, ADR 0008): `ApplicationEventPublisher` inside the changing transaction, `@ApplicationModuleListener` after the commit on the async executor. A listener that fails by throwing leaves its publication incomplete, to be published again; a listener that handles a business failure itself (as `InvitationEmailSender` records `FAILED`) completes. Delivery assumes a single application instance; the limits of invitation email delivery are listed with the registry settings under Configuration and profiles.
+- Events between and inside modules go through the Spring Modulith event publication registry (JDBC, decision 0008): `ApplicationEventPublisher` inside the changing transaction, `@ApplicationModuleListener` after the commit on the async executor. A listener that fails by throwing leaves its publication incomplete, to be published again; a listener that handles a business failure itself (as `InvitationEmailSender` records `FAILED`) completes. Delivery assumes a single application instance; the limits of invitation email delivery are listed with the registry settings under Configuration and profiles.
 - `ModularityTests` verifies the boundaries and must stay green.
 
-## API (ADR 0002)
+## API (decision 0002)
 
 - `openapi-generator-maven-plugin` generates the `*Api` interfaces and DTOs (`com.mentorhub.api.model`) from `api/openapi.yaml` into `backend/target/generated-sources/openapi`, with `interfaceOnly`, `useTags` and `skipDefaultInterface`.
 - A controller is a package-private `@RestController` class that `implements` the generated `*Api`. Per tag `Foo` there is the generated `FooApi`, the controller `FooController` and the mapper `FooMapper` (contract DTOs to and from service types), both in the module's `web` package (for example `UsersApi`, `UsersController`, `UsersMapper`).
@@ -22,9 +22,9 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Nullability in generated DTOs: an optional property is a `@Nullable` field (`org.springframework.lang.Nullable`) outside the required-args constructor. A required nullable property (`type: [string, 'null']`) is a field without `@NotNull` and without `@Nullable`, and it is a parameter of the required-args constructor, so pass `null` explicitly.
 - Because of `skipDefaultInterface`, a contract change can break compilation of existing code: a new operation in a tag that already has a controller needs an implementation, and a new required property changes the generated DTO constructor. Keep the build green with the smallest temporary change (a stub throwing `new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED)`, or a placeholder value) until the real implementation lands.
 
-## Security (ADR 0003, ADR 0004)
+## Security (decision 0003, decision 0004)
 
-- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. The filter chains and the gate are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`; token validation per trusted issuer is in `backend/src/main/java/com/mentorhub/users/internal/security/JwtAuthenticationConfiguration.java` and `backend/src/main/java/com/mentorhub/users/internal/security/TrustedIssuers.java`. `JwtAuthenticationConfiguration` also wires the administrator bootstrap (ADR 0005), which writes its `USER_BOOTSTRAPPED_ADMIN` audit entry.
+- `com.mentorhub.users` authenticates every request: the token's `(iss, sub)` is resolved to `users.id`, stored roles are expanded into permissions. The filter chains and the gate are in `backend/src/main/java/com/mentorhub/users/internal/security/SecurityConfiguration.java`; token validation per trusted issuer is in `backend/src/main/java/com/mentorhub/users/internal/security/JwtAuthenticationConfiguration.java` and `backend/src/main/java/com/mentorhub/users/internal/security/TrustedIssuers.java`. `JwtAuthenticationConfiguration` also wires the administrator bootstrap (decision 0005), which writes its `USER_BOOTSTRAPPED_ADMIN` audit entry.
 - Every `/api/v1/**` controller method carries `@RequirePermission(Permission.X)` or `@NoPermissionRequired` (both in `com.mentorhub.users`). Permission names never appear in strings; checks never use role names. `PermissionDeclarationTests` fails the build on an operation with neither or both.
 - The gate refuses callers that are not invited or disabled with 403 before any controller runs, except `GET /api/v1/me` and `POST /api/v1/invitations/accept`, which need only a valid token. Services behind the gate therefore only see active users: get the caller with `CurrentUserProvider.currentUser()` (`users.id` and permissions), never from the token. Services behind the two exemptions read the caller in any access status through `CurrentCaller` (`backend/src/main/java/com/mentorhub/users/internal/security/CurrentCaller.java`): access status, `users.id` if linked, issuer, subject, email, `email_verified` and names.
 - Resource-level checks are explicit service code, evaluated against current domain relations; IDs from the request are never trusted. A single resource the caller may not access throws `com.mentorhub.web.NotFoundException`, exactly like a missing one; lists leave inaccessible items out. A missing permission is Spring Security's `AccessDeniedException`.
@@ -61,7 +61,11 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Internal types are `record`s. No Lombok.
 - Constructor injection, `final` fields.
 - `spring.jpa.open-in-view=false`: load the data you need in the service.
-- Persistence is chosen per module (ADR 0007, `docs/adr/0007-persistence-approach-per-module.md`): `JdbcClient` with records or Spring Data JPA, one approach per module, stated in the module's first spec. `users` and `audit` use `JdbcClient`. Each table is written through its owning module's approach only; a JPA module flushes before SQL reads of its changed tables.
+- Persistence is chosen per module: `JdbcClient` with records or Spring Data JPA, one approach per module, chosen when the module is first planned and recorded here. `users` and `audit` use `JdbcClient`, because their logic depends on explicit locking, escaped search and an append-only table, where JPA would mostly be native queries.
+- Persistence types stay internal to their module: no JPA associations or shared entities across module boundaries, other modules are referenced by id, and a JPA module keeps entities out of its public API.
+- Each table is written through its owning module's approach only: JDBC writes to a table that a persistence context has loaded leave stale entities and bypass `@Version` checks.
+- JPA defers writes until flush, and Hibernate does not flush before `JdbcClient` queries. A JPA module flushes (`EntityManager.flush()`) before calling code that reads its changed tables with SQL, and before returning from a service whose constraint violations must map to a specific problem, so the error surfaces in the service and not at commit.
+- One transaction manager serves both approaches: with the JPA starter present, Spring Boot configures `JpaTransactionManager`, which binds the same connection for `JdbcClient`, so both work in one `@Transactional` call, including `AuditLog.record`.
 - Formatting: palantir-java-format via Spotless (`./mvnw spotless:apply`). `verify` fails on unformatted code.
 
 ## Database
@@ -74,7 +78,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Advisory locks (`pg_advisory_xact_lock`) use a fixed `long` key per purpose. The administrator lock of the lockout rules is `ADMINISTRATORS_LOCK` in `UserRepository`; a new lock picks a different key. Lock order is the advisory lock first, then row locks.
 - Row locks on a table that foreign keys reference use `for no key update`, unless a key column changes: `for update` conflicts with the `for key share` that every referencing insert takes, so two transactions that each lock a row the other's insert references deadlock (`UserRepository.lockUser` and the `audit_log` actor).
 
-## Audit (ADR 0006)
+## Audit (decision 0006)
 
 - Record an audited change with `com.mentorhub.audit.AuditLog.record(new AuditEntry(actorUserId, action, subjectType, subjectId, details))` inside the changing `@Transactional` method; `record` joins the transaction (`Propagation.MANDATORY`) and fails without one. The actor is `users.id`, or `null` for the system.
 - The action and subject type are string constants owned by the writing module (`UserAuditAction`, subject type `USER`). Details are a JSON-serializable map and never copy content with its own visibility rules.

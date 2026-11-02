@@ -26,10 +26,6 @@ In this order, after the tracking core:
 2. **SQL assignments:** automatic checking.
 3. **Meeting scheduling:** through external calendars and Webex.
 
-Before the first release, whenever it comes:
-
-- **Squash the Flyway migrations** into one.
-
 ## Ideas
 
 No commitment and no order.

@@ -2,7 +2,7 @@
 
 Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0006, ADR 0007, `docs/features/invitations.md` (changes its requirements, see below), `docs/architecture/invariants.md`. Followed by `invitation-emails`.
+Related: Decision 0006, decision 0007, `docs/features/invitations.md` (changes its requirements, see below), `docs/architecture/invariants.md`. Followed by `invitation-emails`.
 
 ## 1. Requirements
 

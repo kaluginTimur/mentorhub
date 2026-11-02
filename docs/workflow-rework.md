@@ -6,7 +6,7 @@ Status: temporary. This document hands over the context for reworking the docume
 
 Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 (composition of the constitution).
 
-**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). `docs/constitution.md` (10 rules) and `docs/roadmap.md` are written and approved. Still to do in stage 1: `docs/architecture/decisions/` (planned), then `CLAUDE.md` and `AGENTS.md`. The skills and guides still describe `docs/architecture/invariants.md` as holding the domain model, visibility and the roadmap stage; that stays until stage 5 rewrites them.
+**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). `docs/constitution.md` (10 rules) and `docs/roadmap.md` are written and approved. `docs/architecture/decisions/` is written and approved. Still to do in stage 1: `CLAUDE.md` and `AGENTS.md`. Left for stage 5: the `/adr` skill and `docs/development/docs.md` still describe the old ADR format with a Status line. The comment `ADR 0006` in the applied migration `V3__user_administration.sql` stays, because editing it would break Flyway's checksum; the squash at the end of stage 4 removes it. The skills and guides still describe `docs/architecture/invariants.md` as holding the domain model, visibility and the roadmap stage; that stays until stage 5 rewrites them.
 
 Not discussed yet: the skills and agents of the new process (the last discussion item), including the agent review of the spec and the agent-neutral process description (see **Open questions**). They are needed before migration stage 5, not before stage 1.
 
@@ -120,7 +120,7 @@ Order of discussion: document model → life cycle of a change → format → to
 - A decision is edited in place. Sections: Context, Decision, Why, Rejected alternatives. A reversed choice becomes one line in Rejected alternatives, with its date and reason.
 - Threshold: the decision is cross-cutting, hard to reverse, and had real alternatives.
 - An index holds one line per decision; agents read the index and open a decision only when the task touches it.
-- The existing numbers stay (`0001` to `0008`) as short stable references.
+- Numbers are short references. User decisions of 2026-11-03: 0007 is removed, because a persistence choice per module is cheap to change; its rules moved to `docs/development/backend.md`. 0005 is mostly behavior and moves to the requirements in stage 3. The remaining decisions are renumbered at the end of stage 4.
 
 ### Living requirements
 
@@ -202,8 +202,9 @@ Stages, each a separate commit on `workflow/rework` that leaves `node scripts/ch
    - `docs/adr/` → `docs/architecture/decisions/` with an index; add Why and Rejected alternatives (including reversed choices such as hashed tokens and synchronous sending); update the "ADR 0…" references in 33 files.
    - `CLAUDE.md` imports `docs/constitution.md` (planned); `AGENTS.md` loses the rules that moved.
 2. **The tool,** at least `validate` and `trace`, so the migrated requirements can be checked.
-3. **Requirements.** The five specs become capability files with new ids, each requirement checked against the code; contradictions are collected in a table for the user to decide. Design sections are sorted (durable parts to decisions or guides, the rest dropped); specs and progress logs are deleted.
+3. **Requirements.** The five specs become capability files with new ids, each requirement checked against the code; contradictions are collected in a table for the user to decide. Design sections are sorted (durable parts to decisions or guides, the rest dropped); specs and progress logs are deleted. Decision 0005 moves to the `identity` requirements: its behavior becomes scenarios, the cost of the bootstrap mailbox goes to Known limitations, the "trust email" setting goes to a guide, and the decision is deleted.
 4. **Tests.** Tests are reshaped so that names start with scenario ids, replacing the `AC-n` comments. Scenarios without tests get new tests written by the test engineer from the requirements, without reading the implementation; a new test that fails reveals a real gap between code and requirement, for the user to decide.
+   - **Last step, one commit (user decision, 2026-11-03):** squash the Flyway migrations into one and renumber the decisions (0006 → 0005, then 0008 → 0006). It comes last because a gap found above may need one more migration. Claude compares schema dumps from the old migrations and the new one on a temporary database, then runs the backend verification. The project hook forbids changing committed migrations, so Claude prepares the new file under a temporary name and the user runs one command that deletes the old files and renames it. The user then recreates the dev database with `docker compose -f infra/compose.yaml down -v`, which deletes the `postgres-data` volume with all dev data; this needs the user's confirmation at that moment. Afterwards the user watches migrations until the first release, so the squash is not on the roadmap.
 5. **Process.** The neutral process description, skills and agents (the test engineer is a new agent), `docs/development/docs.md`, `.claude/README.md`, `AGENTS.md`.
 
 Who does what: stages 3 and 4 run in subagents per capability; stage 1 runs in the main session.

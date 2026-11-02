@@ -13,7 +13,7 @@ import org.springframework.validation.annotation.Validated;
 /**
  * @param trustedIssuers the issuers whose tokens are accepted; a token of any other issuer is rejected with 401.
  *     Required: startup fails without at least one
- * @param bootstrapAdminEmail the administrator bootstrap address (ADR 0005); empty disables the rule
+ * @param bootstrapAdminEmail the administrator bootstrap address (decision 0005); empty disables the rule
  * @param issuerConnectTimeout connect timeout of OIDC discovery and JWK set requests to an issuer
  * @param issuerReadTimeout read timeout of those requests: a hung identity provider fails the request with 500 after
  *     it instead of holding the request thread

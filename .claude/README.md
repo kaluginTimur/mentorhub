@@ -47,7 +47,7 @@ Each phase of a feature runs in its own session. When a phase is approved and co
 | `/feature <feature> [step]` | Implement an approved spec; resumes from the progress log, `step` overrides where to continue (`contract`, `migration`, `domain`, `api`, `frontend`, `review`, `verify`) |
 | `/review [git-ref \| spec path \| focus]` | Independent review of current changes, or of a spec |
 | `/verify [backend\|frontend\|docs\|all] [git-ref]` | Run the verification and get a pass/fail table; `docs` with a ref lists documents to recheck since that ref |
-| `/adr <title>` | Record an architecture decision in `docs/adr/` |
+| `/adr <title>` | Record an architecture decision in `docs/architecture/decisions/` |
 | `/pr [base-branch]` | Open a GitHub pull request: checks, a generated description for your approval, push and `gh pr create` |
 | `/usage-review [feature ...]` | Temporary: compare the recorded token usage of features with the baseline, check that each optimization took effect, propose further ones split into quality-neutral and quality-risking |
 
@@ -60,7 +60,7 @@ Bugs, refactoring and small changes need no spec. Do quick fixes directly in the
 | `AGENTS.md` | Map and project-wide rules, shared with other AI clients; `CLAUDE.md` only imports it. Loaded into every session, so keep it short |
 | `docs/development/<area>.md` | Stack, conventions, commands, verification, pitfalls; loaded when Claude works in `backend/` or `frontend/` (through the one-line `CLAUDE.md` there) |
 | `docs/architecture/invariants.md` | Domain model, authorization, visibility |
-| `docs/adr/`, `docs/features/` | Decisions and feature specs |
+| `docs/architecture/decisions/`, `docs/features/` | Decisions and feature specs |
 | `docs/development/docs.md` | How references between documents, artifacts and code are kept consistent |
 | `agents/`, `skills/` | Roles, processes, checkpoints and report formats only. No commands, versions or class names: they point to the documents above |
 | `hooks/`, `settings.json` | Enforcement, the only place with concrete paths and commands |

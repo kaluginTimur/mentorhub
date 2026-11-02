@@ -2,7 +2,7 @@
 
 Status: implemented
 Stage: tracking core (users, roles, audit log)
-Related: ADR 0001, ADR 0002, ADR 0003, ADR 0004, ADR 0005, ADR 0006, ADR 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (invitation emails).
+Related: Decision 0001, decision 0002, decision 0003, decision 0004, decision 0005, decision 0006, decision 0007, `docs/features/identity-foundation.md`, `docs/features/user-administration.md`. Followed by `invitation-emails` (invitation emails).
 Revised: 2026-10-20 by `invitation-links`: the link can be copied again while the invitation is pending (Goal, Scope, AC-1, AC-19, AC-20, Visibility, UI, Decisions). The Design section describes the plaintext token storage of `invitation-links`.
 Revised: 2026-10-23 by `invitation-emails`: with a configured mail server MentorHub can send the link by email (AC-5, AC-20, Access matrix, Out of scope, UI Invitations, API).
 
@@ -10,7 +10,7 @@ Revised: 2026-10-23 by `invitation-emails`: with a configured mail server Mentor
 
 ### Goal
 
-Registration is by invitation only (ADR 0003), but today the only ways in are the administrator bootstrap and the development users. Administrators need to let new people in without touching the database. They create an invitation for an email, optionally with roles, and pass the link on however they like. The person signs in or registers in Keycloak with that email, opens the link, and is linked to a MentorHub user. Inviting a disabled user reactivates the same user. Invitations are audited, so "who let this person in?" always has an answer.
+Registration is by invitation only (decision 0003), but today the only ways in are the administrator bootstrap and the development users. Administrators need to let new people in without touching the database. They create an invitation for an email, optionally with roles, and pass the link on however they like. The person signs in or registers in Keycloak with that email, opens the link, and is linked to a MentorHub user. Inviting a disabled user reactivates the same user. Invitations are audited, so "who let this person in?" always has an answer.
 
 ### Scope
 
@@ -89,12 +89,12 @@ Landing and acceptance:
 - AC-11 (S9, auto): Given the same as AC-10, but a disabled user with that email exists, then:
   - that same user is enabled, and the disable reason and comment are cleared;
   - the identity is linked if it is not linked yet (a user may have several identities);
-  - the user's roles become exactly the invitation's: roles they held before being disabled and the invitation lacks are removed, so an empty invitation leaves them with no roles (user decision). Unknown stored roles are left untouched (ADR 0004);
+  - the user's roles become exactly the invitation's: roles they held before being disabled and the invitation lacks are removed, so an empty invitation leaves them with no roles (user decision). Unknown stored roles are left untouched (decision 0004);
   - the profile stays unchanged.
 
   Given that the user has become active since the invitation was created, the identity is linked if needed and the invitation's roles are added; no role is removed, so acceptance never takes access away from an active user.
 - AC-12 (S8, auto): Given the token's email is not verified or differs from the invitation's email, when the caller accepts, then the response is 409 `invitation-email-mismatch`, nothing changes, and the invitation stays pending.
-- AC-13 (auto): Given the caller's identity is already linked to a user other than the user with the invitation's email (for example, the email was changed at the identity provider), then the response is 409 `identity-linked-elsewhere`, nothing changes, and a warning with both user ids is logged. An identity is never moved between users (as in ADR 0005).
+- AC-13 (auto): Given the caller's identity is already linked to a user other than the user with the invitation's email (for example, the email was changed at the identity provider), then the response is 409 `identity-linked-elsewhere`, nothing changes, and a warning with both user ids is logged. An identity is never moved between users (as in decision 0005).
 - AC-14 (auto): Given an invitation already accepted by the user the caller's identity is linked to (read inside the accepting transaction, so it holds for a double click on a first-time acceptance), when the caller accepts it again, then the response is 200 with `Me` and nothing changes. This is an API guarantee for retries; the landing page runs preview first and shows an accepted link as invalid.
 - AC-15 (auto): Concurrency:
   - given two parallel accepts of one token, exactly one changes anything; the other responds 200 (AC-14) or 404 `invitation-invalid`, never 500;
@@ -107,7 +107,7 @@ Landing and acceptance:
   - the roles added and the roles removed.
 
   `GET /api/v1/users/{id}/history` shows it.
-- AC-17 (auto): The accept endpoint requires authentication (no token: 401) and admits callers in every access status (not invited, disabled, active), bypassing the gate the way `GET /api/v1/me` does. A stored role on an invitation that the code does not know (ADR 0004) is skipped on acceptance and on reads.
+- AC-17 (auto): The accept endpoint requires authentication (no token: 401) and admits callers in every access status (not invited, disabled, active), bypassing the gate the way `GET /api/v1/me` does. A stored role on an invitation that the code does not know (decision 0004) is skipped on acceptance and on reads.
 
 UI:
 
@@ -193,7 +193,7 @@ A rejected acceptance (invalid token, mismatch, linked elsewhere) writes no audi
 
 - **Email squatting in Keycloak.** Keycloak registration is open, and the realm forbids duplicate emails. So anyone can register an unverified Keycloak account with someone else's email, whether they learned it from a leaked invitation link (the landing page shows the invited email) or simply guessed it. The squatter gets no MentorHub access, because acceptance requires a verified email (AC-12). But the real person cannot register with their email, and while the realm has no password reset they cannot take the account over either.
   - Since `local-mail` enabled password reset, the real person recovers the account through their mailbox with "Forgot password?". Keycloak 26.8 does not mark the email verified by the reset itself: the squatted account still has its pending email verification, so Keycloak first sends a verification email and only then asks for the new password. Both steps go through the real mailbox, and afterwards the email is verified and the squatter's password is replaced (checked manually in `local-mail`).
-  - Closing self-registration, with MentorHub creating Keycloak accounts through the Admin API, is rejected: ADR 0003 keeps the identity provider replaceable.
+  - Closing self-registration, with MentorHub creating Keycloak accounts through the Admin API, is rejected: Decision 0003 keeps the identity provider replaceable.
 
 ## 2. UI
 
@@ -312,7 +312,7 @@ Shown in the dialog after creating an invitation or getting a new link.
 
 ### Modules
 
-- Invitations live in `com.mentorhub.users` (decision below): `users.internal.invitation` holds the domain and service, and `users.internal.persistence` gets `InvitationRepository` (`JdbcClient`, ADR 0007). No new module and no new module dependency (`users` → `audit` exists).
+- Invitations live in `com.mentorhub.users` (decision below): `users.internal.invitation` holds the domain and service, and `users.internal.persistence` gets `InvitationRepository` (`JdbcClient`, decision 0007). No new module and no new module dependency (`users` → `audit` exists).
 - `users.internal.web`: a new contract tag `Invitations`, with `InvitationsController` implementing `InvitationsApi` and `InvitationsMapper`, following the per-tag convention. The history mapping in `UsersMapper` gains the new action.
 - `Permission` gains `USERS_INVITE`, and ADMIN gets it.
 - `com.mentorhub.web`: `ConflictException(type, detail, extensions)` carries Problem extensions (`userId`, `invitationId`), rendered as `ProblemDetail` properties; `NotFoundException(URI type, String detail)` gives a 404 its own problem type and a client-visible detail (used for `invitation-invalid`, types in `InvitationProblems`).
@@ -417,7 +417,7 @@ Schemas:
 - The other audit entries: `INVITATION_CREATED` (email, roles), `INVITATION_LINK_REISSUED` (`expiresAt` as an ISO-8601 string), `INVITATION_REVOKED`.
 - Lock order: the invitation row, then the user row. Acceptance removes roles only from a disabled user, who does not count as an active administrator, so it needs no administrator lock and the lockout rules cannot be broken by it. Revoke and new link lock only the invitation row, so accept, revoke and new link serialize on that row (AC-15).
 - Create: check for an active user with the email, then `insert ... on conflict (lower(email)) where <open> do nothing` and re-read the open invitation; the partial unique index decides races between parallel creates, a conflicting open invitation maps to `invitation-exists`, with up to 3 attempts.
-- The bootstrap (ADR 0005) and acceptance can race for the same email. Both use `on conflict do nothing` and re-read, so either order ends in one user.
+- The bootstrap (decision 0005) and acceptance can race for the same email. Both use `on conflict do nothing` and re-read, so either order ends in one user.
 - Frontend:
   - the `/invite/:token` route sits outside `accessGuard`; the token interceptor treats preview as public (generated `PATH` constants);
   - the "Invitations" link and the route need `USERS_INVITE` through the existing permission check and `requirePermission` guard;
@@ -430,7 +430,7 @@ Schemas:
 
 ### Events
 
-None. The audit entry is written in the accepting transaction (ADR 0006).
+None. The audit entry is written in the accepting transaction (decision 0006).
 
 ### Configuration
 
@@ -480,7 +480,7 @@ No infrastructure changes. Keycloak allows registration but requires email verif
 - Links last 7 days, configurable. There is one open invitation per email (user decision). Revised by `invitation-links`: the token is stored in plaintext (not a hash), so the link of a pending invitation can be copied again; a new link is still issued when the invitation has expired.
 - A public landing page with "Sign in" and "Create an account", and automatic acceptance after the round trip (user decision).
 - Invitations get their own page, `/invitations` (user decision).
-- Invitations live in the `users` module, not in a new module (recommendation; the user did not object). Linking identities, reactivation, the gate exemption and the row locks are `users` internals. A separate module would need a public "link an identity to a user" API, which the invariant "linking happens only through an invitation or ADR 0005" argues against.
+- Invitations live in the `users` module, not in a new module (recommendation; the user did not object). Linking identities, reactivation, the gate exemption and the row locks are `users` internals. A separate module would need a public "link an identity to a user" API, which the invariant "linking happens only through an invitation or decision 0005" argues against.
 - Invitations carry no names: a new user's first and last name come from the token at acceptance, as with the bootstrap, and a reactivated user's profile is unchanged.
 - Reactivating a disabled user through an invitation sets their roles to exactly the invitation's, so the invitation states everything the person gets back (user decision; refines the earlier "adds roles"). A user who became active after the invitation was created only gains the invitation's roles. "Enable user" on the user page still keeps roles (user administration AC-8).
 - Editing an invitation is not supported; revoke and create again.
