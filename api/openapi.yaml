@@ -1106,7 +1106,7 @@ components:
           type: [string, 'null']
     BootstrapChanges:
       type: object
-      description: What the administrator bootstrap (decision 0005) did.
+      description: What the administrator bootstrap did.
       required: [userCreated, identityLinked, enabled, adminAdded]
       properties:
         userCreated:

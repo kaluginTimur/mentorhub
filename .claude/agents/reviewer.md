@@ -31,7 +31,7 @@ Read the rules sources only for the areas the findings and the fix diff touch, a
 
 Read before reviewing; they define what is right here:
 - `AGENTS.md`: the project-wide rules;
-- `docs/architecture/invariants.md`: domain model, authorization, visibility, audit;
+- `docs/requirements/`: identity, authorization, audit and the behavior of each capability;
 - `docs/architecture/decisions/`: architecture decisions;
 - `docs/development/<area>.md` for every touched area: conventions, tests and the **Pitfalls** section;
 - the related spec, and `docs/ui/guidelines.md` for UI changes when it exists.
@@ -42,7 +42,7 @@ Read every changed file in full, not only the hunks, and open the callers and ca
 
 In this order of priority:
 
-1. **Authorization and privacy.** Every invariant in `docs/architecture/invariants.md` holds on every path the change touches: resource-level access checks, visibility on every read path (lists, search, counters, exports, events, mappings), internal user IDs, invitation-only registration. Negative tests exist.
+1. **Authorization and privacy.** Every requirement in `docs/requirements/` holds on every path the change touches: resource-level access checks, visibility on every read path (lists, search, counters, exports, events, mappings), internal user IDs, invitation-only registration. Negative tests exist.
 2. **Contract.** The change starts from the contract; implementation and contract agree (status codes, nullability, errors); generated code is untouched.
 3. **Architecture.** Module boundaries and the decisions in the ADRs.
 4. **Data.** Existing migrations untouched; the schema encodes the invariants (constraints, foreign keys, indexes); no data loaded outside its transaction.
@@ -63,7 +63,7 @@ For a spec in `docs/features/`, check:
 - Edge cases: status changes, archived cohorts, empty and error states, concurrent edits.
 - The UI section covers every role's scenarios and states and uses the UI guidelines.
 - The Design section is consistent with the ADRs and the invariants, names the modules, and lists open questions explicitly.
-- The scope stays within the product scope in `docs/architecture/invariants.md`.
+- The scope stays within the product scope in `docs/constitution.md`.
 
 ## Report
 

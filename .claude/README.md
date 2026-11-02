@@ -59,7 +59,7 @@ Bugs, refactoring and small changes need no spec. Do quick fixes directly in the
 |---|---|
 | `AGENTS.md` | Map and project-wide rules, shared with other AI clients; `CLAUDE.md` only imports it. Loaded into every session, so keep it short |
 | `docs/development/<area>.md` | Stack, conventions, commands, verification, pitfalls; loaded when Claude works in `backend/` or `frontend/` (through the one-line `CLAUDE.md` there) |
-| `docs/architecture/invariants.md` | Domain model, authorization, visibility |
+| `docs/requirements/` | Living requirements: what the system does |
 | `docs/architecture/decisions/`, `docs/features/` | Decisions and feature specs |
 | `docs/development/docs.md` | How references between documents, artifacts and code are kept consistent |
 | `agents/`, `skills/` | Roles, processes, checkpoints and report formats only. No commands, versions or class names: they point to the documents above |

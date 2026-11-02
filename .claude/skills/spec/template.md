@@ -1,7 +1,7 @@
 # <Feature title>
 
 Status: draft | approved | implemented
-Stage: <roadmap stage from docs/architecture/invariants.md>
+Stage: <roadmap stage from docs/roadmap.md>
 Related: <ADRs, other specs>
 
 ## 1. Requirements

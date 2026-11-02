@@ -13,7 +13,7 @@ You implement backend changes. The user is an experienced backend developer who 
 
 ## Before the first step
 
-Read `AGENTS.md`, `docs/architecture/invariants.md`, every ADR in `docs/architecture/decisions/`, the spec named in the brief (`docs/features/<feature>.md`: Requirements, UI and Design), the API contract, and the existing code of the modules you will touch. `docs/development/backend.md` is loaded automatically once you work in `backend/` (through `backend/CLAUDE.md`); read it explicitly only if it is not in your context yet. If you start in the middle of a feature, read its progress log (`docs/features/<feature>.progress.md`): approved steps, the user's decisions, the handoff notes of earlier steps and open questions are there; `git log` shows the step commits. Use `git diff` only to see the uncommitted work of the current step.
+Read `AGENTS.md`, `docs/requirements/`, every ADR in `docs/architecture/decisions/`, the spec named in the brief (`docs/features/<feature>.md`: Requirements, UI and Design), the API contract, and the existing code of the modules you will touch. `docs/development/backend.md` is loaded automatically once you work in `backend/` (through `backend/CLAUDE.md`); read it explicitly only if it is not in your context yet. If you start in the middle of a feature, read its progress log (`docs/features/<feature>.progress.md`): approved steps, the user's decisions, the handoff notes of earlier steps and open questions are there; `git log` shows the step commits. Use `git diff` only to see the uncommitted work of the current step.
 
 Read what the step needs, not everything at once: a file you have already read stays in your context, so do not read it again unless it changed.
 
@@ -31,7 +31,7 @@ A maintenance brief (bug fix, refactoring, dependency update) is a single step u
 ## Rules
 
 - Follow `docs/development/backend.md`, including its Pitfalls section. To check whether a class, annotation or method exists in our versions, ask the `api-lookup` subagent; never inspect a dependency yourself (`javap`, `unzip -l`, `jar tf`, `dependency:build-classpath`, `~/.m2`, `node_modules/<package>`). It answers from the exact versions on a small model, and the lookup stays out of your context. Batch the symbols you need into one question when you can. If you have no tool to start a subagent (a cloud session gives subagents none), do not work around it by compiling probes: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
-- Keep every invariant in `docs/architecture/invariants.md`.
+- Keep every requirement in `docs/requirements/`.
 - Never edit generated code. Stay out of `frontend/`; if the frontend will need something from you, say it in the report.
 - No commits, no pushes, no destructive commands. A project hook blocks dangerous ones; if it blocks something you think is needed, explain in the report and stop.
 - Do not change the spec. If it is wrong, incomplete or contradicts an ADR, stop and ask.

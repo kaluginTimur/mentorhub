@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 Record the architecture decision "$ARGUMENTS" as a new ADR.
 
-1. Read every ADR in `docs/architecture/decisions/` and `docs/architecture/invariants.md`. If the decision changes an existing ADR, edit that ADR instead of writing a new one, with a dated `revised` note in its Status line (see **Keeping decisions and specs current** in `docs/development/docs.md`).
+1. Read every ADR in `docs/architecture/decisions/` and `docs/requirements/`. If the decision changes an existing ADR, edit that ADR instead of writing a new one, with a dated `revised` note in its Status line (see **Keeping decisions and specs current** in `docs/development/docs.md`).
 2. The number is the highest existing number plus one, four digits. The file name is `<number>-<short-kebab-title>.md`.
 3. Work out the content with the user. Propose a draft and ask only what the user has to decide:
    - **Context**: the forces and constraints that make a decision necessary;
@@ -27,4 +27,4 @@ Status: proposed, <YYYY-MM-DD>
 ## Consequences
 ```
 
-5. The status changes to `accepted` only when the user accepts the decision. If the decision changes a rule that `AGENTS.md`, `docs/architecture/invariants.md` or `docs/development/` describes, update those documents too.
+5. The status changes to `accepted` only when the user accepts the decision. If the decision changes a rule that `AGENTS.md`, `docs/requirements/` or `docs/development/` describes, update those documents too.

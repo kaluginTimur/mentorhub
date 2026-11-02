@@ -40,7 +40,7 @@ Every development user has the password `mentorhub`:
 | `stranger@mentorhub.local` | Keycloak only, not linked until it accepts an invitation ("Access by invitation only") |
 
 - On every start in the `dev` profile, the backend creates or updates these users in its database, so no manual setup is needed.
-- `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/architecture/decisions/0005-administrator-bootstrap.md`).
+- `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/requirements/identity.md`).
 - New accounts can be registered at Keycloak ("Register" on the sign-in page). Registration requires email verification: open the verification email in Mailpit. "Forgot password?" also sends its email there.
 
 ### Inviting and accepting locally
@@ -90,9 +90,8 @@ Do not use `docker compose down -v` for this: it also deletes the `postgres-data
 | `docs/constitution.md` | The rules every change must keep |
 | `docs/roadmap.md` | What is planned |
 | `docs/architecture/decisions/` | Architecture decisions |
-| `docs/architecture/invariants.md` | Identity, authorization and audit rules |
+| `docs/requirements/` | Living requirements: what the system does |
 | `docs/development/` | Development guides (backend, frontend, documentation): conventions, commands, verification |
-| `docs/features/` | Feature specifications |
 
 ## Checks (same as CI)
 

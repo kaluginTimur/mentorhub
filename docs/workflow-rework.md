@@ -4,11 +4,37 @@ Status: temporary. This document hands over the context for reworking the docume
 
 ## Where we are
 
-Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 (composition of the constitution).
+Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 and 2026-11-03 (migration stages 1 and 2).
 
-**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). `docs/constitution.md` (10 rules) and `docs/roadmap.md` are written and approved. `docs/architecture/decisions/` is written and approved. `CLAUDE.md` and `AGENTS.md` are done, which closes stage 1. Stage 2 is written and approved by the user (2026-11-03): `scripts/requirements.mjs` with `validate` and `trace`, wired into the pre-commit hook, CI and the verification in `docs/development/docs.md`, where the format is now described. JUnit tests carry the id in `@DisplayName`. Only `validate` is wired for now: a strict `trace` would fail every commit of stages 3 and 4, so `trace` is wired in at the end of stage 4. At the same point a missing `docs/requirements/` should start to fail, because today it passes as "nothing yet". Deltas and the other subcommands come with the process in stage 5, so until then a test may cite only a living scenario. User decision of 2026-11-03: how other AI clients load the guides and the constitution is not considered for now, since each client works differently. Left for stage 5: the `/adr` skill and `docs/development/docs.md` still describe the old ADR format with a Status line; `.claude/README.md` and the reviewer still call `AGENTS.md` the project-wide rules; the `/pr` skill says commit messages follow `AGENTS.md`, while the language rule is now in the constitution. The comment `ADR 0006` in the applied migration `V3__user_administration.sql` stays, because editing it would break Flyway's checksum; the squash at the end of stage 4 removes it. The skills and guides still describe `docs/architecture/invariants.md` as holding the domain model, visibility and the roadmap stage; that stays until stage 5 rewrites them.
+**Done:**
 
-Not discussed yet: the skills and agents of the new process (the last discussion item), including the agent review of the spec and the agent-neutral process description (see **Open questions**). They are needed before migration stage 5, not before stage 1.
+- Stage 1: `docs/constitution.md` (10 rules), `docs/roadmap.md`, `docs/architecture/decisions/`, `CLAUDE.md` and `AGENTS.md`.
+- Stage 2: `scripts/requirements.mjs` with `validate` and `trace`, reviewed by a subagent and fixed. `validate` is wired into the pre-commit hook, CI and the verification in `docs/development/docs.md`, where the format is now described. JUnit tests carry the id in `@DisplayName`.
+
+**Done, not committed: migration stage 3.** The index and seven capability files in `docs/requirements/`: 204 scenarios, 1963 lines (against 1119 lines for the Requirements and UI sections of the specs, and about 1070 lines in the pilot, which had no UI). `docs/workflow-rework-stage3.md` holds the decided disputed points and the map of acceptance criteria to scenarios; it is the input for stage 4 and is deleted at its end. The specs, the progress logs, the invariants and decision 0005 are deleted; they remain in git.
+
+- User decisions of 2026-11-03: the first pass (3780 lines, 479 scenarios) was too large and was compressed; every disputed point keeps the code as it is.
+- The first pass was large because of Claude's brief, which carried the observable UI into scenarios and asked for one scenario per checked behavior. The compression rules are Claude's proposal: one shared requirement for list pages (PLT-9); UI scenarios only for behavior a user relies on; no exact strings, timings or field limits that the contract holds. Dropped UI detail stays in the code, its tests and `docs/ui/guidelines.md`.
+- References in the skills and agents were only repointed so the check passes; they are rewritten in stage 5.
+
+**Next: migration stage 4.**
+
+**At the end of stage 4:**
+
+- Wire `trace` into the hook, CI and the verification. A strict `trace` would fail every commit of stages 3 and 4.
+- Make a missing `docs/requirements/` fail, because today it passes as "nothing yet".
+
+**In stage 5:**
+
+- Deltas and the other subcommands of the tool. Until then a test may cite only a living scenario.
+- The `/adr` skill and `docs/development/docs.md` still describe the old ADR format with a Status line.
+- `.claude/README.md` and the reviewer still call `AGENTS.md` the project-wide rules, and the `/pr` skill says commit messages follow `AGENTS.md`, while the language rule is now in the constitution.
+
+The comment `ADR 0006` in the applied migration `V3__user_administration.sql` stays, because editing it would break Flyway's checksum; the squash at the end of stage 4 removes it.
+
+How other AI clients load the guides and the constitution is not considered for now, since each client works differently (user decision, 2026-11-03).
+
+Not discussed yet: the skills and agents of the new process (the last discussion item), including the agent review of the spec and the agent-neutral process description (see **Open questions**). They are needed before migration stage 5.
 
 Attribution: "user decision" marks what the user decided; everything else is Claude's proposal or finding.
 
@@ -35,14 +61,14 @@ Each concern comes with the episode that showed it.
 7. **Specs grow through review rounds.** Example: invitation-emails reached 17 acceptance criteria and was split into two features.
 8. **Acceptance criteria numbers collide.** They are per spec (every spec has an AC-1), while code references them.
 9. **Attribution.** User decisions and Claude's inferences must stay apart. An earlier spec labeled an inference as a user decision.
-10. **No single constitution.** Non-negotiable rules are spread across `AGENTS.md`, `docs/architecture/invariants.md`, the ADRs and the guides.
+10. **No single constitution.** Non-negotiable rules are spread across `AGENTS.md`, the former invariants document, the ADRs and the guides.
 11. **"What" and "how" share one document.** The spec's Design section goes down to class names, SQL and lock order. That makes specs large and makes them age quickly.
 12. **`/feature` has no task breakdown.** Implementation follows a fixed pipeline (contract → migration → domain → API → frontend), not tasks derived from a plan for the feature.
 
 ## Current state
 
 - The flow is described in `.claude/README.md`: `/spec` → reviewer → approval → `/feature` (subagents `backend-dev` and `frontend-dev`, checkpoints, a progress log) → `/review` → `/verify` → `/pr`, plus `/adr` and the temporary `/usage-review`.
-- Knowledge is spread across `AGENTS.md`, `docs/architecture/invariants.md`, `docs/adr/` (eight ADRs), `docs/features/` (five specs with progress logs, about 2170 lines) and `docs/development/` (guides per area).
+- Knowledge is spread across `AGENTS.md`, the former invariants document, `docs/adr/` (eight ADRs), `docs/features/` (five specs with progress logs, about 2170 lines) and `docs/development/` (guides per area).
 - Requirement references in code are comments such as `// AC-5` or `// AC-1, AC-4, AC-8, AC-10, AC-14, AC-16 …`; one test often covers many criteria. About 521 `AC-n` tokens, about 121 of them ambiguous because one file covers two features with the same numbers. "ADR 0…" appears in 33 files.
 - The roadmap and many product decisions exist only outside the repository, in Claude's local memory (`roadmap-decisions`) and plan files. The seed list is under **Roadmap**.
 - CI (`.github/workflows/ci.yml`) runs on pull requests and on pushes to main. `.githooks/pre-commit` runs `scripts/check-docs.mjs`.
@@ -101,7 +127,7 @@ Order of discussion: document model → life cycle of a change → format → to
   - Constitution (user decision, 2026-11-02, applying these tests): what the product is and is not; contract first (the order of work only, without the generator mechanics); vertical slices; done means verified; spec-driven principles; the language of artifacts.
   - Rules that left it: module boundaries stay in `docs/development/backend.md` and decision 0001; resource-level access checks and negative authorization tests moved to `docs/development/backend.md`; no passwords and `users.id` over `sub` stay in decision 0003; permissions over role names stay in decision 0004; the audit rules stay in decision 0006 and go to the `audit` requirements; 404 versus 403 goes to the `authorization` requirements; "generated code is never edited" is common knowledge. Known cost (Claude's assessment): these rules stop loading into every session, so tests with scenario ids and the review checklist have to catch violations, which holds only after migration stages 4 and 5.
   - `AGENTS.md`: the map, the agent workflow, what to read before planning, asking before destructive actions, explaining what a suggested destructive command destroys. User decision of 2026-11-03: the default about applied migrations belongs in `docs/development/backend.md`, and `AGENTS.md` does not point to `.claude/`, which Claude Code reads on its own.
-  - Domain facts in `docs/architecture/invariants.md` (roles, `user_identities`, invitation token storage, gate rules) move to living requirements. Plans (feature order, the planned domain model, undefined observer rights) move to the roadmap. Claude's proposal: notes and their visibility levels also go to the roadmap, because notes are not implemented.
+  - Domain facts in the former invariants document (roles, `user_identities`, invitation token storage, gate rules) move to living requirements. Plans (feature order, the planned domain model, undefined observer rights) move to the roadmap. Claude's proposal: notes and their visibility levels also go to the roadmap, because notes are not implemented.
 - Style conventions (for example "comment sparingly") go to the development guides. The language of artifacts stays in the constitution.
 - **Claude's proposals, not objected to on 2026-11-02:** numbered rules (`C-n`) that a review can cite; each rule is one imperative line plus a "Why" line and a decision link where one exists; about 80 lines at most; an agent that finds a conflict with it stops and asks, and specs carry no exceptions to it; `AGENTS.md` holds no copies of its rules.
 - **User decisions of 2026-11-02:**
@@ -178,7 +204,7 @@ Stages: Explore → Propose → Plan → Implement → Verify and review → Arc
   - the CI run on pushes to main runs it too;
   - a script renumbers the later PR's ids (delta and tests).
   - Rejected alternatives: deriving used ids from git history (the user objected that it makes intact history an unwritten requirement; squashes, rewrites and shallow CI clones break it); a "next number" counter per capability in the index (two PRs that each add one requirement make the same edit, and git merges identical edits without a conflict); a check on a branch rebased onto main before merge (both PRs can rebase before either merges); random id suffixes such as `INV-k7q2` (no collisions, but much harder to read).
-- **The index** `docs/requirements/README.md` (planned) is the scripts' source of known prefixes and of prefix → file. The scripts check it and do not generate it.
+- **The index** `docs/requirements/README.md` is the scripts' source of known prefixes and of prefix → file. The scripts check it and do not generate it.
 - **Tests and scenarios:** by default one scenario per test, and the test name starts with its scenario id (`INV-9.1 …`); the script matches only prefixes listed in the index. End-to-end journey tests are allowed as a separate kind: they complement scenario tests, do not replace them, and traceability does not count them. They carry no mark (user decision, 2026-11-03): traceability reads only names that start with a scenario id, so a test without one is not counted.
 
 ### Tooling
@@ -198,7 +224,7 @@ Stages: Explore → Propose → Plan → Implement → Verify and review → Arc
 Stages, each a separate commit on `workflow/rework` that leaves `node scripts/check-docs.mjs` green. Everything reaches main in one PR once the whole process is consistent, so main never holds new documents with old skills.
 
 1. **Constitution, roadmap, architecture decisions.** In the main session, with the user's review.
-   - `docs/constitution.md` (planned) from `AGENTS.md` and `docs/architecture/invariants.md`; facts and plans from `invariants.md` go to the roadmap now and to the requirements in stage 3; `invariants.md` is deleted once empty.
+   - `docs/constitution.md` (planned) from `AGENTS.md` and the former invariants document; facts and plans from `invariants.md` go to the roadmap now and to the requirements in stage 3; `invariants.md` is deleted once empty.
    - `docs/adr/` → `docs/architecture/decisions/` with an index; add Why and Rejected alternatives (including reversed choices such as hashed tokens and synchronous sending); update the "ADR 0…" references in 33 files.
    - `CLAUDE.md` imports `docs/constitution.md` (planned); `AGENTS.md` loses the rules that moved.
 2. **The tool,** at least `validate` and `trace`, so the migrated requirements can be checked.
@@ -207,7 +233,30 @@ Stages, each a separate commit on `workflow/rework` that leaves `node scripts/ch
    - **Last step, one commit (user decision, 2026-11-03):** squash the Flyway migrations into one and renumber the decisions (0006 → 0005, then 0008 → 0006). It comes last because a gap found above may need one more migration. Claude compares schema dumps from the old migrations and the new one on a temporary database, then runs the backend verification. The project hook forbids changing committed migrations, so Claude prepares the new file under a temporary name and the user runs one command that deletes the old files and renames it. The user then recreates the dev database with `docker compose -f infra/compose.yaml down -v`, which deletes the `postgres-data` volume with all dev data; this needs the user's confirmation at that moment. Afterwards the user watches migrations until the first release, so the squash is not on the roadmap.
 5. **Process.** The neutral process description, skills and agents (the test engineer is a new agent), `docs/development/docs.md`, `.claude/README.md`, `AGENTS.md`.
 
-Who does what: stages 3 and 4 run in subagents per capability; stage 1 runs in the main session.
+### Who does what
+
+Stages 3 and 4 run in subagents per capability, on Sonnet (user decision, 2026-11-03).
+
+Capabilities of stage 3, proposed by Claude from the pilot and approved by the user on 2026-11-03:
+
+| Capability | Prefix | Mainly from |
+|---|---|---|
+| identity | IDN | the identity foundation spec, decision 0005, the Identity section of the invariants |
+| authorization | PERM | roles and permissions, 403 and 404, from the identity foundation spec and the invariants |
+| platform | PLT | Problem Details, paging, client configuration |
+| audit | AUD | the audit rules and one catalog of actions |
+| user-administration | USR | the user administration spec |
+| invitations | INV | the invitations and invitation links specs |
+| invitation-emails | IEM | the invitation emails spec |
+
+Steps of stage 3 (Claude's plan, not objected to):
+
+1. The main session creates the index.
+2. One subagent per capability moves the requirements and checks each against the code. It does not settle disputed points; it records them. The subagents run one after another, starting with `authorization`, `platform` and `audit`, which collect requirements from several specs, so that later ones do not duplicate them.
+3. The main session collects the contradictions into one table, and the user decides them. The pilot found about 13.
+4. After those decisions, the main session sorts the Design sections, and deletes the specs, the progress logs, the former invariants document and decision 0005. Quotes of user decisions in the progress logs then remain only in git.
+
+Until the end of stage 4, `trace` shows almost no coverage; that is expected.
 
 ## Open questions
 

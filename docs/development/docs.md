@@ -10,8 +10,8 @@ How project knowledge is kept consistent with the code. Paths in this document a
 | `AGENTS.md` | Map and working rules for any AI client. Claude Code loads it and the constitution into every session through `CLAUDE.md`, so both stay short |
 | `docs/roadmap.md` | What is planned: stages, feature order, ideas, preliminary product decisions |
 | `docs/development/` | One guide per area (`backend.md`, `frontend.md`, this file): stack, conventions, commands, verification, pitfalls |
-| `docs/architecture/invariants.md` | Identity, authorization, audit |
-| `docs/architecture/decisions/`, `docs/features/` | Architecture decisions, feature specs and their progress logs (`<feature>.progress.md`: step statuses, decisions at checkpoints, step commits) |
+| `docs/requirements/` | Living requirements: what the system does, one file per capability |
+| `docs/architecture/decisions/` | Architecture decisions |
 | `.claude/` | The Claude Code workflow: agents and skills describe roles and processes and point to the documents above; hooks and settings enforce rules (see `.claude/README.md`) |
 
 ## Conventions
@@ -34,7 +34,7 @@ Until the first release, documents describe the current state rather than a hist
 
 ## Requirements
 
-Living requirements describe behavior, one file per capability in the flat folder `docs/requirements/`. The index `docs/requirements/README.md` (planned) is a table that links each capability file and gives its prefix:
+Living requirements describe behavior, one file per capability in the flat folder `docs/requirements/`. The index `docs/requirements/README.md` is a table that links each capability file and gives its prefix:
 
 ```markdown
 | Capability | Prefix |

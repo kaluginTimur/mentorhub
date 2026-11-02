@@ -10,7 +10,7 @@ Work out the spec for the feature `$feature` together with the user. The spec is
 
 ## Prepare
 
-1. Read `AGENTS.md`, `docs/architecture/invariants.md`, every ADR in `docs/architecture/decisions/`, the existing specs in `docs/features/`, `docs/ui/guidelines.md` if it exists, and the API contract for related endpoints.
+1. Read `AGENTS.md`, `docs/requirements/`, every ADR in `docs/architecture/decisions/`, the existing specs in `docs/features/`, `docs/ui/guidelines.md` if it exists, and the API contract for related endpoints.
 2. If `docs/features/$feature.md` exists, continue from it: summarize its state and the open questions, and work on what is missing.
 3. Use [template.md](template.md) as the structure.
 
@@ -18,7 +18,7 @@ Work out the spec for the feature `$feature` together with the user. The spec is
 
 Go section by section, one topic at a time. For each topic, propose a concrete draft based on what you have read, give your recommendation, and ask only what the user has to decide. Domain rules come from the user: never invent who may see or do what. When something is undecided, record it as an open question instead of guessing.
 
-1. Goal and scope, including what is out of scope. Check it against the product scope in the invariants.
+1. Goal and scope, including what is out of scope. Check it against the product scope in the constitution.
 2. Roles and scenarios, then acceptance criteria (AC-n) in Given/When/Then form, each testable and linked to a scenario.
 3. Access matrix for every role and action, with cohort and track conditions, past cohorts, mentor reassignment and a graduate who becomes a mentor. Visibility of every data item. Audit events.
 4. UI: screens per role, content, actions, all states, text wireframes, patterns from the UI guidelines.

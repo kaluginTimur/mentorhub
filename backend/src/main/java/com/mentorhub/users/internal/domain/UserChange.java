@@ -71,7 +71,7 @@ public sealed interface UserChange {
         }
     }
 
-    /** What the administrator bootstrap (decision 0005) did. */
+    /** What the administrator bootstrap did. */
     record BootstrappedAdmin(boolean userCreated, boolean identityLinked, boolean enabled, boolean adminAdded)
             implements UserChange {
         @Override
