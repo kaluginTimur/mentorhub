@@ -6,7 +6,7 @@ Status: temporary. This document hands over the context for reworking the docume
 
 Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 (composition of the constitution).
 
-**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). `docs/constitution.md` is written and approved (10 rules). Still to do in stage 1: `docs/roadmap.md` and `docs/architecture/decisions/` (planned), then `CLAUDE.md` and `AGENTS.md`.
+**Next:** migration stage 1 continues in the main session with the user's review (see **Migration**). `docs/constitution.md` (10 rules) and `docs/roadmap.md` are written and approved. Still to do in stage 1: `docs/architecture/decisions/` (planned), then `CLAUDE.md` and `AGENTS.md`. The skills and guides still describe `docs/architecture/invariants.md` as holding the domain model, visibility and the roadmap stage; that stays until stage 5 rewrites them.
 
 Not discussed yet: the skills and agents of the new process (the last discussion item), including the agent review of the spec and the agent-neutral process description (see **Open questions**). They are needed before migration stage 5, not before stage 1.
 
@@ -135,24 +135,16 @@ Order of discussion: document model → life cycle of a change → format → to
   - Stages: milestones, for example the pilot release;
   - Now / Next / Later: features with one line of scope and the capabilities they touch;
   - Ideas: no commitment and no order;
-  - Product decisions: decisions not yet implemented, marked with "user" and a date.
+  - Product decisions: decisions not yet implemented, marked with "user". User decision of 2026-11-02: no dates in the roadmap, and all these decisions are preliminary, discussed again when the feature is planned.
 - Life cycle: idea → Next/Now → change → implemented. An implemented item is deleted. A product decision leaves with its implementation, into the requirements (behavior) or the architecture decisions (architectural choice).
 - Only the user promotes ideas, reorders items and makes product decisions. An agent may add ideas, marked as its own suggestions.
 - No external tracker while the user works alone.
-- Seed content, from Claude's memory and plan files (user decisions of 2026-10-15 to 2026-10-20):
-  - order: invitation links and emails (implemented), mock mode (needs a decision record; leaning toward typed fixtures on the generated models, with role switching), then the tracking core;
-  - access lifecycle: an ended enrollment removes the student role if no active enrollment is left, and disables a user left without roles; a configurable read-only grace period after graduation gives access to own feedback and grades; expulsion revokes access at once; data is kept;
-  - domain model: SWE students are individual (own dates, 1–3 students per mentor), QA studies in classic groups with lectures; Enrollment is the center and Cohort an optional grouping;
-  - corporate SSO auto-provisioning later, with role mapping through Keycloak identity provider mappers and its own decision record;
-  - the first production is a pilot on rented hosting without corporate infrastructure (no SSO, no corporate email); email is optional per deployment;
-  - squash all Flyway migrations into one before the first release;
-  - from `docs/architecture/invariants.md`, after the tracking core: generic assignments (task bank, assignment, submission, manual review) → SQL assignments with automatic checking → meeting scheduling through external calendars and Webex.
 
 ### Life cycle of a change
 
 Stages: Explore → Propose → Plan → Implement → Verify and review → Archive.
 
-- **Explore is a formal stage.** It turns a vague idea into roadmap items: one line of scope, out of scope, affected capabilities, product decisions marked with "user" and a date, a split of a big idea into several items. It writes no requirements. When an agent notices that a brainstorm has started in an ordinary session and is growing, it offers the user to continue in Explore.
+- **Explore is a formal stage.** It turns a vague idea into roadmap items: one line of scope, out of scope, affected capabilities, product decisions marked with "user", a split of a big idea into several items. It writes no requirements. When an agent notices that a brainstorm has started in an ordinary session and is growing, it offers the user to continue in Explore.
 - **Spikes** (throwaway experiments in a separate branch, which leave findings, not code) are part of Explore, only when the agent suggests one and the user wants it.
 - **Exploration notes** live in a temporary document during Explore (Claude proposed `docs/explorations/<topic>.md`), not in a change.
 - **Propose** creates `docs/changes/<name>/` with `proposal.md` (why, scope, out of scope) and the requirement deltas; clarifying questions come before the plan. **Plan** adds `design.md` and `tasks.md`, each task citing requirement ids. (Claude's draft, accepted as the frame.)
@@ -207,7 +199,6 @@ Stages, each a separate commit on `workflow/rework` that leaves `node scripts/ch
 
 1. **Constitution, roadmap, architecture decisions.** In the main session, with the user's review.
    - `docs/constitution.md` (planned) from `AGENTS.md` and `docs/architecture/invariants.md`; facts and plans from `invariants.md` go to the roadmap now and to the requirements in stage 3; `invariants.md` is deleted once empty.
-   - `docs/roadmap.md` (planned) from the seed list above. Afterwards Claude's memory `roadmap-decisions` is deleted.
    - `docs/adr/` → `docs/architecture/decisions/` with an index; add Why and Rejected alternatives (including reversed choices such as hashed tokens and synchronous sending); update the "ADR 0…" references in 33 files.
    - `CLAUDE.md` imports `docs/constitution.md` (planned); `AGENTS.md` loses the rules that moved.
 2. **The tool,** at least `validate` and `trace`, so the migrated requirements can be checked.
