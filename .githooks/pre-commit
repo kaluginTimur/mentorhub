@@ -2,7 +2,9 @@
 # Commits from an IDE run a non-interactive shell, which does not load nvm.
 command -v node >/dev/null 2>&1 || { [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1; }
 if ! command -v node >/dev/null 2>&1; then
-  echo "pre-commit: node not found, documentation check skipped" >&2
+  echo "pre-commit: node not found, documentation checks skipped" >&2
   exit 0
 fi
-exec node "$(git rev-parse --show-toplevel)/scripts/check-docs.mjs" --staged
+root="$(git rev-parse --show-toplevel)"
+node "$root/scripts/check-docs.mjs" --staged || exit 1
+exec node "$root/scripts/requirements.mjs" validate

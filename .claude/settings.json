@@ -29,7 +29,9 @@
       "Bash(~/.nvm/nvm-exec npm run format:check *)",
       "Bash(~/.nvm/nvm-exec npm run generate:api *)",
       "Bash(node scripts/check-docs.mjs *)",
-      "Bash(node .claude/scripts/agent-usage.mjs *)",
+      "Bash(node .claude/scripts/agent-usage.mjs *)",     
+      "Bash(node scripts/requirements.mjs *)",
+      "Bash(node --test scripts/requirements.test.mjs *)",
       "Bash(gh auth status *)",
       "Bash(gh pr view *)",
       "Bash(gh pr list *)"
