@@ -59,7 +59,7 @@ class DevelopmentUserRunnerTests {
     }
 
     @Test
-    @DisplayName("IDN-7.1 Every development user has its status")
+    @DisplayName("Every development user has its status")
     void everyDevelopmentUserSignsInWithItsStatus() {
         assertMe(ADMIN, "ACTIVE", List.of("ADMIN"));
         assertMe(MENTOR, "ACTIVE", List.of("MENTOR"));

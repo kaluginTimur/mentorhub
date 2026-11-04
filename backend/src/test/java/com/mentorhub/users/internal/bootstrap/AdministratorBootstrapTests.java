@@ -176,7 +176,7 @@ class AdministratorBootstrapTests {
     }
 
     @Test
-    @DisplayName("IDN-6.2 An existing user is recovered (identity linked, reason and comment cleared)")
+    @DisplayName("IDN-6.10 Recovery clears the reason and comment of a disabling")
     void enablingClearsTheDisableReasonAndComment() {
         UUID userId = users.create(TestIssuer.BOOTSTRAP_EMAIL, UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "recovering-admin");

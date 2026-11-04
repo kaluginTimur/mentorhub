@@ -182,8 +182,8 @@ class AuthenticationChainTests {
     }
 
     @Test
-    @DisplayName("IDN-3.3 A change of status applies to the next request")
-    void statusChangeAppliesToTheNextRequestWithTheSameToken() {
+    @DisplayName("IDN-3.3 Disabling applies to the next request")
+    void disablingAppliesToTheNextRequestWithTheSameToken() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
         String token = issuer.token("anna").bearer();
@@ -193,6 +193,15 @@ class AuthenticationChainTests {
                 .param("id", userId)
                 .update();
 
+        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
+    }
+
+    @Test
+    @DisplayName("IDN-3.4 Enabling applies to the next request")
+    void enablingAppliesToTheNextRequestWithTheSameToken() {
+        UUID userId = users.create("anna@example.com", UserStatus.DISABLED, Role.ADMIN);
+        users.link(userId, "anna");
+        String token = issuer.token("anna").bearer();
         assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
 
         jdbc.sql("update users set status = 'ACTIVE', disabled_reason = null where id = :id")

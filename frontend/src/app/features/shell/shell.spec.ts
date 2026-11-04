@@ -38,7 +38,7 @@ describe('shell', () => {
     });
   });
 
-  it('IDN-11.2 shows the name and email in the account menu and signs out', async () => {
+  it('shows the name and email in the account menu and signs out', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
@@ -85,7 +85,7 @@ describe('shell', () => {
     }
   });
 
-  it('IDN-11.2 greets the user and shows the version on the home page', async () => {
+  it('greets the user and shows the version on the home page', async () => {
     api.invoke.mockResolvedValue({ name: 'MentorHub', version: '0.1.0' });
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();

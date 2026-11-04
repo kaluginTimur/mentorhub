@@ -44,7 +44,7 @@ describe('routes', () => {
     });
   });
 
-  it('IDN-10.2 leads a path that does not exist to the home page', async () => {
+  it('leads a path that does not exist to the home page', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/no/such/page');
     expect(TestBed.inject(Router).url).toBe('/');

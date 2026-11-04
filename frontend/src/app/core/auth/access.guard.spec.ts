@@ -83,7 +83,7 @@ describe('accessGuard', () => {
       '/access/invitation-only',
     ],
   ] as [string, Me, string, boolean | string][])(
-    'IDN-10.2 routes %s',
+    'routes %s',
     async (_name, me, access, expected) => {
       currentUser.load.mockResolvedValue(me);
       expect(await run(access)).toBe(expected);
@@ -97,7 +97,7 @@ describe('accessGuard', () => {
     expect(currentUser.load).toHaveBeenCalledTimes(2);
   });
 
-  it('IDN-9.1 returns to the route the visitor opened after sign-in', async () => {
+  it('returns to the route the visitor opened after sign-in', async () => {
     auth.ensureSignedIn.mockResolvedValue({ kind: 'signed-in', returnUrl: '/students' });
     currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
     expect(await run('full', '/?code=a&state=b')).toBe('/students');

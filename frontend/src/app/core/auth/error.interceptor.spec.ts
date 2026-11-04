@@ -78,7 +78,7 @@ describe('errorInterceptor', () => {
   it.each([
     ['urn:mentorhub:problem:access-ended', { status: 'DISABLED' }, '/access/ended'],
     ['urn:mentorhub:problem:not-invited', { status: 'NOT_INVITED' }, '/access/invitation-only'],
-  ])('IDN-10.3 reloads the caller and opens the access screen on %s', async (type, me, path) => {
+  ])('IDN-10.5 reloads the caller and opens the access screen on %s', async (type, me, path) => {
     currentUser.load.mockResolvedValue(me);
     fail('/api/v1/users', 403, type);
     await vi.waitFor(() => expect(router.navigateByUrl).toHaveBeenCalledWith(path));

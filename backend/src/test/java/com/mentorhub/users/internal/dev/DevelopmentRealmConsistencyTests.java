@@ -45,12 +45,19 @@ class DevelopmentRealmConsistencyTests {
     }
 
     @Test
-    @DisplayName("IDN-8.1 A new account confirms its email and an email is registered once")
-    void realmRequiresEmailVerificationAndRefusesDuplicateEmails() {
+    @DisplayName("IDN-8.1 A new account confirms its email")
+    void realmRequiresEmailVerification() {
         JsonNode realm = realm();
 
         assertThat(realm.path("registrationAllowed").asBoolean()).isTrue();
         assertThat(realm.path("verifyEmail").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("IDN-8.3 An email is registered once")
+    void realmRefusesDuplicateEmails() {
+        JsonNode realm = realm();
+
         assertThat(realm.path("duplicateEmailsAllowed").asBoolean()).isFalse();
         assertThat(realm.path("registrationEmailAsUsername").asBoolean()).isTrue();
     }
