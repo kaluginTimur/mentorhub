@@ -78,7 +78,7 @@ describe('UsersList', () => {
     );
   });
 
-  it('PLT-9.1 restores search, filters and page from the URL', async () => {
+  it('restores search, filters and page from the URL', async () => {
     api.invoke.mockResolvedValue(page([summary('a')], 60));
     const { element } = await open('/users?q=ann&status=DISABLED&role=NONE&page=1');
     expect(params()).toEqual({ q: 'ann', status: 'DISABLED', role: 'NONE', page: 1, size: 25 });
@@ -97,7 +97,7 @@ describe('UsersList', () => {
     });
   });
 
-  it('PLT-9.1 writes the search to the URL 300 ms after typing stops', async () => {
+  it('writes the search to the URL 300 ms after typing stops', async () => {
     api.invoke.mockResolvedValue(page([summary('a')]));
     const { harness, element } = await open('/users?page=2');
     const input = element.querySelector('input') as HTMLInputElement;
@@ -115,7 +115,7 @@ describe('UsersList', () => {
   it.each([
     ['Status', 'Active', { status: 'ACTIVE' }],
     ['Role', 'No roles', { role: 'NONE' }],
-  ])('PLT-9.1 shows the first page when the %s filter changes', async (label, option, query) => {
+  ])('shows the first page when the %s filter changes', async (label, option, query) => {
     api.invoke.mockResolvedValue(page([summary('a')], 60));
     const { harness, element } = await open('/users?page=2');
     const field = [...element.querySelectorAll('mat-form-field')].find((f) =>
@@ -134,14 +134,14 @@ describe('UsersList', () => {
     expect(params()).toEqual(expect.objectContaining({ ...query, page: 0 }));
   });
 
-  it('PLT-9.2 shows the empty state without filters', async () => {
+  it('shows the empty state without filters', async () => {
     api.invoke.mockResolvedValue(page([]));
     const { element } = await open();
     expect(element.textContent).toContain('No users yet.');
     expect(element.textContent).not.toContain('Clear filters');
   });
 
-  it('PLT-9.2 shows the empty state with filters and clears them', async () => {
+  it('shows the empty state with filters and clears them', async () => {
     api.invoke.mockResolvedValue(page([]));
     const { harness, element } = await open('/users?q=zzz&status=ACTIVE');
     expect(element.textContent).toContain('No users match the filters.');

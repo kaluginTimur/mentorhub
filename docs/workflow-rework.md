@@ -27,12 +27,14 @@ State on 2026-11-04, committed on `workflow/rework`. The user accepted `user-adm
 - The user changed C-5 and C-7. `validate` accepts a requirement without scenarios, and `docs/development/docs.md` holds the criterion.
 - `user-administration` is rewritten as the sample: 2163 words and 22 scenarios, from 4433 and 37. USR-11 to USR-18, the client screens, have no scenarios, except USR-17.2, restored because a 409 is a rare state (user decision, 2026-11-04).
 - USR-18 keeps no scenario, on Claude's check of the contract: `/me` never carries a disable reason, a disabled caller gets no `user` and does not reach the page, and the status and roles it carries are the user's own to see.
-- Tests were split or lost their ids, with every old assertion kept and none deleted. `trace` passes (184 of 184, 5 manual). The backend (521 tests) and frontend (261 tests) verifications pass.
-- The other five capability files are unchanged.
+- Tests were split or lost their ids, with every old assertion kept and none deleted. `trace` passes (183 of 183, 5 manual). The backend verification (906 test cases in the XML reports, parameterized runs included; the text reports leave out nested classes) and the frontend tests (261) pass.
+- `authorization` is rewritten and reviewed by the user: 1110 words and 13 scenarios, from 1422 and 17.
+- `platform` is rewritten and checked by the main session, for the user's review at the end: 1932 words and 27 scenarios, from 2378 and 24. Open for that review: PLT-1.1 nearly repeats PERM-6.2.
+- The other four capability files are unchanged.
 
 What to do, in order (the order and the method are Claude's plan; the user chose to continue in a new session):
 
-1. Rewrite the other five capabilities, one subagent per capability, on Sonnet, so as not to fill the main context. Suggested order: `platform` and `audit`, which the others cite; then `identity`, `invitations` and `invitation-emails`. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
+1. Rewrite the other four capabilities, one subagent per capability, on Sonnet, so as not to fill the main context. Suggested order: `audit`, which the others cite; then `identity`, `invitations` and `invitation-emails`. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
 2. After each file, the main session checks the result itself rather than trusting the report: words by part, scenario count, `trace`, that production code did not change, that no assertion disappeared from the test diff, and each claim that the contract holds a removed fact.
 3. Do the remaining stage 5 work: rewrite the parts of this document that still describe deltas and full coverage, audit the tests for duplicates (the user decides what goes), then the process description, skills and agents, and the open questions below.
 4. Run the full verification for backend, frontend and docs, then open one PR to main.
@@ -43,6 +45,7 @@ The brief for each subagent, with what the sample taught:
 - A statement is one or two sentences or a table, about 40 words, keeps SHALL or MUST, and does not retell its scenarios or list screen details. The first pass here left statements longer than scenarios, so check this explicitly. Moving text between parts is a failure.
 - A rule about access, data, state, security or irreversible actions, or one whose breach is hard to notice, has a scenario. A mistake seen at once on the ordinary path and cheap to fix has none, which applies to most client screens, since the server enforces access. A rare state, such as an error response, does not qualify, nor does a ban on showing what the user must not see (user decision, 2026-11-04, on Claude's wording). The first passes kept too many of these: the user removed five.
 - Hiding an action the server would refuse anyway is not a ban on showing: it needs no scenario. An operational detail, such as a log warning, stays out of the requirements, in the code and a test without an id. A scenario refers to a table instead of retelling its rows, so one scenario covers the table (user decisions, 2026-11-05, from the review of `authorization`).
+- A table is for a catalog or for rules without scenarios. Do not turn prose into a table so that scenarios only point at its rows: a rule with a scenario keeps its behavior in the scenario. The rewrite of `platform` did this, and the main session undid it.
 - One behavior per scenario: split combined ones and their tests. Do not split one behavior checked across similar operations. Splitting raises the count, and this is expected.
 - Do not change what the system does. Keep ids, with gaps allowed, and never reuse a removed one. Check that other capabilities do not cite an id before removing it.
 - For a removed scenario, its test loses the id from its name and stays. Test bodies may change only to split a test: every assertion survives. A failing test or a disagreement with the code is reported to the user, not fixed.

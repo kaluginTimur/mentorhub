@@ -125,6 +125,14 @@ class UserAdministrationServiceTests {
             assertThat(page.page()).isEqualTo(1);
             assertThat(page.size()).isEqualTo(2);
             assertThat(page.totalItems()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("PLT-3.4 A page past the last one is empty")
+        void returnsNoItemsPastTheLastPage() {
+            user("b@x.test", "B", "B", UserStatus.ACTIVE);
+            user("c@x.test", "C", "C", UserStatus.ACTIVE);
+            user("d@x.test", "D", "D", UserStatus.ACTIVE);
 
             ResultPage<UserListEntry> pastTheEnd = service.list(query(null, null, null, 5, 2));
 

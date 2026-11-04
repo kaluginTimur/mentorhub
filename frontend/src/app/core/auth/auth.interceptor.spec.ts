@@ -47,7 +47,7 @@ describe('authInterceptor', () => {
     expect(await authorizationOf('/api/v1/invitations')).toBe('Bearer tok');
   });
 
-  it('PLT-7.2 does not attach the token to other URLs', async () => {
+  it('PLT-7.3 does not attach the token to other URLs', async () => {
     expect(await authorizationOf('https://example.org/api/v1/me')).toBeNull();
     expect(await authorizationOf('/assets/data.json')).toBeNull();
     expect(await authorizationOf('http://localhost:8180/realms/mentorhub/x')).toBeNull();

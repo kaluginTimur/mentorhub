@@ -534,7 +534,7 @@ class UsersControllerTest {
         }
 
         @Test
-        @DisplayName("PLT-2.2 A query value outside the set lists the allowed values")
+        @DisplayName("PLT-2.4 A query value outside the set lists the allowed values")
         void unknownEnumValueNamesTheAllowedValues() {
             MvcTestResult result =
                     mvc.get().uri("/api/v1/users?status=GONE").with(admin()).exchange();

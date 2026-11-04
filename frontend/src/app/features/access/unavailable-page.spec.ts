@@ -20,7 +20,7 @@ describe('UnavailablePage', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('PLT-8.2 Retry repeats the failed navigation', async () => {
+  it('PLT-8.4 Retry repeats the failed navigation', async () => {
     const element = await open();
     element.querySelector('button')?.click();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/students', {

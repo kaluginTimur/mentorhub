@@ -74,7 +74,7 @@ describe('App', () => {
     expect(redirecting()).toBe(false);
   });
 
-  it('PLT-8.1 Retry reloads without the sign-in callback parameters', async () => {
+  it('PLT-8.3 Retry reloads without the sign-in callback parameters', async () => {
     startupError.set(true);
     const assign = vi.fn();
     vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
