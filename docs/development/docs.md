@@ -49,7 +49,10 @@ The system SHALL create an invitation for a new email (decision 0003).
 
 - A requirement has a statement with SHALL or MUST: the rule in one or two sentences, or a table, without retelling its scenarios. A scenario has `- WHEN` and `- THEN` lines; `- GIVEN` and `- AND` are optional, and it checks one behavior. A scenario checked by hand ends its title with `(manual)`.
 - A rule about access, data, state transitions, security or irreversible actions, or one whose breach is hard to notice, has a scenario, however short the rule is. A requirement may go without scenarios only when a mistake is seen at once on the ordinary path and cheap to fix: a rare state, such as an error response, does not qualify, nor does a ban on showing what the user must not see.
-- The next number is the highest in the file plus one, for requirements and scenarios alike.
+- Hiding an action the server would refuse anyway is not such a ban and needs no scenario. An operational detail, such as a log warning, stays out of the requirements, in the code and a test without an id. So do exact strings, timings and field limits.
+- A scenario refers to a table instead of retelling its rows. A table is for a catalog or for rules without scenarios: a rule with a scenario keeps its behavior in the scenario.
+- The next number is the highest in the file plus one, for requirements and scenarios alike, and a removed id is not reused. Gaps are fine.
+- When a scenario is removed, its test loses the id from its name and stays.
 - References are written `(INV-1)`, `(INV-1.1)` and `(decision 0003)`, and must resolve. Only these forms are checked: "decisions 0003 and 0004" is not.
 - A test cites one scenario: its name starts with the scenario id. In JUnit that is `@DisplayName("INV-1.1 ...")` on the test method, in Vitest `it('INV-1.1 ...', ...)`. Tests without an id, such as unit tests of an algorithm or end-to-end journeys, are allowed and do not count as coverage. Skipped tests do not count either. Tests skipped conditionally do count, because that is known only when they run: `@EnabledIf`, `@DisabledIf` and similar annotations, `it.skipIf` and `it.runIf`.
 

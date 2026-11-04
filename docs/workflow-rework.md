@@ -1,10 +1,10 @@
 # Workflow rework: handover
 
-Status: temporary. This document hands over the context for reworking the documentation and the agent workflow into a spec-driven process. It is updated at the end of every session and deleted when the rework is done. Branch: `workflow/rework`.
+Status: temporary. This document hands over the context for reworking the documentation and the agent workflow into a spec-driven process. It is updated at the end of every session and deleted when the rework is done. Branch: `workflow/rework`; the trial run is on `feature/mock-mode`.
 
 ## Where we are
 
-Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 and 2026-11-03 (migration stages 1 to 4), 2026-11-04 (the spec-anchored process, `user-administration` rewritten). **Read "Next session: start here" first.**
+Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 and 2026-11-03 (migration stages 1 to 4), 2026-11-04 and 2026-11-05 (the spec-anchored process, all requirements rewritten, the process, skills and agents). **Read "Next session: start here" first.**
 
 **Done:**
 
@@ -22,56 +22,31 @@ Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternative
 
 ## Next session: start here
 
-State on 2026-11-04, committed on `workflow/rework`. The user accepted `user-administration` as the final sample:
+State at the end of 2026-11-05. Stage 5 is written and committed on `workflow/rework`, and nothing is pushed. The verification last passed in full on the rewritten requirements (backend 919 test cases in the XML reports, whose text reports leave out nested classes; frontend 264 tests); after that only documents, skills, agents and scripts changed, checked by `check-docs`, `trace` (201 of 201, 4 manual) and the 62 tests of the tool.
 
-- The user changed C-5 and C-7. `validate` accepts a requirement without scenarios, and `docs/development/docs.md` holds the criterion.
-- `user-administration` is rewritten as the sample: 2163 words and 22 scenarios, from 4433 and 37. USR-11 to USR-18, the client screens, have no scenarios, except USR-17.2, restored because a 409 is a rare state (user decision, 2026-11-04).
-- USR-18 keeps no scenario, on Claude's check of the contract: `/me` never carries a disable reason, a disabled caller gets no `user` and does not reach the page, and the status and roles it carries are the user's own to see.
-- Tests were split or lost their ids, with every old assertion kept and none deleted. The verification passes for backend (919 test cases in the XML reports, parameterized runs included; the text reports leave out nested classes), frontend (264 tests) and docs.
-- `authorization` is rewritten and reviewed by the user: 1110 words and 13 scenarios, from 1422 and 17.
-- `platform` is rewritten and checked by the main session, for the user's review at the end: about 1900 words and 26 scenarios, from 2378 and 24. PLT-1.1 is removed as a near repeat of PERM-6.2 (user decision, 2026-11-05, on Claude's proposal).
-- `audit` is rewritten and checked by the main session, for the same review: 1468 words and 15 scenarios, from 1691 and 15. No test changed; AUD-6.4 and AUD-6.5 no longer mention the log warning, which their tests still check.
-- `identity` is rewritten and checked by the main session, for the same review: 2930 words and 38 scenarios, from 3939 and 39. `trace`: 183 of 183, 4 manual. The main session restored IDN-9.6 (a security rule) and IDN-10.4 (a rare state), which the subagent had removed, split IDN-8.1, and shortened the statements of IDN-6, IDN-10 and IDN-11.
-- `invitations` is rewritten and checked by the main session, for the same review: 4595 words and 59 scenarios, from 6072 and 44; the count rose because combined scenarios were split. The main session restored the ban on the token in a log (INV-9, which has no scenario of its own; IEM-8.1 checks the logs of sending an email), added INV-18.3 for a rare state, split INV-20.6, and shortened INV-6, INV-7 and INV-13.
-- `invitation-emails` is rewritten and checked by the main session, for the same review: 3062 words and 32 scenarios, from 3935 and 28.
-- All seven files are rewritten. All requirements hold 17386 words and 205 scenarios (201 with tests, 4 manual), from 23870 words and 204 scenarios on 2026-11-03. Claude's expectation of 11 to 12 thousand words did not hold: scenario words barely fell, because splitting combined scenarios added as much as removing scenarios took away.
-- The main session removed INV-16.2, an ordinary screen that nothing cites any more, and the same review should confirm it.
+**The trial run, which is why this session ended.** No skill or agent of the new process had ever run, so the user chose a trial on Mock mode, the first item of **Next** in the roadmap. Claude chose it because the roadmap has nothing smaller; it is real work, so its result can stay. In a new session the user runs `/spec mock-mode`, then `/clear` and `/feature mock-mode`, and stops at the plan gate.
 
-What to do, in order (the order and the method are Claude's plan; the user chose to continue in a new session):
+- The branch `feature/mock-mode` already exists, on top of `workflow/rework`, because `main` has neither the new skills nor `docs/process.md`. `/spec` says to branch from the default branch: if it offers that, the answer is no. That wording is right after the PR.
+- What to check: `/spec` starts `docs/plans/mock-mode.md` (planned) and reads only what is touched; whether Mock mode, a tool for developers, needs requirements at all, and the decision the roadmap asks for through `/decision`; `reviewer` runs in requirements mode; the handover is written and the usage recorded at the gate; a new session continues from the handover alone, with a small context (`/context`).
+- What it cannot check: `test-engineer`, the developers and everything after the plan gate; and the contract step of `backend-dev`, since Mock mode probably has no contract change. These first run on real work, including red tests through stubs and empty components.
 
-1. The user reads the rewritten files and gives any remarks. Decided on 2026-11-05, on Claude's proposals: about 17 thousand words is accepted, because further cuts would remove rules about access, data, state and security, and leave them to agents' guesses; the cost of size is handled by what an agent reads (see **What an agent reads**). The ban on the token in a log (INV-9) stays without a scenario of its own, and USR-17.2 gets no tests for its other two combinations. To watch on Tracking core and the next feature: the user often rejecting items of the list of details means requirements are too thin; a kind of scenario that catches nothing and gets in the way of changes can go. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
-2. After each file, the main session checks the result itself rather than trusting the report: words by part, scenario count, `trace`, that production code did not change, that no assertion disappeared from the test diff, and each claim that the contract holds a removed fact.
-3. Do the remaining stage 5 work: audit the tests for duplicates (the user decides what goes), and close the open questions below. This document is deleted with the rework, so its parts that still describe deltas and full coverage need no rewrite if the audit does not read them.
-4. Run the full verification for backend, frontend and docs, then open one PR to main.
+**When the user returns,** in order:
 
-The process, skills and agents (user decisions of 2026-11-05 on Claude's proposals; the process itself is in `docs/process.md`):
+1. Ask what the trial showed. Look at `git status` on `feature/mock-mode`, the plan and `.claude/usage/mock-mode.jsonl`, once it exists. `/usage-review` and `node .claude/scripts/agent-usage.mjs` show the cost. The trial's work is probably uncommitted: requirements cannot be committed before the red tests, because the hook refuses a scenario without a test. Do not lose it.
+2. Fix what it found in `workflow/rework`, not in `feature/mock-mode`, so the PR carries the fixes. Ask the user how to handle the uncommitted trial first: `git switch` carries uncommitted files along, so commit only the files of the fix by name. Bring the fixes to the trial branch with `git merge workflow/rework`: `git rebase` is denied in `.claude/settings.json`.
+3. The user reads the rewritten requirements. They reviewed `user-administration` and `authorization`, and have not said they read the other five. To confirm then: the removal of INV-16.2 and PLT-1.1; IDN-9.6 and IDN-10.4 restored by the main session; INV-18.3, IEM-6.10 and IEM-11.2 added; the ban on the token in a log (INV-9) stays without a scenario of its own, and USR-17.2 gets no tests for its other two combinations (both decided on 2026-11-05 on Claude's proposals).
+4. The test audit. Not decided: Claude proposes a read-only agent on `user-administration` that lists duplicates between `UsersControllerTest`, `UserAdministrationServiceTests` and `UsersEndpointTests`, and tests of implementation detail; the user decides what goes and whether to go on. It may come after the PR.
+5. Before the PR: delete the **Workflow rework** item from the roadmap and this document, which stays in git. Then run the full verification for backend, frontend and docs, and `/pr` for one PR from `workflow/rework` to main. Afterwards merge main into `feature/mock-mode`.
 
-- Commands: `/explore` (new and optional), `/spec`, `/feature`, `/review`, `/verify`, `/decision` (the renamed `/adr`, since these are no longer ADRs) and `/pr`. Planning is part of `/feature`, not a command of its own.
-- `/usage-review` stays, to measure the new workflow, although its old exit condition is met. The user rejected Claude's proposal to delete it. Usage recording reads the progress log today, so it has to read the plan instead.
-- The plan `docs/plans/<change>.md` replaces both the Design section and the progress log, and is deleted before the PR.
-- Checkpoints: the requirements gate, the plan gate, one checkpoint after the backend is green and a look at the screens at the end. A plan may name another checkpoint for a hard part.
-- The agent reviews the requirements before the requirements gate only; the owner alone reads the plan.
-- A new agent `test-engineer`, on Opus for Tracking core, then the usage is checked.
-- The prototype step of `frontend-dev` is removed until mock mode exists.
+**Decided and worth keeping in mind** (user decisions of 2026-11-05 on Claude's proposals, unless marked):
 
-- A handover in the plan before every stop for the owner, so a review can take days and the work continues in a new session from a small context (user's request, 2026-11-05). So the plan starts at the beginning of Specify, not at Plan.
+- About 17 thousand words of requirements is accepted: 17386 words and 205 scenarios, from 23870 and 204. Further cuts would remove rules about access, data, state and security and leave them to agents' guesses; the cost of size is handled by what an agent reads. Claude's expectation of 11 to 12 thousand was wrong: splitting combined scenarios added about as much as removing scenarios took away.
+- To watch on Tracking core and the next feature: the user often rejecting items of the list of details means requirements are too thin; a kind of scenario that catches nothing and gets in the way of changes can go. The second test pass is removed if it finds no real bug on those two.
+- `/usage-review` stays to measure the new workflow, although its old exit condition is met; the user rejected Claude's proposal to delete it.
+- `test-engineer` runs on Opus for Tracking core, then the usage is checked. The prototype step of `frontend-dev` is gone until mock mode exists.
+- Handovers in the plan are the user's request: a review can take days, and the work continues in a new session from a small context.
 
-Claude's choices, which the user read in the process without objecting: `docs/process.md` is not under `docs/development/`, because the tools treat every file there as an area guide with its own verification. The requirements, the contract, the plan and the red tests go into one commit, because `trace` in the pre-commit hook refuses a scenario without a test. Backend red tests go through HTTP against a stub, and frontend ones against an empty component, so that they fail on an assertion and not on compilation; not yet tried.
-
-Done on 2026-11-05: `docs/process.md`; the skills `/explore`, `/spec` with `plan-template.md`, `/feature`, `/decision`, `/review`, `/pr` and `/usage-review`; the agents `test-engineer`, `backend-dev`, `frontend-dev` and `reviewer`; `.claude/README.md`, `AGENTS.md` and `docs/development/docs.md`; the subcommands `show` and `cited-by`; usage recording reads the plan and counts scenarios. A review of what each agent loads removed the duplicates the user pointed out and those Claude found: the map stays in `AGENTS.md` only, the usage command is in the skills so they do not read the whole README, and `test-engineer` does not read `docs/process.md`. Dropped by Claude, not discussed: running backend controllers on Sonnet (the old step 4 experiment), because the new process has no such step. Not tried: no skill or agent has run yet, not even headless. The hook that tells subagents apart was not looked at; for now the coordinator and the reviewer check the diff of tests since the red commit.
-
-The brief for each subagent, with what the sample taught:
-
-- Read `docs/constitution.md`, the **Requirements** section of `docs/development/docs.md`, **A spec-anchored process** below, and `docs/requirements/user-administration.md` as the sample. No commit, no production code, no other capability file.
-- A statement is one or two sentences or a table, about 40 words, keeps SHALL or MUST, and does not retell its scenarios or list screen details. The first pass here left statements longer than scenarios, so check this explicitly. Moving text between parts is a failure.
-- A rule about access, data, state, security or irreversible actions, or one whose breach is hard to notice, has a scenario. A mistake seen at once on the ordinary path and cheap to fix has none, which applies to most client screens, since the server enforces access. A rare state, such as an error response, does not qualify, nor does a ban on showing what the user must not see (user decision, 2026-11-04, on Claude's wording). The first passes kept too many of these: the user removed five.
-- Hiding an action the server would refuse anyway is not a ban on showing: it needs no scenario. An operational detail, such as a log warning, stays out of the requirements, in the code and a test without an id. A scenario refers to a table instead of retelling its rows, so one scenario covers the table (user decisions, 2026-11-05, from the review of `authorization`).
-- A table is for a catalog or for rules without scenarios. Do not turn prose into a table so that scenarios only point at its rows: a rule with a scenario keeps its behavior in the scenario. The rewrite of `platform` did this, and the main session undid it.
-- One behavior per scenario: split combined ones and their tests. Do not split one behavior checked across similar operations. Splitting raises the count, and this is expected.
-- Do not change what the system does. Keep ids, with gaps allowed, and never reuse a removed one. Check that other capabilities do not cite an id before removing it.
-- For a removed scenario, its test loses the id from its name and stays. Test bodies may change only to split a test: every assertion survives. A failing test or a disagreement with the code is reported to the user, not fixed.
-- Drop what the contract holds only after checking that it does.
-- Run `trace`, `check-docs` and every changed test class or spec file, and report the numbers before and after, what left the requirements, and anything disputed.
+**Claude's choices, not discussed:** running backend controllers on Sonnet (the old step 4 experiment) is dropped, because the new process has no such step. No hook tells subagents apart; the coordinator and the reviewer check the diff of tests since the red commit. The threshold of the cheap path (more than one or two requirements, the contract or a migration) stays a draft until small changes happen.
 
 ## Earlier state and stage 5
 
@@ -81,15 +56,7 @@ Measured on 2026-11-03, after the compression:
 - The count of 204 is partly cosmetic: some scenarios merge several cases (USR-14.1), and 42 scenarios are cited by more than one test.
 - Tests: 778 (519 backend, 259 frontend), about 257 of them with an id, so about 520 are invisible to `trace`. 16.3 thousand lines of tests for 8.9 thousand of production code (frontend counted without the generated client). Stage 4 added 1541 net lines; most of the volume was there before. Rules appear to be checked on several levels (`UsersControllerTest`, `UserAdministrationServiceTests`, `UsersEndpointTests`): a guess from the file names, the test bodies were not compared.
 
-**In stage 5:**
-
-- Deltas and the other subcommands of the tool. Until then a test may cite only a living scenario.
-- The `/adr` skill and `docs/development/docs.md` still describe the old ADR format with a Status line.
-- `.claude/README.md` and the reviewer still call `AGENTS.md` the project-wide rules, and the `/pr` skill says commit messages follow `AGENTS.md`, while the language rule is now in the constitution.
-
 How other AI clients load the guides and the constitution is not considered for now, since each client works differently (user decision, 2026-11-03).
-
-The skills and agents were discussed on 2026-11-05; see **Next session: start here**.
 
 Attribution: "user decision" marks what the user decided; everything else is Claude's proposal or finding.
 
@@ -329,8 +296,4 @@ Until the end of stage 4, `trace` shows almost no coverage; that is expected.
   - Constitution: the user changed C-5 and C-7 on 2026-11-04. Requirements are the authority for the behavior they describe, not for every detail; a test of a scenario cites its id, and tests of details cite none.
   - Rewriting the requirements: before stage 5, in a subagent, starting with `user-administration`, which the user reviews before the other six files (user decision, 2026-11-04).
 - **Agent review of the spec.** Before the requirements gate only (user decision, 2026-11-05, narrowing Claude's proposal of a review before each gate), with a fixed checklist (contradictions with living requirements and the constitution; testability of every scenario; completeness against the proposal's scope: error paths, empty states, refused access, concurrent edits, what each role sees, what is audited; ambiguity; "how" leaking into requirements), one round, and a size guard (8–10 scenarios) that suggests splitting the change. The reviewer reports gaps but does not write requirements; scope expansions go to roadmap Ideas or to the user as a question.
-- **The skills and agents of the new process.** Decided on 2026-11-05; see **Next session: start here**. Rewriting them is the remaining work of stage 5.
-- **What an agent reads.** `AGENTS.md` already says to read the index and open the capabilities a task touches, but `/spec`, `/adr` and `backend-dev` still read all of `docs/requirements/` until stage 5. Nothing says how far to follow references: `invitations` cites five other capabilities, so opening each whole file costs about 20000 words instead of about 6100. Claude's proposal for the process description, to discuss with the skills and agents:
-  - An agent reads the index and the capabilities named in the roadmap item or the proposal.
-  - For a reference such as `(PERM-3)`, it opens only that block, not the whole file. This may need a small `show` subcommand in the tool, which is not on its list yet.
-  - The spec reviewer checks for contradictions more widely: the touched capabilities and those that cite them, a list the tool can produce. An agent that reads little can miss a contradiction in a capability it did not open, as in the OpenSpec pilot.
+- **What an agent reads.** Done: **What to read** in `docs/process.md`, with `show` and `cited-by` in the tool. The first plan will show whether it holds.
