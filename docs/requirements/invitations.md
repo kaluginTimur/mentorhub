@@ -342,13 +342,6 @@ The system SHALL treat parallel requests on one invitation as if they came one a
 
 The client SHALL offer the invitations page, its link and the action "Invite" only to a user who holds `USERS_INVITE` (PERM-7). The page is a list page (PLT-9) with a search by email and a status filter, and its row actions follow the status of the invitation.
 
-#### INV-16.2 Rows show the invitation and its actions
-
-- GIVEN a pending, an expired, an accepted and a revoked invitation
-- WHEN a user with `USERS_INVITE` opens the page
-- THEN each row shows the email, the roles, the status as text with its date or who accepted or revoked it, and who invited it and when
-- AND the actions offered follow the status
-
 ### INV-17 Copying a link from the list
 
 The client SHALL copy the link of a pending invitation on "Copy link" and say so; when the browser does not allow the clipboard, it SHALL show the link selected so the user can copy it by hand. When the invitation turns out to be closed, expired or gone, it SHALL say so and reload the list.

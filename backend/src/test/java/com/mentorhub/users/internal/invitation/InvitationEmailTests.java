@@ -395,6 +395,7 @@ class InvitationEmailTests {
         }
 
         @Test
+        @DisplayName("IEM-6.10 A rolled-back request sends nothing")
         void aRolledBackRequestSendsNothing() {
             transaction.executeWithoutResult(status -> {
                 service.create("ivan@x.test", Set.of(), true);
@@ -453,7 +454,7 @@ class InvitationEmailTests {
         }
 
         @Test
-        @DisplayName("IEM-6.4 A refused email is recorded as failed and not sent again")
+        @DisplayName("IEM-6.4 A refused email is recorded as failed")
         void aRefusedMessageIsMarkedFailed(CapturedOutput output) {
             doAnswer(invocation -> {
                         MailMessage message = invocation.getArgument(0);
@@ -498,7 +499,7 @@ class InvitationEmailTests {
         }
 
         @ParameterizedTest
-        @DisplayName("IEM-6.5 An email left unsent by a stop is sent once after the next start")
+        @DisplayName("IEM-6.9 An email that is already done is never sent again")
         @ValueSource(strings = {"SENT", "FAILED", "SKIPPED"})
         void aRequestThatIsNoLongerQueuedIsNeverSentAgain(InvitationEmailStatus outcome) {
             UUID invitation = create("ivan@x.test");

@@ -83,7 +83,7 @@ describe('InvitationsList', () => {
     }),
   ];
 
-  it('INV-16.2 shows invitations with status lines and row actions by status', async () => {
+  it('shows invitations with status lines and row actions by status', async () => {
     api.invoke.mockResolvedValue(page(rowsOf));
     const { element } = await open();
     expect(element.querySelectorAll('h1')).toHaveLength(1);
@@ -637,7 +637,7 @@ describe('InvitationsList', () => {
     const snackSpy = () => vi.spyOn(TestBed.inject(MatSnackBar), 'open');
     const listCalls = () => api.invoke.mock.calls.filter(([fn]) => fn === listInvitations).length;
 
-    it('IEM-12.1 shows "Send email" before "Copy link" on pending rows only', async () => {
+    it('shows "Send email" before "Copy link" on pending rows only', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page(rowsOf));
       const { element } = await open();
@@ -653,13 +653,13 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('IEM-10.1 hides the email action when email is disabled', async () => {
+    it('hides the email action when email is disabled', async () => {
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
       expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
     });
 
-    it('IEM-13.1 shows the email line for every status of lastEmail', async () => {
+    it('shows the email line for every status of lastEmail', async () => {
       const requestedBy = { id: 'a1', name: 'Ada Admin' };
       const requestedAt = '2026-10-18T09:00:00Z';
       const mail = (status: string, finishedAt?: string) => ({
@@ -703,7 +703,7 @@ describe('InvitationsList', () => {
       expect(rows[6].textContent).toContain('Email sent 18 Oct 2026');
     });
 
-    it('IEM-12.1 sends without a confirmation, replaces the row and confirms', async () => {
+    it('sends without a confirmation, replaces the row and confirms', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -756,7 +756,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('IEM-12.2 explains 409 email-unavailable', async () => {
+    it('IEM-12.3 explains 409 email-unavailable', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -812,7 +812,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('IEM-12.2 treats a closed invitation like Copy link', async () => {
+    it('IEM-12.4 treats a closed invitation like Copy link', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -824,7 +824,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('IEM-12.2 treats a 404 like Copy link', async () => {
+    it('IEM-12.4 treats a 404 like Copy link', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -836,7 +836,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('IEM-10.1 offers no email choice in the new-link confirmation when email is disabled', async () => {
+    it('offers no email choice in the new-link confirmation when email is disabled', async () => {
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
       click(element, 'Get a new link');
@@ -853,7 +853,7 @@ describe('InvitationsList', () => {
       expect(JSON.stringify(call?.[1])).not.toContain('sendEmail');
     });
 
-    it('IEM-11.1 offers the email checkbox in the new-link confirmation, checked, and requests it', async () => {
+    it('offers the email checkbox in the new-link confirmation, checked, and requests it', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -881,7 +881,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('IEM-11.1 requests no email when the box is unchecked', async () => {
+    it('requests no email when the box is unchecked', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
@@ -903,7 +903,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('shows a snackbar when the new link cannot be emailed', async () => {
+    it('IEM-11.2 shows a snackbar when the new link cannot be emailed', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();

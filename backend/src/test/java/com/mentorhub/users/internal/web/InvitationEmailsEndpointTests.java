@@ -272,11 +272,36 @@ class InvitationEmailsEndpointTests {
                     assertThat(lastEmail.get("status").asString()).isEqualTo("QUEUED");
                     assertThat(lastEmail.has("finishedAt")).isFalse();
                 }
-                case "failed@x.test" -> {
+                case "failed@x.test" ->
                     assertThat(lastEmail.get("status").asString()).isEqualTo("FAILED");
-                    assertThat(lastEmail.has("failure")).isFalse();
-                }
                 default -> assertThat(lastEmail).isNull();
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("IEM-9.2 The reason of a failure is not returned")
+    void theReasonOfAFailureIsNotReturned() {
+        UUID twice = newInvitation("twice@x.test");
+        UUID first = emails.insertQueued(twice, InvitationEmailReason.CREATED, admin);
+        emails.markFailed(first, InvitationEmailFailure.of("550 refused"));
+        jdbc.sql("update invitation_emails set requested_at = now() - interval '1 hour' where id = :id")
+                .param("id", first)
+                .update();
+        emails.markSent(emails.insertQueued(twice, InvitationEmailReason.RESENT, admin));
+        UUID failed = newInvitation("failed@x.test");
+        emails.markFailed(
+                emails.insertQueued(failed, InvitationEmailReason.CREATED, admin),
+                InvitationEmailFailure.of("550 refused"));
+
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/invitations", "", "admin");
+
+        assertThat(list).hasStatusOk();
+        JsonNode items =
+                jsonMapper.readTree(list.getResponse().getContentAsByteArray()).at("/items");
+        for (JsonNode item : items) {
+            if (item.get("email").asString().equals("failed@x.test")) {
+                assertThat(item.get("lastEmail").has("failure")).isFalse();
             }
         }
         assertThat(list).bodyText().doesNotContain("550 refused").doesNotContain("failure");

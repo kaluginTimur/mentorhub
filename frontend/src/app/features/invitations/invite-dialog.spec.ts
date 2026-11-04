@@ -251,14 +251,14 @@ describe('InviteDialog', () => {
     const emailBox = (root: HTMLElement) =>
       checkbox(root, 'Send the invitation by email to this address');
 
-    it('IEM-10.1 shows the checkbox, checked by default, below the roles', async () => {
+    it('shows the checkbox, checked by default, below the roles', async () => {
       const { root } = await open();
       expect(emailBox(root).checked).toBe(true);
       const labels = [...root.querySelectorAll('mat-checkbox')].map((c) => c.textContent?.trim());
       expect(labels.at(-1)).toBe('Send the invitation by email to this address');
     });
 
-    it('IEM-11.1 requests the email and tells the link view so when the choice is on', async () => {
+    it('requests the email and tells the link view so when the choice is on', async () => {
       api.invoke.mockResolvedValue(created());
       const { root } = await open();
       type(root, 'ivan@example.com');
@@ -272,7 +272,7 @@ describe('InviteDialog', () => {
       expect(root.querySelector('button[aria-label="Copy invitation link"]')).toBeTruthy();
     });
 
-    it('IEM-11.1 sends sendEmail false and shows the usual text when the choice is off', async () => {
+    it('sends sendEmail false and shows the usual text when the choice is off', async () => {
       api.invoke.mockResolvedValue(created());
       const { root } = await open();
       type(root, 'ivan@example.com');
@@ -284,7 +284,7 @@ describe('InviteDialog', () => {
       expect(root.textContent).toContain('Send this link to ivan@example.com.');
     });
 
-    it('shows an inline alert on 409 email-unavailable and keeps the values', async () => {
+    it('IEM-11.2 shows an inline alert on 409 email-unavailable and keeps the values', async () => {
       api.invoke.mockRejectedValue(
         problem(409, { type: 'urn:mentorhub:problem:email-unavailable' }),
       );
@@ -303,7 +303,7 @@ describe('InviteDialog', () => {
     });
   });
 
-  it('IEM-10.1 renders no email checkbox and sends no flag when email is disabled', async () => {
+  it('renders no email checkbox and sends no flag when email is disabled', async () => {
     api.invoke.mockResolvedValue(created());
     const { root } = await open();
     expect(root.textContent).not.toContain('by email');

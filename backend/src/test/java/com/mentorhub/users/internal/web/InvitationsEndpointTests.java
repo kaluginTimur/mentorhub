@@ -376,21 +376,15 @@ class InvitationsEndpointTests {
     }
 
     @Test
-    @DisplayName("IEM-1.1 Without a mail server emails are refused and invitations work as before")
+    @DisplayName("IEM-1.1 Without a mail server emails are refused")
     void emailIsUnavailableWithoutAMailServer() {
         assertThat(send(HttpMethod.GET, "/api/v1/system/client-config", "", "admin"))
                 .bodyJson()
                 .extractingPath("$.invitationEmails")
                 .isEqualTo(false);
         InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\"]");
-        assertThat(send(
-                        HttpMethod.POST,
-                        "/api/v1/invitations",
-                        "{\"email\": \"a@x.test\", \"roles\": [], \"sendEmail\": false}",
-                        "admin"))
-                .hasStatus(HttpStatus.CREATED);
         int audit = users.count("audit_log");
-        assertThat(users.count("invitations")).isEqualTo(2);
+        assertThat(users.count("invitations")).isEqualTo(1);
 
         assertProblem(
                 send(
@@ -413,9 +407,23 @@ class InvitationsEndpointTests {
                 HttpStatus.CONFLICT,
                 InvitationProblems.EMAIL_UNAVAILABLE);
 
-        assertThat(users.count("invitations")).isEqualTo(2);
+        assertThat(users.count("invitations")).isEqualTo(1);
         assertThat(users.count("audit_log")).isEqualTo(audit);
         assertThat(users.count("invitation_emails")).isZero();
+    }
+
+    @Test
+    @DisplayName("IEM-1.3 Without a mail server invitations work as before")
+    void invitationsWorkAsBeforeWithoutAMailServer() {
+        InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\"]");
+        assertThat(send(
+                        HttpMethod.POST,
+                        "/api/v1/invitations",
+                        "{\"email\": \"a@x.test\", \"roles\": [], \"sendEmail\": false}",
+                        "admin"))
+                .hasStatus(HttpStatus.CREATED);
+        assertThat(users.count("invitations")).isEqualTo(2);
+
         assertThat(send(HttpMethod.GET, "/api/v1/invitations/" + invitation.id() + "/link", "", "admin"))
                 .bodyJson()
                 .extractingPath("$.link")

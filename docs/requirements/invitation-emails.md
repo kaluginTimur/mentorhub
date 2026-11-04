@@ -2,21 +2,20 @@
 
 ## Purpose
 
-An administrator can pass an invitation link on by hand, or let MentorHub email it to the invited address: when the invitation is created, when a new link is given, and again at any time while the invitation is pending. A mail server is optional and configured per installation; an installation without one works as the invitations capability describes and offers no email options. Sending is asynchronous (decision 0006): a slow or unreachable mail server never fails or delays the administrator's request, a requested email is not lost when the application stops, and the outcome of the latest email of each invitation is shown with the invitation. This capability covers requesting an email, sending it, what it contains, its delivery status and the client parts that request and show it. Creating, listing and revoking invitations, links and accepting are in the invitations capability (INV); who may act is in the authorization capability (PERM); the entries of the audit are in the audit capability (AUD).
+An administrator can pass an invitation link on by hand, or let MentorHub email it to the invited address: when the invitation is created, when a new link is given, and again at any time while the invitation is pending. A mail server is optional and configured per installation; without one, invitations work as the invitations capability describes and offer no email options. Sending is asynchronous (decision 0006): a slow or unreachable mail server never fails or delays the administrator's request, a requested email is not lost when the application stops, and the outcome of the latest email of each invitation is shown with the invitation. Creating, listing and revoking invitations, links and accepting are in the invitations capability (INV); who may act is in the authorization capability (PERM); audit entries are in the audit capability (AUD). The API contract holds the request flag, the response shapes and the problem types.
 
 ## Requirements
 
 ### IEM-1 Email is available only with a mail server
 
-The system SHALL offer invitation emails only when a mail server is configured, and SHALL start and work as before when none is configured. Whether emails can be requested is told in the client configuration (PLT-4.1). When no mail server is configured, a request that asks for an email, whether with a new invitation, with a new link or by sending again, SHALL be refused with 409 `email-unavailable` and SHALL change nothing, while a request that does not ask for one (the flag `sendEmail` false or absent) SHALL work as usual. When a mail server is configured, the sender address `mentorhub.mail.from` is required: the application SHALL refuse to start, naming the setting, if it is missing or is not exactly one address, with an optional display name (PLT-5). Without a mail server the sender address is not checked.
+The system SHALL offer invitation emails only when a mail server is configured (PLT-4.1). Without one, a request that asks for an email SHALL be refused with 409 `email-unavailable` and change nothing. With one, the application SHALL refuse to start unless `mentorhub.mail.from` is exactly one address (PLT-5).
 
-#### IEM-1.1 Without a mail server emails are refused and invitations work as before
+#### IEM-1.1 Without a mail server emails are refused
 
-- GIVEN no mail server is configured
-- WHEN an administrator creates an invitation with `sendEmail` true, gives a pending invitation a new link with `sendEmail` true, asks to send the email of a pending invitation, and creates an invitation without asking for an email
-- THEN the first three are 409 `email-unavailable` and nothing is created or changed
-- AND the last is 201 with the invitation and its link
-- AND the client configuration says that invitation emails are not available
+- GIVEN no mail server is configured and a pending invitation
+- WHEN an administrator creates an invitation with `sendEmail` true, gives the pending invitation a new link with `sendEmail` true, or asks to send its email
+- THEN each response is 409 `email-unavailable`
+- AND nothing is created, changed or audited
 
 #### IEM-1.2 A mail server needs exactly one sender address
 
@@ -25,9 +24,16 @@ The system SHALL offer invitation emails only when a mail server is configured, 
 - THEN it fails to start
 - AND the failure names `mentorhub.mail.from`
 
+#### IEM-1.3 Without a mail server invitations work as before
+
+- GIVEN no mail server is configured and a pending invitation
+- WHEN an administrator creates an invitation without asking for an email, reads the link of the pending one and gives it a new link
+- THEN creating answers 201 and the new link answers 200, each with the link
+- AND the invitations have no latest email
+
 ### IEM-2 Requesting an email needs USERS_INVITE
 
-The system SHALL let only a caller who holds `USERS_INVITE` request an invitation email, and SHALL let any such holder do it for any invitation, not only for the ones they created (PERM-3, INV-1). A caller without the permission SHALL be refused with 403 `forbidden` and nothing SHALL change; the refusal precedes any lookup of the invitation (PERM-6). The latest email of an invitation is visible only to holders of the permission, with the invitation (INV-1). Whether email is enabled is public (PLT-4.1).
+The system SHALL let only a holder of `USERS_INVITE` request an invitation email, and SHALL let any holder do it for any invitation, not only their own (PERM-3, INV-1). Others get 403 `forbidden` and nothing changes; the refusal precedes any lookup of the invitation (PERM-6).
 
 #### IEM-2.1 Requesting an email needs the permission
 
@@ -44,7 +50,7 @@ The system SHALL let only a caller who holds `USERS_INVITE` request an invitatio
 
 ### IEM-3 Asking for an email with a new invitation or a new link
 
-The system SHALL, when an administrator creates an invitation or gives a new link with the optional flag `sendEmail` true and email is enabled, request an email with the link in the same change, and SHALL respond as it does without the flag, with the invitation carrying the requested email as queued (IEM-9). The flag is false by default, and the request is audited with its reason (AUD-7). When the invitation is not created because the request fails, no email is requested and nothing is audited (AUD-1). When the latest email of the invitation is still queued, a new link with the flag SHALL be issued as usual without a second request and without a second audit entry; the response carries the queued email, which builds its link when it is sent and so carries the new link.
+The system SHALL, when email is enabled and an administrator creates an invitation or gives a new link with `sendEmail` true, also request an email with the link, audited with its reason (AUD-7), and respond as without the flag. While the latest email is still queued, a new link requests no second email and writes no second audit entry.
 
 #### IEM-3.1 An email is queued with a new invitation or a new link
 
@@ -70,7 +76,7 @@ The system SHALL, when an administrator creates an invitation or gives a new lin
 
 ### IEM-4 Sending the email of a pending invitation again
 
-The system SHALL let a holder of `USERS_INVITE` request, at any time, an email with the current link of a pending invitation, and SHALL respond 202 with the invitation carrying the email as queued. The operation has no request body, changes neither the link nor the expiry, and is audited with its reason (AUD-7). It is refused with 409 `invitation-closed` for an accepted or a revoked invitation, 409 `invitation-expired` for an expired one, as for reading a link (INV-8), and 404 `not-found` for an unknown invitation. While the latest email of the invitation is still queued, it is refused with 409 `email-queued` and changes nothing, so a repeated click sends one email.
+The system SHALL let a holder of `USERS_INVITE` request, at any time, an email with the current link of a pending invitation, leaving the link and the expiry unchanged, audited with its reason (AUD-7). It is refused as reading a link is (INV-8), and with 409 `email-queued` while the latest email is still queued.
 
 #### IEM-4.1 A pending invitation is sent again
 
@@ -104,7 +110,7 @@ The system SHALL let a holder of `USERS_INVITE` request, at any time, an email w
 
 ### IEM-5 The order of refusals
 
-The system SHALL check a request that asks for an email in this order, after the authentication, the gate and the permission (INV-1): the request body (400 `validation-failed`), the invitation (404 `not-found`, then 409 `invitation-closed` or `invitation-expired`; for creating, 409 `user-active` or `invitation-exists`), then whether email is enabled (409 `email-unavailable`), then whether an email is already queued (409 `email-queued`). A request that cannot succeed for a reason of the invitation therefore gets that reason, whether or not email is enabled, and requests no email.
+The system SHALL check a request that asks for an email, after authentication and the permission (INV-1), in this order: the request body, the invitation (including 409 `user-active` and `invitation-exists` when creating), whether email is enabled, whether an email is already queued. A request that cannot succeed for a reason of the invitation gets that reason, whether or not email is enabled.
 
 #### IEM-5.1 An invitation or request problem is reported before the missing mail server
 
@@ -114,7 +120,7 @@ The system SHALL check a request that asks for an email in this order, after the
 
 ### IEM-6 Delivery
 
-The system SHALL, after the change that requested an email is stored, send one email to the invitation's address with the link that is current when the email is built, and then record the email as sent with the time. The administrator's request SHALL be answered before the mail server is contacted, also when the mail server does not answer. When the request is rolled back, no email SHALL be sent. Sending never changes the invitation: its status, link and expiry are as they were. When the invitation is no longer pending when the email is about to be sent (accepted, revoked or expired since the request), no email SHALL be sent and the email is recorded as skipped. When the mail server refuses the message or cannot be reached within its time limits, the email is recorded as failed with the time, and the failure is logged without the token or the message (IEM-8). A failed email is not sent again by the system: the administrator sends it again (IEM-4). An email requested before the application stopped and not sent SHALL be sent once after the next start, and an email that is no longer queued SHALL never be sent again. When processing an email fails unexpectedly and leaves it queued, it SHALL be processed again within ten minutes without a restart, so that neither the invitation list nor a new request stays blocked by it (decision 0006). A queued email replayed when no mail server is configured is recorded as failed and nothing is sent.
+The system SHALL, once the request that asked for an email is committed, send one email with the current link, answering the request before the mail server is contacted, and record it as sent, failed (refused, unreachable or no mail server) or skipped (the invitation no longer pending). Only an email still queued is sent, also after a restart or an unexpected failure (decision 0006); sending changes nothing in the invitation.
 
 #### IEM-6.1 A queued email is sent with the current link and recorded
 
@@ -137,27 +143,24 @@ The system SHALL, after the change that requested an email is stored, send one e
 - THEN no email is sent
 - AND the invitation's latest email is skipped, with the time
 
-#### IEM-6.4 A refused email is recorded as failed and not sent again
+#### IEM-6.4 A refused email is recorded as failed
 
 - GIVEN a queued email and a mail server that refuses the message
-- WHEN the email is processed, then time passes and the application is restarted
-- THEN the invitation's latest email is failed, with the time, and the invitation is unchanged
-- AND a warning is logged
-- AND the email is not sent again
+- WHEN the email is processed
+- THEN the invitation's latest email is failed, with the time
+- AND the invitation is unchanged
 
 #### IEM-6.5 An email left unsent by a stop is sent once after the next start
 
 - GIVEN an email requested and committed, and the application stopped before sending it
-- WHEN the application starts again, and a request to send an already sent, failed or skipped email is delivered once more
-- THEN the first email is sent once and recorded as sent
-- AND nothing is sent for the email that is already done
+- WHEN the application starts again
+- THEN the email is sent once and recorded as sent
 
 #### IEM-6.6 An unexpected failure is processed again
 
 - GIVEN an email left queued because its processing failed unexpectedly
-- WHEN ten minutes pass without a restart
-- THEN it is processed again
-- AND a later request to send the email again is not refused as queued once it is done
+- WHEN time passes without a restart
+- THEN it is processed again and sent
 
 #### IEM-6.7 An email replayed without a mail server fails
 
@@ -166,9 +169,29 @@ The system SHALL, after the change that requested an email is stored, send one e
 - THEN the invitation's latest email is failed
 - AND no email is sent
 
+#### IEM-6.8 A failed email is not sent again after a restart
+
+- GIVEN an email recorded as failed
+- WHEN the application is restarted with a working mail server
+- THEN the email is not sent and stays failed
+
+#### IEM-6.9 An email that is already done is never sent again
+
+- GIVEN an email recorded as sent, failed or skipped
+- WHEN a request to send that email is delivered once more
+- THEN nothing is sent
+- AND the email keeps its status
+
+#### IEM-6.10 A rolled-back request sends nothing
+
+- GIVEN a request that created an invitation and asked for an email
+- WHEN the change is rolled back
+- THEN no email is sent
+- AND nothing is stored
+
 ### IEM-7 What the email contains
 
-The system SHALL send the invitation email as plain text in English, from the configured sender address, to the invitation's email, with a subject that invites the person to MentorHub. The body names the invited address to sign in or create an account with, holds the link alone on its own line, so that no mail client takes punctuation into it, gives the expiry with its time and zone in UTC, and says to ignore the message if the invitation was not expected. The message is impersonal: it names no administrator and holds no data about the invitation beyond the address, the link and the expiry.
+The system SHALL send the invitation email as plain text in English from the configured sender address to the invitation's address. The body names the invited address, holds the link alone on its own line and gives the expiry in UTC; it holds no other data about the invitation, such as its roles or who created it.
 
 #### IEM-7.1 The sender, the recipient and the body
 
@@ -187,7 +210,7 @@ The system SHALL send the invitation email as plain text in English, from the co
 
 ### IEM-8 The token stays out of logs and records
 
-The system SHALL NOT write the token or the link of an invitation to any log, to the reason recorded for a failed email, or to an audit entry (AUD-5), and SHALL NOT log a message body. The failure reason is kept for the operator, who reads it in the server log, and is not returned by the API (IEM-9).
+The system SHALL NOT write the token or the link of an invitation to a log, to the recorded reason of a failed email or to an audit entry (AUD-5), and SHALL NOT log a message body. The reason of a failure is for the operator and is never returned by the API (IEM-9).
 
 #### IEM-8.1 Sending and failing leave no token in the logs
 
@@ -197,7 +220,7 @@ The system SHALL NOT write the token or the link of an invitation to any log, to
 
 ### IEM-9 The outcome of the latest email
 
-The system SHALL return, in every response that returns an invitation, the latest email requested for it, when there is one: its status, the time it was requested, who requested it and, once it is no longer queued, when it finished. Earlier emails are not shown and the reason of a failure is not returned. An invitation for which no email was ever requested has no latest email, whatever its status (INV-5). The email never changes the status of the invitation. The status tells the administrator:
+The system SHALL return, with every invitation it shows to a holder of `USERS_INVITE` (INV-1), the latest email requested for it, when there is one: its status, when and by whom it was requested and, once it is no longer queued, when it finished. Earlier emails and the reason of a failure are not returned, and the email never changes the status of the invitation. The status tells the administrator:
 
 | Status | Meaning | What the administrator can do |
 |---|---|---|
@@ -212,59 +235,57 @@ The system SHALL return, in every response that returns an invitation, the lates
 - WHEN an administrator lists the invitations
 - THEN the first has the second email, with the status sent, the time requested, who requested it and when it finished
 - AND the queued one has no finish time
-- AND the failed one has the status failed and no reason of the failure
+- AND the failed one has the status failed
 - AND the last has no latest email
+
+#### IEM-9.2 The reason of a failure is not returned
+
+- GIVEN invitations whose emails failed with a reason from the mail server
+- WHEN an administrator lists the invitations
+- THEN the response holds no reason of any failure
 
 ### IEM-10 The client offers the email only when it is enabled
 
-The client SHALL offer every email option (the choice to send with a new invitation, the choice to send with a new link, the action to send an email of a pending invitation and the email line, IEM-13) only when the client configuration says that invitation emails are enabled, and SHALL send the flag `sendEmail` only when it offers the choice. Both choices are on by default. Without a mail server the dialogs and the list work as the invitations capability describes (INV-19, INV-16).
-
-#### IEM-10.1 Email options follow the configuration
-
-- GIVEN a user with `USERS_INVITE`
-- WHEN the user opens the invite dialog, the new-link confirmation and a pending row, with email enabled, and again with email disabled
-- THEN with email enabled each offers its email option, the two choices being on by default
-- AND with email disabled none is offered and the requests carry no flag `sendEmail`
+The client SHALL offer every email option (the choice with a new invitation, the choice with a new link, the row action and the email line, IEM-13) only when the client configuration says that invitation emails are enabled, and SHALL send `sendEmail` only when it offers the choice. Both choices are on by default.
 
 ### IEM-11 Asking for an email with a new invitation or a new link in the client
 
-The client SHALL request the email with the invitation or the new link when the choice is on, and SHALL NOT when it is off. After success with the choice on, the link view (INV-19) SHALL say that an email with the link is on its way to the invited address, with the expiry, and that the link can also be copied, including from the list while the invitation is pending; with the choice off, the link view is the usual one. When the server answers 409 `email-unavailable` (the configuration changed after the page loaded), the client SHALL say that sending email is not available and the page should be reloaded: the invite dialog stays open with its values, and the new-link confirmation closes with the message as a notification.
+The client SHALL request the email when the choice is on, and the link view (INV-19) SHALL then say that an email with the link is on its way to the invited address.
 
-#### IEM-11.1 The choice decides the request and the link view says the email is on its way
+#### IEM-11.2 An unavailable mail server is explained
 
-- GIVEN email is enabled and a valid invitation, in the invite dialog and in the new-link confirmation
-- WHEN the user creates the invitation or confirms the new link with the choice on, and again with the choice off
-- THEN with the choice on the request asks for the email and the link view says that an email with the link is on its way to the invited address, and still shows the link and the expiry
-- AND with the choice off the request asks for no email and the link view is the usual one
+- GIVEN email is enabled on the page and the server answers 409 `email-unavailable`
+- WHEN the user creates an invitation in the invite dialog, or confirms a new link with the choice on
+- THEN the client says that sending email is not available and the page should be reloaded
+- AND the invite dialog stays open with its values, and the confirmation of the new link closes
 
 ### IEM-12 The row action to send an email
 
-The client SHALL offer the action to send an email on the row of a pending invitation when email is enabled, before copying the link (INV-16.2, INV-17), and on no other row. It sends without a confirmation, shows at once that an email is being sent and says that the email to the address is queued. When the server answers 409 `email-queued`, the client says that an email is already on its way and reloads the list; when it answers 409 `email-unavailable`, it says that sending email is not available and the page should be reloaded; a closed, expired or unknown invitation is explained and the list reloaded, as for copying a link (INV-17).
+The client SHALL offer the action to send an email on the rows of pending invitations only, before copying the link (INV-17), and send without a confirmation, and SHALL explain a refusal.
 
-#### IEM-12.1 The action is offered on pending rows and sends at once
+#### IEM-12.2 A queued email is explained
 
-- GIVEN email is enabled, a pending invitation, and an expired, an accepted and a revoked one
-- WHEN the list shows their rows and the user sends the email of the pending one
-- THEN only the pending row offers the action
-- AND no confirmation is asked, the row shows that an email is being sent and the client says that the email to the address is queued
-
-#### IEM-12.2 Conflicts are explained
-
-- GIVEN a pending row and the server answers 409 `email-queued`, 409 `email-unavailable`, 409 `invitation-closed` or 404
+- GIVEN a pending row and the server answers 409 `email-queued`
 - WHEN the user sends the email
-- THEN the client tells the matching reason and the user stays on the page
-- AND the list reloads for a queued email and for a closed or unknown invitation
+- THEN the client says that an email is already on its way
+- AND the list reloads
+
+#### IEM-12.3 An unavailable mail server is explained on the row
+
+- GIVEN a pending row and the server answers 409 `email-unavailable`
+- WHEN the user sends the email
+- THEN the client says that sending email is not available and the page should be reloaded
+
+#### IEM-12.4 A closed or unknown invitation is explained
+
+- GIVEN a pending row and the server answers 409 `invitation-closed` or 404
+- WHEN the user sends the email
+- THEN the client explains it as for copying a link
+- AND the list reloads
 
 ### IEM-13 The email line of the invitation status
 
-The client SHALL show, with the status of every invitation that has a latest email, whatever the status of the invitation, an email line that tells the state of the email as the table of IEM-9 defines it: being sent while queued, sent or failed with the date it finished, and not sent when skipped. A failure SHALL be told in words and not by color alone. An invitation without a latest email has no email line. The list does not refresh by itself: it shows a new state when it is loaded again.
-
-#### IEM-13.1 The email line tells the state
-
-- GIVEN invitations whose latest email is queued, sent, failed or skipped, an accepted invitation whose email was sent, and one with no email
-- WHEN the list shows their rows
-- THEN each row with an email tells its state in words, with the finish date for sent and failed, next to the status of the invitation
-- AND the row with no email has no email line
+The client SHALL show, with the status of every invitation that has a latest email, whatever its status, an email line telling the state of the email as the table of IEM-9 defines it, and SHALL tell a failure in words and not by color alone. The list does not refresh by itself: it shows a new state when it is loaded again.
 
 ## Known limitations
 

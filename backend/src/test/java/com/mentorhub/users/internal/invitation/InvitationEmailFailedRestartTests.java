@@ -46,7 +46,7 @@ class InvitationEmailFailedRestartTests {
     }
 
     @Test
-    @DisplayName("IEM-6.4 A failed email is not sent again after a restart")
+    @DisplayName("IEM-6.8 A failed email is not sent again after a restart")
     void aFailedEmailIsNotSentAfterARestart() throws InterruptedException {
         try (ConfigurableApplicationContext failing = run("127.0.0.1", 1)) {
             JdbcClient jdbc = failing.getBean(JdbcClient.class);
