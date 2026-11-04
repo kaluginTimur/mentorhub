@@ -728,7 +728,7 @@ class UsersControllerTest {
         }
 
         @Test
-        @DisplayName("USR-10.1 An entry has its time, action, actor and details")
+        @DisplayName("An entry has its time, action, actor and details")
         void rolesChangedEntryListsAddedAndRemovedRoles() {
             MvcTestResult result = historyWith(new UserHistoryEntry(
                     ENTRY_ID, AT, ACTOR, new UserChange.RolesChanged(List.of("MENTOR"), List.of())));
@@ -770,7 +770,7 @@ class UsersControllerTest {
 
         // A change made by the system has an explicit null actor.
         @Test
-        @DisplayName("USR-10.2 A change by the system has no actor")
+        @DisplayName("A change by the system has no actor")
         void bootstrapEntryHasANullActorAndWhatTheBootstrapDid() {
             MvcTestResult result = historyWith(new UserHistoryEntry(
                     ENTRY_ID, AT, null, new UserChange.BootstrappedAdmin(true, true, false, true)));

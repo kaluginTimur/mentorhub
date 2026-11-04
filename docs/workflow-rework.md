@@ -4,7 +4,7 @@ Status: temporary. This document hands over the context for reworking the docume
 
 ## Where we are
 
-Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 and 2026-11-03 (migration stages 1 and 2).
+Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternatives, target model, life cycle, format, tooling, migration plan), 2026-11-02 and 2026-11-03 (migration stages 1 to 4), 2026-11-04 (the spec-anchored process, `user-administration` rewritten). **Read "Next session: start here" first.**
 
 **Done:**
 
@@ -18,7 +18,43 @@ Sessions so far: 2026-10-20 (motivation, first changes), 2026-10-31 (alternative
 - References in the skills and agents were only repointed so the check passes; they are rewritten in stage 5.
 - This document keeps the old decision numbers in its history.
 
-**Next: migration stage 5.**
+**The approach to scenarios is decided.** User decision, 2026-11-03: requirements should not describe every small detail, and tests should not cover what is not needed. User decision, 2026-11-04: a spec-anchored process; see **A spec-anchored process** under **Open questions**. The USR-14 examples below describe the file as it was.
+
+## Next session: start here
+
+State on 2026-11-04, committed on `workflow/rework`. The user accepted `user-administration` as the final sample:
+
+- The user changed C-5 and C-7. `validate` accepts a requirement without scenarios, and `docs/development/docs.md` holds the criterion.
+- `user-administration` is rewritten as the sample: 2163 words and 22 scenarios, from 4433 and 37. USR-11 to USR-18, the client screens, have no scenarios, except USR-17.2, restored because a 409 is a rare state (user decision, 2026-11-04).
+- USR-18 keeps no scenario, on Claude's check of the contract: `/me` never carries a disable reason, a disabled caller gets no `user` and does not reach the page, and the status and roles it carries are the user's own to see.
+- Tests were split or lost their ids, with every old assertion kept and none deleted. `trace` passes (184 of 184, 5 manual). The backend (521 tests) and frontend (261 tests) verifications pass.
+- The other six capability files are unchanged. All requirements now hold 21776 words.
+
+What to do, in order (the order and the method are Claude's plan; the user chose to continue in a new session):
+
+1. Rewrite the other six capabilities, one subagent per capability, on Sonnet, so as not to fill the main context. Suggested order: `authorization`, `platform` and `audit`, which the others cite; then `identity`, `invitations` and `invitation-emails`. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
+2. After each file, the main session checks the result itself rather than trusting the report: words by part, scenario count, `trace`, that production code did not change, that no assertion disappeared from the test diff, and each claim that the contract holds a removed fact.
+3. Do the remaining stage 5 work: rewrite the parts of this document that still describe deltas and full coverage, audit the tests for duplicates (the user decides what goes), then the process description, skills and agents, and the open questions below.
+4. Run the full verification for backend, frontend and docs, then open one PR to main.
+
+The brief for each subagent, with what the sample taught:
+
+- Read `docs/constitution.md`, the **Requirements** section of `docs/development/docs.md`, **A spec-anchored process** below, and `docs/requirements/user-administration.md` as the sample. No commit, no production code, no other capability file.
+- A statement is one or two sentences or a table, about 40 words, keeps SHALL or MUST, and does not retell its scenarios or list screen details. The first pass here left statements longer than scenarios, so check this explicitly. Moving text between parts is a failure.
+- A rule about access, data, state, security or irreversible actions, or one whose breach is hard to notice, has a scenario. A mistake seen at once on the ordinary path and cheap to fix has none, which applies to most client screens, since the server enforces access. A rare state, such as an error response, does not qualify, nor does a ban on showing what the user must not see (user decision, 2026-11-04, on Claude's wording). The first passes kept too many of these: the user removed five.
+- One behavior per scenario: split combined ones and their tests. Do not split one behavior checked across similar operations. Splitting raises the count, and this is expected.
+- Do not change what the system does. Keep ids, with gaps allowed, and never reuse a removed one. Check that other capabilities do not cite an id before removing it.
+- For a removed scenario, its test loses the id from its name and stays. Test bodies may change only to split a test: every assertion survives. A failing test or a disagreement with the code is reported to the user, not fixed.
+- Drop what the contract holds only after checking that it does.
+- Run `trace`, `check-docs` and every changed test class or spec file, and report the numbers before and after, what left the requirements, and anything disputed.
+
+## Earlier state and stage 5
+
+Measured on 2026-11-03, after the compression:
+
+- Requirements: 23870 words, against 15168 in the Requirements and UI sections of the old specs, so the compression that was measured in lines and scenarios still left 1.57 times the words. Statements hold 9699 words and scenarios 11873, and they repeat each other (USR-14). Volume moved into statements (INV-20: 360 words, IEM-6: 259, IDN-6: 205). The catalog AUD-7 (412 words) is long for a reason.
+- The count of 204 is partly cosmetic: some scenarios merge several cases (USR-14.1), and 42 scenarios are cited by more than one test.
+- Tests: 778 (519 backend, 259 frontend), about 257 of them with an id, so about 520 are invisible to `trace`. 16.3 thousand lines of tests for 8.9 thousand of production code (frontend counted without the generated client). Stage 4 added 1541 net lines; most of the volume was there before. Rules appear to be checked on several levels (`UsersControllerTest`, `UserAdministrationServiceTests`, `UsersEndpointTests`): a guess from the file names, the test bodies were not compared.
 
 **In stage 5:**
 
@@ -254,5 +290,22 @@ Until the end of stage 4, `trace` shows almost no coverage; that is expected.
 
 ## Open questions
 
-- **Agent review of the spec.** Claude's proposal: a review inside Propose and Plan, before each user gate, with a fixed checklist (contradictions with living requirements and the constitution; testability of every scenario; completeness against the proposal's scope: error paths, empty states, refused access, concurrent edits, what each role sees, what is audited; ambiguity; "how" leaking into requirements), one round, and a size guard (8–10 requirements) that suggests splitting the change. The reviewer reports gaps but does not write requirements; scope expansions go to roadmap Ideas or to the user as a question.
+- **The test audit.** Claude's proposal, not discussed: a read-only agent lists duplicates, needed tests and tests of implementation detail for `user-administration`, and the user decides what goes. The test rules for new changes follow the same answer.
+- **A spec-anchored process** (decided; kept here until the sections above are rewritten). Claude's proposal, accepted by the user on 2026-11-04, with changes to C-5 and C-7, dropping deltas and the tests in two passes. It reverses parts of the user decisions of 2026-10-31, and the sections above that describe deltas and full coverage are not rewritten yet. The term comes from Claude's memory of Birgitta Böckeler's article on Martin Fowler's site. The requirements today are not spec-as-source either: code cannot be regenerated from them, since UI detail stays in the code and about 520 of the 778 tests cite no scenario.
+  - Authority: requirements for the behavior they describe, the contract for the API, decisions for architecture, the code and its tests for everything else. A detail that turns out to matter moves into the requirements.
+  - Requirements: a statement of one or two sentences or a table; the WHEN/THEN format stays; a scenario only where a mistake is costly or hard to notice, and one behavior per scenario. A requirement may have no scenario only when a mistake is seen at once and cheap to fix; a rule about access, data, state, security or irreversible actions has one, however short (user decision, 2026-11-04; `validate` and `docs/development/docs.md` are changed).
+  - Flow: the requirements are edited directly in the branch and the user reads the changed requirements in full, not as a diff, since details can get lost in one (user's view, 2026-11-04); a contract and one temporary plan file, deleted before the PR; `/review`, `/verify`, the PR.
+  - Size: at about 8–10 scenarios in a change, the agent suggests splitting it, and the user decides (the number is the user's preference, 2026-11-04). It is advice, not a tool check. Requirements without scenarios escape this count, so the agent also mentions a change with many of them.
+  - List of details: after implementation, the agent lists the details visible to a user that it chose on its own. A choice the user agrees with stays in the code and does not go into the requirements. A choice the user disagrees with is redone and most likely fixed in the requirements (user's rule, 2026-11-04). Claude's additions: the order is requirement, test with its id, then code; a one-off matter of taste, which no later change is likely to break, may be fixed in the code with an ordinary test. The list shows only what the agent recognizes as a choice.
+  - Tests, in two passes: before the code, the test engineer writes red tests with ids for the scenarios, from the requirements, the contract and the plan. After the code, the test engineer in a fresh context writes tests of details from outside (through the API or a component), avoiding the implementation as far as possible, and reports doubtful behavior instead of fixing it in a test. The developer adds only unit tests for non-obvious algorithms, and reports any change to a test engineer's test. The user asked for this split on 2026-11-04, instead of Claude's first version, where the developer wrote the tests of details.
+  - Limits of the second pass: risks, not an enumeration of cases; one level per rule; skipped for small changes; removed if it finds no real bugs on Tracking core and the next feature.
+  - Tooling: `validate` and `trace` stay; deltas, `merge`, `modify`, `renumber`, `new-id` and `impact` are not built unless a team or parallel work appears.
+  - Known costs: agents decide details on their own and may get them wrong; undescribed behavior can change without a document saying so; the line between a costly and a cheap mistake is a judgment; one more pass over the seven capability files.
+  - Constitution: the user changed C-5 and C-7 on 2026-11-04. Requirements are the authority for the behavior they describe, not for every detail; a test of a scenario cites its id, and tests of details cite none.
+  - Rewriting the requirements: before stage 5, in a subagent, starting with `user-administration`, which the user reviews before the other six files (user decision, 2026-11-04).
+- **Agent review of the spec.** Claude's proposal: a review inside Propose and Plan, before each user gate, with a fixed checklist (contradictions with living requirements and the constitution; testability of every scenario; completeness against the proposal's scope: error paths, empty states, refused access, concurrent edits, what each role sees, what is audited; ambiguity; "how" leaking into requirements), one round, and a size guard (8–10 scenarios) that suggests splitting the change. The reviewer reports gaps but does not write requirements; scope expansions go to roadmap Ideas or to the user as a question.
 - **The skills and agents of the new process,** and how to describe the process without naming client-specific skills and subagents.
+- **What an agent reads.** `AGENTS.md` already says to read the index and open the capabilities a task touches, but `/spec`, `/adr` and `backend-dev` still read all of `docs/requirements/` until stage 5. Nothing says how far to follow references: `invitations` cites five other capabilities, so opening each whole file costs about 20000 words instead of about 6100. Claude's proposal for the process description, to discuss with the skills and agents:
+  - An agent reads the index and the capabilities named in the roadmap item or the proposal.
+  - For a reference such as `(PERM-3)`, it opens only that block, not the whole file. This may need a small `show` subcommand in the tool, which is not on its list yet.
+  - The spec reviewer checks for contradictions more widely: the touched capabilities and those that cite them, a list the tool can produce. An agent that reads little can miss a contradiction in a capability it did not open, as in the OpenSpec pilot.

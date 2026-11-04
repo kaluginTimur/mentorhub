@@ -155,9 +155,10 @@ No statement here.
   assertFails(run('validate', documents(content)), /INV-1.*SHALL or MUST/);
 });
 
-test('validate rejects a requirement without scenarios', () => {
+test('validate accepts a requirement without scenarios', () => {
   const content = capability('### INV-1 Create\n\nThe system SHALL create.\n');
-  assertFails(run('validate', documents(content)), /INV-1.*no scenarios/);
+  const result = run('validate', documents(content));
+  assert.equal(result.status, 0, result.output);
 });
 
 test('validate rejects a scenario without WHEN or THEN', () => {

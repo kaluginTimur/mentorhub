@@ -133,7 +133,6 @@ function parseCapability(root, file, prefix, errors) {
   if (sections.has('Requirements') && requirements.length === 0) errors.push(`${relative}: no requirements`);
   for (const item of requirements) {
     if (!item.statement) report(item.line, `${item.id} has no statement with SHALL or MUST`);
-    if (item.scenarios.length === 0) report(item.line, `${item.id} has no scenarios`);
     for (const { id, line, when, then } of item.scenarios) {
       if (!when) report(line, `${id} has no "- WHEN" line`);
       if (!then) report(line, `${id} has no "- THEN" line`);

@@ -55,7 +55,7 @@ class ProfileServiceTests {
 
     @Test
     @DisplayName("USR-9.1 A user without roles saves their own profile")
-    void storesTheCallersOwnProfileAndAuditsWithTheCallerAsActor() {
+    void storesTheCallersOwnProfile() {
         profiles.updateOwnProfile(new ProfileInput(" Ivan ", "Petrova", "8 701 123 45 67"));
 
         UserProfile profile = me.me().user();
@@ -64,6 +64,13 @@ class ProfileServiceTests {
         assertThat(profile.lastName()).isEqualTo("Petrova");
         assertThat(profile.phone()).isEqualTo("+77011234567");
         assertThat(profile.email()).isEqualTo("noroles@x.test");
+    }
+
+    @Test
+    @DisplayName("USR-9.2 A user's own profile change is audited with the user as the actor")
+    void auditsWithTheCallerAsActor() {
+        profiles.updateOwnProfile(new ProfileInput(" Ivan ", "Petrova", "8 701 123 45 67"));
+
         assertThat(jdbc.sql("select action, actor_user_id, subject_id from audit_log")
                         .query()
                         .singleRow())

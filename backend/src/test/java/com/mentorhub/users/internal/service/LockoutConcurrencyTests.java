@@ -71,6 +71,7 @@ class LockoutConcurrencyTests {
 
     // The disable plus set-roles pair, which take the locks in the same order.
     @RepeatedTest(10)
+    @DisplayName("USR-7.2 Two administrators cannot remove each other at the same moment (disable and role removal)")
     void disableAndRoleRemovalInParallelLeaveOneActive() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.disable(adminB, DisableReason.SECURITY, null)),
@@ -82,7 +83,7 @@ class LockoutConcurrencyTests {
 
     @RepeatedTest(10)
     @DisplayName(
-            "USR-7.2 Two administrators cannot remove each other at the same moment (disable and role removal of one administrator)")
+            "USR-7.4 One administrator disabling another and removing the administrator role at the same moment both succeed")
     void disableAndRoleRemovalOfTheSameAdministratorBothSucceed() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.disable(adminB, DisableReason.SECURITY, null)),

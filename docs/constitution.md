@@ -23,11 +23,11 @@ The rules every change to MentorHub must keep, for people and agents alike. Deta
 
 ## Spec-driven development
 
-- **C-5.** Living requirements are the only description of behavior: a behavior change goes through them, and the code follows.
+- **C-5.** Living requirements are the authority for the behavior they describe: a change to that behavior goes through them, and the code follows. They describe what matters to users and API clients, not every detail.
   Why: a document that disagrees with the code misleads everyone who trusts it.
 - **C-6.** Requirements say what the system does, never how it is built.
   Why: implementation details change more often than behavior, and make requirements large and stale.
-- **C-7.** Write tests from the requirements before the code; each test cites the scenario it checks.
+- **C-7.** Write tests from the requirements before the code; a test of a scenario cites its id.
   Why: a test written from the implementation only confirms the implementation.
 - **C-8.** Never change a test to make the code pass; when a test and the code disagree, the requirement decides.
   Why: a test bent to fit the code proves nothing.

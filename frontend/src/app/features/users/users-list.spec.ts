@@ -50,7 +50,7 @@ describe('UsersList', () => {
 
   const params = () => api.invoke.mock.calls.at(-1)?.[1] as Record<string, unknown>;
 
-  it('USR-13.1 shows the users with roles and status', async () => {
+  it('shows the users with roles and status', async () => {
     api.invoke.mockResolvedValue(
       page([
         summary('a', { firstName: 'Anna', lastName: 'Petrova', roles: ['ADMIN', 'MENTOR'] }),

@@ -50,11 +50,17 @@ describe('routes', () => {
     expect(TestBed.inject(Router).url).toBe('/');
   });
 
-  it('USR-12.1 shows no Users link and leads a users address to the home page', async () => {
+  it('leads a users address to the home page without USERS_READ', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/users');
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/');
+  });
+
+  it('shows no Users link without USERS_READ', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/users');
+    await harness.fixture.whenStable();
     const links = [...(harness.fixture.nativeElement as HTMLElement).querySelectorAll('a')];
     expect(links.map((a) => a.textContent?.trim())).not.toContain('Users');
   });

@@ -92,7 +92,7 @@ class UserAdministrationServiceTests {
     class Listing {
 
         @Test
-        @DisplayName("USR-2.1 Users are sorted by name and email")
+        @DisplayName("Users are sorted by name and email")
         void sortsByLastFirstNameAndEmailIgnoringCaseWithMissingNamesLast() {
             UUID ivan = user("b@x.test", "Ivan", "sidorov", UserStatus.ACTIVE);
             UUID anna = user("a@x.test", "anna", "Sidorov", UserStatus.ACTIVE);
@@ -133,7 +133,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        @DisplayName("USR-2.2 The text matches email and names")
+        @DisplayName("The text matches email and names")
         void searchesEmailAndNamesIgnoringCaseAfterTrimming() {
             UUID byLastName = user("b@x.test", "Ivan", "Sidorov", UserStatus.ACTIVE);
             UUID byFirstName = user("c@x.test", "Sidor", "Ivanov", UserStatus.ACTIVE);
@@ -163,7 +163,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        @DisplayName("USR-2.3 Status and role filters combine")
+        @DisplayName("Status and role filters combine")
         void filtersByStatusAndRoleCombinedWithAnd() {
             UUID activeMentor = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
             UUID disabledMentor = user("c@x.test", "C", "C", UserStatus.DISABLED, Role.MENTOR, Role.STUDENT);
@@ -417,6 +417,14 @@ class UserAdministrationServiceTests {
             assertThat(auditEntries(user).getLast())
                     .isEqualTo(new Entry(
                             "USER_ENABLED", admin, Map.of("reason", "LEFT_PROGRAM", "comment", "Moved abroad")));
+        }
+
+        @Test
+        @DisplayName("USR-5.2 Enabling an active user changes nothing (enabled twice)")
+        void enablingTwiceChangesNothingTheSecondTime() {
+            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.STUDENT);
+            service.disable(user, DisableReason.LEFT_PROGRAM, "Moved abroad");
+            service.enable(user);
 
             ManagedUser again = service.enable(user);
 
@@ -426,6 +434,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
+        @DisplayName("USR-5.2 Enabling an active user changes nothing")
         void enablingAnActiveUserChangesNothing() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
 
@@ -704,7 +713,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        @DisplayName("USR-10.3 An acceptance entry names the administrator who invited (unresolved inviter)")
+        @DisplayName("USR-10.4 An acceptance entry is shown with no inviter when the inviter cannot be resolved")
         void invitationAcceptedEntryWithAnUnknownInviterHasNoInviter() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID unknown = UUID.fromString("00000000-0000-4000-8000-0000000000aa");

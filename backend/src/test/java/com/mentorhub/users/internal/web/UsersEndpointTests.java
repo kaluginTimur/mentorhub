@@ -250,15 +250,24 @@ class UsersEndpointTests {
 
     // The API answers lockout with 409 and changes nothing.
     @Test
-    @DisplayName("USR-7.1 An administrator cannot lock themselves out")
-    void administratorCannotLockThemselvesOut() {
+    @DisplayName("USR-7.1 An administrator cannot disable themselves")
+    void administratorCannotDisableThemselves() {
         MvcTestResult disable =
                 send(HttpMethod.POST, "/api/v1/users/" + admin + "/disable", "{\"reason\": \"SECURITY\"}", "admin");
-        MvcTestResult roles =
-                send(HttpMethod.PUT, "/api/v1/users/" + admin + "/roles", "{\"roles\": [\"MENTOR\"]}", "admin");
 
         assertProblem(disable, HttpStatus.CONFLICT, LockoutProblems.SELF_LOCKOUT);
         assertThat(disable).bodyJson().extractingPath("$.detail").isEqualTo("You can't lock yourself out.");
+        assertThat(users.status(admin)).isEqualTo("ACTIVE");
+        assertThat(users.roles(admin)).containsExactly("ADMIN");
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    @Test
+    @DisplayName("USR-7.3 An administrator cannot remove their own administrator role")
+    void administratorCannotRemoveTheirOwnAdministratorRole() {
+        MvcTestResult roles =
+                send(HttpMethod.PUT, "/api/v1/users/" + admin + "/roles", "{\"roles\": [\"MENTOR\"]}", "admin");
+
         assertProblem(roles, HttpStatus.CONFLICT, LockoutProblems.SELF_LOCKOUT);
         assertThat(users.status(admin)).isEqualTo("ACTIVE");
         assertThat(users.roles(admin)).containsExactly("ADMIN");
@@ -331,7 +340,7 @@ class UsersEndpointTests {
     }
 
     @Test
-    @DisplayName("USR-2.5 A text that is too long is rejected")
+    @DisplayName("A text that is too long is rejected")
     void aTooLongTextIsRejectedNamingQ() {
         assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?q=" + "x".repeat(101), "", "admin"), "q");
     }
@@ -374,7 +383,7 @@ class UsersEndpointTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"12", "+77011234567 ext. 12"})
-    @DisplayName("USR-8.2 Invalid values are rejected")
+    @DisplayName("Invalid values are rejected")
     void invalidProfileValuesAreRejectedAndNothingIsStored(String phone) {
         var before = jdbc.sql("select first_name, last_name, phone from users where id = :id")
                 .param("id", mentor)

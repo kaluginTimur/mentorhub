@@ -45,7 +45,34 @@ describe('MyProfile', () => {
     expect(el.textContent).not.toContain('Cancel');
   });
 
-  it('USR-18.2 saves and updates the current user, so the toolbar name changes', async () => {
+  it('saves and updates the current user, so the toolbar name changes', async () => {
+    api.invoke.mockResolvedValue({
+      status: 'ACTIVE',
+      user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),
+    });
+    const fixture = await open();
+    const el = fixture.nativeElement as HTMLElement;
+    const inputs = [...el.querySelectorAll('input')] as HTMLInputElement[];
+    inputs[0].value = 'Anya';
+    inputs[0].dispatchEvent(new Event('input'));
+    inputs[2].value = '8 701 123 45 67';
+    inputs[2].dispatchEvent(new Event('input'));
+    inputs[1].value = '   ';
+    inputs[1].dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    save(el)?.click();
+    await fixture.whenStable();
+    expect(api.invoke).toHaveBeenCalledWith(updateMyProfile, {
+      body: { firstName: 'Anya', lastName: null, phone: '8 701 123 45 67' },
+    });
+    expect(me().user?.firstName).toBe('Anya');
+    expect(inputs[2].value).toBe('+77011234567');
+    expect(document.querySelector('mat-snack-bar-container')?.textContent).toContain(
+      'Profile saved',
+    );
+  });
+
+  it('shows no status or roles after a save', async () => {
     api.invoke.mockResolvedValue({
       status: 'ACTIVE',
       user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),

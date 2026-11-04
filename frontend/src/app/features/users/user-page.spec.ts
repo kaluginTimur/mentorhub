@@ -114,7 +114,7 @@ describe('UserPage', () => {
     expect(element.querySelector('.back')?.getAttribute('href')).toBe('/users');
   });
 
-  it('USR-14.2 shows the not found state for an unknown id', async () => {
+  it('shows the not found state for an unknown id', async () => {
     responses.set(getUser, () => {
       throw problem(404, 'urn:mentorhub:problem:not-found');
     });
@@ -123,7 +123,7 @@ describe('UserPage', () => {
     expect(element.querySelector('a')?.getAttribute('href')).toBe('/users');
   });
 
-  it('USR-14.2 shows the not found state for an id that is not a UUID without calling the API', async () => {
+  it('shows the not found state for an id that is not a UUID without calling the API', async () => {
     const { element } = await open('abc');
     expect(element.querySelector('h1')?.textContent).toBe('User not found');
     expect(element.querySelector('a')?.getAttribute('href')).toBe('/users');
@@ -186,7 +186,7 @@ describe('UserPage', () => {
       return page;
     }
 
-    it('USR-15.1 requires a reason and a comment for "Other", then disables', async () => {
+    it('requires a reason and a comment for "Other", then disables', async () => {
       responses.set(disableUser, (p) =>
         userDetails({
           status: 'DISABLED',
@@ -279,7 +279,7 @@ describe('UserPage', () => {
     });
   });
 
-  it('USR-15.2 enables a disabled user after confirmation', async () => {
+  it('enables a disabled user after confirmation', async () => {
     responses.set(getUser, () =>
       userDetails({ status: 'DISABLED', disabledReason: 'GRADUATED', disabledComment: 'Done' }),
     );
@@ -310,7 +310,7 @@ describe('UserPage', () => {
   });
 
   describe('roles', () => {
-    it('USR-16.1 saves the selection and shows the hint without roles', async () => {
+    it('saves the selection and shows the hint without roles', async () => {
       responses.set(setUserRoles, () => userDetails({ roles: [] }));
       const { element, settle } = await open();
       const save = () => buttonByText(element, 'Save') as HTMLButtonElement;
@@ -332,7 +332,7 @@ describe('UserPage', () => {
       expect(api.invoke.mock.calls.filter(([fn]) => fn === getUserHistory)).toHaveLength(2);
     });
 
-    it('USR-16.1 saves a chosen role and shows it', async () => {
+    it('saves a chosen role and shows it', async () => {
       responses.set(getUser, () => userDetails({ roles: [] }));
       responses.set(setUserRoles, () => userDetails({ roles: ['MENTOR'] }));
       const { element, settle } = await open();
@@ -378,7 +378,7 @@ describe('UserPage', () => {
   });
 
   describe('profile', () => {
-    it('USR-18.1 edits, shows server field errors and then the stored values', async () => {
+    it('edits, shows server field errors and then the stored values', async () => {
       const { element, settle } = await open();
       click(buttonByText(element, 'Edit'));
       await settle();
@@ -413,7 +413,7 @@ describe('UserPage', () => {
       expect(element.textContent).toContain('+77017654321');
     });
 
-    it('USR-18.1 rejects names over 100 characters before sending', async () => {
+    it('rejects names over 100 characters before sending', async () => {
       const { element, settle } = await open();
       click(buttonByText(element, 'Edit'));
       await settle();
@@ -444,7 +444,7 @@ describe('UserPage', () => {
       );
     });
 
-    it('USR-17.1 disables "Disable user" and the Administrator checkbox with reachable hints', async () => {
+    it('disables "Disable user" and the Administrator checkbox with reachable hints', async () => {
       const { element } = await open(ADMIN_ID);
       const disable = buttonByText(element, 'Disable user') as HTMLButtonElement;
       expect(disable.getAttribute('aria-disabled')).toBe('true');
@@ -528,7 +528,7 @@ describe('UserPage', () => {
   });
 
   it.each(['ACTIVE', 'DISABLED'] as const)(
-    'USR-14.3 shows every card read-only without USERS_MANAGE (%s user)',
+    'shows every card read-only without USERS_MANAGE (%s user)',
     async (status) => {
       responses.set(getUser, () =>
         userDetails({ status, ...(status === 'DISABLED' ? { disabledReason: 'GRADUATED' } : {}) }),
@@ -544,7 +544,7 @@ describe('UserPage', () => {
     },
   );
 
-  it('USR-14.1 shows the user and leads back to the list with its search, filters and page', async () => {
+  it('shows the user and leads back to the list with its search, filters and page', async () => {
     responses.set(listUsers, () =>
       historyPage(
         [
@@ -588,7 +588,7 @@ describe('UserPage', () => {
     });
   });
 
-  it('USR-11.1 tells each action in its own sentence', async () => {
+  it('tells each action in its own sentence', async () => {
     responses.set(getUserHistory, () =>
       historyPage([
         {
@@ -643,7 +643,7 @@ describe('UserPage', () => {
     expect(entries[4]).toContain('Disabled: Other — Moved away');
   });
 
-  it('USR-11.2 names the inviter in the sentence of an acceptance', async () => {
+  it('names the inviter in the sentence of an acceptance', async () => {
     const invitation = (userCreated: boolean, enabled: boolean) => ({
       invitationId: 'i1',
       invitedBy: { id: ADMIN_ID, name: 'Ada Admin' },
