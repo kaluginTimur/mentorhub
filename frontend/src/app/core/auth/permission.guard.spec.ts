@@ -32,7 +32,7 @@ describe('requirePermission', () => {
     expect(run()).toBe(true);
   });
 
-  it('PERM-7.2 redirects users without the permission to the home page', () => {
+  it('redirects users without the permission to the home page', () => {
     permissions.set([]);
     expect(run()).toEqual({ url: '/' });
   });

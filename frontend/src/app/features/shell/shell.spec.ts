@@ -127,7 +127,7 @@ describe('shell', () => {
     expect(link(fixture.nativeElement)).toBeUndefined();
   });
 
-  it('PERM-7.1 shows the Invitations link only with USERS_INVITE', async () => {
+  it('shows the Invitations link only with USERS_INVITE', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
     const original = user();

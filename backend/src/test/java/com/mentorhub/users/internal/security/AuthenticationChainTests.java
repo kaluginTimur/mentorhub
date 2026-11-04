@@ -220,7 +220,7 @@ class AuthenticationChainTests {
     }
 
     @Test
-    @DisplayName("PERM-2.2 A user without roles has no permissions")
+    @DisplayName("PERM-2.3 A user without roles stays active")
     void activeUserWithoutRolesIsAdmittedWithoutPermissions() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -229,12 +229,19 @@ class AuthenticationChainTests {
         MvcTestResult current = get("/api/v1/test/current-user", token);
         assertThat(current).hasStatusOk();
         assertThat(current).bodyJson().extractingPath("$.permissions").asArray().isEmpty();
+    }
+
+    @Test
+    @DisplayName("PERM-2.2 A user without roles has no permissions")
+    void activeUserWithoutRolesIsRefusedAnOperationThatNeedsAPermission() {
+        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
+        users.link(userId, "anna");
+        String token = issuer.token("anna").bearer();
 
         assertProblem(get("/api/v1/test/users-read", token), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
     }
 
     @Test
-    @DisplayName("PERM-3.1 A caller with the permission is served")
     void permissionGrantsTheOperation() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
@@ -304,7 +311,6 @@ class AuthenticationChainTests {
     }
 
     @Test
-    @DisplayName("PERM-5.2 An unknown role is reported once")
     void unknownStoredRoleIsReportedOnce(CapturedOutput output) {
         String unknownRole = storeUnknownRole();
         UUID admin = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);

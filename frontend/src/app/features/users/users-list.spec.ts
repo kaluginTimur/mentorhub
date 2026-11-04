@@ -285,7 +285,7 @@ describe('UsersList', () => {
       );
     });
 
-    it('PERM-7.1 is not rendered without USERS_INVITE', async () => {
+    it('is not rendered without USERS_INVITE', async () => {
       TestBed.overrideProvider(CurrentUserService, {
         useValue: { hasPermission: () => false },
       });

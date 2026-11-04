@@ -8,7 +8,7 @@ What an active user may do, and how a refusal looks. A user holds zero or more r
 
 ### PERM-1 Roles grant permissions
 
-The system SHALL define the roles and permissions below, and SHALL grant a user exactly the permissions of the roles assigned to them. Changing what a role grants is a release of the application, not a setting (decision 0004).
+The system SHALL grant a user exactly the permissions of the roles assigned to them, as defined below (decision 0004).
 
 | Role | Permissions |
 |---|---|
@@ -20,27 +20,21 @@ The system SHALL define the roles and permissions below, and SHALL grant a user 
 
 | Permission | Allows |
 |---|---|
-| `USERS_READ` | Viewing the users list, a user and a user's history of changes |
+| `USERS_READ` | Viewing users and their history |
 | `USERS_MANAGE` | Changing another user's profile and roles, disabling and enabling users |
-| `USERS_INVITE` | Managing invitations: creating, listing, revoking, issuing a new link, sending an email |
+| `USERS_INVITE` | Managing invitations |
 
-Which permission each action needs is listed by the capability that owns the action.
+The capability that owns an action says which permission it needs.
 
-#### PERM-1.1 An administrator holds the user permissions
+#### PERM-1.3 A role holds exactly the permissions in the table
 
-- GIVEN an active user with the administrator role
+- GIVEN an active user with one role
 - WHEN the user's permissions are read
-- THEN they are `USERS_READ`, `USERS_MANAGE` and `USERS_INVITE`
-
-#### PERM-1.2 The other roles hold no permission
-
-- GIVEN an active user whose only role is coordinator, mentor, student or observer
-- WHEN the user's permissions are read
-- THEN the user has no permission
+- THEN they are exactly the permissions the table gives that role
 
 ### PERM-2 A user may have several roles or none
 
-The system SHALL give a user the union of the permissions of all their roles. A user without roles SHALL have no permissions but remains an active user.
+The system SHALL give a user the union of the permissions of all their roles. A user without roles has no permissions but stays active.
 
 #### PERM-2.1 Permissions of several roles are combined
 
@@ -53,17 +47,16 @@ The system SHALL give a user the union of the permissions of all their roles. A 
 - GIVEN an active user without roles
 - WHEN the user calls an operation that needs a permission
 - THEN the response is 403 `forbidden`
-- AND the user can still read their own current-user data
+
+#### PERM-2.3 A user without roles stays active
+
+- GIVEN an active user without roles
+- WHEN the user reads their own current-user data
+- THEN the response is 200 with no permissions
 
 ### PERM-3 Operations are checked by permission
 
-The system SHALL decide access to every operation that needs a permission by the permissions the caller holds now, never by the name of a role. The permissions are read on every request, so a change of a user's roles applies to their next request with the same token.
-
-#### PERM-3.1 A caller with the permission is served
-
-- GIVEN an active user who holds the permission an operation needs
-- WHEN the user calls the operation
-- THEN the operation is carried out
+The system SHALL decide access by the permissions the caller holds now, never by a role name. They are read on every request, so a change of roles applies to the next request with the same token.
 
 #### PERM-3.2 A caller without the permission is refused
 
@@ -96,7 +89,7 @@ The system SHALL NOT use roles or groups carried by the token for authorization;
 
 ### PERM-5 An unknown stored role grants nothing
 
-The system SHALL treat a stored role that the running version does not know (for example after a rollback to an earlier release) as granting nothing, and SHALL NOT fail the user's requests because of it (decision 0004).
+The system SHALL treat a stored role the running version does not know (for example after a rollback) as granting nothing and SHALL NOT fail requests because of it (decision 0004).
 
 #### PERM-5.1 An unknown role is skipped
 
@@ -105,15 +98,9 @@ The system SHALL treat a stored role that the running version does not know (for
 - THEN the request is not failed
 - AND the user holds only the permissions of the roles the application knows
 
-#### PERM-5.2 An unknown role is reported once
-
-- GIVEN a stored role that the application does not know
-- WHEN users holding it send several requests
-- THEN one warning is logged for that role name
-
 ### PERM-6 Refusing the action, hiding the resource
 
-The system SHALL answer 403 `forbidden` only when the caller lacks the permission for the action as a whole. The permission is checked before any resource is looked up, so a caller without the permission learns nothing about whether a resource exists. A single resource the caller may not access SHALL be answered with 404 `not-found`, identical to the answer for a resource that does not exist (decision 0004).
+The system SHALL check the permission before looking up any resource, so a caller without it learns nothing about what exists. A single resource the caller may not access SHALL be answered as one that does not exist (decision 0004).
 
 #### PERM-6.1 The permission is checked before the resource is looked up
 
@@ -136,19 +123,7 @@ The system SHALL answer 403 `forbidden` only when the caller lacks the permissio
 
 ### PERM-7 The client offers only what the user may do
 
-The client SHALL decide what to offer from the permissions of the current user, never from role names. An action or a link that needs a permission SHALL NOT be shown to a user without it, and a page that needs a permission SHALL NOT open for such a user. The server enforces every rule regardless (PERM-3).
-
-#### PERM-7.1 An action without permission is not shown
-
-- GIVEN an active user without `USERS_INVITE`
-- WHEN the user views the places that offer invitations
-- THEN the link to invitations and the action to invite are not shown
-
-#### PERM-7.2 A page without permission does not open
-
-- GIVEN an active user without `USERS_READ`
-- WHEN the user opens the address of the users list
-- THEN the user is taken to the home page
+The client SHALL offer actions, links and pages by the permissions of the current user, never by role names, and SHALL explain a refusal. The server enforces every rule regardless (PERM-3).
 
 #### PERM-7.3 A refusal is explained
 
@@ -159,8 +134,8 @@ The client SHALL decide what to offer from the permissions of the current user, 
 
 ## Known limitations
 
-- The observer role grants no permission, as the coordinator, mentor and student roles do not either. What each of these roles may do is defined when the features that need them are built.
-- No operation yet gives different callers different access to the same resource: every operation either needs a permission, or acts on the caller's own data. The answers for a resource the caller may not access (PERM-6.3) and the filtering of lists are therefore checked only against a test operation, and no list leaves items out today.
+- The coordinator, mentor, student and observer roles grant no permission; what they may do is defined when the features that need them are built.
+- No operation yet gives different callers different access to one resource, so PERM-6.3 is checked only against a test operation, and no list leaves items out.
 
 ## Out of scope
 
