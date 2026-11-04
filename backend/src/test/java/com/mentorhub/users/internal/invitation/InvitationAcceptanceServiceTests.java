@@ -144,9 +144,7 @@ class InvitationAcceptanceServiceTests {
             assertThat(data.allAuditDetails()).doesNotContain(invited.token());
         }
 
-        @Test
-        @DisplayName("INV-12.1 A disabled user is reactivated with the roles of the invitation")
-        void reactivatesADisabledUserWithExactlyTheInvitationsRoles() {
+        private UUID formerWithInvitation(Invited[] invitedOut) {
             UUID former = users.create("ivan@x.test", UserStatus.DISABLED, Role.ADMIN, Role.STUDENT);
             jdbc.sql("update users set disabled_comment = 'Left the program' where id = :id")
                     .param("id", former)
@@ -158,8 +156,17 @@ class InvitationAcceptanceServiceTests {
             jdbc.sql("insert into roles (name) values ('AUDITOR') on conflict do nothing")
                     .update();
             users.assignStoredRole(former, "AUDITOR");
-            Invited invited = invite("ivan@x.test", Role.MENTOR, Role.STUDENT);
+            invitedOut[0] = invite("ivan@x.test", Role.MENTOR, Role.STUDENT);
             signIn(AccessStatus.NOT_INVITED, null, "ivan@x.test", true);
+            return former;
+        }
+
+        @Test
+        @DisplayName("INV-12.1 A disabled user is reactivated")
+        void reactivatesADisabledUser() {
+            Invited[] invitedOut = new Invited[1];
+            UUID former = formerWithInvitation(invitedOut);
+            Invited invited = invitedOut[0];
 
             MeDetails me = service.accept(invited.token());
 
@@ -173,7 +180,6 @@ class InvitationAcceptanceServiceTests {
                             .query(String.class)
                             .optional())
                     .isEmpty();
-            assertThat(users.roles(former)).containsExactly("AUDITOR", "MENTOR", "STUDENT");
             // The profile stays unchanged: names from the token are not applied.
             assertThat(me.user().firstName()).isEqualTo("Anna");
             assertThat(linkedUser(SUBJECT)).isEqualTo(former);
@@ -186,9 +192,20 @@ class InvitationAcceptanceServiceTests {
                     .contains(acceptance(invited, false, true, true, List.of("MENTOR"), List.of("ADMIN")));
         }
 
+        @Test
+        @DisplayName("INV-12.4 A reactivated user has exactly the roles of the invitation")
+        void reactivatedUserHasExactlyTheInvitationsRoles() {
+            Invited[] invitedOut = new Invited[1];
+            UUID former = formerWithInvitation(invitedOut);
+
+            service.accept(invitedOut[0].token());
+
+            assertThat(users.roles(former)).containsExactly("AUDITOR", "MENTOR", "STUDENT");
+        }
+
         // A disabled caller whose identity is already linked to that user.
         @Test
-        @DisplayName("INV-12.2 An identity that was linked already is not linked twice")
+        @DisplayName("INV-12.5 An identity that was linked already is not linked twice")
         void reactivatesTheDisabledCallerWithoutLinkingAgain() {
             UUID former = users.create("ivan@x.test", UserStatus.DISABLED, Role.STUDENT);
             users.link(former, SUBJECT);
@@ -243,8 +260,21 @@ class InvitationAcceptanceServiceTests {
         }
 
         @Test
-        @DisplayName("INV-11.2 The email is compared ignoring case, and an unknown stored role is skipped")
-        void emailIsComparedIgnoringCaseAndUnknownStoredRoleIsSkipped() {
+        @DisplayName("INV-11.2 The email is compared ignoring case")
+        void emailIsComparedIgnoringCase() {
+            Invited invited = invite("Anna@Example.com", Role.STUDENT);
+            signIn(AccessStatus.NOT_INVITED, null, "anna@example.com", true);
+
+            service.accept(invited.token());
+
+            UUID userId = userId("anna@example.com");
+            assertAccepted(invited, userId);
+            assertThat(users.roles(userId)).containsExactly("STUDENT");
+        }
+
+        @Test
+        @DisplayName("INV-11.5 An unknown stored role is skipped")
+        void unknownStoredRoleIsSkipped() {
             Invited invited = invite("Anna@Example.com", Role.STUDENT);
             data.addStoredRole(invited.details().id(), "AUDITOR");
             signIn(AccessStatus.NOT_INVITED, null, "anna@example.com", true);

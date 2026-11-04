@@ -27,16 +27,17 @@ State on 2026-11-04, committed on `workflow/rework`. The user accepted `user-adm
 - The user changed C-5 and C-7. `validate` accepts a requirement without scenarios, and `docs/development/docs.md` holds the criterion.
 - `user-administration` is rewritten as the sample: 2163 words and 22 scenarios, from 4433 and 37. USR-11 to USR-18, the client screens, have no scenarios, except USR-17.2, restored because a 409 is a rare state (user decision, 2026-11-04).
 - USR-18 keeps no scenario, on Claude's check of the contract: `/me` never carries a disable reason, a disabled caller gets no `user` and does not reach the page, and the status and roles it carries are the user's own to see.
-- Tests were split or lost their ids, with every old assertion kept and none deleted. The backend verification (908 test cases in the XML reports, parameterized runs included; the text reports leave out nested classes) and the frontend tests (261) pass.
+- Tests were split or lost their ids, with every old assertion kept and none deleted. The backend verification (917 test cases in the XML reports, parameterized runs included; the text reports leave out nested classes) and the frontend tests (264) pass.
 - `authorization` is rewritten and reviewed by the user: 1110 words and 13 scenarios, from 1422 and 17.
 - `platform` is rewritten and checked by the main session, for the user's review at the end: 1932 words and 27 scenarios, from 2378 and 24. Open for that review: PLT-1.1 nearly repeats PERM-6.2.
 - `audit` is rewritten and checked by the main session, for the same review: 1468 words and 15 scenarios, from 1691 and 15. No test changed; AUD-6.4 and AUD-6.5 no longer mention the log warning, which their tests still check.
 - `identity` is rewritten and checked by the main session, for the same review: 2930 words and 38 scenarios, from 3939 and 39. `trace`: 183 of 183, 4 manual. The main session restored IDN-9.6 (a security rule) and IDN-10.4 (a rare state), which the subagent had removed, split IDN-8.1, and shortened the statements of IDN-6, IDN-10 and IDN-11.
-- The other two capability files are unchanged.
+- `invitations` is rewritten and checked by the main session, for the same review: 4661 words and 60 scenarios, from 6072 and 44; the count rose because combined scenarios were split. `trace`: 199 of 199, 4 manual. The main session restored the ban on the token in a log (INV-9, which has no scenario or test with an id), added INV-18.3 for a rare state, split INV-20.6, and shortened INV-6, INV-7 and INV-13. Open for the review: INV-16.2 is an ordinary screen, kept because `invitation-emails` cites it.
+- `invitation-emails` is the last capability file not rewritten.
 
 What to do, in order (the order and the method are Claude's plan; the user chose to continue in a new session):
 
-1. Rewrite the other two capabilities, one subagent per capability, on Sonnet, so as not to fill the main context. Suggested order: `invitations` and `invitation-emails`. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
+1. Rewrite `invitation-emails` in a subagent, on Sonnet, so as not to fill the main context. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
 2. After each file, the main session checks the result itself rather than trusting the report: words by part, scenario count, `trace`, that production code did not change, that no assertion disappeared from the test diff, and each claim that the contract holds a removed fact.
 3. Do the remaining stage 5 work: rewrite the parts of this document that still describe deltas and full coverage, audit the tests for duplicates (the user decides what goes), then the process description, skills and agents, and the open questions below.
 4. Run the full verification for backend, frontend and docs, then open one PR to main.

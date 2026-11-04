@@ -263,7 +263,7 @@ describe('InvitationsList', () => {
       expect(document.body.textContent).toContain('Invitation revoked');
     });
 
-    it('INV-18.1 does nothing when the confirmation is cancelled', async () => {
+    it('INV-18.2 does nothing when the confirmation is cancelled', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Cancel')).toBeTruthy());
@@ -272,7 +272,7 @@ describe('InvitationsList', () => {
       expect(api.invoke).toHaveBeenCalledTimes(1);
     });
 
-    it('shows the closed message and reloads on 409 invitation-closed', async () => {
+    it('INV-18.3 shows the closed message and reloads on 409 invitation-closed', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
@@ -286,7 +286,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('handles a 404 like a closed invitation', async () => {
+    it('INV-18.3 handles a 404 like a closed invitation', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
@@ -357,7 +357,7 @@ describe('InvitationsList', () => {
         return result;
       };
 
-      it('INV-17.1 starts the clipboard item write inside the click, before the link arrives', async () => {
+      it('starts the clipboard item write inside the click, before the link arrives', async () => {
         class FakeItem {
           constructor(readonly data: Record<string, Promise<Blob>>) {}
         }
@@ -529,7 +529,7 @@ describe('InvitationsList', () => {
         releases['p'](linkResponse);
       });
 
-      it('INV-17.1 shows the expired message and reloads on 409 invitation-expired', async () => {
+      it('INV-17.3 shows the expired message and reloads on 409 invitation-expired', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
         const { element } = await openWithOnePending();
@@ -548,7 +548,7 @@ describe('InvitationsList', () => {
       it.each([
         [409, 'urn:mentorhub:problem:invitation-closed'],
         [404, 'urn:mentorhub:problem:not-found'],
-      ])('INV-17.1 shows the closed message and reloads on %i', async (status, type) => {
+      ])('INV-17.3 shows the closed message and reloads on %i', async (status, type) => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
         const { element } = await openWithOnePending();
@@ -574,7 +574,7 @@ describe('InvitationsList', () => {
       });
     });
 
-    it('INV-18.1 reloads the list when the link dialog closes', async () => {
+    it('reloads the list when the link dialog closes', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
@@ -594,7 +594,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('shows the closed message when the new link is refused with 409', async () => {
+    it('INV-18.3 shows the closed message when the new link is refused with 409', async () => {
       const { harness, element } = await openWithOnePending();
       click(element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());

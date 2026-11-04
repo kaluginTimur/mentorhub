@@ -92,11 +92,15 @@ describe('InvitePage', () => {
   });
 
   it('INV-20.4 moves the token to session storage and removes it from the address and router', async () => {
-    const { element } = await open('/invite/tok123');
+    await open('/invite/tok123');
     expect(session.token()).toBe('tok123');
     expect(TestBed.inject(Router).url).toBe('/invite');
     expect(api.invoke).toHaveBeenCalledTimes(1);
     expect(api.invoke).toHaveBeenCalledWith(previewInvitation, { body: { token: 'tok123' } });
+  });
+
+  it('INV-20.7 sends no token to the identity provider', async () => {
+    const { element } = await open('/invite/tok123');
     button(element, 'Sign in')?.click();
     await vi.waitFor(() => expect(auth.signIn).toHaveBeenCalled());
     expect(JSON.stringify(auth.signIn.mock.calls)).not.toContain('tok123');
@@ -111,7 +115,7 @@ describe('InvitePage', () => {
     expect(button(element, 'Accept invitation')).toBeTruthy();
   });
 
-  it('INV-20.2 offers sign-in and registration with the invited email for a visitor', async () => {
+  it('offers sign-in and registration with the invited email for a visitor', async () => {
     const { element } = await open();
     expect(element.querySelectorAll('h1')).toHaveLength(1);
     expect(element.textContent).toContain(
@@ -198,7 +202,7 @@ describe('InvitePage', () => {
     expect(session.token()).toBe('tok123');
   });
 
-  it('INV-20.2 accepts without another click after returning from the identity provider', async () => {
+  it('accepts without another click after returning from the identity provider', async () => {
     auth.isSignedIn.mockResolvedValue(true);
     session.setToken('tok123');
     session.setAutoAccept(true);
@@ -245,7 +249,7 @@ describe('InvitePage', () => {
       expect(document.activeElement).toBe(element.querySelector('h1'));
     });
 
-    it('INV-20.3 asks to verify the email when the emails are equal ignoring case', async () => {
+    it('INV-20.5 asks to verify the email when the emails are equal ignoring case', async () => {
       auth.accountIdentity.mockResolvedValue({ email: 'Ivan@Example.com' });
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:invitation-email-mismatch'),
@@ -256,13 +260,19 @@ describe('InvitePage', () => {
       expect(session.token()).toBe('tok123');
     });
 
-    it('INV-20.3 explains an account that belongs to another user and signs out', async () => {
+    it('INV-20.6 explains an account that belongs to another user', async () => {
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:identity-linked-elsewhere'),
       );
       expect(element.querySelector('h1')?.textContent).toBe('Account already in use');
       expect(element.querySelector('[role=alert]')?.textContent).toContain(
         'This account already belongs to another MentorHub user. Contact the person who invited you.',
+      );
+    });
+
+    it('INV-20.8 signing out of an account of another user forgets the link', async () => {
+      const { element } = await acceptWith(
+        problem(409, 'urn:mentorhub:problem:identity-linked-elsewhere'),
       );
       button(element, 'Sign out')?.click();
       expect(auth.signOut).toHaveBeenCalledOnce();

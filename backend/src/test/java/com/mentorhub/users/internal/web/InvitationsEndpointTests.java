@@ -532,9 +532,10 @@ class InvitationsEndpointTests {
         assertThat(users.count("invitations")).isZero();
     }
 
-    @Test
-    @DisplayName("INV-5.1 An item has its data, newest first")
-    void listItemsHaveTheirDataNewestFirst() {
+    private record ListedInvitations(
+            UUID joined, InvitationRef accepted, InvitationRef pending, InvitationRef legacy) {}
+
+    private ListedInvitations createListedInvitations() {
         UUID joined = users.create("joined@x.test", UserStatus.ACTIVE);
         InvitationRef accepted = create("accepted@x.test", "[\"STUDENT\"]");
         InvitationRef pending = create("pending@x.test", "[\"MENTOR\", \"STUDENT\"]");
@@ -550,6 +551,25 @@ class InvitationsEndpointTests {
                 .param("user", joined)
                 .param("id", accepted.id())
                 .update();
+        return new ListedInvitations(joined, accepted, pending, legacy);
+    }
+
+    @Test
+    @DisplayName("INV-5.4 A role the application does not know is left out of an item")
+    void aRoleTheApplicationDoesNotKnowIsLeftOutOfAnItem() {
+        createListedInvitations();
+
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/invitations", "", "admin");
+
+        assertThat(list).hasStatusOk();
+        assertThat(list).bodyJson().extractingPath("$.items[0].roles").asArray().containsExactly("MENTOR");
+    }
+
+    @Test
+    @DisplayName("INV-5.1 An item has its data, newest first")
+    void listItemsHaveTheirDataNewestFirst() {
+        ListedInvitations seeded = createListedInvitations();
+        UUID joined = seeded.joined();
 
         MvcTestResult list = send(HttpMethod.GET, "/api/v1/invitations", "", "admin");
 
@@ -559,7 +579,6 @@ class InvitationsEndpointTests {
                 .extractingPath("$.items[*].email")
                 .asArray()
                 .containsExactly("legacy@x.test", "pending@x.test", "accepted@x.test");
-        assertThat(list).bodyJson().extractingPath("$.items[0].roles").asArray().containsExactly("MENTOR");
         assertThat(list)
                 .bodyJson()
                 .extractingPath("$.items[1].roles")
@@ -601,15 +620,19 @@ class InvitationsEndpointTests {
         MvcTestResult byStatus = send(HttpMethod.GET, "/api/v1/invitations?status=EXPIRED", "", "admin");
         assertThat(byStatus).bodyJson().extractingPath("$.totalItems").isEqualTo(1);
         assertThat(byStatus).bodyJson().extractingPath("$.items[0].email").isEqualTo("expired@example.com");
+    }
 
+    @Test
+    @DisplayName("INV-5.3 A text longer than an email is rejected")
+    void aTextLongerThanAnEmailIsRejected() {
         MvcTestResult tooLong = send(HttpMethod.GET, "/api/v1/invitations?q=" + "x".repeat(255), "", "admin");
         assertProblem(tooLong, HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
         assertThat(tooLong).bodyJson().extractingPath("$.errors[0].field").isEqualTo("q");
     }
 
     @Test
-    @DisplayName("INV-6.2 A closed or unknown invitation is not revoked")
-    void aClosedOrUnknownInvitationIsNotRevoked() {
+    @DisplayName("INV-6.2 A closed invitation is not revoked")
+    void aClosedInvitationIsNotRevoked() {
         UUID joined = users.create("joined@x.test", UserStatus.ACTIVE);
         InvitationRef accepted = create("accepted@x.test", "[]");
         jdbc.sql("update invitations set accepted_at = now(), accepted_user_id = :user where id = :id")
@@ -629,18 +652,23 @@ class InvitationsEndpointTests {
                 send(HttpMethod.POST, "/api/v1/invitations/" + revoked.id() + "/revoke", "", "admin"),
                 HttpStatus.CONFLICT,
                 InvitationProblems.INVITATION_CLOSED);
-        assertProblem(
-                send(HttpMethod.POST, "/api/v1/invitations/" + UUID.randomUUID() + "/revoke", "", "admin"),
-                HttpStatus.NOT_FOUND,
-                Problems.NOT_FOUND);
 
         assertThat(revocationOf(revoked.id())).isEqualTo(revocation);
         assertThat(revocationOf(accepted.id())).isEqualTo("null");
     }
 
     @Test
-    @DisplayName("INV-7.1 A new link replaces the old one")
-    void aNewLinkReplacesTheOldOne() {
+    @DisplayName("INV-6.3 An unknown invitation is not revoked")
+    void anUnknownInvitationIsNotRevoked() {
+        assertProblem(
+                send(HttpMethod.POST, "/api/v1/invitations/" + UUID.randomUUID() + "/revoke", "", "admin"),
+                HttpStatus.NOT_FOUND,
+                Problems.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("INV-7.1 A new link has a new token and a new expiry")
+    void aNewLinkHasANewTokenAndANewExpiry() {
         InvitationRef first = create(INVITED_EMAIL, "[]");
 
         MvcTestResult reissued = send(HttpMethod.POST, "/api/v1/invitations/" + first.id() + "/link", "", "admin");
@@ -649,6 +677,17 @@ class InvitationsEndpointTests {
         assertThat(tokenOf(reissued)).isNotEqualTo(first.token());
         assertThat(Instant.parse(body(reissued, "invitation.expiresAt")))
                 .isCloseTo(Instant.now().plus(Duration.ofDays(7)), within(1, ChronoUnit.MINUTES));
+    }
+
+    @Test
+    @DisplayName("INV-7.4 The old link stops working")
+    void theOldLinkStopsWorking() {
+        InvitationRef first = create(INVITED_EMAIL, "[]");
+
+        MvcTestResult reissued = send(HttpMethod.POST, "/api/v1/invitations/" + first.id() + "/link", "", "admin");
+
+        assertThat(reissued).hasStatusOk();
+        assertThat(tokenOf(reissued)).isNotEqualTo(first.token());
         assertInvalid(preview(first.token(), ""));
     }
 
@@ -733,6 +772,11 @@ class InvitationsEndpointTests {
                 send(HttpMethod.GET, "/api/v1/invitations/" + revoked.id() + "/link", "", "admin"),
                 HttpStatus.CONFLICT,
                 InvitationProblems.INVITATION_CLOSED);
+    }
+
+    @Test
+    @DisplayName("INV-8.3 An unknown invitation has no link to read")
+    void anUnknownInvitationHasNoLinkToRead() {
         assertProblem(
                 send(HttpMethod.GET, "/api/v1/invitations/" + UUID.randomUUID() + "/link", "", "admin"),
                 HttpStatus.NOT_FOUND,
@@ -740,20 +784,15 @@ class InvitationsEndpointTests {
     }
 
     @Test
-    @DisplayName("INV-9.1 The link appears only in three responses, and they are not cached")
-    void theLinkAppearsOnlyInThreeResponsesAndTheyAreNotCached() {
+    @DisplayName("INV-9.1 Other responses carry neither the link nor the token")
+    void otherResponsesCarryNeitherTheLinkNorTheToken() {
         MvcTestResult created = createRequest(INVITED_EMAIL, "[]");
         assertThat(created).hasStatus(HttpStatus.CREATED);
-        assertThat(created).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
         String id = body(created, "invitation.id");
         String token = tokenOf(created);
 
-        MvcTestResult read = send(HttpMethod.GET, "/api/v1/invitations/" + id + "/link", "", "admin");
-        assertThat(read).hasStatusOk();
-        assertThat(read).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
         MvcTestResult reissued = send(HttpMethod.POST, "/api/v1/invitations/" + id + "/link", "", "admin");
         assertThat(reissued).hasStatusOk();
-        assertThat(reissued).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
         String newToken = tokenOf(reissued);
 
         MvcTestResult list = send(HttpMethod.GET, "/api/v1/invitations", "", "admin");
@@ -763,6 +802,22 @@ class InvitationsEndpointTests {
             assertThat(contentOf(result)).doesNotContain(token).doesNotContain(newToken);
             assertThat(contentOf(result)).doesNotContain("\"link\"").doesNotContain("\"token\"");
         }
+    }
+
+    @Test
+    @DisplayName("INV-9.2 The responses with a link are not cached")
+    void theResponsesWithALinkAreNotCached() {
+        MvcTestResult created = createRequest(INVITED_EMAIL, "[]");
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        assertThat(created).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
+        String id = body(created, "invitation.id");
+
+        MvcTestResult read = send(HttpMethod.GET, "/api/v1/invitations/" + id + "/link", "", "admin");
+        assertThat(read).hasStatusOk();
+        assertThat(read).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
+        MvcTestResult reissued = send(HttpMethod.POST, "/api/v1/invitations/" + id + "/link", "", "admin");
+        assertThat(reissued).hasStatusOk();
+        assertThat(reissued).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
     }
 
     @Test
@@ -812,6 +867,16 @@ class InvitationsEndpointTests {
                         .query(Boolean.class)
                         .single())
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("INV-11.4 The next request of the new user passes the gate")
+    void theNextRequestOfTheNewUserPassesTheGate() {
+        InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\"]");
+
+        MvcTestResult accepted = accept(invitation.token(), "stranger", INVITED_EMAIL, true);
+
+        assertThat(accepted).hasStatusOk();
         assertProblem(send(HttpMethod.GET, "/api/v1/users", "", "stranger"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
     }
 

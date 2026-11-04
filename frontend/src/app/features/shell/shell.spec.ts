@@ -143,7 +143,7 @@ describe('shell', () => {
     user.set(original);
   });
 
-  it('INV-16.1 offers Invitations in the toolbar to a holder of USERS_INVITE only', async () => {
+  it('offers Invitations in the toolbar to a holder of USERS_INVITE only', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
     const original = user();

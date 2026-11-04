@@ -270,7 +270,7 @@ describe('UsersList', () => {
 
     afterEach(() => TestBed.inject(MatDialog).closeAll());
 
-    it('INV-16.1 is shown next to the heading with USERS_INVITE and opens the invite dialog', async () => {
+    it('is shown next to the heading with USERS_INVITE and opens the invite dialog', async () => {
       TestBed.overrideProvider(CurrentUserService, {
         useValue: { hasPermission: (p: string) => p === 'USERS_INVITE' },
       });

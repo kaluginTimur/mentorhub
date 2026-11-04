@@ -72,7 +72,7 @@ describe('InviteDialog', () => {
     ['   ', 'Enter an email'],
     ['not-an-email', 'Enter a valid email address'],
     [`${'a'.repeat(250)}@example.com`, 'Use at most 254 characters'],
-  ])('INV-19.1 validates the email %j on the client', async (value, message) => {
+  ])('validates the email %j on the client', async (value, message) => {
     const { root } = await open();
     type(root, value);
     await submitForm(root);
@@ -80,7 +80,7 @@ describe('InviteDialog', () => {
     expect(api.invoke).not.toHaveBeenCalled();
   });
 
-  it('INV-19.1 creates the invitation with the trimmed email and the chosen roles, then shows the link', async () => {
+  it('creates the invitation with the trimmed email and the chosen roles, then shows the link', async () => {
     api.invoke.mockResolvedValue(created({ email: 'ivan@example.com' }));
     const { root } = await open();
     type(root, '  ivan@example.com ');
@@ -156,7 +156,7 @@ describe('InviteDialog', () => {
     await vi.waitFor(() => expect(closed).toHaveBeenCalled());
   });
 
-  it('INV-19.2 shows the active-user conflict with a link to the user and keeps the values', async () => {
+  it('INV-19.2 shows the active-user conflict with a link to the user', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
     );
@@ -169,13 +169,23 @@ describe('InviteDialog', () => {
     const link = alert.querySelector('a') as HTMLAnchorElement;
     expect(link.textContent?.trim()).toBe('Open user');
     expect(link.getAttribute('href')).toBe('/users/u7');
+  });
+
+  it('INV-19.4 keeps the entered values after a conflict', async () => {
+    api.invoke.mockRejectedValue(
+      problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
+    );
+    const { root } = await open();
+    type(root, 'ivan@example.com');
+    checkbox(root, 'Mentor').click();
+    await submitForm(root);
     expect((root.querySelector('input[type=email]') as HTMLInputElement).value).toBe(
       'ivan@example.com',
     );
     expect(checkbox(root, 'Mentor').checked).toBe(true);
   });
 
-  it('INV-19.2 shows the existing-invitation conflict with a link to the list', async () => {
+  it('INV-19.3 shows the existing-invitation conflict with a link to the list', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:invitation-exists', invitationId: 'i7' }),
     );

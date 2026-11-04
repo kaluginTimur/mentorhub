@@ -37,7 +37,7 @@ describe('requirePermission', () => {
     expect(run()).toEqual({ url: '/' });
   });
 
-  it('INV-16.1 opens the invitations page for USERS_INVITE and takes others to the home page', () => {
+  it('opens the invitations page for USERS_INVITE and takes others to the home page', () => {
     const runInvite = () =>
       TestBed.runInInjectionContext(() =>
         requirePermission('USERS_INVITE')({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
