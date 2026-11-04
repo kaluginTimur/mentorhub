@@ -160,7 +160,7 @@ On success it prints only the OpenAPI Generator banner and a JVM warning. On fai
 
 ## Checking an API
 
-The `api-lookup` subagent follows this section; implementation agents ask it instead of running these commands themselves. To verify a class, annotation or method against the exact versions the project compiles with:
+The `api-lookup` subagent follows this section. Implementation agents ask it and never inspect a dependency themselves: it answers from the exact versions on a small model, and the lookup stays out of their context. To verify a class, annotation or method against the exact versions the project compiles with:
 
 ```bash
 cd backend && ./mvnw -q dependency:build-classpath -Dmdep.outputFile=target/classpath.txt

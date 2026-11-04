@@ -36,7 +36,7 @@ Let administrators invite people.
 ${requirements}
 ${rest}`;
 
-function run(command, files) {
+function run(command, files, ...args) {
   const root = mkdtempSync(path.join(tmpdir(), 'requirements-'));
   try {
     for (const [file, content] of Object.entries(files)) {
@@ -44,7 +44,7 @@ function run(command, files) {
       mkdirSync(path.dirname(target), { recursive: true });
       writeFileSync(target, content);
     }
-    const result = spawnSync(process.execPath, [TOOL, command, '--root', root], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [TOOL, command, ...args, '--root', root], { encoding: 'utf8' });
     return { status: result.status, output: result.stdout + result.stderr };
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -527,4 +527,96 @@ test('files that are not tests do not count', () => {
 test('trace fails on invalid requirements', () => {
   const content = capability(REQUIREMENT.replace('SHALL', 'should'));
   assertFails(run('trace', { ...documents(content), 'frontend/src/a.spec.ts': COVERING_SPEC }), /SHALL or MUST/);
+});
+
+const TWO_CAPABILITIES = `# Requirements
+
+| Capability | Prefix |
+|---|---|
+| [Invitations](invitations.md) | INV |
+| [Emails](emails.md) | IEM |
+`;
+
+const SECOND_REQUIREMENT = `### INV-2 Revoke an invitation
+
+The system SHALL revoke an invitation.
+
+#### INV-2.1 An invitation is revoked
+
+- WHEN an administrator revokes an invitation
+- THEN its link stops working
+`;
+
+const CITING = `# Emails
+
+## Purpose
+
+Send links.
+
+## Requirements
+
+### IEM-1 Send a link
+
+The system SHALL send the link of an invitation (INV-1.1, INV-2).
+
+#### IEM-1.1 A link is sent
+
+- WHEN an invitation is created
+- THEN its link is sent
+`;
+
+const citingFiles = () => ({
+  'docs/requirements/README.md': TWO_CAPABILITIES,
+  'docs/requirements/invitations.md': capability(`${REQUIREMENT}\n${SECOND_REQUIREMENT}`, '\n## Out of scope\n\n- Nothing.\n'),
+  'docs/requirements/emails.md': CITING,
+});
+
+test('show prints a requirement with its scenarios and stops at the next one', () => {
+  const result = run('show', citingFiles(), 'INV-1');
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /^### INV-1 Create an invitation/);
+  assert.match(result.output, /#### INV-1\.1/);
+  assert.doesNotMatch(result.output, /INV-2/);
+});
+
+test('show of the last requirement stops at the next section', () => {
+  const result = run('show', citingFiles(), 'INV-2');
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /#### INV-2\.1/);
+  assert.doesNotMatch(result.output, /Out of scope/);
+});
+
+test('show prints one scenario only', () => {
+  const result = run('show', citingFiles(), 'INV-1.1');
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /^#### INV-1\.1/);
+  assert.doesNotMatch(result.output, /### INV-1 /);
+});
+
+test('show fails on an id that does not exist', () => {
+  assertFails(run('show', citingFiles(), 'INV-9'), /INV-9 does not exist/);
+  assertFails(run('show', citingFiles(), 'NOPE-1'), /unknown prefix/);
+});
+
+test('cited-by lists the ids other capabilities cite of a prefix', () => {
+  const result = run('cited-by', citingFiles(), 'INV');
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /docs\/requirements\/emails\.md: INV-1\.1, INV-2/);
+});
+
+test('cited-by of a requirement includes its scenarios and not other requirements', () => {
+  const result = run('cited-by', citingFiles(), 'INV-1');
+  assert.match(result.output, /emails\.md: INV-1\.1$/m);
+  assert.doesNotMatch(result.output, /INV-2/);
+});
+
+test('cited-by leaves out the capability itself', () => {
+  const result = run('cited-by', citingFiles(), 'IEM');
+  assert.equal(result.status, 0, result.output);
+  assert.equal(result.output.trim(), '');
+});
+
+test('show and cited-by need an argument', () => {
+  assert.equal(run('show', citingFiles()).status, 2);
+  assert.equal(run('cited-by', citingFiles()).status, 2);
 });

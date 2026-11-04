@@ -16,7 +16,7 @@ const TEST_ROOTS = [
 ];
 
 function usage() {
-  console.error('usage: requirements.mjs validate|trace [--root <existing directory>]');
+  console.error('usage: requirements.mjs validate|trace|show <id>|cited-by <prefix or id> [--root <existing directory>]');
   process.exit(2);
 }
 
@@ -360,9 +360,59 @@ function finish(errors, notes, success) {
   console.log(`requirements: ${success}`);
 }
 
+// Prints one requirement with its scenarios, or one scenario.
+function show(root, id, capabilities) {
+  const file = capabilities.get(id.split('-')[0]);
+  const lines = file && existsSync(path.join(root, REQUIREMENTS_DIR, file))
+    ? readFileSync(path.join(root, REQUIREMENTS_DIR, file), 'utf8').split('\n')
+    : [];
+  const marks = id.includes('.') ? '####' : '###';
+  const start = lines.findIndex((line) => line.startsWith(`${marks} ${id} `));
+  if (start < 0) return null;
+  const end = lines.findIndex((line, i) => i > start && (id.includes('.') ? /^#{2,4} / : /^#{2,3} /).test(line));
+  return lines.slice(start, end < 0 ? lines.length : end).join('\n').trim();
+}
+
+// Lists, per other capability, the ids it cites of a prefix or of one id and its scenarios.
+function citedBy(root, target, capabilities) {
+  const prefix = target.split('-')[0];
+  const id = target.includes('-') ? target.replaceAll('.', '\\.') : `${prefix}-\\d+`;
+  const reference = new RegExp(`\\b${id}(?:\\.\\d+)*\\b`, 'g');
+  const found = [];
+  for (const [other, file] of capabilities) {
+    const full = path.join(root, REQUIREMENTS_DIR, file);
+    if (other === prefix || !existsSync(full)) continue;
+    const ids = [...new Set(readFileSync(full, 'utf8').match(reference) ?? [])];
+    if (ids.length) found.push(`${REQUIREMENTS_DIR}/${file}: ${ids.join(', ')}`);
+  }
+  return found;
+}
+
 const command = process.argv[2];
-if (command !== 'validate' && command !== 'trace') usage();
+const COMMANDS_WITH_ID = new Set(['show', 'cited-by']);
+if (command !== 'validate' && command !== 'trace' && !COMMANDS_WITH_ID.has(command)) usage();
+const argument = process.argv[3];
+if (COMMANDS_WITH_ID.has(command) && (!argument || argument.startsWith('--'))) usage();
 const root = repositoryRoot();
+if (COMMANDS_WITH_ID.has(command)) {
+  const errors = [];
+  const { capabilities } = parseIndex(root, errors);
+  if (!capabilities.has(argument.split('-')[0])) {
+    console.error(`requirements: unknown prefix in ${argument}`);
+    process.exit(1);
+  }
+  if (command === 'cited-by') {
+    console.log(citedBy(root, argument, capabilities).join('\n'));
+    process.exit(0);
+  }
+  const block = show(root, argument, capabilities);
+  if (block === null) {
+    console.error(`requirements: ${argument} does not exist`);
+    process.exit(1);
+  }
+  console.log(block);
+  process.exit(0);
+}
 const requirements = loadRequirements(root);
 if (command === 'validate' || requirements.errors.length) {
   finish(requirements.errors, [], `valid (${requirements.scenarios.size} scenarios)`);

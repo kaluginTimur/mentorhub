@@ -8,7 +8,7 @@
 //   line per session. One session can hold several phases: /clear keeps the session id in a cloud session. A record
 //   therefore covers only the API calls after the chain's latest record of another phase, and replaces an earlier record
 //   of the same phase of the chain. --until <time> (ISO 8601) ends the window earlier, to rebuild a missed record. It
-//   refuses a chain none of whose agents (in the window) is listed in docs/features/<feature>.progress.md, one that ended
+//   refuses a chain none of whose agents (in the window) is listed in the plan docs/plans/<feature>.md (or its history), one that ended
 //   before another recorded session of the feature, or (without --until) a phase recorded again after a later phase;
 //   --force overrides.
 // Transcripts are local to the machine that ran the session and are deleted after cleanupPeriodDays (30 by default);
@@ -285,10 +285,10 @@ function featureSize(feature) {
     : null;
   const stat = (merge ? git(['diff', '--shortstat', `${merge}^1`, merge]) : git(['diff', '--shortstat', `${base}...${head}`])) ?? '';
   const num = (re) => Number(stat.match(re)?.[1] ?? 0);
-  const specPath = `docs/features/${feature}.md`;
-  const spec = git(['show', `${head}:${specPath}`]) ?? (existsSync(path.join(root, specPath)) ? readFileSync(path.join(root, specPath), 'utf8') : '');
-  const acs = new Set([...spec.matchAll(/^- AC-(\d+)/gm)].map((m) => m[1])).size;
-  return { base, head, files: num(/(\d+) files? changed/), insertions: num(/(\d+) insertions?/), deletions: num(/(\d+) deletions?/), acs };
+  // Scenarios added or rewritten by the change; the working tree counts, because requirements stay uncommitted until the red tests exist.
+  const requirementsDiff = (merge ? git(['diff', `${merge}^1`, merge, '--', 'docs/requirements']) : git(['diff', base, '--', 'docs/requirements'])) ?? '';
+  const scenarios = new Set([...requirementsDiff.matchAll(/^\+#### ([A-Z]+-\d+\.\d+)/gm)].map((m) => m[1])).size;
+  return { base, head, files: num(/(\d+) files? changed/), insertions: num(/(\d+) insertions?/), deletions: num(/(\d+) deletions?/), scenarios };
 }
 
 const k = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : `${Math.round(n / 1000)}k`);
@@ -298,11 +298,11 @@ if (record) {
   mkdirSync(path.dirname(file), { recursive: true });
   const kept = existing.filter(([, r]) => !ofChain(r) || r.phase !== record.phase).map(([l]) => l);
 
-  const progressLog = `docs/features/${record.feature}.progress.md`;
+  const plan = `docs/plans/${record.feature}.md`;
   const problems = [];
-  // /feature lists every agent it starts in the progress log's Agents table.
-  const log = git(['show', `${featureSize(record.feature).head}:${progressLog}`]) ?? (existsSync(path.join(root, progressLog)) ? readFileSync(path.join(root, progressLog), 'utf8') : '');
-  if (!agentIds.some((id) => log.includes(id))) problems.push(`none of its agents is in the Agents table of ${progressLog}`);
+  // /spec and /feature list every agent they start in the plan's Agents table. The plan is deleted before the pull request, so its history counts too.
+  const planText = [existsSync(path.join(root, plan)) ? readFileSync(path.join(root, plan), 'utf8') : '', git(['log', '--format=', '-p', '--', plan]) ?? ''].join('\n');
+  if (agentIds.length && !agentIds.some((id) => planText.includes(id))) problems.push(`none of its agents is in the Agents table of ${plan}`);
   const later = existing.map(([, r]) => r).filter((r) => r.type === 'size' && !ofChain(r) && r.recordedAt > chainLast);
   if (later.length) problems.push(`it ended (${chainLast}) before ${record.feature}/${later[0].phase} was recorded (${later[0].recordedAt})`);
   const samePhase = existing.map(([, r]) => r).filter((r) => r.type === 'size' && ofChain(r) && r.phase === record.phase);

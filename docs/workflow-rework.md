@@ -41,8 +41,24 @@ What to do, in order (the order and the method are Claude's plan; the user chose
 
 1. The user reads the rewritten files and gives any remarks. Decided on 2026-11-05, on Claude's proposals: about 17 thousand words is accepted, because further cuts would remove rules about access, data, state and security, and leave them to agents' guesses; the cost of size is handled by what an agent reads (see **What an agent reads**). The ban on the token in a log (INV-9) stays without a scenario of its own, and USR-17.2 gets no tests for its other two combinations. To watch on Tracking core and the next feature: the user often rejecting items of the list of details means requirements are too thin; a kind of scenario that catches nothing and gets in the way of changes can go. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
 2. After each file, the main session checks the result itself rather than trusting the report: words by part, scenario count, `trace`, that production code did not change, that no assertion disappeared from the test diff, and each claim that the contract holds a removed fact.
-3. Do the remaining stage 5 work: rewrite the parts of this document that still describe deltas and full coverage, audit the tests for duplicates (the user decides what goes), then the process description, skills and agents, and the open questions below.
+3. Do the remaining stage 5 work: audit the tests for duplicates (the user decides what goes), and close the open questions below. This document is deleted with the rework, so its parts that still describe deltas and full coverage need no rewrite if the audit does not read them.
 4. Run the full verification for backend, frontend and docs, then open one PR to main.
+
+The process, skills and agents (user decisions of 2026-11-05 on Claude's proposals; the process itself is in `docs/process.md`):
+
+- Commands: `/explore` (new and optional), `/spec`, `/feature`, `/review`, `/verify`, `/decision` (the renamed `/adr`, since these are no longer ADRs) and `/pr`. Planning is part of `/feature`, not a command of its own.
+- `/usage-review` stays, to measure the new workflow, although its old exit condition is met. The user rejected Claude's proposal to delete it. Usage recording reads the progress log today, so it has to read the plan instead.
+- The plan `docs/plans/<change>.md` replaces both the Design section and the progress log, and is deleted before the PR.
+- Checkpoints: the requirements gate, the plan gate, one checkpoint after the backend is green and a look at the screens at the end. A plan may name another checkpoint for a hard part.
+- The agent reviews the requirements before the requirements gate only; the owner alone reads the plan.
+- A new agent `test-engineer`, on Opus for Tracking core, then the usage is checked.
+- The prototype step of `frontend-dev` is removed until mock mode exists.
+
+- A handover in the plan before every stop for the owner, so a review can take days and the work continues in a new session from a small context (user's request, 2026-11-05). So the plan starts at the beginning of Specify, not at Plan.
+
+Claude's choices, which the user read in the process without objecting: `docs/process.md` is not under `docs/development/`, because the tools treat every file there as an area guide with its own verification. The requirements, the contract, the plan and the red tests go into one commit, because `trace` in the pre-commit hook refuses a scenario without a test. Backend red tests go through HTTP against a stub, and frontend ones against an empty component, so that they fail on an assertion and not on compilation; not yet tried.
+
+Done on 2026-11-05: `docs/process.md`; the skills `/explore`, `/spec` with `plan-template.md`, `/feature`, `/decision`, `/review`, `/pr` and `/usage-review`; the agents `test-engineer`, `backend-dev`, `frontend-dev` and `reviewer`; `.claude/README.md`, `AGENTS.md` and `docs/development/docs.md`; the subcommands `show` and `cited-by`; usage recording reads the plan and counts scenarios. A review of what each agent loads removed the duplicates the user pointed out and those Claude found: the map stays in `AGENTS.md` only, the usage command is in the skills so they do not read the whole README, and `test-engineer` does not read `docs/process.md`. Dropped by Claude, not discussed: running backend controllers on Sonnet (the old step 4 experiment), because the new process has no such step. Not tried: no skill or agent has run yet, not even headless. The hook that tells subagents apart was not looked at; for now the coordinator and the reviewer check the diff of tests since the red commit.
 
 The brief for each subagent, with what the sample taught:
 
@@ -73,7 +89,7 @@ Measured on 2026-11-03, after the compression:
 
 How other AI clients load the guides and the constitution is not considered for now, since each client works differently (user decision, 2026-11-03).
 
-Not discussed yet: the skills and agents of the new process (the last discussion item), including the agent review of the spec and the agent-neutral process description (see **Open questions**). They are needed before migration stage 5.
+The skills and agents were discussed on 2026-11-05; see **Next session: start here**.
 
 Attribution: "user decision" marks what the user decided; everything else is Claude's proposal or finding.
 
@@ -312,8 +328,8 @@ Until the end of stage 4, `trace` shows almost no coverage; that is expected.
   - Known costs: agents decide details on their own and may get them wrong; undescribed behavior can change without a document saying so; the line between a costly and a cheap mistake is a judgment; one more pass over the seven capability files.
   - Constitution: the user changed C-5 and C-7 on 2026-11-04. Requirements are the authority for the behavior they describe, not for every detail; a test of a scenario cites its id, and tests of details cite none.
   - Rewriting the requirements: before stage 5, in a subagent, starting with `user-administration`, which the user reviews before the other six files (user decision, 2026-11-04).
-- **Agent review of the spec.** Claude's proposal: a review inside Propose and Plan, before each user gate, with a fixed checklist (contradictions with living requirements and the constitution; testability of every scenario; completeness against the proposal's scope: error paths, empty states, refused access, concurrent edits, what each role sees, what is audited; ambiguity; "how" leaking into requirements), one round, and a size guard (8–10 scenarios) that suggests splitting the change. The reviewer reports gaps but does not write requirements; scope expansions go to roadmap Ideas or to the user as a question.
-- **The skills and agents of the new process,** and how to describe the process without naming client-specific skills and subagents.
+- **Agent review of the spec.** Before the requirements gate only (user decision, 2026-11-05, narrowing Claude's proposal of a review before each gate), with a fixed checklist (contradictions with living requirements and the constitution; testability of every scenario; completeness against the proposal's scope: error paths, empty states, refused access, concurrent edits, what each role sees, what is audited; ambiguity; "how" leaking into requirements), one round, and a size guard (8–10 scenarios) that suggests splitting the change. The reviewer reports gaps but does not write requirements; scope expansions go to roadmap Ideas or to the user as a question.
+- **The skills and agents of the new process.** Decided on 2026-11-05; see **Next session: start here**. Rewriting them is the remaining work of stage 5.
 - **What an agent reads.** `AGENTS.md` already says to read the index and open the capabilities a task touches, but `/spec`, `/adr` and `backend-dev` still read all of `docs/requirements/` until stage 5. Nothing says how far to follow references: `invitations` cites five other capabilities, so opening each whole file costs about 20000 words instead of about 6100. Claude's proposal for the process description, to discuss with the skills and agents:
   - An agent reads the index and the capabilities named in the roadmap item or the proposal.
   - For a reference such as `(PERM-3)`, it opens only that block, not the whole file. This may need a small `show` subcommand in the tool, which is not on its list yet.

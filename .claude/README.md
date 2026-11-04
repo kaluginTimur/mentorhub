@@ -1,72 +1,60 @@
 # Claude Code workflow
 
-How this repository is set up for working with Claude Code: who does what, the commands, the guardrails, and what a new developer needs.
+How this repository is set up for working with Claude Code: who does what, the commands, the guardrails, and what a new developer needs. The process itself, whatever the client, is in `docs/process.md`; this file maps it to Claude Code.
 
 ## Roles
 
-The main session designs and coordinates. Feature code is written by subagents, each with its own context and a fixed job.
+The main session is the designer and the coordinator. Code and tests are written by subagents, each with its own context and a fixed job.
 
 | Agent | Job | Model |
 |---|---|---|
-| `backend-dev` | Implements backend work one step at a time and stops with a checkpoint report after each step | opus |
-| `frontend-dev` | Builds a screen prototype for visual approval, then finishes the frontend on its own until verification is green | sonnet |
-| `reviewer` | Independent review of a diff or a spec against the project rules; never edits | opus |
+| `test-engineer` | Test engineer of the process: red tests with scenario ids before the code, tests of details in a fresh context after it. On Opus for Tracking core, then the usage is checked | opus |
+| `backend-dev` | Developer: the contract and migration at the plan stage, then backend tasks to make the tests pass, stopping with a report | opus |
+| `frontend-dev` | Developer: finishes the frontend tasks on its own until verification is green | sonnet |
+| `reviewer` | Independent review of changed requirements or of a diff; never edits | opus |
 | `verifier` | Runs the verification and reports pass/fail; never fixes | sonnet |
 | `api-lookup` | Checks that a class, method or export exists in the exact dependency versions the project uses | haiku |
 
 Definitions are in `agents/`. Subagents cannot ask you questions directly: they stop with a report, the main session shows it to you and passes your answer back to the same agent. The `permissionMode: acceptEdits` of `backend-dev` and `frontend-dev` applies only in Manual mode; in `auto` mode the classifier reviews subagent actions like any others and ignores that field.
 
-## Feature flow
+## Flow
 
 ```
-/spec <feature>     main session + you: docs/features/<feature>.md (requirements, UI, design)
-                    reviewer checks the spec; you approve it
-/feature <feature>  progress log docs/features/<feature>.progress.md, branch feature/<feature>
-  backend-dev   1 contract + 2 migration → you approve (→ commit, if you agree)
-  ── phase done: /clear, then /feature <feature> ──
-  frontend-dev  A prototype on mock data → you approve the screens (skipped until mock mode exists)
-                B finishes on its own → reviewer → you decide what to fix → one fix round → re-review
-  backend-dev   3 domain, service, authorization → you approve      (in parallel with the frontend)
-                4 API layer and tests → you approve
-  ── phase done: /clear, then /feature <feature> ──
-  reviewer on the whole feature → you decide what to fix → one fix round → re-review
-  verifier → summary, AC coverage, proposed commit message
-  on acceptance: the spec's Design section is synced with the final contract and schema, status → implemented
-/pr                 description from the spec and the final report → you approve → push, pull request
+/explore <idea>     optional: the idea becomes items in docs/roadmap.md, no requirements
+/spec <change>      main session + you: branch feature/<change>, plan docs/plans/<change>.md, edits in docs/requirements/
+                    reviewer checks the changed requirements
+                    ── requirements gate: you read them in full ──
+/feature <change>   plan and design; backend-dev: contract and migration
+                    ── plan gate: you read the plan and the diff ──
+  test-engineer     red tests with ids → commit of requirements, contract, plan and tests, if you agree
+  backend-dev       tasks of the plan, tests go green ── you check the backend ──
+  frontend-dev      tasks of the plan, in parallel unless the plan orders them ── you look at the screens ──
+                    the list of details from both → you decide
+  test-engineer     tests of details, in a fresh context (skipped for small changes)
+  reviewer on the whole change → you decide what to fix → one fix round → re-review
+  verifier → summary, proposed commit message → you accept
+  finish: durable "how" to decisions and guides; the plan and the roadmap item are deleted
+/pr                 description from the changes and the final report → you approve → push, pull request
 ```
 
-`/feature` works on a branch `feature/<feature>` and keeps a progress log next to the spec: step statuses, your decisions at each checkpoint, open questions and step commits. When you resume in a new session, the log, not the conversation or `git diff`, tells where the work stopped; if the log is on another branch, `/feature` says so instead of starting over. You review each backend step's diff in your IDE; after you approve a step, it offers to commit it. Nothing is committed or pushed unless you agree. Do not switch branches while agents are running: background agents write to the same working tree.
+Before every stop for you, `/spec` and `/feature` write a handover into the plan (**Stopping for the owner** in `docs/process.md`) and record the usage, so you can answer in the same session or run `/clear` first and then the command the handover names. Do that rather than `/compact`, and when Claude Code offers to resume an old session from a summary, start fresh from the plan instead.
 
-Each phase of a feature runs in its own session. When a phase is approved and committed, `/feature` tells you to run `/clear` and then `/feature <feature>`: the new session continues from the log. Do that rather than `/compact`, and when Claude Code offers to resume an old feature session from a summary, start fresh from the log instead; a summary may drop details the log keeps.
+You review diffs in your IDE; nothing is committed or pushed unless you agree. Do not switch branches while agents are running: background agents write to the same working tree.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/spec <feature>` | Work out a feature spec with Claude |
-| `/feature <feature> [step]` | Implement an approved spec; resumes from the progress log, `step` overrides where to continue (`contract`, `migration`, `domain`, `api`, `frontend`, `review`, `verify`) |
-| `/review [git-ref \| spec path \| focus]` | Independent review of current changes, or of a spec |
+| `/explore <idea>` | Turn an idea into roadmap items |
+| `/spec <change>` | Work out the requirements of a change, up to the requirements gate |
+| `/feature <change>` | From approved requirements to a verified branch; resumes from the plan's handover |
+| `/review [git-ref \| plan path \| focus]` | Independent review of current changes, or of changed requirements |
 | `/verify [backend\|frontend\|docs\|all] [git-ref]` | Run the verification and get a pass/fail table; `docs` with a ref lists documents to recheck since that ref |
-| `/adr <title>` | Record an architecture decision in `docs/architecture/decisions/` |
+| `/decision <title>` | Record or change an architecture decision in `docs/architecture/decisions/` |
 | `/pr [base-branch]` | Open a GitHub pull request: checks, a generated description for your approval, push and `gh pr create` |
-| `/usage-review [feature ...]` | Temporary: compare the recorded token usage of features with the baseline, check that each optimization took effect, propose further ones split into quality-neutral and quality-risking |
+| `/usage-review [change ...]` | Compare the recorded token usage of changes, check that each rule took effect, propose further optimizations split into quality-neutral and quality-risking |
 
-Bugs, refactoring and small changes need no spec. Do quick fixes directly in the main session; for larger ones, ask the main session to brief `backend-dev` or `frontend-dev`. Finish with `/review` and `/verify`, and `/pr` when the change should go through a pull request.
-
-## Where knowledge lives
-
-| Place | Contents |
-|---|---|
-| `AGENTS.md` | Map and project-wide rules, shared with other AI clients; `CLAUDE.md` only imports it. Loaded into every session, so keep it short |
-| `docs/development/<area>.md` | Stack, conventions, commands, verification, pitfalls; loaded when Claude works in `backend/` or `frontend/` (through the one-line `CLAUDE.md` there) |
-| `docs/requirements/` | Living requirements: what the system does |
-| `docs/architecture/decisions/`, `docs/features/` | Decisions and feature specs |
-| `docs/development/docs.md` | How references between documents, artifacts and code are kept consistent |
-| `agents/`, `skills/` | Roles, processes, checkpoints and report formats only. No commands, versions or class names: they point to the documents above |
-| `hooks/`, `settings.json` | Enforcement, the only place with concrete paths and commands |
-| `scripts/`, `usage/` | Tooling for the workflow itself and the recorded token usage per feature |
-
-When the stack changes, update `docs/development/`; agents and skills stay as they are. `scripts/check-docs.mjs` runs on every commit through the git hooks in `.githooks/`, in `/verify docs` and in reviews: it blocks broken references (paths, sections agents rely on, Verification commands without an allow rule, paths the hooks protect) and lists documents that refer to changed files.
+Bugs, refactoring and small changes need no plan (**Choosing a path** in `docs/process.md`). Do quick fixes directly in the main session; for larger ones, ask the main session to brief `backend-dev` or `frontend-dev`. Finish with `/review` and `/verify`, and `/pr` when the change should go through a pull request.
 
 ## Guardrails
 
@@ -101,16 +89,16 @@ Every tool call re-sends the agent's whole context; prompt caching makes the re-
 |---|---|
 | `backend-dev` and `frontend-dev` use the 1-hour cache (`experimental.cacheTtl` in their definitions) | Subagents default to a 5-minute cache, and every review pause (7–38 minutes) expired it: each resume rewrote the agent's whole history, up to about 390k tokens. That was 38% of `backend-dev`'s cost; replayed with the 1-hour cache, it costs 29% less. |
 | The other agents keep the 5-minute cache | They run once without pauses; the 1-hour cache only raises their write price (about +20% for `reviewer`). |
-| A fresh `backend-dev` between steps once its context passes about 150k | About half of a long-running agent's context is earlier reasoning; every call re-reads it. The checkpoint report's "Notes for the next step" and the log carry what the next step needs. |
+| A fresh `backend-dev` between tasks once its context passes about 150k | About half of a long-running agent's context is earlier reasoning; every call re-reads it. The report's "Notes for the next task" and the plan carry what the next task needs. |
 | Contract and migration are one checkpoint | Two small steps, one pause and one resume instead of two. |
-| One session per phase, `/clear` instead of `/compact`, idle compaction off (`settings.json`) | The coordinator re-read an average 178k context on 143 calls. The log restores a new session exactly; a compaction summary is lossy, and idle compaction would compact during a long review. |
+| A handover in the plan before every stop for you, `/clear` instead of `/compact`, idle compaction off (`settings.json`) | The coordinator re-read an average 178k context on 143 calls, and a review that outlasts the cache writes the whole history again. The plan restores a new session exactly; a compaction summary is lossy, and idle compaction would compact during a long review. |
 | All review findings at once, one fix round, re-reviews on Sonnet limited to the previous findings and the fix diff | Each full review is 70–200k tokens on Opus; the frontend took four. |
 | Area guides are not read twice | `backend/CLAUDE.md` and `frontend/CLAUDE.md` already load them. |
-| `/spec` proposes splitting large features | A step's own work, such as identity foundation's step 3 (+140k), is not reduced by any rule above. |
+| `/spec` proposes splitting large features | A large task's own work, such as identity foundation's step 3 (+140k), is not reduced by any rule above. |
 | In a cloud session, `/feature` checks an agent's transcript folder before continuing it, and starts a fresh one otherwise | After a `/clear` there, an agent started meanwhile and later continued ran as `general-purpose`: without its model and 1-hour cache (invitation-emails: `frontend-dev` on Opus, two whole-cache rewrites). |
 | Subagents without a tool to start agents (cloud sessions) ask their `api-lookup` questions in the report | The coordinator asks `api-lookup`; probing APIs by compiling costs the implementation agent's context. |
 | Manual browser checks run on Haiku, and `/pr` does not watch a green pull request | A clear test case needs no stronger model (invitation-emails AC-19 ran on inherited Opus, 0.42M); every pull request event wakes the session and re-reads its whole context. |
-| `/spec` records its own `spec` phase | Otherwise the spec's work lands in the feature's `contract` record (invitation-emails: about 1M). |
+| `/spec` records its own `spec` phase | Otherwise its work lands in the next phase's record (invitation-emails: about 1M). |
 
 ### Measuring a session
 
@@ -122,13 +110,13 @@ It prints, per agent: the model, the effort its requests ran at (subagents may d
 
 ### Recording usage
 
-At the end of each phase of a feature, `/feature` records the session in the repository:
+Before every stop for you, `/spec` and `/feature` record the session in the repository:
 
 ```bash
-node .claude/scripts/agent-usage.mjs --record <feature> <phase>
+node .claude/scripts/agent-usage.mjs --record <change> <phase>
 ```
 
-It appends one line per agent and the feature's size (inserted lines against the default branch, acceptance criteria in the spec) to `usage/<feature>.jsonl` and prints one line per session it recorded. Claude Code can continue a conversation in a new session id without a restart; the script follows these continuations and records the whole chain once, so run it without a session id. In a cloud session `/clear` keeps the session id, so one session can hold several phases: a record covers only the API calls after the session's latest record of another phase, and replaces an earlier record of the same phase (as `/pr` does for `review`). The local session files a cloud `/clear` leaves behind, whose calls the cloud transcript repeats, are read with it, since subagents started meanwhile can be only there. `--until <time>` ends the window earlier, to rebuild a missed record. It refuses a chain none of whose agents in the window is in the progress log's Agents table, one that ended before another recorded session of the feature, or (without `--until`) a phase recorded again after a later phase; `--force` overrides after checking. The phases are `spec` (recorded by `/spec`), `contract`, `implementation` and `review`. An agent spawned by another agent has its own line with `spawnedBy`, the top-level agent it works for, so its cost can be rolled up to that agent. `inspections` counts an agent's tool calls into dependency artifacts (`javap`, `unzip -l`, `jar tf`, `~/.m2`, `node_modules`), the work implementation agents leave to `api-lookup`. It reads the Agents table from the progress log committed on the feature branch, so the log is committed first and the record follows in its own commit. `/usage-review` compares the records with the baseline.
+It appends one line per agent and the change's size (inserted lines against the default branch, scenarios added or rewritten under `docs/requirements/`; the old features have acceptance criteria as `acs`) to `usage/<change>.jsonl` and prints one line per session it recorded. Claude Code can continue a conversation in a new session id without a restart; the script follows these continuations and records the whole chain once, so run it without a session id. In a cloud session `/clear` keeps the session id, so one session can hold several phases: a record covers only the API calls after the session's latest record of another phase, and replaces an earlier record of the same phase (as `/pr` does for `review`). The local session files a cloud `/clear` leaves behind, whose calls the cloud transcript repeats, are read with it, since subagents started meanwhile can be only there. `--until <time>` ends the window earlier, to rebuild a missed record. It refuses a chain none of whose agents in the window is in the Agents table of the plan, one that ended before another recorded session of the feature, or (without `--until`) a phase recorded again after a later phase; `--force` overrides after checking. The phases are `spec` (recorded by `/spec`), `plan`, `implementation` and `review`; the old features have `contract` instead of `plan`. A phase can span sessions, with one record per session. An agent spawned by another agent has its own line with `spawnedBy`, the top-level agent it works for, so its cost can be rolled up to that agent. `inspections` counts an agent's tool calls into dependency artifacts (`javap`, `unzip -l`, `jar tf`, `~/.m2`, `node_modules`), the work implementation agents leave to `api-lookup`. It reads the Agents table from the plan in the working tree or its history, so it also works after the plan is deleted. The record goes in with the next commit. `/usage-review` compares the records with the baseline.
 
 ### Baseline: identity foundation
 
@@ -152,17 +140,8 @@ Opus 11.07M in total: about 1.7k per inserted line and 370k per acceptance crite
 - Make the default Node satisfy `frontend/.nvmrc` (`nvm alias default 24`): Claude Code starts the Angular CLI MCP server from `.mcp.json` with the default Node, and it needs ^24.15.
 - Personal overrides go into `settings.local.json` (gitignored).
 
-## Other AI clients
-
-Everything in `.claude/` (agents, skills, hooks, permissions, MCP config) is written for Claude Code. What other clients share without copying:
-
-- `AGENTS.md`: the project rules; Cursor, OpenCode and Codex read it directly;
-- `docs/`: stack, conventions, verification, invariants, decisions and specs;
-- the git hooks in `.githooks/` and `scripts/check-docs.mjs`.
-
-To bring the workflow to another client, port the processes from `agents/` and `skills/` to that client's mechanisms (subagents, commands, hooks). They are short descriptions of roles and steps; the knowledge they rely on stays in `docs/` and `AGENTS.md`.
-
 ## Changing the workflow
 
+- Agents and skills describe roles, processes, checkpoints and report formats, and point to `docs/` for the stack: when the stack changes, update `docs/development/`. Hooks and `settings.json` enforce what must hold.
 - Test a changed agent or skill in a headless run from a clone, for example `claude -p "/verify all"` or `claude -p "<question>" --agent api-lookup`. Keep the clone outside `~/.claude`, which Claude Code treats as protected, and remember that an untrusted clone ignores the allow rules.
 - Test a hook by piping a JSON event into it: `echo '{"tool_name":"Bash","tool_input":{"command":"..."},"cwd":"..."}' | node .claude/hooks/guard-bash.mjs`.

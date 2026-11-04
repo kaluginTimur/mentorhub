@@ -110,7 +110,7 @@ cd frontend && ~/.nvm/nvm-exec npm run build
 
 ## Checking an API
 
-The `api-lookup` subagent follows this section; implementation agents ask it instead of reading `node_modules` themselves.
+The `api-lookup` subagent follows this section. Implementation agents ask it and never inspect a dependency themselves: it answers from the exact versions on a small model, and the lookup stays out of their context.
 
 - Package version: `node_modules/<package>/package.json`.
 - Exports: the package's `.d.ts` files (see `types` / `exports` in its `package.json`).
@@ -119,4 +119,4 @@ The `api-lookup` subagent follows this section; implementation agents ask it ins
 
 ## Mock mode
 
-Not implemented yet. A dev-server mode that serves data generated from `api/openapi.yaml`, so screens can be reviewed before the backend exists, needs an ADR first.
+Not implemented yet. A dev-server mode that serves data generated from `api/openapi.yaml`, so screens can be reviewed before the backend exists, needs a decision first.

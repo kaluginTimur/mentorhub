@@ -1,111 +1,89 @@
 ---
 name: feature
-description: Implement an approved feature spec by delegating to the backend-dev and frontend-dev subagents, with a user checkpoint after every backend step and a visual checkpoint for the frontend, then review and verify. Progress is kept in a per-feature log; each phase runs in its own session.
-argument-hint: "<feature-name> [contract|migration|domain|api|frontend|review|verify]"
-arguments: [feature, step]
+description: Take a change from approved requirements to a verified branch: the plan and contract, red tests by test-engineer, code by backend-dev and frontend-dev, review and verification, with a handover in the plan before every stop for the user.
+argument-hint: "<change-name>"
+arguments: [change]
 disable-model-invocation: true
 ---
 
-Implement the feature `$feature` from `docs/features/$feature.md`. You are the coordinator: you brief the agents, relay their reports and the user's decisions, and keep the progress log. In this flow you do not write code yourself; every code change goes through `backend-dev` or `frontend-dev`. You also do not read code or run builds to check the agents' work: `reviewer` and `verifier` do that, so your context stays small.
+Take the change `$change` from approved requirements to a verified branch: stages 3 to 8 of the **Stages** section of `docs/process.md`. You are the coordinator: you write the plan, brief the agents, relay their reports and the user's decisions, and keep the plan current. Every code change goes through an agent, and you do not read code or run builds to check their work: `reviewer` and `verifier` do that, so your context stays small.
 
-## Progress log
+## The plan is the memory
 
-`docs/features/$feature.progress.md`, created from [progress-template.md](progress-template.md), is the memory of this feature across sessions: step statuses, the user's decisions in their words, handoff notes, pending relays, open questions and step commits. It lives on the feature branch, so it always describes the code next to it.
-
-The conversation is not a reliable memory; the log is. A new session must be able to continue from the log, the spec and `git log` alone, so write everything there that a later step needs.
-
-Write the log once per checkpoint, in one edit: when the user has decided, record the status, the decision, the handoff notes and, if made, the commit together. Also write it before a phase boundary, and record a relay as pending when you send it and clear it when the agent has acted. Agents' ids, models and context sizes go into the next such write, never into an edit of their own: every edit is a coordinator call that re-reads the whole session context.
+`docs/plans/$change.md` holds the state across sessions. The conversation is not a reliable memory: a new session must be able to continue from the plan, what its handover names and `git log` alone. Write it once per stop, in one edit, because every edit re-reads the whole session.
 
 ## Start
 
-1. Find the progress log. If it is not on the current branch, find the branch that has it before anything else: `git log --all -1 --format='%h %D' -- docs/features/$feature.progress.md` prints one line with the last commit and its branches, or nothing.
-   - **Log on the current branch:** resume from it (see below).
-   - **Log only on another branch:** do not start over and do not ask for a new spec. Tell the user which branch has them and the last step there, and offer to switch to that branch, to bring its commits here (merge or cherry-pick, only after the user agrees), or to start over deliberately.
-   - **No log anywhere:** this is a fresh start.
-2. Read the spec. Its status must be `approved` and no open question may block implementation; otherwise stop and suggest `/spec $feature`.
-3. Run `git status`. If there are unrelated uncommitted changes, ask the user how to proceed before starting.
-4. On a fresh start, create the branch `feature/$feature` from the default branch (or use the branch the user prefers), create the log from the template, and start with the contract.
-5. Read the **Mock mode** section of `docs/development/frontend.md` to know whether the frontend prototype step is possible.
+1. Read the plan. If it is not on the current branch, find the branch that has it (`git log --all -1 --format='%h %D' -- docs/plans/$change.md`) and offer to switch. If there is none, stop and suggest `/spec $change`.
+2. Check that the plan records the user's approval of the requirements. If not, stop and suggest `/spec $change`.
+3. Continue from the handover. Read only what it names. Agents from an earlier session cannot be continued: start fresh ones, briefed from the plan.
 
-## Resuming
+## Before every stop for the user
 
-The log is the source of truth for what is approved, what was decided and what is pending. `git log` on the branch confirms the committed steps; `git diff` shows only the work of the step in progress. If they disagree (a step marked approved without its changes, changes for a step marked pending), show the user the mismatch and ask; never guess.
+Every stop below means these steps, in this order:
 
-Continue from the first step that is not approved; `$step`, when given, overrides that. Agents from an earlier session cannot be continued: start fresh ones briefed from the log. Relays marked pending in the log go into the new agent's brief.
+1. Write the plan: task statuses, the user's decisions in their words, the agents with their context sizes, and the handover.
+2. Record the session under the current phase (`plan`, `implementation` or `review`), without a session id: `node .claude/scripts/agent-usage.mjs --record $change <phase>`. A later record of the same phase and session replaces it. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user.
+3. Relay the report as below, and say that the user can take their time: they can answer here, or run `/clear` first and then `/feature $change` to continue from the handover at a fraction of the context.
+
+Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 
 ## Agents and briefs
 
-Brief every agent with: the spec path, the progress log path, the step to do, the user's decisions since the spec was written, and the handoff notes of earlier steps. Record each agent's id, model, phase and, after each report, its context size in the log, with the next checkpoint write; the completion notification gives the size. Take the model from the `model` parameter of the call, or else from the `model:` line of the agent's definition in `.claude/agents/`; never write it from memory.
+Brief every agent with the plan's path and the task to do. It reads the rest itself.
 
-- **Within a step** (the user's feedback, rework): continue the same agent with `SendMessage`.
-- **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): a `/clear` there starts a local session file while the conversation stays in the cloud session's transcript, and an agent started meanwhile has its transcript only in that file's folder. Continued with `SendMessage`, such an agent runs as `general-purpose`, without its definition's model and 1-hour cache (in invitation-emails, `frontend-dev` resumed on Opus, and two agents rewrote their whole cache). Before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` (from the repository root) names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If it does not, start a fresh agent of the same type instead, briefed with its last report, the user's feedback and the log.
-- **Between steps:** continue the same agent while its last context size is under about 150k tokens. Above that, start a fresh agent for the next step. Its old context is mostly earlier steps' reasoning, which it no longer needs, and every call re-reads it.
+- **Within a task** (feedback, rework): continue the same agent with `SendMessage`.
+- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one.
+- **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If not, start a fresh agent of the same type.
 
-Before every brief or `SendMessage`, check that the current branch is the one in the log. If not, stop and ask the user. Never switch branches while an agent is running: background agents write to the same working tree.
+Before every brief or `SendMessage`, check that the current branch is the plan's. Never switch branches while an agent is running: background agents write to the same working tree.
 
 ## Relaying reports
 
-Show the user a short summary of each report: what was done, the places to look first and the verification result. Show the decisions, deviations from the spec and questions in full; never shorten a question. The full report stays available to quote on request.
+Show a short summary: what was done, where to look first, the verification result. Show decisions, deviations, the list of details and questions in full; never shorten a question.
 
-When an agent or `verifier` reports a failure it attributes to the environment (network, Docker, tool versions), do not investigate it yourself: brief a `general-purpose` agent with the `model` parameter set to `sonnet` to find the cause and a workaround, and relay its answer. Until the cause is confirmed, record the failure in the log as an open question, not as a fact.
+A failure an agent attributes to the environment (network, Docker, tool versions) goes to a `general-purpose` agent with the `model` parameter set to `sonnet`, to find the cause and a workaround. Until the cause is confirmed, it is an open question in the plan, not a fact.
 
-## Backend: a checkpoint after every step
+## Plan
 
-Steps of `backend-dev`: 1 contract, 2 migration, 3 domain (domain, service, authorization), 4 api (controllers and tests). Steps 1 and 2 form one checkpoint: brief them together, and the user reviews both in one diff. Otherwise one step per checkpoint, unless the user asks to merge more for a small feature.
+Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in the design only what the agents would otherwise guess. Tasks follow the feature, not a fixed pipeline, and each names the scenarios it serves. Propose a checkpoint on a hard part. Then brief `backend-dev` for the contract and any migration.
 
-When step 3 is large (about 10 or more acceptance criteria decided in services, or more than one service), propose to the user to split it in two checkpoints: 3a domain and persistence, 3b services, authorization and audit. Start a fresh `backend-dev` for 3b, briefed with 3a's handoff notes. Each checkpoint then carries less of the other's reasoning; in user-administration and invitations, step 3 alone grew past 200k.
+**Stop at the plan gate:** the user reads the plan and the diff of the contract and the migration. Relay remarks to the agent or fix the plan. Go on only when the user approves, and record that.
 
-Step 4 runs on Sonnet (experiment since 2026-10, evaluated by `/usage-review`): always start a fresh `backend-dev` for it with the `model` parameter set to `sonnet`, since a continued agent keeps its model. Brief it with step 3's handoff notes and point it to the existing controllers, mappers and `ProblemDetailsAdvice` as the patterns to follow. When step 4 is merged with step 3, it stays on Opus.
+## Tests first
 
-After each checkpoint:
-1. Relay the report as above.
-2. The user reviews the diff in their IDE and answers.
-3. Relay the answer to the agent in the user's words: feedback means "apply this, verify, report again"; approval means the step is done.
-4. On approval, mark the step `approved`, copy the report's "Notes for the next step" into the log's handoff notes, and offer to commit it: only that step's files (backend steps: everything outside `frontend/`; frontend steps: `frontend/` only) plus the log, with a message following `AGENTS.md`. Commit only if the user agrees. Then send "proceed to step N", or start a fresh agent for it (see above).
+Brief `test-engineer` for its first pass. Check its report: every new or changed scenario has a test, and each failed on an assertion, not on compilation. `node scripts/requirements.mjs trace` must pass.
 
-Never approve a step on the user's behalf and never send "proceed" without the user's explicit go-ahead.
+Offer to commit the requirements, the contract, the plan and the tests together, and write the commit into the plan's Red tests. Commit only if the user agrees.
 
-## Frontend: starts after the contract is approved
+A doubt the test engineer reports about a requirement goes to the user. If a requirement changes, it needs the user's reading again, for that part only.
 
-Start `frontend-dev` in the background at the start of phase 2, together with backend step 3. It runs in parallel with the remaining backend steps.
+## Implement
 
-- **Mock mode implemented:** brief it for step A (prototype). When it reports, start the mock dev server in the background as the Mock mode section describes, and give the user the URL and how to see each state. Relay visual feedback with `SendMessage` until the user approves, then send "proceed to step B".
-- **Mock mode not implemented:** tell the user the prototype step is skipped (mark it `skipped`) and the screens will be reviewed at the end; brief it for step B directly.
+Brief `backend-dev` for the backend tasks and `frontend-dev` for the frontend ones. They may run in parallel, unless the plan orders them.
 
-When step B is done, run the review loop below with the focus "frontend changes of $feature". Then show the user the screens and the manual check list per AC, and offer to commit the frontend as described above.
+After each report, list what changed in the test files since the red commit. A changed test that carries an id is a stop: **Tests** in `docs/process.md` says who decides. Do not pass it on as done.
+
+**Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
+
+**Stop when the frontend is green.** The user looks at the screens, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
+
+**List of details.** Show the user each developer's list. What the user agrees with stays as it is. For the rest, follow stage 5 of `docs/process.md`: a matter of taste goes to the developer with an ordinary test; a rule goes into the requirement first, then to `test-engineer`, then to the developer.
+
+## Tests of details
+
+Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer` for its second pass. Doubtful behavior it reports goes to the user. A failing test it reports goes to the developer who owns the area, or to the user when it is not clearly a bug. Note in the plan whether it found a real bug: **Stages** in `docs/process.md` says the pass is removed if it finds none.
 
 ## Review loop
 
-1. Run `reviewer` on the scope (the default model).
-2. Show the user every finding at once, blockers to minors, with your recommendation per finding. The user decides what to fix.
-3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement it writes against the code, not against the finding's wording or its own memory.
-4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. It checks those findings and the fix diff only. A new blocker or major from it goes back to step 2.
+1. Run `reviewer` on the scope (the default model), with the base ref and the plan's path.
+2. Show the user every finding at once, blockers to minors, with your recommendation. The user decides what to fix.
+3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement against the code, not against the finding's wording.
+4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. A new blocker or major from it goes back to step 2.
 
-## Phase boundaries: one session per phase
+## Verify and finish
 
-The phases are: 1) `contract` (contract and migration); 2) `implementation` (domain, API and the frontend, which run in parallel); 3) `review` (the final review and verification). At the end of a phase, when no agent is running:
-
-1. Write the log, with every agent of the phase and its context size in the Agents table, and commit it with the phase's last changes (or on its own), if the user agrees.
-2. Record the session's token usage under the phase name, as the **Recording usage** section of `.claude/README.md` describes: without a session id. The script reads the Agents table from the committed log, so it refuses to record before step 1. Check that the sessions it prints are this phase's; never pick a session id by hand or pass `--force` without the user.
-3. Commit the usage record on its own, if the user agrees.
-4. Tell the user:
-
-> Phase done. Run `/clear`, then `/feature $feature` to continue in a fresh session.
-
-The new session starts from the log at a fraction of the old context. Never suggest `/compact`: a summary may drop details the log keeps exactly. The `review` phase ends the feature: record it after the final commit, and skip the message. `/pr` records it again at its end, so the record also covers the work done after the final commit.
-
-## Review and verification
-
-After the backend and the frontend are approved:
-
-1. Run the review loop on all changes of the feature.
-2. Run `verifier` with scope `all`.
-   Manual checks the user cannot run (a cloud session has no browser for them) go to a `general-purpose` agent with the `model` parameter set to `haiku`: brief it with the AC's steps as a numbered test case, the run commands from the development guides, a headless browser (Playwright with the pre-installed Chromium), screenshots in the session's scratchpad, no edits to tracked files, and PASS / FAIL / NOT RUN per step. Send the user the screenshots.
-3. Report to the user:
-   - what was built, per scenario;
-   - AC coverage: every AC-n with its tests and its manual check;
-   - the verification table;
-   - open items and follow-ups;
-   - a proposed commit message.
-4. When the user accepts the feature, compare the spec's Design section with the final contract, migrations and modules, and update it wherever the implementation diverged (the log's decisions, handoff notes and the agents' deviations are the starting point). Show the user the changes to the spec, then set its status to `implemented` and mark the remaining log steps.
-5. Commit only if the user asks. Then suggest `/pr` to open a pull request; this report and the log are its sources.
+1. Run `verifier` with scope `all`.
+2. Report what was built per requirement, the verification table, `trace`, open items and a proposed commit message. **Stop** for the user to accept.
+3. On acceptance, finish as stage 8 of `docs/process.md` says: move durable "how" to the decisions and guides, delete the roadmap item and the plan. Show the user these changes.
+4. Commit only if the user asks. Then suggest `/pr`, and `/usage-review` once the pull request is open.
