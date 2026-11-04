@@ -4,18 +4,7 @@ How this repository is set up for working with Claude Code: who does what, the c
 
 ## Roles
 
-The main session is the designer and the coordinator. Code and tests are written by subagents, each with its own context and a fixed job.
-
-| Agent | Job | Model |
-|---|---|---|
-| `test-engineer` | Test engineer of the process: red tests with scenario ids before the code, tests of details in a fresh context after it. On Opus for Tracking core, then the usage is checked | opus |
-| `backend-dev` | Developer: the contract and migration at the plan stage, then backend tasks to make the tests pass, stopping with a report | opus |
-| `frontend-dev` | Developer: finishes the frontend tasks on its own until verification is green | sonnet |
-| `reviewer` | Independent review of changed requirements or of a diff; never edits | opus |
-| `verifier` | Runs the verification and reports pass/fail; never fixes | sonnet |
-| `api-lookup` | Checks that a class, method or export exists in the exact dependency versions the project uses | haiku |
-
-Definitions are in `agents/`. Subagents cannot ask you questions directly: they stop with a report, the main session shows it to you and passes your answer back to the same agent. The `permissionMode: acceptEdits` of `backend-dev` and `frontend-dev` applies only in Manual mode; in `auto` mode the classifier reviews subagent actions like any others and ignores that field.
+The main session is the designer and the coordinator. Code and tests are written by subagents, each with its own context and a fixed job. Their definitions are in `agents/`. Subagents cannot ask you questions directly: they stop with a report, the main session shows it to you and passes your answer back to the same agent. The `permissionMode: acceptEdits` of `backend-dev`, `frontend-dev` and `test-engineer` applies only in Manual mode; in `auto` mode the classifier reviews subagent actions like any others and ignores that field.
 
 ## Flow
 
@@ -35,24 +24,15 @@ Definitions are in `agents/`. Subagents cannot ask you questions directly: they 
   verifier → summary, proposed commit message → you accept
   finish: durable "how" to decisions and guides; the plan and the roadmap item are deleted
 /pr                 description from the changes and the final report → you approve → push, pull request
+
+At any time:
+/decision <title>   record or change an architecture decision
+/usage-review       compare the recorded token usage of changes
 ```
 
 Before every stop for you, `/spec` and `/feature` write a handover into the plan (**Stopping for the owner** in `docs/process.md`) and record the usage, so you can answer in the same session or run `/clear` first and then the command the handover names. Do that rather than `/compact`, and when Claude Code offers to resume an old session from a summary, start fresh from the plan instead.
 
 You review diffs in your IDE; nothing is committed or pushed unless you agree. Do not switch branches while agents are running: background agents write to the same working tree.
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `/explore <idea>` | Turn an idea into roadmap items |
-| `/spec <change>` | Work out the requirements of a change, up to the requirements gate |
-| `/feature <change>` | From approved requirements to a verified branch; resumes from the plan's handover |
-| `/review [git-ref \| plan path \| focus]` | Independent review of current changes, or of changed requirements |
-| `/verify [backend\|frontend\|docs\|all] [git-ref]` | Run the verification and get a pass/fail table; `docs` with a ref lists documents to recheck since that ref |
-| `/decision <title>` | Record or change an architecture decision in `docs/architecture/decisions/` |
-| `/pr [base-branch]` | Open a GitHub pull request: checks, a generated description for your approval, push and `gh pr create` |
-| `/usage-review [change ...]` | Compare the recorded token usage of changes, check that each rule took effect, propose further optimizations split into quality-neutral and quality-risking |
 
 Bugs, refactoring and small changes need no plan (**Choosing a path** in `docs/process.md`). Do quick fixes directly in the main session; for larger ones, ask the main session to brief `backend-dev` or `frontend-dev`. Finish with `/review` and `/verify`, and `/pr` when the change should go through a pull request.
 
