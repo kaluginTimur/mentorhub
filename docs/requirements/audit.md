@@ -2,13 +2,13 @@
 
 ## Purpose
 
-The record of who changed what in MentorHub, and when. Every audited change leaves one entry, written together with the change, that nobody can alter afterwards. Entries are read only through the history of one subject (a user, later an enrollment), under that subject's own access rules. This capability owns the rules of the record and the catalog of every audited action. Whether an action writes its entry is checked where the action is owned: that capability states the action is audited and cites the catalog (AUD-7). How a subject's history is shown is described by the capability that owns the subject (for users, user administration). Who may call the operations that write entries is described in the authorization capability (PERM).
+The record of who changed what in MentorHub, and when. Every audited change leaves one entry, written together with the change, that nobody can alter afterwards. Entries are read only through the history of one subject (a user, later an enrollment), under that subject's own access rules. This capability owns the rules of the record and the catalog of every audited action (AUD-7); the capability that owns an action states that it is audited and cites the catalog. How a history is shown belongs to the capability that owns the subject (for users, user administration).
 
 ## Requirements
 
 ### AUD-1 A change and its entry are stored together
 
-The system SHALL store the entry of an audited change together with the change: either both are stored, or neither is (decision 0005). An entry SHALL NOT be written without a change that is being stored.
+The system SHALL store the entry of an audited change together with the change: either both are stored, or neither is (decision 0005).
 
 #### AUD-1.1 A change that fails leaves no entry
 
@@ -26,17 +26,17 @@ The system SHALL store the entry of an audited change together with the change: 
 
 ### AUD-2 What an entry holds
 
-The system SHALL record, in each entry, the time of the change, the actor, the action, the subject (its type and id) and the details. The actor is a user, or none for a change made by the system. The details hold what a reader needs to understand the change (decision 0005).
+The system SHALL record, in each entry, the time, the actor (none for a change made by the system), the action, the subject and the details (decision 0005).
 
 #### AUD-2.1 An entry has the actor, the action, the subject and the details
 
 - GIVEN an administrator changes a user's roles
 - WHEN the entry of the change is read
-- THEN it has the time of the change, the administrator as the actor, the action `USER_ROLES_CHANGED`, the user as the subject, and the roles added and removed as the details
+- THEN it has the time, the administrator as the actor, the action, the user as the subject and the details, as AUD-7 says for that action
 
 ### AUD-3 Entries cannot be changed or deleted
 
-The system SHALL keep the audit log append-only: a stored entry SHALL NOT be updated or deleted by the application or by any statement against the log, whatever the code path (decision 0005).
+The system SHALL keep the audit log append-only: a stored entry SHALL NOT be updated or deleted, by the application or by any statement against the log (decision 0005).
 
 #### AUD-3.1 An entry cannot be updated or deleted
 
@@ -47,7 +47,7 @@ The system SHALL keep the audit log append-only: a stored entry SHALL NOT be upd
 
 ### AUD-4 Only stored changes are audited
 
-The system SHALL write an entry only for a change that was made. A refused request, a change that would alter nothing, and a read SHALL write no entry.
+The system SHALL write an entry only for a change that was made: a refused request, a change that alters nothing and a read SHALL write none.
 
 #### AUD-4.1 A refused change writes no entry
 
@@ -70,7 +70,7 @@ The system SHALL write an entry only for a change that was made. A refused reque
 
 ### AUD-5 Details never copy secrets or protected content
 
-The system SHALL NOT copy into the details of an entry a secret or content that has its own visibility rules. The entry names the subject instead; whoever may see the subject sees the content through the subject. In particular the token of an invitation, and so its link, SHALL NOT appear in any entry (decision 0005).
+The system SHALL NOT copy into an entry a secret or content that has its own visibility rules; the entry names the subject instead. The token of an invitation, and so its link, SHALL NOT appear in any entry (decision 0005).
 
 #### AUD-5.1 The invitation token is not in any entry
 
@@ -80,7 +80,7 @@ The system SHALL NOT copy into the details of an entry a secret or content that 
 
 ### AUD-6 Entries are read only through the history of a subject
 
-The system SHALL offer no operation that reads the entries of several subjects at once. An entry SHALL be readable only through the history of its own subject, served under the access rules of that subject, and a history SHALL hold only the entries about its subject (decision 0005). A history is ordered newest first. The entries about invitations are stored but have no history. A history SHALL leave out an entry whose action the running version does not know, instead of failing, and SHALL log one warning for each such action. An entry of a known action whose details cannot be read SHALL be left out in the same way, with a warning.
+The system SHALL offer no operation that reads the entries of several subjects at once. A history SHALL hold only the entries about its subject, newest first, under the access rules of that subject (decision 0005). It SHALL leave out, instead of failing, an entry it cannot interpret.
 
 #### AUD-6.1 There is no global audit view
 
@@ -103,20 +103,18 @@ The system SHALL offer no operation that reads the entries of several subjects a
 #### AUD-6.4 An action the version does not know is left out
 
 - GIVEN an entry about a user with an action that the application does not know
-- WHEN the history of the user is read several times
+- WHEN the history of the user is read
 - THEN the entry is not in the history and the read does not fail
-- AND one warning is logged for that action
 
 #### AUD-6.5 An entry whose details cannot be read is left out
 
 - GIVEN an entry of a known action whose details cannot be read
 - WHEN the history of its subject is read
 - THEN the entry is not in the history and the read does not fail
-- AND a warning is logged
 
 ### AUD-7 The catalog of audited actions
 
-The system SHALL write exactly the entries of the catalog below, each at the moment named, for the actor named, with the details named. A new audited action SHALL be added to this catalog, and, when a view shows it, to the contract of that view, in the same change. The capability that owns an action states that it is audited and cites this requirement. The roles in an entry are the roles the running version knows. The development users created at startup in development mode, and the outcome of sending an invitation email (sent, failed or skipped), are not audited.
+The system SHALL write exactly the entries of the catalog below, at the moment, for the actor and with the details named. A new audited action SHALL be added to this catalog, and to the contract of any view that shows it, in the same change. The roles in an entry are the roles the running version knows. The development users created at startup and the outcome of sending an invitation email are not audited.
 
 | Action | Subject | Written when | Actor | Details |
 |---|---|---|---|---|
@@ -135,9 +133,8 @@ The system SHALL write exactly the entries of the catalog below, each at the mom
 
 - GIVEN the bootstrap creates the user, links the sign-in identity and adds the administrator role
 - WHEN the application admits the first sign-in of the bootstrap address
-- THEN one entry `USER_BOOTSTRAPPED_ADMIN` is written about the user
+- THEN one entry is written as AUD-7 says for the bootstrap
 - AND it has no actor
-- AND the details say that the user was created, the identity linked and the administrator role added
 
 #### AUD-7.2 A bootstrap that changes nothing writes no entry
 
@@ -147,7 +144,7 @@ The system SHALL write exactly the entries of the catalog below, each at the mom
 
 ## Known limitations
 
-- Entries written in one change have the same time and no defined order among themselves, so a history shows them in an arbitrary order.
+- Entries written in one change have the same time and no defined order among themselves.
 - A history is paged before entries are left out, so a page can hold fewer items than its size, and the total counts the entries that are left out.
 - A history is a single list per subject: there is no filter by action and no search.
 

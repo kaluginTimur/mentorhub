@@ -30,11 +30,12 @@ State on 2026-11-04, committed on `workflow/rework`. The user accepted `user-adm
 - Tests were split or lost their ids, with every old assertion kept and none deleted. `trace` passes (183 of 183, 5 manual). The backend verification (906 test cases in the XML reports, parameterized runs included; the text reports leave out nested classes) and the frontend tests (261) pass.
 - `authorization` is rewritten and reviewed by the user: 1110 words and 13 scenarios, from 1422 and 17.
 - `platform` is rewritten and checked by the main session, for the user's review at the end: 1932 words and 27 scenarios, from 2378 and 24. Open for that review: PLT-1.1 nearly repeats PERM-6.2.
-- The other four capability files are unchanged.
+- `audit` is rewritten and checked by the main session, for the same review: 1468 words and 15 scenarios, from 1691 and 15. No test changed; AUD-6.4 and AUD-6.5 no longer mention the log warning, which their tests still check.
+- The other three capability files are unchanged.
 
 What to do, in order (the order and the method are Claude's plan; the user chose to continue in a new session):
 
-1. Rewrite the other four capabilities, one subagent per capability, on Sonnet, so as not to fill the main context. Suggested order: `audit`, which the others cite; then `identity`, `invitations` and `invitation-emails`. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
+1. Rewrite the other three capabilities, one subagent per capability, on Sonnet, so as not to fill the main context. Suggested order: `identity`, `invitations` and `invitation-emails`. The user reviews `authorization` and then all the files at the end (user decision, 2026-11-04). Rough expectation from the one sample: about 11 to 12 thousand words in total.
 2. After each file, the main session checks the result itself rather than trusting the report: words by part, scenario count, `trace`, that production code did not change, that no assertion disappeared from the test diff, and each claim that the contract holds a removed fact.
 3. Do the remaining stage 5 work: rewrite the parts of this document that still describe deltas and full coverage, audit the tests for duplicates (the user decides what goes), then the process description, skills and agents, and the open questions below.
 4. Run the full verification for backend, frontend and docs, then open one PR to main.
