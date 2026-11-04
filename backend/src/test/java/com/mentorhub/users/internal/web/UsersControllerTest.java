@@ -629,7 +629,6 @@ class UsersControllerTest {
         }
 
         @Test
-        @DisplayName("PLT-1.1 A refusal from an operation is a problem document")
         void unknownIdIsNotFound() {
             given(administration.get(USER_ID)).willThrow(new NotFoundException());
 

@@ -10,12 +10,6 @@ What every API operation and every screen relies on, whatever the feature: how e
 
 The system SHALL answer every failed API call with an RFC 9457 problem document, with the type `about:blank` when the error has no MentorHub problem type, and SHALL NOT expose exception text or other internals.
 
-#### PLT-1.1 A refusal from an operation is a problem document
-
-- GIVEN an active user who holds the permission an operation needs
-- WHEN the user calls the operation for an id that does not exist
-- THEN the response is a 404 problem document of the type `not-found`
-
 #### PLT-1.2 An unexpected failure is a generic 500
 
 - GIVEN an operation that fails with an unexpected error
