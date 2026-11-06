@@ -45,7 +45,7 @@ An agent that notices a brainstorm growing in an ordinary session offers to cont
 
 ### 2. Specify
 
-A roadmap item is an intention, not a decision, even when it reads as settled. So before any requirement, the designer states the item's goal apart from the way its line suggests, and proposes any other way that reaches the goal better, with the trade-offs; the owner chooses. If the choice reopens what the item is for, or splits it, the designer offers to go back to Explore.
+Before any requirement, the designer states the item's goal apart from the way its line suggests, and proposes any other way that reaches the goal better, with the trade-offs; the owner chooses. If the choice reopens what the item is for, or splits it, the designer offers to go back to Explore.
 
 On a new branch, the designer starts the temporary plan `docs/plans/<change>.md` with the scope, then edits `docs/requirements/` directly and asks before guessing. Requirements hold no "how". The reviewer then checks the changed requirements in one round: contradictions with other requirements and the constitution, testability of every scenario, completeness against the scope (error paths, empty states, refused access, concurrent edits, what each role sees, what is audited), ambiguity, and "how" leaking in. It reports gaps and does not write requirements; a widening of scope goes to the roadmap's ideas or to the owner as a question.
 
