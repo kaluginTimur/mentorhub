@@ -15,7 +15,7 @@ Take the change `$change` from approved requirements to a verified branch: stage
 ## Start
 
 1. Read the plan. If it is not on the current branch, find the branch that has it (`git log --all -1 --format='%h %D' -- docs/plans/$change.md`) and offer to switch. If there is none, stop and suggest `/spec $change`.
-2. Check that the plan records the user's approval of the requirements. If not, stop and suggest `/spec $change`.
+2. Check the plan's `Requirements approved:` line. If it says `none` (or is missing), ask the user whether they approve the requirements as they stand now, naming the files from the handover. On an explicit yes, write the date and their words into that line and go on. On remarks, stop and suggest `/spec $change`. Requirements stay uncommitted until the red tests, so an edit made after the approval cannot be detected: an approval covers the files as they stand when it is given.
 3. Continue from the handover. Read only what it names. Agents from an earlier session cannot be continued: start fresh ones, briefed from the plan.
 
 ## Before every stop for the user

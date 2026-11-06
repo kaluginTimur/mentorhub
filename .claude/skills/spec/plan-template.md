@@ -2,6 +2,8 @@
 
 Branch: `feature/<change>`
 Roadmap item: <its line, or "none">
+Requirements approved: none
+<!-- Only the user's explicit approval of the requirements as they stand: replace "none" with <YYYY-MM-DD> "<their words>". -->
 
 ## Scope
 

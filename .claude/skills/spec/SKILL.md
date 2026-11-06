@@ -38,4 +38,4 @@ When the draft is complete, run the `reviewer` subagent in requirements mode wit
 2. Record the session as the change's `spec` phase, without a session id: `node .claude/scripts/agent-usage.mjs --record $change spec`. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user.
 3. Tell the user which files to read, in full and not as a diff. Then say that reading may take as long as they like: the plan holds everything needed, so they can continue here, or run `/clear` first and then `/spec $change` for remarks or `/feature $change` once approved.
 
-The requirements are approved only when the user says so. Record that in the plan.
+The requirements are approved only when the user says so explicitly. Agreement with a finding or a single point is not approval. Record it in the plan's `Requirements approved:` line, with the date and the user's words.
