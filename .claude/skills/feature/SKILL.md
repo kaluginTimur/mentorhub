@@ -22,7 +22,7 @@ Take the change `$change` from approved requirements to a verified branch: stage
 
 Every stop below means these steps, in this order:
 
-1. Write the plan: task statuses, the user's decisions in their words, the agents with their context sizes, and the handover.
+1. Write the plan: task statuses, the user's decisions in their words, the agents with their context sizes, and the handover, with its documents changed built from git as the plan template says.
 2. Record the session under the current phase (`plan`, `implementation` or `review`), without a session id: `node .claude/scripts/agent-usage.mjs --record $change <phase>`. A later record of the same phase and session replaces it. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user.
 3. Relay the report as below, and say that the user can take their time: they can answer here, or run `/clear` first and then `/feature $change` to continue from the handover at a fraction of the context.
 
@@ -40,7 +40,7 @@ Before every brief or `SendMessage`, check that the current branch is the plan's
 
 ## Relaying reports
 
-Show a short summary: what was done, where to look first, the verification result. Show decisions, deviations, the list of details and questions in full; never shorten a question.
+Show a short summary: what was done, where to look first, the verification result. Show decisions, deviations, the list of details, the documents changed from the handover and questions in full; never shorten a question.
 
 A failure an agent attributes to the environment (network, Docker, tool versions) goes to a `general-purpose` agent with the `model` parameter set to `sonnet`, to find the cause and a workaround. Until the cause is confirmed, it is an open question in the plan, not a fact.
 
