@@ -18,10 +18,11 @@ Work out the requirements of the change `$change` with the user: stage 2 of the 
 
 Go one topic at a time. Propose a concrete draft from what you have read, give your recommendation, and ask only what the user has to decide. Domain rules come from the user: never invent who may see or do what. Record what is undecided in the plan instead of guessing, and the user's decisions in their words.
 
-1. Scope and what is out of scope, into the plan. Check it against the product scope in the constitution.
-2. Who may do what, what each role sees, what is audited, error paths and empty states. Each becomes a requirement or an out-of-scope line, not a list of its own.
-3. Edit the capability files directly, as you go, so progress is not lost. A requirement that belongs to an existing capability goes there, and a change to another capability's behavior edits that capability.
-4. Size: at about 8 to 10 scenarios or more, or many requirements without any, suggest splitting the change, and let the user decide.
+1. Goal and approach, before anything else. The roadmap item is an intention, not a decision, even when its line reads as settled: state its goal (who needs what, and why) apart from the way the line suggests, and propose any other way that reaches the goal better, with its trade-offs and your recommendation. The user chooses. If the choice reopens what the item is for, or splits it into several, offer to continue in `/explore` instead.
+2. Scope and what is out of scope, into the plan. Check it against the product scope in the constitution.
+3. Who may do what, what each role sees, what is audited, error paths and empty states. Each becomes a requirement or an out-of-scope line, not a list of its own.
+4. Edit the capability files directly, as you go, so progress is not lost. A requirement that belongs to an existing capability goes there, and a change to another capability's behavior edits that capability.
+5. Size: at about 8 to 10 scenarios or more, or many requirements without any, suggest splitting the change, and let the user decide.
 
 A decision that meets the threshold in the decisions index goes through `/decision`.
 

@@ -2,6 +2,8 @@
 
 What is planned, and nothing else. An implemented item is deleted: its behavior moves to the requirements and its architectural choices to the decisions.
 
+An item is an intention, not a settled solution: it names a goal, and any way of reaching it in its line is a first guess, written before anyone worked the item out. Only the product decisions marked "(user)" below are the owner's, and they are preliminary too. When an agent sees a better way to reach an item's goal, it proposes it.
+
 ## Stages
 
 - **Pilot release:** the first production, on rented hosting, used by a few curators, without corporate infrastructure (no SSO, no corporate email). Scope and hosting are not chosen yet.
