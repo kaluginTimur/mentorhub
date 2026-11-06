@@ -117,6 +117,10 @@ The `api-lookup` subagent follows this section. Implementation agents ask it and
 - The generated client: `frontend/src/app/core/api/` (run `npm run generate:api` if it is missing).
 - The Angular CLI MCP server (`.mcp.json`) offers best practices, documentation search and examples for the installed Angular version. It starts with the default Node, so the default must satisfy `.nvmrc` (`nvm alias default 24`).
 
-## Mock mode
+## Simulated failures and the sample center
 
-Not implemented yet. A dev-server mode that serves data generated from `api/openapi.yaml`, so screens can be reviewed before the backend exists, needs a decision first.
+In development mode (`npm start`) a small select, fixed in the bottom-right corner of every screen including the unavailable message, makes API requests fail (DEV-3). Modes: `Normal`; `Slow` (each request is sent after 3 s); `Server error` (a 500 problem response with `type` `about:blank`, the request not sent); `Offline` (an error with status 0, the request not sent). While a mode other than `Normal` is on, a red indicator above the select names it. The mode lives in memory only, so a reload turns it off.
+
+- Code is in `frontend/src/app/core/dev/`: `FailureMode` (the signal), `failureInterceptor` (last in the chain, so `errorInterceptor` handles simulated failures like real ones; it alters only requests to the MentorHub API, `client-config` included, not Keycloak) and `FailureSwitch` (select and indicator).
+- It is absent from the production build by file replacement: `frontend/src/environments/dev-tools.ts` provides the switch (the root `App` renders the component held by the `DEV_TOOL` token) and the interceptor, and the `production` configuration of `frontend/angular.json` replaces it with `dev-tools.prod.ts`, which exports empty arrays. A production build contains no `failure-switch` (`grep -r failure-switch dist` finds nothing).
+- Screens are reviewed on the sample center, the dev database with the personas and the plausible data set that the backend restores on every start; see `docs/development/backend.md`.

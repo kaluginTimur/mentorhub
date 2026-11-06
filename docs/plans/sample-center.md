@@ -105,10 +105,10 @@ Frontend:
 |---|---|---|---|
 | T1 Stubs: `SampleCenter` with an empty `restore()`; the two `dev-tools` files, the file replacement and an empty `FailureSwitch` with the planned selectors absent | all, for the red tests | backend-dev, frontend-dev | done |
 | T2 Red tests; replace the tests of IDN-7.2 and IDN-7.3 | DEV-1.1 to DEV-3.3 | test-engineer | done |
-| T3 Restore on start: clean, migrate, the personas in SQL, removal of the runner and its configuration, the realm accounts | DEV-1.1, DEV-1.2, DEV-1.3, DEV-2.1, DEV-2.2 | backend-dev | pending |
+| T3 Restore on start: clean, migrate, the personas in SQL, removal of the runner and its configuration, the realm accounts | DEV-1.1, DEV-1.2, DEV-1.3, DEV-2.1, DEV-2.2 | backend-dev | done |
 | T4 The sample data set (checkpoint: the user looks at the data on the screens) | DEV-2 | backend-dev | pending |
-| T5 Simulated failures: service, interceptor, switch and indicator, production exclusion | DEV-3.1, DEV-3.2, DEV-3.3 | frontend-dev | pending |
-| T6 Documents: `backend.md` (run warning, Sample center section with the rule that a feature adds its data and shows every state a screen shows differently, Configuration and profiles), `README.md` (personas table, the invitation link, realm recreation, no "stays until reset"), `frontend.md` (Mock mode replaced) | | backend-dev (backend, README), frontend-dev (frontend) | pending |
+| T5 Simulated failures: service, interceptor, switch and indicator, production exclusion | DEV-3.1, DEV-3.2, DEV-3.3 | frontend-dev | done |
+| T6 Documents: `backend.md` (run warning, Sample center section with the rule that a feature adds its data and shows every state a screen shows differently, Configuration and profiles), `README.md` (personas table, the invitation link, realm recreation, no "stays until reset"), `frontend.md` (Mock mode replaced) | | backend-dev (backend, README), frontend-dev (frontend) | in progress: frontend.md and the parts T3 made wrong done; Sample center section of backend.md and the invitation link in README open |
 
 Order: T1, T2, then T3 and T5 in parallel, T4 after T3, T6 with each area.
 
@@ -116,7 +116,7 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 
 ## Red tests
 
-Commit:
+Commit: 764ea7e (2026-11-07, the user agreed: "да, коммить").
 
 ## Decisions
 
@@ -146,13 +146,14 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 - 2026-11-07: No development mode exception in AUD-3 and decision 0005, and the restore is not named in AUD-7: replacing the database is an infrastructure matter, not an exception to the audit rules; DEV-2 alone says the audit log is replaced. This replaces option (a) of 2026-11-06 ("меня смущает то, зачем мы пишем какие-то исключения про дев-режим в требования и решения по аудиту, если перенакатка базы - это инфраструктурный момент, а не исключение бизнес-логики"; "да, вноси").
 - 2026-11-07: Sign-in stays the ordinary Keycloak form; a persona picker without the form is later, if needed ("да, оставляем форму Keycloak").
 - 2026-11-07: Plan gate passed: the runner is removed and the personas move into the sample SQL, T4 is a checkpoint, the pending invitation with a fixed link stays ("раннер удаляем, T4 чекпоинт, ссылку оставляем").
+- 2026-11-07: The statement in `docs/development/backend.md` that a `dev` run freezes migrations, and the hook that relies on it, stay as they are in this change; rewording them and relaxing the hook is a possible later change ("(a)"). T3 and T5 approved and committed ("коммить T3 и T5").
 
 ## Handover
 
-- Waiting for: the user's answer to the red commit offer (requirements, plan, T1 stubs, T2 tests in one commit).
-- State: T1 and T2 done. `trace` passes (207 of 207). Red on assertions: DEV-1.2, DEV-1.3, DEV-2.1, DEV-3.3 (three modes), `DevelopmentRealmConsistencyTests.theRealmHasAnAccountForEveryPersonaAndNoOther`, `SampleCenterTests.everyPersonaUserHasTheEmailOfItsRealmAccount`. Already green, as the behavior holds: DEV-1.1, DEV-2.2, DEV-3.1, DEV-3.2. The runner's tests and `DevelopmentUsersPropertiesTests` are deleted; no test references the runner. Nothing committed.
+- Waiting for: T4 (the sample data set, checkpoint) and the rest of T6 from `backend-dev`.
+- State: T1, T2, T3, T5 done and committed. Backend and frontend verifications pass (developers' reports; no verifier run yet). Open in T6: the Sample center section of `docs/development/backend.md` with the vertical slice rule, and the invitation link in README.
 - Open questions: none.
-- Next: commit if the user agrees and write it into Red tests; then brief `backend-dev` for T3 and `frontend-dev` for T5 in parallel (fresh agents in a new session).
+- Next: brief `backend-dev` for T4 and the rest of T6 (the current agent is at 116k; a fresh one if it passes about 150k); stop at T4 for the user to look at the data on the screens.
 
 ## Agents
 
@@ -161,6 +162,6 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 | Agent | Model | Id | Phase | Context |
 |---|---|---|---|---|
 | reviewer | opus | a0eb979d9e051e7df | spec | 40k |
-| backend-dev | definition | a417c47cb7f272e28 | T1 | 41k |
-| frontend-dev | definition | ac593873febb30aac | T1 | 53k |
+| backend-dev | definition | a417c47cb7f272e28 | T1, T3 | 116k |
+| frontend-dev | definition | ac593873febb30aac | T1, lint fix, T5 | 68k |
 | test-engineer | definition | abf2a09217a5c23c2 | T2 | 136k |

@@ -348,19 +348,6 @@ public class UserRepository {
                 .update();
     }
 
-    /** Removes every stored role assignment of the user except {@code kept}, including roles the code does not know. */
-    public int removeRolesOtherThan(UUID userId, Collection<Role> kept) {
-        if (kept.isEmpty()) {
-            return jdbc.sql("delete from user_roles where user_id = :userId")
-                    .param("userId", userId)
-                    .update();
-        }
-        return jdbc.sql("delete from user_roles where user_id = :userId and role not in (:kept)")
-                .param("userId", userId)
-                .param("kept", kept.stream().map(Role::name).toList())
-                .update();
-    }
-
     /** Removes exactly the given roles; other stored roles, including roles the code does not know, stay. */
     public int removeRoles(UUID userId, Collection<Role> roles) {
         if (roles.isEmpty()) {

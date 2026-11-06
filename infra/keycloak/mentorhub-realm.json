@@ -168,6 +168,74 @@
           "temporary": false
         }
       ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "username": "coordinator@mentorhub.local",
+      "email": "coordinator@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Cora",
+      "lastName": "Coordinator",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "username": "observer@mentorhub.local",
+      "email": "observer@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Otto",
+      "lastName": "Observer",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "username": "admin.mentor@mentorhub.local",
+      "email": "admin.mentor@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Alma",
+      "lastName": "Admin-Mentor",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-00000000000a",
+      "username": "mentor.coordinator@mentorhub.local",
+      "email": "mentor.coordinator@mentorhub.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Milo",
+      "lastName": "Mentor-Coordinator",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mentorhub",
+          "temporary": false
+        }
+      ]
     }
   ]
 }
