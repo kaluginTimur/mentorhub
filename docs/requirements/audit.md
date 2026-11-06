@@ -114,7 +114,7 @@ The system SHALL offer no operation that reads the entries of several subjects a
 
 ### AUD-7 The catalog of audited actions
 
-The system SHALL write exactly the entries of the catalog below, at the moment, for the actor and with the details named. A new audited action SHALL be added to this catalog, and to the contract of any view that shows it, in the same change. The roles in an entry are the roles the running version knows. The development users created at startup and the outcome of sending an invitation email are not audited.
+The system SHALL write exactly the entries of the catalog below, at the moment, for the actor and with the details named. A new audited action SHALL be added to this catalog, and to the contract of any view that shows it, in the same change. The roles in an entry are the roles the running version knows. Creating and restoring the development users at startup (DEV-1) and the outcome of sending an invitation email are not audited.
 
 | Action | Subject | Written when | Actor | Details |
 |---|---|---|---|---|

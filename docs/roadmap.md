@@ -17,7 +17,7 @@ An item is an intention, not a settled solution: it names a goal, and any way of
 
 In this order:
 
-1. **Mock mode:** run the frontend without a backend or sign-in, to review screens per role. Needs a decision first.
+1. **Sample center:** a fictional training center in the local run: personas for every role and access state, plausible data restored on every start, and simulated API failures, to review screens per role.
 2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
 
 ## Later
@@ -35,6 +35,7 @@ No commitment and no order.
 - Corporate SSO auto-provisioning, with role mapping through Keycloak identity provider mappers. An exception to invitation-only registration; needs its own decision.
 - Roles as data, editable in the UI (deferred in decision 0004).
 - A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0005).
+- End-to-end tests of scenarios on the real stack, with their own data rather than the sample center's.
 
 ## Product decisions
 
@@ -43,10 +44,6 @@ Not implemented yet, and preliminary: each is discussed again when its feature i
 ### Pilot
 
 - Features do not depend on SMTP or corporate SSO being present; email is optional per deployment (user).
-
-### Mock mode
-
-- Leaning toward typed fixtures on the generated models, with role switching (user).
 
 ### Tracking core: access lifecycle
 

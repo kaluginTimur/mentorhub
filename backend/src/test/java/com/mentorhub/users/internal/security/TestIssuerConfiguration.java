@@ -6,8 +6,7 @@ import org.springframework.test.context.DynamicPropertyRegistrar;
 
 /**
  * Trusts {@link TestIssuer}, {@link TestIssuer#UNREACHABLE_ISSUER} and {@link TestIssuer#HANGING_ISSUER} (with 1 s
- * issuer timeouts), sets {@link TestIssuer#BOOTSTRAP_EMAIL} as the administrator bootstrap address and, in
- * the dev profile, links the development users to identities of {@link TestIssuer}.
+ * issuer timeouts) and sets {@link TestIssuer#BOOTSTRAP_EMAIL} as the administrator bootstrap address.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestIssuerConfiguration {
@@ -33,8 +32,6 @@ public class TestIssuerConfiguration {
             registry.add("mentorhub.security.issuer-connect-timeout", () -> "1s");
             registry.add("mentorhub.security.issuer-read-timeout", () -> "1s");
             registry.add("mentorhub.security.bootstrap-admin-email", () -> TestIssuer.BOOTSTRAP_EMAIL);
-            // In dev-profile tests, the development users are linked to identities of this issuer.
-            registry.add("mentorhub.development-users.issuer-uri", () -> TestIssuer.ISSUER);
         };
     }
 }

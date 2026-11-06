@@ -15,6 +15,7 @@ import { ClientConfigService } from './core/client-config.service';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/auth/error.interceptor';
 import { routes } from './app.routes';
+import { devToolsInterceptors, devToolsProviders } from '../environments/dev-tools';
 
 export function oidcConfigLoader(
   http: HttpClient,
@@ -53,9 +54,13 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([authInterceptor, errorInterceptor, ...devToolsInterceptors]),
+    ),
     // contract paths already start with /api, so the base URL is empty
     provideApiConfiguration(''),
+    ...devToolsProviders,
     provideAuth({
       loader: {
         provide: StsConfigLoader,

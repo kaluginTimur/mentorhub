@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Who may enter MentorHub and how they are recognized. MentorHub stores no passwords and does not sign people in itself: an external identity provider does, and MentorHub accepts only the tokens of the providers it trusts (decision 0003). A signed-in identity is let in only when it is linked to an active user, and it is linked only through an invitation or the administrator bootstrap. This capability also covers the current user's own data, the screens a person sees according to their access, and signing in and out in the client.
+Who may enter MentorHub and how they are recognized. MentorHub stores no passwords and does not sign people in itself: an external identity provider does, and MentorHub accepts only the tokens of the providers it trusts (decision 0003). A signed-in identity is let in only when it is linked to an active user, and it is linked only through an invitation or the administrator bootstrap, or, in development mode only, as a development user (DEV-1). This capability also covers the current user's own data, the screens a person sees according to their access, and signing in and out in the client.
 
-What an active user may do is described by the authorization capability (PERM-3). The shape of errors, the client configuration and the unavailable screen are described by the platform capability (PLT-1, PLT-4, PLT-8). The API contract holds the access statuses, the fields of the current user and the shape of the refusals.
+What an active user may do is described by the authorization capability (PERM-3). The shape of errors, the client configuration and the unavailable screen are described by the platform capability (PLT-1, PLT-4, PLT-8). Development users are described by the development mode capability (DEV-1). The API contract holds the access statuses, the fields of the current user and the shape of the refusals.
 
 ## Requirements
 
@@ -71,7 +71,7 @@ The system SHALL let a request through only when the identity in the token is li
 
 ### IDN-4 Identities are linked only through an invitation or the bootstrap
 
-The system SHALL link an identity (issuer and subject) to a user only by accepting an invitation or by the administrator bootstrap (IDN-6), whatever the email of the identity. The profile is copied from the token when a user is created and is then owned by MentorHub.
+The system SHALL link an identity (issuer and subject) to a user only by accepting an invitation or by the administrator bootstrap (IDN-6), whatever the email of the identity, or, in development mode only, as a development user (DEV-1). The profile is copied from the token when a user is created and is then owned by MentorHub.
 
 #### IDN-4.1 An email that matches a user is not enough
 
@@ -176,22 +176,6 @@ The system SHALL let the person who controls the configured bootstrap email beco
 - WHEN the requests are served
 - THEN all of them succeed
 - AND exactly one user, one link of the identity and one administrator role exist
-
-### IDN-7 Development users
-
-The system SHALL create development users that match accounts in the local identity provider only in development mode (decision 0003), and on every start there SHALL bring each back to its configured status and exactly its configured roles.
-
-#### IDN-7.2 Development users exist only in development mode
-
-- GIVEN the application starts without development mode
-- WHEN it has started
-- THEN no development user is created
-
-#### IDN-7.3 A restart restores the configured access
-
-- GIVEN a development user whose status or roles were changed since the last start
-- WHEN the application starts in development mode
-- THEN the user has the configured status and exactly the configured roles
 
 ### IDN-8 Rules for emails at the identity provider
 
