@@ -25,15 +25,13 @@ Components and templates:
 - Standalone components; do not set `standalone: true` (default since v20) or `changeDetection: ChangeDetectionStrategy.OnPush` (default since v22).
 - Inline templates for small components; external template and style paths relative to the component file.
 - `input()`, `output()`, `model()` for two-way binding; `computed()` for derived state; `linkedSignal()` for state derived from several sources that must stay in sync.
-- No `@HostBinding` / `@HostListener`: use the `host` object of the decorator.
-- Native control flow (`@if`, `@for`, `@switch`); `class` and `style` bindings instead of `ngClass` / `ngStyle`; import only the directives and pipes the template uses, never `CommonModule`.
+- Import only the directives and pipes the template uses, never `CommonModule`.
 - Use the async pipe for observables; do not assume globals such as `new Date()` are available in templates.
 - `NgOptimizedImage` for static images (not for inline base64).
 - Forms: Signal Forms (`@angular/forms/signals`) for new forms; otherwise reactive forms.
 
 State and services:
-- Signals for local state; `update` / `set`, never `mutate`.
-- Prefer the `@Service` decorator for new singletons (v22+), otherwise `providedIn: 'root'`; `inject()` instead of constructor injection.
+- Signals for local state, changed with `update` and `set`.
 - Lazy loading for feature routes.
 
 Accessibility:

@@ -32,11 +32,16 @@ module.exports = defineConfig([
           style: 'kebab-case',
         },
       ],
+      '@angular-eslint/prefer-host-metadata-property': 'error',
+      '@angular-eslint/prefer-service-decorator': 'error',
     },
   },
   {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
-    rules: {},
+    rules: {
+      '@angular-eslint/template/prefer-class-binding': 'error',
+      '@angular-eslint/template/prefer-style-binding': 'error',
+    },
   },
 ]);
