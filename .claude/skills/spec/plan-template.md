@@ -48,7 +48,7 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 
 - Waiting for: <what the user is doing>
 - To read: <files, or the diff and its base>
-- Documents changed: <built from git at every stop, never from memory: `git status --short` and `git diff --name-status $(git merge-base HEAD main)`. Every added or changed file in `docs/` (except this plan), `api/openapi.yaml`, `AGENTS.md` and the migrations, one line each: added or changed, and what changed in it. Mark "new since the last stop" each file the previous handover did not list, or that changed since.>
+- Documents changed: <built from git at every stop, never from memory: `git status --short` and `git diff --name-status $(git merge-base HEAD main)`. Every added or changed file in `docs/` (except this plan), `api/openapi.yaml`, `AGENTS.md` and the migrations, one line each: added or changed, and what changed in it. Mark "new since the last stop" each file the previous handover did not list, or that changed since. Under a guide, each passage added or widened, with its answers to the four questions of the **Guides** section of `docs/README.md`.>
 - State: <what is done, and the verification result>
 - Open questions: <none, or each with your recommendation>
 - On approval: <the next command and step>

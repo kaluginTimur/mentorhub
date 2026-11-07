@@ -29,3 +29,9 @@ A guide is read in full by everyone who works in its area, agents on every run, 
 - A guide gives the rule and where to look, not a copy of what the code, the contract or a configuration file lists: problem types, constructors, settings and their defaults, the cases a handler covers. Such a list goes stale with the next change, and the source is one search away.
 - Name a file or a class only where the rule needs it. Each named file makes `scripts/check-docs.mjs` remind about the guide whenever that file changes.
 - A plan does not order a guide section about its change; its tasks name only the rule an area gains, if any.
+- **A passage added to a guide, or widened, needs the project owner's agreement,** and comes to the owner with four answers:
+  1. Which later change, unrelated to this one, would run into it?
+  2. What mistake does it prevent?
+  3. Where else could it live (the code or a comment, the contract, a requirement, a decision, `README.md`), and why is that not enough?
+  4. Did someone actually stumble on it in this change? Without that, the passage is a guess that someone will.
+- Removing, shortening and mechanical edits (a renamed file, a changed command) need no answers: a guide must stay cheap to clean.

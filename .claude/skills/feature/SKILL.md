@@ -87,5 +87,5 @@ Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer
 
 1. Run `verifier` with scope `all`.
 2. Report what was built per requirement, the verification table, `trace`, open items and a proposed commit message. **Stop** for the user to accept.
-3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item and the plan. Show the user these changes.
+3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item and the plan. Show the user these changes, and each passage added to a guide or widened with the four answers the **Guides** section of `docs/README.md` asks for; remove a passage the user does not agree with.
 4. Commit only if the user asks. Then suggest `/pr`, and `/usage-review` once the pull request is open.
