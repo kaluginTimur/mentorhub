@@ -76,7 +76,7 @@ node scripts/requirements.mjs trace
 `scripts/check-docs.mjs` fails (exit code 1) on broken references:
 - a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` or `.claude/` that does not exist and is not gitignored;
 - an `@` import in an `AGENTS.md` or `CLAUDE.md` that does not resolve;
-- a section that an agent or skill refers to but no guide has;
+- a section that an agent or skill refers to but no guide has, and a section any document names with its file ("the **Guides** section of `docs/README.md`") that the file lacks;
 - a Verification or Checking an API command that matches no allow rule;
 - a repository path in `.claude/hooks/` that no longer exists.
 

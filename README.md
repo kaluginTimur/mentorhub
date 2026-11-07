@@ -103,11 +103,7 @@ Do not use `docker compose down -v` for this: it also deletes the `postgres-data
 | `backend/` | Spring Boot 4 + Spring Modulith |
 | `frontend/` | Angular 22 + Angular Material |
 | `infra/` | Docker Compose and the Keycloak realm for the local environment |
-| `docs/constitution.md` | The rules every change must keep |
-| `docs/roadmap.md` | What is planned |
-| `docs/architecture/decisions/` | Architecture decisions |
-| `docs/requirements/` | Living requirements: what the system does |
-| `docs/development/` | Development guides (backend, frontend, documentation): conventions, commands, verification |
+| `docs/` | Documentation; `docs/README.md` says which document holds what |
 
 ## Checks (same as CI)
 

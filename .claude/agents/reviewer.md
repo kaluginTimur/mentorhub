@@ -51,7 +51,7 @@ In this order of priority:
 7. **Frontend.** The guide's conventions, styling only through theme tokens, accessibility, screens matching the requirements and the UI guidelines.
 8. **Correctness.** Bugs, error handling, transactions, N+1 queries, concurrency.
 9. **Tests.** Each new or changed scenario has a test citing its id, at the level the scenario describes, and it would fail without the change. A test with an id changed after the plan's red commit is a blocker unless the plan records the user's approval. No rule is tested twice on different levels.
-10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line.
+10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line. Report too, as a minor, a guide passage the change added that fails the test in the **Guides** section of `docs/README.md`: it describes how this change is built rather than a rule for later changes in the area.
 11. **Hygiene.** Comments only for non-obvious points; all text in English.
 
 ## Requirements mode
