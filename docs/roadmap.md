@@ -67,6 +67,16 @@ Not implemented yet, and preliminary: each is discussed again when its feature i
 - A note has an author, a subject and a visibility of PRIVATE, MENTORS or STUDENT. The exact audience of each level is not defined yet.
 - Visibility holds on every read path: single reads, lists, search, counters, exports, audit views, events and DTO mappings. Neither a note's body nor its existence may leak.
 
+### Tracking core: checks of the workflow
+
+The first real feature through the spec-anchored process; what it should show about the process itself:
+
+- Context budget: the hook that stops an agent with PARTIAL has run only on short test tasks. Watch whether an agent stops, whether its handover in the plan's Partial work is complete, and whether the fresh agent goes on without asking what was done. The budget is 250k, and a fresh agent starts between tasks above 150k (user).
+- Requirements: when the user often rejects items of the list of details, the requirements are too thin; a kind of scenario that catches nothing and gets in the way of changes can go (user).
+- The second test pass is removed if it finds no real bug on the tracking core and the next feature (user).
+- `test-engineer` runs on Opus, then its usage is checked (user). It keeps the 5-minute cache, unless the usage records show it rebuilding.
+- The threshold of the cheap path (more than one or two requirements, the contract or a migration) is a draft until small changes happen.
+
 ### Assignments
 
 - TaskTemplate (versioned bank entry: type, settings, tags, difficulty, author) → Assignment (pins a template version, assignee, deadline) → Submission (every attempt is kept) → Review (grade, feedback).
