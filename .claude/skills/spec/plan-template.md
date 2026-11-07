@@ -28,6 +28,10 @@ Requirements approved: none
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
+## Partial work
+
+<!-- Written by an agent stopped by the context budget, under a heading with its task; a fresh agent continues from it. Deleted when the task is done. -->
+
 ## Red tests
 
 Commit: <the commit holding the requirements, the contract, this plan and the red tests>

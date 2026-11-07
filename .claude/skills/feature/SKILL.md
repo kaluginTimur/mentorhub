@@ -30,10 +30,12 @@ Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 
 ## Agents and briefs
 
-Brief every agent with the plan's path and one task. It reads the rest itself. The size check below runs only between briefs, so two tasks in one brief let an agent grow past it (sample center: T4 and T6 in one brief, 194k).
+Brief every agent with the plan's path and one task. It reads the rest itself.
 
 - **Within a task** (feedback, rework): continue the same agent with `SendMessage`.
-- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one.
+- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one, since the context budget would soon stop it in the middle of the next task.
+- **Context budget:** past about 250k, a hook in `backend-dev`, `frontend-dev` and `test-engineer` tells the agent to finish its step and stop with a PARTIAL report and a handover. The agent writes the handover into the plan's Partial work under its task itself, so that it is not retold. On PARTIAL, check that it is there, do not rewrite it, keep the task `in progress`, and brief a fresh agent of the same type with the same task, saying that it continues from the handover. Never continue the stopped agent. When the task is done, delete its Partial work.
+- **An agent that ends without its report** (an error, a stop, a session that ended, a report without a status): if it can still be continued (this session; in a cloud session, its transcript as below), continue it once with `SendMessage`: end with the report, and if the task is not done, with status PARTIAL and the handover its Context budget section asks for. Otherwise brief a fresh agent of the same type with the same task, saying that there is no handover: it starts from `git status`, `git diff` and the plan, and runs the verification of its area before going on. Write into the plan's Partial work, under the task, that the agent stopped without a handover, and when.
 - **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If not, start a fresh agent of the same type.
 
 Before every brief or `SendMessage`, check that the current branch is the plan's. Never switch branches while an agent is running: background agents write to the same working tree.
