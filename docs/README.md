@@ -26,5 +26,6 @@ A guide is read in full by everyone who works in its area, agents on every run, 
 - **The test:** would someone working on an unrelated change in this area need it? If only someone changing that one component needs it, it is a comment in that component's code.
 - A feature's behavior is in its requirements, and how it is built is in its code. A guide retells neither: no section about one feature, its classes, its algorithm or how its tests compare.
 - What a feature adds to a guide is a rule for later changes, in a few lines. Example: how a module publishes asynchronous work and what its listener must guarantee, not how invitation emails avoid being sent twice.
+- A guide gives the rule and where to look, not a copy of what the code, the contract or a configuration file lists: problem types, constructors, settings and their defaults, the cases a handler covers. Such a list goes stale with the next change, and the source is one search away.
 - Name a file or a class only where the rule needs it. Each named file makes `scripts/check-docs.mjs` remind about the guide whenever that file changes.
 - A plan does not order a guide section about its change; its tasks name only the rule an area gains, if any.

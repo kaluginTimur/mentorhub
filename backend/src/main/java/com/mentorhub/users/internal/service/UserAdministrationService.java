@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * User administration (spec user-administration): the users list, a user, its history, and the audited changes with
+ * User administration (USR): the users list, a user, its history, and the audited changes with
  * the lockout rules. Administrators see every user, so the only resource-level rule is that an unknown id is
  * {@link NotFoundException}.
  *

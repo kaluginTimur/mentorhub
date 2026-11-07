@@ -5,7 +5,7 @@ Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angul
 ## Structure
 
 - `frontend/src/app/core/`: infrastructure (API client, auth, interceptors).
-- `frontend/src/app/shared/`: reusable components (`loading`, `unavailable`, `confirm-dialog`, `profile-form`).
+- `frontend/src/app/shared/`: reusable components; look there before writing a new one.
 - `frontend/src/app/features/<feature>/`: one lazy-loaded route tree per feature.
 
 ## API client (decision 0002)
@@ -14,7 +14,6 @@ Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angul
 - Calls: `inject(Api).invoke(fn, params)` with functions from `frontend/src/app/core/api/fn/**`. Load data in components with `resource()`, as in `frontend/src/app/features/shell/home.ts`. Guard `value()` with `hasValue()` (or check `error()` first): in the error state `value()` throws.
 - Nullable properties (`type: [string, 'null']`) are generated as required `(string | null)`; an optional property that may be absent (for example `Me.user`) is generated as `user?: MeUser`. Handle absent and `null` separately.
 - Enums are generated as string unions (`Role`, `Permission`), with `*-array.ts` helpers listing the values.
-- `frontend/src/app/app.config.ts` sets `provideApiConfiguration('')` (see [Pitfalls](#pitfalls)). In dev, `/api` is proxied to `:8080` (`frontend/proxy.conf.json`).
 
 ## Angular conventions
 
@@ -24,17 +23,17 @@ TypeScript:
 
 Components and templates:
 - Standalone components; do not set `standalone: true` (default since v20) or `changeDetection: ChangeDetectionStrategy.OnPush` (default since v22).
-- Small, single-responsibility components; inline templates for small ones; external template and style paths relative to the component file.
+- Inline templates for small components; external template and style paths relative to the component file.
 - `input()`, `output()`, `model()` for two-way binding; `computed()` for derived state; `linkedSignal()` for state derived from several sources that must stay in sync.
 - No `@HostBinding` / `@HostListener`: use the `host` object of the decorator.
 - Native control flow (`@if`, `@for`, `@switch`); `class` and `style` bindings instead of `ngClass` / `ngStyle`; import only the directives and pipes the template uses, never `CommonModule`.
-- Keep templates simple; use the async pipe for observables; do not assume globals such as `new Date()` are available in templates.
+- Use the async pipe for observables; do not assume globals such as `new Date()` are available in templates.
 - `NgOptimizedImage` for static images (not for inline base64).
 - Forms: Signal Forms (`@angular/forms/signals`) for new forms; otherwise reactive forms.
 
 State and services:
-- Signals for local state; pure, predictable transformations; `update` / `set`, never `mutate`.
-- Single-responsibility services; prefer the `@Service` decorator for new singletons (v22+), otherwise `providedIn: 'root'`; `inject()` instead of constructor injection.
+- Signals for local state; `update` / `set`, never `mutate`.
+- Prefer the `@Service` decorator for new singletons (v22+), otherwise `providedIn: 'root'`; `inject()` instead of constructor injection.
 - Lazy loading for feature routes.
 
 Accessibility:
@@ -42,20 +41,14 @@ Accessibility:
 
 ## Authentication
 
-Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client` 22.x (works zoneless: it uses rxjs and signals and needs no `zone.js`). Code is in `frontend/src/app/core/auth/`.
+Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Code is in `frontend/src/app/core/auth/`.
 
-- The OIDC settings come from `GET /api/v1/system/client-config` at runtime (`oidcConfigLoader` in `frontend/src/app/app.config.ts`); redirect and post-logout URIs are the application origin. Refresh tokens renew the session.
-- The same load fills `ClientConfigService` (`frontend/src/app/core/client-config.service.ts`) through the `onConfig` callback of `oidcConfigLoader`; UI feature flags come from there (`invitationEmails`, false until the configuration has loaded). Tests replace the service with a stub such as `{ invitationEmails: () => true }`.
-- `AuthService` completes the sign-in callback, starts sign-in (remembering the route in `sessionStorage`), signs out at Keycloak and owns the `startupError` signal that makes `App` show the full-page error.
-- A sign-in callback that produces no session (the flow was completed in another tab, for example after opening an email-verification or password-reset link, so this tab has no stored state; or Keycloak reports `temporarily_unavailable` / `authentication_expired`) restarts sign-in once, which succeeds silently through the Keycloak session. A `mentorhub.callback-retry` marker in `sessionStorage` prevents loops (cleared after a successful sign-in); a second failure, or a deliberate error such as `access_denied`, shows the startup error. The return URL and invitation token stay in `sessionStorage` across the retry.
-- `accessGuard` (`canActivateChild` on the root route tree) signs the visitor in, reloads `GET /api/v1/me` whenever the router activates a route (the router does not re-run it for reused routes with unchanged parameters, for example query-only navigations; that is intended) and routes by status. Child routes declare the status they are for in `data.access` (`full`, `pending`, `ended`, `invitation-only`). The expected status is taken from the nearest ancestor route that declares `data.access`, and the guard runs once per navigation. A failed load shows the unavailable state through a redirect to `/unavailable` with `skipLocationChange`, so the address bar keeps the requested URL; "Retry" repeats the load. A browser reload repeats it only when the failure happened on the initial load (or back/forward); after an in-app navigation the address bar still shows the previous URL, and after a sign-in callback the library has rewritten the address to `/`, so a reload goes there, not to the return route. Retry always uses the remembered target. Do the same for any new failed-load redirect.
-- Invitations: `AuthService.signIn(returnUrl, {loginHint, register})` passes `login_hint` and `prompt=create` to Keycloak through `customParams` (the invitation landing page uses it to open registration with the email prefilled), and `ensureSignedIn` can return the `invitation` sign-in result. The public routes `invite/:token` and `invite` sit outside `accessGuard`. `InvitationSession` keeps the token from the link in `sessionStorage`; `accessGuard` sends a sign-in callback that has a stored token to `/invite`, and sign-out keeps the token. The landing page replaces the address with `/invite`, so the token leaves the browser history, and the token never goes into a redirect URI or the OIDC `state`. The page shows the signed-in email from the ID token claims, which are not refreshed on token renewal.
-- Several tabs: `sessionStorage` is per tab, so only the tab that holds the invitation token accepts it. After an accept it tells the other tabs through `AccessChannel` (a `BroadcastChannel` named `mentorhub.access`; a no-op without `BroadcastChannel`). The access screens (`invitation-only`, `pending`, `ended`) then re-run routing by navigating to `/` through `accessGuard`, and do the same when the tab becomes visible again. No polling.
-- `authInterceptor` adds the bearer token only to non-public `/api/` requests of the same origin (public paths are listed in `frontend/src/app/core/auth/api-urls.ts`, taken from the generated `*.PATH` constants; add new public endpoints there).
-- `errorInterceptor`: 401 starts sign-in again once (a 401 after a fresh sign-in shows the startup error); 403 `not-invited` / `access-ended` reload the caller and open the access screen; 403 `forbidden` shows the snackbar "You don't have permission to do this.". Handle other errors in the component that made the call.
-- Tokens are renewed 30 s before they expire (`renewTimeBeforeTokenExpiresInSeconds`). The client configuration is cached after the first load, so sign-out also works while the API is down (the local session is ended even if the Keycloak logout fails).
-- Sign-out ends the Keycloak session; if the library has no end-session URL it ends the local session and returns to `/`. `authorize()` reports discovery failures nowhere, so a 15 s watchdog turns a missing redirect into the startup error.
-- The current user is `CurrentUserService` (`me`, `user`, `name`). Build names with `displayName()` from `frontend/src/app/core/auth/user-name.ts`.
+- The client configuration (`GET /api/v1/system/client-config`) is loaded at startup and gives the OIDC settings and the UI feature flags. The flags come from `ClientConfigService` (`frontend/src/app/core/client-config.service.ts`) and are false until the configuration has loaded. Tests replace the service with a stub such as `{ invitationEmails: () => true }`.
+- `accessGuard` (`canActivateChild` on the root route tree) signs the visitor in, reloads `GET /api/v1/me` on every navigation and routes by status. Child routes declare the status they are for in `data.access`; the nearest ancestor route that declares it decides. A failed load redirects to `/unavailable` with `skipLocationChange`, so the address bar keeps the requested URL, and "Retry" repeats the load for the remembered target. Do the same for any new failed-load redirect.
+- Public routes, such as the invitation landing page, sit outside `accessGuard`. A secret token from a link is kept only in `sessionStorage` across sign-in (as `InvitationSession` does), never in a URL, a redirect URI or the OIDC `state`.
+- `authInterceptor` adds the bearer token to same-origin `/api/` requests except the public ones: add a new public endpoint to `frontend/src/app/core/auth/api-urls.ts`.
+- `errorInterceptor`: 401 starts sign-in again once (a 401 after a fresh sign-in shows the startup error); 403 `not-invited` / `access-ended` reload the caller and open the access screen; 403 `forbidden` shows a snackbar. Handle other errors in the component that made the call.
+- The current user is `CurrentUserService`. Build names with `displayName()` from `frontend/src/app/core/auth/user-name.ts`.
 - The local Keycloak client comes from `infra/keycloak/mentorhub-realm.json`. The frontend relies on it being a public client with PKCE S256, with `http://localhost:4200/*` as redirect and post-logout URI.
 
 ## Permissions and list state
@@ -63,14 +56,12 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client` 22.
 - The check is `CurrentUserService.hasPermission(permission)` (typed with the generated `Permission`); use it in components instead of reading `permissions` directly.
 - A route tree that needs a permission declares `canActivateChild: [requirePermission('USERS_READ')]` (`frontend/src/app/core/auth/permission.guard.ts`); users without it are redirected to `/`. It uses `canActivateChild` so it runs again between sibling child routes. The API is still the authority: a 403 `forbidden` from a page's load sends the user to `/` (the error interceptor shows the snackbar).
 - List state (search, filters, page) lives in the URL query and the page reads it from `ActivatedRoute.queryParamMap`, so reload and back restore it (see `frontend/src/app/features/users/users-list.ts`). Write the user's text untrimmed to the URL and trim only when calling the API. Detail pages link back with the list's last query (`UsersListState`).
-- Material and CDK code reached by a static import in `app.config.ts`, interceptors or guards lands in the initial bundle together with everything lazy routes use from it. Load rarely used pieces with `import()` (for example the snack bar in `error.interceptor.ts`) and watch the initial-size budget in the build output.
 
 ## Styling
 
 - Angular Material M3; the theme is in `frontend/src/styles.scss`.
 - Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...). No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change. A project hook flags violations.
 - Screens follow `docs/ui/guidelines.md`.
-- UI text is in English.
 
 ## Tests
 
@@ -80,6 +71,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client` 22.
 ## Pitfalls
 
 - `provideApiConfiguration('')`, never `'/'`: contract paths already start with `/api` and the generated client joins `rootUrl` and the path, so `'/'` produces `//api/...`. A project hook flags it.
+- Material and CDK code reached by a static import in `app.config.ts`, interceptors or guards lands in the initial bundle together with everything lazy routes use from it. Load rarely used pieces with `import()` (for example the snack bar in `error.interceptor.ts`) and watch the initial-size budget in the build output.
 - Angular requires Node ^24.15. An older default Node fails with `EBADENGINE`, including the Angular CLI MCP server.
 - Angular conventions changed recently (standalone and `OnPush` by default, signal APIs, native control flow); older examples use the previous style. Follow [Angular conventions](#angular-conventions).
 
