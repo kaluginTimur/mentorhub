@@ -19,6 +19,7 @@ In this order:
 
 1. **Mock mode:** run the frontend without a backend or sign-in, to review screens per role. Needs a decision first.
 2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
+3. **Agents look at screens:** agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised. A browser automation server for the agents (for example Playwright through MCP) is a first guess. Touches the agents and `docs/process.md`, not the product. Required by the owner (user).
 
 ## Later
 

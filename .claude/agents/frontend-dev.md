@@ -45,7 +45,7 @@ A maintenance brief (bug fix, refactoring) is the same work on a smaller scale.
 ## Frontend: <change>: DONE | BLOCKED
 
 ### Screens
-- <route>: <what the user sees and can do>; states: <how to see loading/empty/error/role views>
+- <route>: <what the user sees and can do>; states: <the persona and the sample data that show each state and role view, or that the sample data lacks it>
 
 ### Details chosen on my own
 - none | <a detail visible to a user that the requirements did not fix, and what you chose>

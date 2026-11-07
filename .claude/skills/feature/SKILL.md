@@ -30,7 +30,7 @@ Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 
 ## Agents and briefs
 
-Brief every agent with the plan's path and the task to do. It reads the rest itself.
+Brief every agent with the plan's path and one task. It reads the rest itself. The size check below runs only between briefs, so two tasks in one brief let an agent grow past it (sample center: T4 and T6 in one brief, 194k).
 
 - **Within a task** (feedback, rework): continue the same agent with `SendMessage`.
 - **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one.
@@ -46,7 +46,7 @@ A failure an agent attributes to the environment (network, Docker, tool versions
 
 ## Plan
 
-Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in the design only what the agents would otherwise guess. Tasks follow the feature, not a fixed pipeline, and each names the scenarios it serves. Propose a checkpoint on a hard part. Then brief `backend-dev` for the contract and any migration.
+Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in the design only what the agents would otherwise guess. Tasks follow the feature, not a fixed pipeline, and each names the scenarios it serves. When screens change, a `backend-dev` task adds their sample data, as the backend guide says, before the frontend stop. Propose a checkpoint on a hard part. Then brief `backend-dev` for the contract and any migration.
 
 **Stop at the plan gate:** the user reads the plan and the diff of the contract and the migration. Relay remarks to the agent or fix the plan. Go on only when the user approves, and record that.
 
@@ -66,7 +66,7 @@ After each report, list what changed in the test files since the red commit. A c
 
 **Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
 
-**Stop when the frontend is green.** The user looks at the screens, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
+**Stop when the frontend is green.** The user looks at the screens on the sample center, signed in as the personas the report names, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
 
 **List of details.** Show the user each developer's list. What the user agrees with stays as it is. For the rest, follow stage 5 of `docs/process.md`: a matter of taste goes to the developer with an ordinary test; a rule goes into the requirement first, then to `test-engineer`, then to the developer.
 

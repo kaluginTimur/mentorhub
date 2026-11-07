@@ -46,7 +46,7 @@ On a new branch, the designer starts the temporary plan `docs/plans/<change>.md`
 
 ### 3. Plan
 
-The designer completes the plan: the requirement ids it touches, the design, the tasks with their ids, and what the tests rely on before code exists (component inputs, `data-testid` selectors). A developer changes `api/openapi.yaml`, adds any migration, and keeps the build green with stubs.
+The designer completes the plan: the requirement ids it touches, the design, the tasks with their ids, and what the tests rely on before code exists (component inputs, `data-testid` selectors). A developer changes `api/openapi.yaml`, adds any migration, and keeps the build green with stubs. When the change adds or changes what a screen shows, a task adds its data to the sample center, the dev data set described in `docs/development/backend.md`, so that every state of those screens can be seen.
 
 **Plan gate.** The owner reads the plan and the diff of the contract and the migration, and approves. The tests and the code rely on them, so a poor design would be redone along with both.
 
@@ -58,7 +58,7 @@ The requirements, the contract, the plan and these tests are then committed toge
 
 ### 5. Implement
 
-Developers work through the tasks of the plan, in the order it gives. The owner checks the backend once its tests are green, at any further checkpoint the plan names, and looks at the screens at the end.
+Developers work through the tasks of the plan, in the order it gives. The owner checks the backend once its tests are green, at any further checkpoint the plan names, and looks at the screens at the end, on the sample center.
 
 **List of details.** After implementation, a developer lists the details visible to a user that it chose on its own. The list shows only what the agent recognizes as a choice.
 
