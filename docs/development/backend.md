@@ -48,7 +48,6 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - The `dev` profile also sends mail to Mailpit (`spring.mail.host: localhost`, port 1025, `mentorhub.mail.from: MentorHub <no-reply@mentorhub.local>`), started by `./mvnw spring-boot:run` from `infra/compose.yaml`; its web UI is http://localhost:8025. `TestMentorHubApplication` starts no Mailpit, so invitation emails sent there end `FAILED`; that is expected.
 - Only `./mvnw spring-boot:run` and `TestMentorHubApplication` activate `dev`; `application.yaml` never does. For Maven it is the `spring-boot.run.profiles` property in `backend/pom.xml`, which covers `spring-boot:run` (and `start`, `test-run`) but not packaging or `process-aot`; `-Dspring-boot.run.profiles=...` overrides it.
 - Each trusted issuer's OIDC discovery and JWK set requests use `mentorhub.security.issuer-connect-timeout` (default 2s) and `mentorhub.security.issuer-read-timeout` (default 5s). An unreachable or hung identity provider fails the request with a 500 Problem after them instead of holding the request thread.
-- In `dev`, every start replaces the whole database with the sample center (DEV-1, DEV-2): whatever a dev run changed is gone after the next start. See Sample center.
 
 ## Sample center
 

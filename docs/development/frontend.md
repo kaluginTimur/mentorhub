@@ -103,7 +103,7 @@ cd frontend && ~/.nvm/nvm-exec npm test -- --watch=false
 cd frontend && ~/.nvm/nvm-exec npm run build
 ```
 
-- `npm run build` ends with `postbuild` (`frontend/scripts/check-prod-build.mjs`), which fails the build when `dist/mentorhub-web` is missing or contains a development tool (`failure-switch`). So a green build also means the development tools are excluded.
+- `npm run build` ends with `postbuild` (`frontend/scripts/check-prod-build.mjs`), which fails the build when the production build is missing or contains a development tool. So a green build also means the development tools are excluded.
 - If `node_modules` is missing, run `cd frontend && ~/.nvm/nvm-exec npm ci` first.
 - Formatting failures are fixed with `cd frontend && ~/.nvm/nvm-exec npm run format`.
 - Without nvm, check `node -v` (^24.15) and run the same `npm` commands directly.
@@ -118,7 +118,6 @@ The `api-lookup` subagent follows this section. Implementation agents ask it and
 - The generated client: `frontend/src/app/core/api/` (run `npm run generate:api` if it is missing).
 - The Angular CLI MCP server (`.mcp.json`) offers best practices, documentation search and examples for the installed Angular version. It starts with the default Node, so the default must satisfy `.nvmrc` (`nvm alias default 24`).
 
-## Development tools and the sample center
+## Development tools
 
 - A development-only tool (such as the failure simulator, DEV-3) is wired through `frontend/src/environments/dev-tools.ts`, and the `production` configuration of `frontend/angular.json` replaces that file with `dev-tools.prod.ts`, so the tool is absent from the production build. `npm run build` checks that (see Verification).
-- Screens are reviewed on the sample center, the dev database with the personas and the plausible data set that the backend restores on every start; see `docs/development/backend.md`.
