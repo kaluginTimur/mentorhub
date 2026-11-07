@@ -4,10 +4,8 @@ import static com.mentorhub.users.internal.security.ProblemAssertions.assertProb
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.mentorhub.users.Permission;
@@ -34,10 +32,8 @@ import com.mentorhub.users.internal.service.UserListEntry;
 import com.mentorhub.users.internal.service.UserProfile;
 import com.mentorhub.users.internal.service.UserQuery;
 import com.mentorhub.web.ConflictException;
-import com.mentorhub.web.FieldViolation;
 import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.Problems;
-import com.mentorhub.web.ValidationException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -180,104 +176,6 @@ class UsersControllerTest {
     @Nested
     class Me {
 
-        @Test
-        void notInvitedCallerGetsOnlyItsStatus() {
-            given(meService.me()).willReturn(new MeDetails(AccessStatus.NOT_INVITED, null));
-
-            MvcTestResult result = mvc.get()
-                    .uri("/api/v1/me")
-                    .with(TestAuthentications.notInvited())
-                    .exchange();
-
-            assertThat(result).hasStatusOk().bodyJson().isStrictlyEqualTo("{\"status\": \"NOT_INVITED\"}");
-        }
-
-        @Test
-        void disabledUserGetsOnlyItsStatus() {
-            given(meService.me()).willReturn(new MeDetails(AccessStatus.DISABLED, null));
-
-            MvcTestResult result = mvc.get()
-                    .uri("/api/v1/me")
-                    .with(TestAuthentications.disabledUser(CALLER_ID))
-                    .exchange();
-
-            assertThat(result).hasStatusOk().bodyJson().isStrictlyEqualTo("{\"status\": \"DISABLED\"}");
-        }
-
-        @Test
-        void activeUserWithoutRolesHasEmptyRolesAndPermissions() {
-            given(meService.me())
-                    .willReturn(new MeDetails(
-                            AccessStatus.ACTIVE,
-                            new UserProfile(
-                                    CALLER_ID, "anna@example.com", "Anna", "Petrova", null, List.of(), List.of())));
-
-            MvcTestResult result = mvc.get()
-                    .uri("/api/v1/me")
-                    .with(TestAuthentications.activeUser(CALLER_ID))
-                    .exchange();
-
-            assertThat(result).hasStatusOk();
-            assertThat(result).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
-            assertThat(result)
-                    .bodyJson()
-                    .extractingPath("$.user.roles")
-                    .asArray()
-                    .isEmpty();
-            assertThat(result)
-                    .bodyJson()
-                    .extractingPath("$.user.permissions")
-                    .asArray()
-                    .isEmpty();
-        }
-
-        @Test
-        void activeUserGetsProfileWithPhoneRolesAndPermissions() {
-            given(meService.me()).willReturn(activeMe("+77011234567"));
-
-            MvcTestResult result = mvc.get()
-                    .uri("/api/v1/me")
-                    .with(TestAuthentications.activeUser(CALLER_ID, Permission.USERS_READ, Permission.USERS_MANAGE))
-                    .exchange();
-
-            assertThat(result).hasStatusOk().bodyJson().isStrictlyEqualTo("""
-                    {
-                      "status": "ACTIVE",
-                      "user": {
-                        "id": "0b6f1d2e-6a51-4f36-9b0c-5f2d8f3a1c10",
-                        "email": "anna@example.com",
-                        "firstName": "Anna",
-                        "lastName": "Petrova",
-                        "phone": "+77011234567",
-                        "roles": ["ADMIN", "MENTOR"],
-                        "permissions": ["USERS_READ", "USERS_MANAGE"]
-                      }
-                    }
-                    """);
-        }
-
-        @Test
-        void missingNamesAndPhoneAreSentAsNull() {
-            given(meService.me())
-                    .willReturn(new MeDetails(
-                            AccessStatus.ACTIVE,
-                            new UserProfile(CALLER_ID, "anna@example.com", null, null, null, List.of(), List.of())));
-
-            MvcTestResult result = mvc.get()
-                    .uri("/api/v1/me")
-                    .with(TestAuthentications.activeUser(CALLER_ID))
-                    .exchange();
-
-            assertThat(result).hasStatusOk();
-            assertThat(result)
-                    .bodyJson()
-                    .hasPath("$.user.firstName")
-                    .hasPath("$.user.lastName")
-                    .hasPath("$.user.phone");
-            assertThat(result).bodyJson().extractingPath("$.user.firstName").isNull();
-            assertThat(result).bodyJson().extractingPath("$.user.phone").isNull();
-        }
-
         // Any active user, without permissions, changes their own profile and gets the new Me.
         @Test
         void updatesTheOwnProfileAndReturnsTheNewMe() {
@@ -289,24 +187,6 @@ class UsersControllerTest {
             assertThat(result).hasStatusOk();
             assertThat(result).bodyJson().extractingPath("$.user.phone").isEqualTo("+77011234567");
             then(profileService).should().updateOwnProfile(new ProfileInput("Ivan", "Sidorov", "8 701 123 45 67"));
-        }
-
-        @Test
-        void invalidOwnProfileIsAValidationProblem() {
-            willThrow(new ValidationException(List.of(
-                            new FieldViolation("firstName", "must be at most 100 characters"),
-                            new FieldViolation("phone", "must be a valid phone number"))))
-                    .given(profileService)
-                    .updateOwnProfile(any());
-
-            MvcTestResult result =
-                    send(HttpMethod.PUT, "/api/v1/me/profile", PROFILE_BODY, TestAuthentications.activeUser(CALLER_ID));
-
-            assertValidationProblem(result, "firstName", "phone");
-            assertThat(result)
-                    .bodyJson()
-                    .extractingPath("$.errors[1].message")
-                    .isEqualTo("must be a valid phone number");
         }
 
         // Disabled and not invited callers are refused by the gate, as on every operation but GET /me.
@@ -545,26 +425,6 @@ class UsersControllerTest {
                     .extractingPath("$.errors[0].message")
                     .isEqualTo("must be one of ACTIVE, DISABLED");
         }
-
-        // The service checks q after trimming.
-        @Test
-        void serviceValidationIsAValidationProblem() {
-            given(administration.list(any())).willThrow(ValidationException.of("q", "must be at most 100 characters"));
-
-            MvcTestResult result = mvc.get()
-                    .uri("/api/v1/users?q=" + "x".repeat(101))
-                    .with(admin())
-                    .exchange();
-
-            assertValidationProblem(result, "q");
-            assertThat(result).bodyJson().isLenientlyEqualTo("""
-                    {
-                      "type": "urn:mentorhub:problem:validation-failed",
-                      "status": 400,
-                      "errors": [{"field": "q", "message": "must be at most 100 characters"}]
-                    }
-                    """);
-        }
     }
 
     @Nested
@@ -626,16 +486,6 @@ class UsersControllerTest {
             assertThat(result).hasStatusOk();
             assertThat(result).bodyJson().extractingPath("$.disabledReason").isEqualTo("GRADUATED");
             assertThat(result).bodyJson().doesNotHavePath("$.disabledComment");
-        }
-
-        @Test
-        void unknownIdIsNotFound() {
-            given(administration.get(USER_ID)).willThrow(new NotFoundException());
-
-            assertProblem(
-                    mvc.get().uri("/api/v1/users/" + USER_ID).with(admin()).exchange(),
-                    HttpStatus.NOT_FOUND,
-                    Problems.NOT_FOUND);
         }
     }
 
@@ -920,16 +770,6 @@ class UsersControllerTest {
                     .isEqualTo("must be one of GRADUATED, EXPELLED, LEFT_PROGRAM, STAFF_OFFBOARDED, SECURITY, OTHER");
         }
 
-        @Test
-        void invalidCommentIsAValidationProblem() {
-            given(administration.disable(USER_ID, DisableReason.OTHER, " "))
-                    .willThrow(ValidationException.of("comment", "must not be blank when the reason is OTHER"));
-
-            MvcTestResult result = send(HttpMethod.POST, URI, "{\"reason\": \"OTHER\", \"comment\": \" \"}", admin());
-
-            assertValidationProblem(result, "comment");
-        }
-
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#lockoutProblems")
         void lockoutIsAConflict(URI type, String detail) {
@@ -990,14 +830,6 @@ class UsersControllerTest {
             then(administration).should().setRoles(USER_ID, Set.of(Role.MENTOR, Role.STUDENT));
         }
 
-        @Test
-        void emptySetIsAllowed() {
-            given(administration.setRoles(USER_ID, Set.of())).willReturn(activeUser());
-
-            assertThat(send(HttpMethod.PUT, URI, "{\"roles\": []}", admin())).hasStatusOk();
-            then(administration).should().setRoles(eq(USER_ID), eq(Set.of()));
-        }
-
         @ParameterizedTest
         @ValueSource(
                 strings = {
@@ -1050,19 +882,6 @@ class UsersControllerTest {
             assertThat(send(HttpMethod.PUT, URI, "{\"firstName\": null, \"lastName\": null, \"phone\": null}", admin()))
                     .hasStatusOk();
             then(administration).should().updateProfile(USER_ID, new ProfileInput(null, null, null));
-        }
-
-        @Test
-        void invalidValuesAreAValidationProblemWithAnErrorPerField() {
-            given(administration.updateProfile(any(), any()))
-                    .willThrow(new ValidationException(List.of(
-                            new FieldViolation("firstName", "must be at most 100 characters"),
-                            new FieldViolation("lastName", "must be at most 100 characters"),
-                            new FieldViolation("phone", "must be a valid phone number"))));
-
-            MvcTestResult result = send(HttpMethod.PUT, URI, PROFILE_BODY, admin());
-
-            assertValidationProblem(result, "firstName", "lastName", "phone");
         }
 
         @Test

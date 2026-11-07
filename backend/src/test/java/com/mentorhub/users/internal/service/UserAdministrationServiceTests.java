@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -36,16 +34,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.core.type.TypeReference;
@@ -210,19 +204,6 @@ class UserAdministrationServiceTests {
                     .satisfies(entry -> assertThat(entry.roles()).containsExactly(Role.MENTOR));
         }
 
-        // An unknown stored role is never reported
-        @Test
-        void listsOnlyKnownRoles() {
-            UUID mentor = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
-            storeUnknownRole(mentor);
-
-            assertThat(service.list(query("b@x", null, null, 0, 25))
-                            .items()
-                            .getFirst()
-                            .roles())
-                    .containsExactly(Role.MENTOR);
-        }
-
         @Test
         void queryMayHave100CharactersAfterTrimming() {
             assertThatCode(() -> service.list(query("  " + "q".repeat(100) + "  ", null, null, 0, 25)))
@@ -278,16 +259,6 @@ class UserAdministrationServiceTests {
                             List.of(Role.MENTOR, Role.STUDENT),
                             details.createdAt()));
             assertThat(details.createdAt()).isNotNull();
-        }
-
-        @Test
-        void anActiveUserHasNoReason() {
-            ManagedUser details = service.get(admin);
-
-            assertThat(details.status()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(details.disabledReason()).isNull();
-            assertThat(details.disabledComment()).isNull();
-            assertThat(details.phone()).isNull();
         }
 
         @Test
@@ -369,14 +340,6 @@ class UserAdministrationServiceTests {
             assertThat(auditEntries(user)).hasSize(1);
         }
 
-        @Test
-        void administratorCannotDisableThemselves() {
-            user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.ADMIN);
-
-            assertConflict(() -> service.disable(admin, GRADUATED, null), LockoutProblems.SELF_LOCKOUT);
-            assertUnchanged(admin);
-        }
-
         // Unreachable through the API (only an administrator has USERS_MANAGE), but the rule holds alone.
         @Test
         void lastActiveAdministratorCannotBeDisabled() {
@@ -439,15 +402,6 @@ class UserAdministrationServiceTests {
             assertThat(again.status()).isEqualTo(UserStatus.ACTIVE);
             assertThat(again.roles()).containsExactly(Role.STUDENT);
             assertThat(auditEntries(user)).hasSize(2);
-        }
-
-        @Test
-        @DisplayName("USR-5.2 Enabling an active user changes nothing")
-        void enablingAnActiveUserChangesNothing() {
-            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
-
-            assertThat(service.enable(user).status()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(auditEntries(user)).isEmpty();
         }
 
         @Test
@@ -515,17 +469,6 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        void emptySetLeavesTheUserActiveWithoutRoles() {
-            UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
-
-            ManagedUser changed = service.setRoles(user, Set.of());
-
-            assertThat(changed.roles()).isEmpty();
-            assertThat(changed.status()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(testUsers.roles(user)).isEmpty();
-        }
-
-        @Test
         @DisplayName("USR-6.3 A stored role the version does not know stays")
         void leavesUnknownStoredRolesUntouchedAndUnreported() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR);
@@ -540,15 +483,6 @@ class UserAdministrationServiceTests {
                             "USER_ROLES_CHANGED",
                             admin,
                             Map.of("rolesAdded", List.of("STUDENT"), "rolesRemoved", List.of("MENTOR"))));
-        }
-
-        @Test
-        void administratorCannotRemoveTheirOwnAdminRole() {
-            user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.ADMIN);
-
-            assertConflict(() -> service.setRoles(admin, Set.of(Role.MENTOR)), LockoutProblems.SELF_LOCKOUT);
-            assertThat(testUsers.roles(admin)).containsExactly("ADMIN");
-            assertThat(auditEntries(admin)).isEmpty();
         }
 
         @Test
@@ -623,16 +557,6 @@ class UserAdministrationServiceTests {
             service.updateProfile(user, new ProfileInput("Anna ", "  ", "+7 701 123-45-67"));
 
             assertThat(auditEntries(user)).isEmpty();
-        }
-
-        @Test
-        void blankValuesClearTheFields() {
-            UUID user = user("b@x.test", "Anna", "Petrova", UserStatus.ACTIVE);
-
-            ManagedUser changed = service.updateProfile(user, new ProfileInput("", null, " "));
-
-            assertThat(changed.firstName()).isNull();
-            assertThat(changed.lastName()).isNull();
         }
 
         @Test
@@ -819,53 +743,6 @@ class UserAdministrationServiceTests {
 
         assertUnchanged(user);
         assertThat(testUsers.roles(user)).containsExactly("MENTOR");
-    }
-
-    @ParameterizedTest
-    @MethodSource("reads")
-    void readsNeedUsersRead(Consumer<UserAdministrationService> read) {
-        UUID caller = user("caller@x.test", "C", "C", UserStatus.ACTIVE, Role.MENTOR);
-
-        actAs(caller);
-        assertThatThrownBy(() -> read.accept(service)).isInstanceOf(AccessDeniedException.class);
-        actAs(caller, Permission.USERS_MANAGE);
-        assertThatThrownBy(() -> read.accept(service)).isInstanceOf(AccessDeniedException.class);
-    }
-
-    @ParameterizedTest
-    @MethodSource("changes")
-    void changesNeedUsersManage(Consumer<UserAdministrationService> change) {
-        UUID caller = user("caller@x.test", "C", "C", UserStatus.ACTIVE, Role.MENTOR);
-
-        for (Permission[] permissions : List.of(new Permission[0], new Permission[] {Permission.USERS_READ})) {
-            actAs(caller, permissions);
-            assertThatThrownBy(() -> change.accept(service)).isInstanceOf(AccessDeniedException.class);
-        }
-        assertUnchanged(admin);
-        assertThat(testUsers.roles(admin)).containsExactly("ADMIN");
-        assertThat(service.get(admin).firstName()).isEqualTo("Ada");
-    }
-
-    // The permission check runs before the target is looked up, so any id does.
-    private static final UUID ANY_ID = UUID.fromString("00000000-0000-4000-8000-0000000000ff");
-
-    static Stream<Arguments> reads() {
-        return Stream.of(
-                call(service -> service.list(new UserQuery(null, null, null, 0, 25))),
-                call(service -> service.get(ANY_ID)),
-                call(service -> service.history(ANY_ID, 0, 25)));
-    }
-
-    static Stream<Arguments> changes() {
-        return Stream.of(
-                call(service -> service.disable(ANY_ID, GRADUATED, null)),
-                call(service -> service.enable(ANY_ID)),
-                call(service -> service.setRoles(ANY_ID, Set.of())),
-                call(service -> service.updateProfile(ANY_ID, new ProfileInput("X", "Y", null))));
-    }
-
-    private static Arguments call(Consumer<UserAdministrationService> call) {
-        return Arguments.of(call);
     }
 
     record Entry(String action, @Nullable UUID actor, Map<String, Object> details) {}

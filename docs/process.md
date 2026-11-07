@@ -87,6 +87,7 @@ A new session continues from the plan and what its handover names, not from the 
 ## Tests
 
 - A test of a scenario cites its id and checks the scenario at the level the scenario describes. Each scenario has one owning level: no duplicate backend and frontend tests of one rule.
+- A rule is tested once, at the level that owns it. A test at another level that would fail for the same broken behavior and for no other is a duplicate. Rules of the platform, such as authentication and the problem format, are tested once, not again for each feature.
 - A developer who finds a wrong test stops and reports it. The requirement decides: if it is unambiguous, the test engineer fixes the test; if it is ambiguous, the owner decides and the requirement is clarified.
 - End-to-end journey tests carry no id and complement scenario tests. They do not replace them.
 

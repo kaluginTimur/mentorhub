@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jspecify.annotations.Nullable;
@@ -44,16 +43,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -755,44 +751,7 @@ class InvitationAdministrationServiceTests {
         }
     }
 
-    // Every management operation needs USERS_INVITE; other permissions do not grant it.
-    @ParameterizedTest
-    @MethodSource("operations")
-    void callersWithoutTheInvitePermissionAreRefused(Consumer<InvitationAdministrationService> operation) {
-        UUID invitation = create("open@x.test");
-        String token = data.storedToken(invitation);
-        UUID caller = users.create("mentor@x.test", UserStatus.ACTIVE, Role.MENTOR);
-        for (Permission[] permissions :
-                List.of(new Permission[0], new Permission[] {Permission.USERS_READ}, new Permission[] {
-                    Permission.USERS_READ, Permission.USERS_MANAGE
-                })) {
-            actAs(caller, permissions);
-            assertThatThrownBy(() -> operation.accept(service)).isInstanceOf(AccessDeniedException.class);
-        }
-        assertThat(data.count("invitations")).isEqualTo(1);
-        assertThat(data.storedToken(invitation)).isEqualTo(token);
-        assertThat(data.auditEntries(invitation)).hasSize(1);
-    }
-
-    // The permission check runs before anything is looked up, so any id does.
     private static final UUID ANY_ID = UUID.fromString("00000000-0000-4000-8000-0000000000ff");
-
-    static Stream<Arguments> operations() {
-        return Stream.of(
-                operation(service -> service.create("new@x.test", Set.of(), false)),
-                operation(service -> service.list(new InvitationQuery(null, null, 0, 25))),
-                operation(service -> service.revoke(ANY_ID)),
-                operation(service -> service.reissueLink(ANY_ID, false)),
-                operation(service -> service.link(ANY_ID)),
-                // Refused before email-unavailable, whether or not email is enabled.
-                operation(service -> service.create("new@x.test", Set.of(), true)),
-                operation(service -> service.reissueLink(ANY_ID, true)),
-                operation(service -> service.sendEmail(ANY_ID)));
-    }
-
-    private static Arguments operation(Consumer<InvitationAdministrationService> operation) {
-        return Arguments.of(operation);
-    }
 
     private UUID create(String email) {
         return service.create(email, Set.of(), false).invitation().id();

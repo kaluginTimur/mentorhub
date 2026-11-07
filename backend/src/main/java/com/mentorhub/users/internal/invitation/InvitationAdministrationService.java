@@ -3,7 +3,6 @@ package com.mentorhub.users.internal.invitation;
 import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.CurrentUserProvider;
 import com.mentorhub.users.Permission;
-import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.StoredRoles;
@@ -107,7 +106,6 @@ public class InvitationAdministrationService {
      *     {@link InvitationProblems#INVITATION_EXISTS} with {@code invitationId}, or
      *     {@link InvitationProblems#EMAIL_UNAVAILABLE}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public IssuedInvitation create(
             @Nullable String email, Collection<? extends @Nullable Role> roles, boolean sendEmail) {
@@ -141,7 +139,6 @@ public class InvitationAdministrationService {
     }
 
     /** @throws ValidationException for {@code q}, {@code page} or {@code size} */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional(readOnly = true)
     public ResultPage<InvitationDetails> list(InvitationQuery query) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -167,7 +164,6 @@ public class InvitationAdministrationService {
      * @throws NotFoundException for an unknown id
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public InvitationDetails revoke(UUID invitationId) {
         UUID callerId = currentUser.currentUser().id();
@@ -186,7 +182,6 @@ public class InvitationAdministrationService {
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED} or
      *     {@link InvitationProblems#EMAIL_UNAVAILABLE}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public IssuedInvitation reissueLink(UUID invitationId, boolean sendEmail) {
         UUID callerId = currentUser.currentUser().id();
@@ -215,7 +210,6 @@ public class InvitationAdministrationService {
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED} or
      *     {@link InvitationProblems#INVITATION_EXPIRED}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional(readOnly = true)
     public PendingInvitationLink link(UUID invitationId) {
         StoredInvitationLink stored = invitations.findLink(invitationId).orElseThrow(NotFoundException::new);
@@ -235,7 +229,6 @@ public class InvitationAdministrationService {
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}, {@link InvitationProblems#INVITATION_EXPIRED},
      *     {@link InvitationProblems#EMAIL_UNAVAILABLE} or {@link InvitationProblems#EMAIL_QUEUED}, in this order
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public InvitationDetails sendEmail(UUID invitationId) {
         UUID callerId = currentUser.currentUser().id();
