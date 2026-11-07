@@ -58,8 +58,8 @@ No contract change and no migration: nothing here is an API operation or a schem
 - The sample data is plain SQL in `backend/src/main/resources/db/sample/` (one file per module, applied in a fixed order), never a Flyway migration and never on the ordinary `spring.flyway.locations`. SQL rather than Java through the modules' services: the services would write audit entries and publish events (invitation emails), and the data set must be exactly the sample data.
 - The personas move into that SQL with fixed user ids; `DevelopmentUserRunner`, `DevelopmentUsersProperties`, `DevelopmentUsersConfiguration` and `mentorhub.development-users` are removed. Reason: after a clean every start, a second mechanism that "restores" the personas is redundant, and one source of truth is simpler.
 - The Spring Modulith event publication table is created by Modulith's own schema initialization, not by Flyway, so `clean()` drops it. After `restore()` it must exist and be empty, so that no publication from before the start is delivered against the new data. T3 checks the order of the initializations and recreates it if needed. (Coordinator's inference from the T1 report, not a user decision.)
-- Every start must produce the same rows apart from time columns (DEV-2.1 compares them): fixed ids and tokens for every sample row, not only the personas, and no times inside `audit_log.details`.
-- Times in the sample data are relative to the start (`now() - interval '...'`), so pending invitations stay pending and the history looks recent. Comparisons in tests therefore exclude time columns.
+- Every start must produce the same rows apart from times (DEV-2.1 compares them): fixed ids and tokens for every sample row, not only the personas. Times inside `audit_log.details` (for example `expiresAt` of `INVITATION_LINK_REISSUED`, AUD-7) are relative to the start like the time columns, and consistent with the rows they describe.
+- Times in the sample data are relative to the start (`now() - interval '...'`), so pending invitations stay pending and the history looks recent (DEV-2). Comparisons in tests therefore exclude times: time columns and time values inside JSON details.
 - Keycloak realm (`infra/keycloak/mentorhub-realm.json`): add the accounts Coordinator, Observer, Administrator and mentor, Mentor and coordinator with fixed ids `...0007` to `...000a`, password `mentorhub` as the others. `stranger@mentorhub.local` (`...0006`) stays the persona Not invited. The disabled persona gets the role Mentor (decision 2026-11-06).
 
 ### The sample data set (DEV-2)
@@ -88,7 +88,7 @@ Backend:
 - `SampleCenter` (`com.mentorhub.system.internal.dev`) is a bean only in the `dev` profile; `restore()` simulates a start in development mode. Before T3 it is a stub that does nothing.
 - A test context in the `dev` profile runs on Testcontainers, as `TestMentorHubApplication` does; it starts no Keycloak or Mailpit.
 - The persona subjects are the Keycloak ids `00000000-0000-4000-8000-000000000001` to `...000a` of the issuer `http://localhost:8180/realms/mentorhub`; `...0006` is the persona Not invited. The persona table is DEV-1.
-- "MentorHub's data" for DEV-2.1 is every table of the `public` schema except `flyway_schema_history` and the event publication table (async listeners of earlier test actions may still write to it); time columns are excluded from comparisons.
+- "MentorHub's data" for DEV-2.1 is every table of the `public` schema except `flyway_schema_history` and the event publication table (async listeners of earlier test actions may still write to it); times are excluded from comparisons: time columns and time values inside `audit_log.details`.
 - `SampleCenter` is package-private: tests that use it are in `com.mentorhub.system.internal.dev`.
 - Account ids of the new personas: `...0007` Coordinator, `...0008` Observer, `...0009` Administrator and mentor, `...000a` Mentor and coordinator. The realm has exactly the ten persona accounts (`DevelopmentRealmConsistencyTests`), and each persona user has the email of its realm account (`SampleCenterTests`); the emails of the new accounts are the developer's choice.
 - The tests of IDN-7.2 and IDN-7.3 (`DevelopmentUserRunnerProfileTests`, `DevelopmentUserRunnerTests`) test the runner, which T3 removes; DEV-1.1 and DEV-1.2 get new tests against `SampleCenter` and the profile, and the old ones are deleted by the test engineer.
@@ -106,9 +106,10 @@ Frontend:
 | T1 Stubs: `SampleCenter` with an empty `restore()`; the two `dev-tools` files, the file replacement and an empty `FailureSwitch` with the planned selectors absent | all, for the red tests | backend-dev, frontend-dev | done |
 | T2 Red tests; replace the tests of IDN-7.2 and IDN-7.3 | DEV-1.1 to DEV-3.3 | test-engineer | done |
 | T3 Restore on start: clean, migrate, the personas in SQL, removal of the runner and its configuration, the realm accounts | DEV-1.1, DEV-1.2, DEV-1.3, DEV-2.1, DEV-2.2 | backend-dev | done |
-| T4 The sample data set (checkpoint: the user looks at the data on the screens) | DEV-2 | backend-dev | pending |
+| T4 The sample data set (checkpoint: the user looks at the data on the screens) | DEV-2 | backend-dev | done |
+| T4a DEV-2.1 test compares times inside `audit_log.details` as times (excluded), not as fixed values | DEV-2.1 | test-engineer | done |
 | T5 Simulated failures: service, interceptor, switch and indicator, production exclusion | DEV-3.1, DEV-3.2, DEV-3.3 | frontend-dev | done |
-| T6 Documents: `backend.md` (run warning, Sample center section with the rule that a feature adds its data and shows every state a screen shows differently, Configuration and profiles), `README.md` (personas table, the invitation link, realm recreation, no "stays until reset"), `frontend.md` (Mock mode replaced) | | backend-dev (backend, README), frontend-dev (frontend) | in progress: frontend.md and the parts T3 made wrong done; Sample center section of backend.md and the invitation link in README open |
+| T6 Documents: `backend.md` (run warning, Sample center section with the rule that a feature adds its data and shows every state a screen shows differently, Configuration and profiles), `README.md` (personas table, the invitation link, realm recreation, no "stays until reset"), `frontend.md` (Mock mode replaced) | | backend-dev (backend, README), frontend-dev (frontend) | done |
 
 Order: T1, T2, then T3 and T5 in parallel, T4 after T3, T6 with each area.
 
@@ -148,12 +149,20 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 - 2026-11-07: Plan gate passed: the runner is removed and the personas move into the sample SQL, T4 is a checkpoint, the pending invitation with a fixed link stays ("раннер удаляем, T4 чекпоинт, ссылку оставляем").
 - 2026-11-07: The statement in `docs/development/backend.md` that a `dev` run freezes migrations, and the hook that relies on it, stay as they are in this change; rewording them and relaxing the hook is a possible later change ("(a)"). T3 and T5 approved and committed ("коммить T3 и T5").
 
+- 2026-11-07: Times inside the sample data's audit details are relative to the start like the other times, and DEV-2 and DEV-2.1 say that times are relative to the start and excluded from "the same on every start" (option 3; "вариант 3, меняй требование"). Replaces the plan's "no times inside `audit_log.details`", which forced a fixed `expiresAt` in `INVITATION_LINK_REISSUED` that would disagree with the invitation's real expiry.
+
+- 2026-11-07: The user read and approved the changed DEV-2 and DEV-2.1, and a permanent test that the sample data reads back in full through the API is added in the second test pass (no scenario id; it checks the data, it runs no scenario on it) ("да, добавляем тест, требование одобряю").
+
+- 2026-11-07: T4 checkpoint passed: the user looked at the sample data on the screens and approved T4, T4a and T6 with the commit ("посмотрел, всё ок, коммить"). The list of details of T4 accepted as it is.
+
 ## Handover
 
-- Waiting for: T4 (the sample data set, checkpoint) and the rest of T6 from `backend-dev`.
-- State: T1, T2, T3, T5 done and committed. Backend and frontend verifications pass (developers' reports; no verifier run yet). Open in T6: the Sample center section of `docs/development/backend.md` with the vertical slice rule, and the invitation link in README.
+- Waiting for: the second test pass by a fresh `test-engineer`.
+- To read: the plan; the diff of the branch against `workflow/rework`.
+- Documents changed (against `workflow/rework`, which main lacks), all committed: `docs/requirements/development-mode.md` (added), `docs/requirements/identity.md`, `docs/requirements/audit.md`, `docs/requirements/README.md`, `docs/roadmap.md`, `docs/development/frontend.md`, `docs/development/backend.md`, `README.md` (changed). No change since the last stop.
+- State: T1 to T6 and T4a done and committed. Backend PASS, docs PASS, `trace` 207/207 (agents' reports; no verifier run yet).
 - Open questions: none.
-- Next: brief `backend-dev` for T4 and the rest of T6 (the current agent is at 116k; a fresh one if it passes about 150k); stop at T4 for the user to look at the data on the screens.
+- Next: second test pass (tests of details), including the permanent read-back test of the sample data through the API and a check that times inside details match the rows they describe; then the review loop with `reviewer`, base `workflow/rework`; then `verifier` with scope `all`.
 
 ## Agents
 
@@ -165,3 +174,6 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 | backend-dev | definition | a417c47cb7f272e28 | T1, T3 | 116k |
 | frontend-dev | definition | ac593873febb30aac | T1, lint fix, T5 | 68k |
 | test-engineer | definition | abf2a09217a5c23c2 | T2 | 136k |
+| backend-dev | definition | af11e30ac7a78ae64 | T4, T6 | 197k |
+| test-engineer | definition | ae4075b294b54f22c | T4a | 64k |
+| backend-dev | definition | a1295d41e4f3299ce | T4 rework | 74k |

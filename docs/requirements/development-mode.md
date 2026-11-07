@@ -45,13 +45,13 @@ The system SHALL create, only in development mode, a development user for each p
 
 ### DEV-2 The sample center data
 
-In development mode the system SHALL hold the sample center data, a plausible training center, and on every start SHALL replace all of MentorHub's data, the audit log included, with it. Changes made while the application runs last until the next start. The accounts in the identity provider are not MentorHub's data.
+In development mode the system SHALL hold the sample center data, a plausible training center, and on every start SHALL replace all of MentorHub's data, the audit log included, with it. Times in the sample center data are relative to the start, so it looks the same whatever the day: pending invitations stay pending and the history is recent. Changes made while the application runs last until the next start. The accounts in the identity provider are not MentorHub's data.
 
 #### DEV-2.1 A start restores the sample center data
 
 - GIVEN MentorHub's data was changed since the last start in development mode
 - WHEN the application starts in development mode
-- THEN MentorHub's data is exactly the sample center data
+- THEN MentorHub's data is exactly the sample center data, the same on every start except for its times, which are relative to the start
 
 #### DEV-2.2 Data outside development mode is never replaced
 

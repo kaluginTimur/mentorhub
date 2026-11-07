@@ -47,9 +47,19 @@ Every development user has the password `mentorhub`:
 - `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/requirements/identity.md`).
 - New accounts can be registered at Keycloak ("Register" on the sign-in page). Registration requires email verification: open the verification email in Mailpit. "Forgot password?" also sends its email there.
 
+### The sample center data
+
+Besides the development users, the dev database holds a fictional training center (`backend/src/main/resources/db/sample/`, described in `docs/development/backend.md`): 26 more users (students, mentors, a coordinator, an observer, users disabled for each reason), invitations in every status with invitation emails in every status, and the change history behind them. The users list and the invitations list have more than one page, and the user page of Daniel Kim has more history than one page. Sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local` to see them; the other development users see what their roles allow.
+
+The sample center has a pending invitation for `stranger@mentorhub.local` with the Mentor role and a fixed link:
+
+http://localhost:4200/invite/sample-center-invitation-token-000000000001
+
+Open it signed out to see the landing page, then sign in as `stranger@mentorhub.local` to accept it. The link works until it is accepted or revoked, or for 6 days after the start (it was created a day before); the next start brings it back.
+
 ### Inviting and accepting locally
 
-1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant. "Send the invitation by email" is checked by default: the email arrives in Mailpit. You can also copy the link from the "Invitation link" dialog, copy it again later with "Copy link", or send it again with "Send email" in the invitations list while it is pending.
+1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant. To invite `stranger@mentorhub.local` yourself, revoke the sample invitation for it in "Invitations" first: an open invitation blocks another one for the same email. "Send the invitation by email" is checked by default: the email arrives in Mailpit. You can also copy the link from the "Invitation link" dialog, copy it again later with "Copy link", or send it again with "Send email" in the invitations list while it is pending.
 2. Sign out, open the link and sign in with the invited email, or choose "Create an account" and verify the email through Mailpit. Accepting needs an email that Keycloak has verified; `stranger@mentorhub.local` is already verified.
 3. After accepting, you land on the home page with the invited roles; the user's page shows the acceptance in its history.
 
