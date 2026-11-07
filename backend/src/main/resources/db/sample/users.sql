@@ -6,7 +6,8 @@
 --   users        00000000-0000-4000-a000-...   personas ...001 to ...00a (the persona Not invited, ...006, has no
 --                                              user), other users ...101 and up
 --   identities   00000000-0000-4000-b000-...   the number of the user; the subject is 00000000-0000-4000-8000-<number>,
---                                              the id of the Keycloak account for a persona and no account otherwise
+--                                              the id of the Keycloak account for a persona and no account otherwise,
+--                                              so nobody signs in as the other users
 --   invitations  00000000-0000-4000-c000-...   open and revoked ones 1 to 99, accepted ones 101 and up
 --   emails       00000000-0000-4000-d000-...   requested for the open and revoked invitations 1 to 99, the email of an
 --                                              accepted invitation has the number of the invitation
@@ -20,7 +21,7 @@
 -- the new expiry of a link is the expires_at of its invitation (DEV-2.1 leaves times out of the comparison).
 
 -- The personas of DEV-1 are linked to the accounts of infra/keycloak/mentorhub-realm.json by their ids and have the
--- emails of those accounts.
+-- emails of those accounts; DevelopmentRealmConsistencyTests and SampleCenterTests check that the two agree.
 with sample (id, email, first_name, last_name, phone, status, disabled_reason, disabled_comment, created_ago, roles) as (
     values ('00000000-0000-4000-a000-000000000001'::uuid, 'admin@mentorhub.local', 'Ada', 'Admin', null, 'ACTIVE',
             null, null, interval '300 days', array ['ADMIN']),

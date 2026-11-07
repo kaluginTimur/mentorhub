@@ -39,12 +39,13 @@ final class DatabaseSnapshot {
     /**
      * Without times, since the sample center data is relative to the start: without time columns, and with every time
      * inside a JSON column, such as {@code audit_log.details}, replaced by a placeholder. Everything else inside the
-     * JSON is kept as it is.
+     * JSON is kept as it is. Compares the data of two starts in {@code dev} (DEV-2.1).
      */
     static Map<String, List<String>> withoutTimes(JdbcClient jdbc) {
         return take(jdbc, false);
     }
 
+    /** With every time: a start without {@code dev} must leave the data exactly as it was (DEV-2.2). */
     static Map<String, List<String>> complete(JdbcClient jdbc) {
         return take(jdbc, true);
     }

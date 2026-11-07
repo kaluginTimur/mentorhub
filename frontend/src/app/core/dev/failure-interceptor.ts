@@ -7,6 +7,11 @@ import { FailureMode } from './failure-mode';
 
 export const SLOW_DELAY_MS = 3000;
 
+/**
+ * Registered last in the chain (see `environments/dev-tools.ts`), so `errorInterceptor` sees the
+ * simulated failures like real ones. Alters only requests to the MentorHub API (`client-config`
+ * included), never Keycloak.
+ */
 export const failureInterceptor: HttpInterceptorFn = (req, next) => {
   const mode = inject(FailureMode).mode();
   if (mode === 'normal' || !isApiRequest(req.url)) {
