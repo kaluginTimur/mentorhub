@@ -45,7 +45,7 @@ In this order of priority:
 1. **Authorization and privacy.** Every requirement in `docs/requirements/` holds on every path the change touches: resource-level access checks, visibility on every read path (lists, search, counters, exports, events, mappings), internal user IDs, invitation-only registration. Negative tests exist.
 2. **Contract.** The change starts from the contract; implementation and contract agree (status codes, nullability, errors); generated code is untouched.
 3. **Architecture.** Module boundaries and the architecture decisions.
-4. **Data.** Existing migrations untouched; the schema encodes the rules of the requirements (constraints, foreign keys, indexes); no data loaded outside its transaction.
+4. **Data.** Migrations in main untouched; the schema encodes the rules of the requirements (constraints, foreign keys, indexes); no data loaded outside its transaction.
 5. **Stack idioms.** The conventions and every pitfall listed in the area's development guide. Pitfalls that compile but are wrong matter most.
 6. **Audit.** State changes the requirements mark as audited are recorded.
 7. **Frontend.** The guide's conventions, styling only through theme tokens, accessibility, screens matching the requirements and the UI guidelines, and sample data for every state the changed screens show differently.
