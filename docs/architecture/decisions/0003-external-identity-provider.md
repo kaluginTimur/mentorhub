@@ -11,7 +11,7 @@ There are two kinds of users: mentors (employees, corporate SSO in the future) a
 - The internal user ID is separate from the provider's identifier: `users(id)` and `user_identities(user_id, issuer, subject)`. Domain data references only `users.id`, never `sub`.
 - Roles are stored in the application database, not in Keycloak (decision 0004).
 - The list of trusted issuers is configuration (`JwtIssuerAuthenticationManagerResolver`), so migrating to another provider requires no code changes.
-- Registration is by invitation only. The exceptions are the administrator bootstrap (the identity requirements) and development users, which exist only in the development profile.
+- Registration is by invitation only. The exceptions are the administrator bootstrap (the identity requirements), and the development users and the sample center data, which exist only in the development profile.
 - Invitation tokens are stored in plaintext, so anyone with database access can read a link. Accepting an invitation therefore requires a verified email equal to the invitation's. That match is the only protection of a link; relaxing it requires hashing the tokens again.
 
 ## Why

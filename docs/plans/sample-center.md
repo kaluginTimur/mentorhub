@@ -158,14 +158,25 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 
 - 2026-11-07: The AUD-6.5 bug found by the second pass is fixed as a separate change, recorded in the roadmap (Next, 2); the second-pass tests are committed ("отдельно, запиши в roadmap и коммить тесты").
 
+- 2026-11-07: Review 1: findings 1, 3, 4, 5, 6, 7 fixed as recommended; finding 2 kept as a display state, explained by a short comment in `users.sql`, not in backend.md or README ("1, 3, 4, 5, 6, 7 по рекомендации; касаемо 2 - ... лучше написать это коротким комментом в sql файле или джавадоке"). The coordinator wrote the IDN-4 and decision 0003 wording; the frontend developer put the production-build check into a `postbuild` script instead of a Verification command, because check-docs requires an allow rule for every Verification command and the permissions were not to be changed.
+
+- 2026-11-07: Result accepted, the IDN-4 and decision 0003 wording included; the production-build check stays a `postbuild` script ("принимаю, postbuild оставляем, коммить").
+
 ## Handover
 
-- Waiting for: the review by `reviewer`, base `workflow/rework`.
-- To read: the plan; the diff of the branch against `workflow/rework`.
-- Documents changed (against `workflow/rework`), all committed: `docs/requirements/development-mode.md` (added), `docs/requirements/identity.md`, `docs/requirements/audit.md`, `docs/requirements/README.md`, `docs/development/frontend.md`, `docs/development/backend.md`, `README.md` (changed); `docs/roadmap.md` (changed; new since the last stop: Next, 2 **Unreadable audit details**, and Tracking core moved to 3).
-- State: T1 to T7 done and committed. The second pass found a real bug outside this change (AUD-6.5), recorded in the roadmap. Backend, frontend and docs verification PASS, `trace` 207/207 (agents' reports; no verifier run yet).
-- Open questions: none.
-- Next: the review loop with `reviewer` (default model), base `workflow/rework`, then `verifier` with scope `all`.
+- Waiting for: the user accepts the result (stage 7), reads the IDN-4 wording, and chooses between the `postbuild` check and a Verification command with an allow rule.
+- To read: `git diff HEAD` (review fixes, uncommitted) and `frontend/scripts/check-prod-build.mjs`.
+- Documents changed (against `workflow/rework`, which main lacks):
+  - `docs/requirements/development-mode.md`: added, capability DEV (committed).
+  - `docs/requirements/identity.md`: changed, IDN-7 moved to DEV-1; new since the last stop: Purpose and IDN-4 (heading and text) name the development users and the sample center data (DEV-1, DEV-2) as the development-mode exception (uncommitted).
+  - `docs/architecture/decisions/0003-external-identity-provider.md`: changed, new since the last stop: the exceptions to invitation-only registration name the sample center data too (uncommitted).
+  - `docs/requirements/audit.md`, `docs/requirements/README.md`, `docs/roadmap.md`, `docs/development/backend.md`, `README.md`: changed (committed).
+  - `docs/development/frontend.md`: changed; new since the last stop: Verification says `npm run build` ends with the production-build check (uncommitted).
+- State: T1 to T7 done; review 1 fixed, re-review clean (sonnet). Verifier, scope all, on the working tree: backend verify PASS; frontend format, lint, test 277/277, build with `postbuild` PASS; check-docs, requirements tests 62/62, `trace` 207/207 PASS. The check-docs reminders (backend.md:42, :60, frontend.md:106) were confirmed accurate by backend-dev and the re-review.
+- Open questions:
+  1. Keep the production-build check as `postbuild` (recommended) or move it to a Verification command with an allow rule in `.claude/settings.json`.
+- On acceptance: commit the review fixes with the plan (proposed message in the last report), then stage 8: move durable "how" to the decisions and guides, delete the roadmap item Sample center and this plan, show the user; commit if asked; suggest `/pr` and `/usage-review`.
+- On remarks: the owner of the area, as in the review loop.
 
 ## Agents
 
@@ -181,3 +192,9 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 | test-engineer | definition | ae4075b294b54f22c | T4a | 64k |
 | backend-dev | definition | a1295d41e4f3299ce | T4 rework | 74k |
 | test-engineer | definition | a9014d20f66fe408e | second pass | 101k |
+| reviewer | definition | a2489d7559dead5ef | review 1 | 147k |
+| backend-dev | definition | a59c8f9cfedd1b41f | review fixes | 70k |
+| frontend-dev | definition | a74cf71aca1b1b86c | review fixes | 47k |
+| test-engineer | definition | a2af1e1c457ad0cba | review fix 7 | 21k |
+| reviewer | sonnet | a9357cbcfd6b76f82 | re-review | 24k |
+| verifier | definition | a0a8104306c6aa3c6 | verify all | 13k |

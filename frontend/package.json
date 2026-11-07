@@ -8,6 +8,7 @@
     "start": "ng serve",
     "prebuild": "npm run generate:api",
     "build": "ng build",
+    "postbuild": "node scripts/check-prod-build.mjs",
     "watch": "ng build --watch --configuration development",
     "pretest": "npm run generate:api",
     "test": "ng test",

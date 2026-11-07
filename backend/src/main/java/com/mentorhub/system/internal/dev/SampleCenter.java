@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Brings the dev database back to the sample center data (DEV-1, DEV-2): drops everything, migrates, and inserts the
- * sample data. Writes no audit entries and publishes no events, so the data is exactly the sample data.
+ * sample data. Writes no audit entries of its own and publishes no events; the audit history is part of the sample
+ * data.
  */
 @Component
 @Profile("dev")

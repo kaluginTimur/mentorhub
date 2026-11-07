@@ -1,8 +1,7 @@
-package com.mentorhub.users.internal.dev;
+package com.mentorhub.system.internal.dev;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.system.internal.dev.Personas;
 import com.mentorhub.users.internal.security.TestIssuer;
 import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;

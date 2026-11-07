@@ -126,7 +126,9 @@ from users;
 with sample (n, email, created_by, created_ago, link_ago, accepted_ago, revoked_by, revoked_ago, roles) as (
     values (1, 'stranger@mentorhub.local', 'admin@mentorhub.local', interval '1 day', null::interval,
             null::interval, null, null::interval, array ['MENTOR']),
-           -- Its email is queued.
+           -- Its email stays QUEUED for the whole run, kept as a display state: the sample data publishes no event, so
+           -- nothing delivers or resubmits it, "Send email" on it answers 409 email-queued, and a new link sends no
+           -- email of its own.
            (2, 'jordan.blake@example.com', 'admin.mentor@mentorhub.local', interval '10 minutes', null, null, null,
             null, array ['STUDENT']),
            -- Expires within a day, its email failed.
@@ -440,7 +442,17 @@ from (values (1, interval '300 days', null, 'USER_BOOTSTRAPPED_ADMIN', 'admin@me
              (19, interval '60 days', 'admin.mentor@mentorhub.local', 'USER_PROFILE_UPDATED',
               'victor.novak@mentorhub.local',
               '{"changes": [{"field": "firstName", "oldValue": "Vic", "newValue": "Victor"},'
-                  || ' {"field": "phone", "oldValue": null, "newValue": "+77017778899"}]}'))
+                  || ' {"field": "phone", "oldValue": null, "newValue": "+77017778899"}]}'),
+             (21, interval '120 days', 'olivia.hayes@example.com', 'USER_PROFILE_UPDATED', 'olivia.hayes@example.com',
+              '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77052345678"}]}'),
+             (22, interval '35 days', 'chloe.turner@example.com', 'USER_PROFILE_UPDATED', 'chloe.turner@example.com',
+              '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77011234567"}]}'),
+             (23, interval '270 days', 'daniel.kim@mentorhub.local', 'USER_PROFILE_UPDATED',
+              'daniel.kim@mentorhub.local',
+              '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77013334455"}]}'),
+             (24, interval '200 days', 'admin.mentor@mentorhub.local', 'USER_PROFILE_UPDATED',
+              'irene.walsh@mentorhub.local',
+              '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77012223344"}]}'))
          as s (n, ago, actor, action, subject, details)
          join users subject on subject.email = s.subject
          left join users actor on actor.email = s.actor;

@@ -103,6 +103,7 @@ cd frontend && ~/.nvm/nvm-exec npm test -- --watch=false
 cd frontend && ~/.nvm/nvm-exec npm run build
 ```
 
+- `npm run build` ends with `postbuild` (`frontend/scripts/check-prod-build.mjs`), which fails the build, with a non-zero exit code, when `dist/mentorhub-web` is missing or any file in it contains `failure-switch` (see "Simulated failures"). So a green build also means the failure switch is excluded; it is a script, not a bare `grep`, because a `grep` exits 0 on a match and its command would match no allow rule in `.claude/settings.json`.
 - If `node_modules` is missing, run `cd frontend && ~/.nvm/nvm-exec npm ci` first.
 - Formatting failures are fixed with `cd frontend && ~/.nvm/nvm-exec npm run format`.
 - Without nvm, check `node -v` (^24.15) and run the same `npm` commands directly.
@@ -122,5 +123,5 @@ The `api-lookup` subagent follows this section. Implementation agents ask it and
 In development mode (`npm start`) a small select, fixed in the bottom-right corner of every screen including the unavailable message, makes API requests fail (DEV-3). Modes: `Normal`; `Slow` (each request is sent after 3 s); `Server error` (a 500 problem response with `type` `about:blank`, the request not sent); `Offline` (an error with status 0, the request not sent). While a mode other than `Normal` is on, a red indicator above the select names it. The mode lives in memory only, so a reload turns it off.
 
 - Code is in `frontend/src/app/core/dev/`: `FailureMode` (the signal), `failureInterceptor` (last in the chain, so `errorInterceptor` handles simulated failures like real ones; it alters only requests to the MentorHub API, `client-config` included, not Keycloak) and `FailureSwitch` (select and indicator).
-- It is absent from the production build by file replacement: `frontend/src/environments/dev-tools.ts` provides the switch (the root `App` renders the component held by the `DEV_TOOL` token) and the interceptor, and the `production` configuration of `frontend/angular.json` replaces it with `dev-tools.prod.ts`, which exports empty arrays. A production build contains no `failure-switch` (`grep -r failure-switch dist` finds nothing).
+- It is absent from the production build by file replacement: `frontend/src/environments/dev-tools.ts` provides the switch (the root `App` renders the component held by the `DEV_TOOL` token) and the interceptor, and the `production` configuration of `frontend/angular.json` replaces it with `dev-tools.prod.ts`, which exports empty arrays. `npm run build` fails when the production build contains `failure-switch` (see Verification).
 - Screens are reviewed on the sample center, the dev database with the personas and the plausible data set that the backend restores on every start; see `docs/development/backend.md`.
