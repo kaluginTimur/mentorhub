@@ -137,8 +137,9 @@ for (const doc of knowledgeFiles) {
     for (const m of line.matchAll(/\]\(([^)\s]+)\)/g)) {
       if (!/^(https?:|#|mailto:)/.test(m[1])) addReference(doc, lineNo, line, m[1]);
     }
-    if (isArtifact) {
-      for (const m of line.matchAll(/((?:\*\*[^*]+\*\*(?:,\s*|\s+and\s+)?)+)\s+sections?\b(?:\s+of\s+`([^`]+)`)?/g)) {
+    // Agents and skills may name a guide section without its file; other documents are checked when they name the file.
+    for (const m of line.matchAll(/((?:\*\*[^*]+\*\*(?:,\s*|\s+and\s+)?)+)\s+sections?\b(?:\s+of\s+`([^`]+)`)?/g)) {
+      if (isArtifact || m[2]) {
         for (const name of m[1].matchAll(/\*\*([^*]+)\*\*/g)) {
           sectionRefs.push({ doc, lineNo, name: name[1].trim(), target: m[2] });
         }

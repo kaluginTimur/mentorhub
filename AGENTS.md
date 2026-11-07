@@ -7,12 +7,9 @@ The rules every change must keep are in `docs/constitution.md`.
 ## Map
 
 - `api/openapi.yaml`: the API contract, **the source of truth** (decision 0002).
-- `backend/`, `frontend/`: stack, conventions, commands and verification are in `docs/development/backend.md` and `docs/development/frontend.md`. How documentation is kept consistent with the code: `docs/development/docs.md`.
+- `backend/`, `frontend/`: the code; their guides are `docs/development/backend.md` and `docs/development/frontend.md`.
 - `infra/compose.yaml`: local environment.
-- `docs/process.md`: how a change is made, from an idea to main. Read it before anything larger than a quick fix.
-- `docs/roadmap.md`: what is planned: stages, feature order, ideas and preliminary product decisions.
-- `docs/architecture/decisions/`: architecture decisions. Read the index and open the decisions a task touches.
-- `docs/requirements/`: living requirements, what the system does, one file per capability. Read the index and open the capabilities a task touches.
+- `docs/`: the documentation. `docs/README.md` says which document holds what and which one decides; read it before writing anything down. `docs/process.md` says how a change is made, from an idea to main; read it before anything larger than a quick fix.
 
 ## Rules
 

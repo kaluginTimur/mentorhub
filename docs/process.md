@@ -4,14 +4,7 @@ How a change to MentorHub goes from an idea to main, when the project owner work
 
 ## What is the authority
 
-| For | The authority is |
-|---|---|
-| The behavior the requirements describe | `docs/requirements/` |
-| The API | `api/openapi.yaml` |
-| Architecture | `docs/architecture/decisions/` |
-| Everything else | The code and its tests |
-
-A detail that turns out to matter moves into the requirements. The format of requirements and when one has a scenario are in the **Requirements** section of `docs/development/docs.md`.
+The Authority column of `docs/README.md` says which document decides when two disagree, and where a detail that turns out to matter moves.
 
 ## Roles
 
@@ -83,7 +76,7 @@ The reviewer checks the whole diff, the owner decides what to fix, and there is 
 
 ### 8. Finish
 
-Delete the plan. An architectural choice with real alternatives goes to the decisions, a convention or a common technique to a guide, and a specific implementation detail stays in the code, with a comment where it is not obvious. The roadmap item is deleted, and its product decisions move to the requirements or the decisions. All of it goes into the same pull request as the code.
+Delete the plan. An architectural choice with real alternatives goes to the decisions. A rule that later changes in an area must follow goes to that area's guide, in a few lines, as the **Guides** section of `docs/README.md` says. Everything else about how the change is built stays in the code, with a comment where it is not obvious; when in doubt, it is a comment. The roadmap item is deleted, and its product decisions move to the requirements or the decisions. All of it goes into the same pull request as the code.
 
 ## Stopping for the owner
 
