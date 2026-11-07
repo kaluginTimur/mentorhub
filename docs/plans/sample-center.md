@@ -110,6 +110,7 @@ Frontend:
 | T4a DEV-2.1 test compares times inside `audit_log.details` as times (excluded), not as fixed values | DEV-2.1 | test-engineer | done |
 | T5 Simulated failures: service, interceptor, switch and indicator, production exclusion | DEV-3.1, DEV-3.2, DEV-3.3 | frontend-dev | done |
 | T6 Documents: `backend.md` (run warning, Sample center section with the rule that a feature adds its data and shows every state a screen shows differently, Configuration and profiles), `README.md` (personas table, the invitation link, realm recreation, no "stays until reset"), `frontend.md` (Mock mode replaced) | | backend-dev (backend, README), frontend-dev (frontend) | done |
+| T7 Second test pass: tests of details, the read-back test of the sample data, times inside details match their rows | DEV-1 to DEV-3 | test-engineer | done; found a real bug outside this change (AUD-6.5) |
 
 Order: T1, T2, then T3 and T5 in parallel, T4 after T3, T6 with each area.
 
@@ -155,14 +156,16 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 
 - 2026-11-07: T4 checkpoint passed: the user looked at the sample data on the screens and approved T4, T4a and T6 with the commit ("посмотрел, всё ок, коммить"). The list of details of T4 accepted as it is.
 
+- 2026-11-07: The AUD-6.5 bug found by the second pass is fixed as a separate change, recorded in the roadmap (Next, 2); the second-pass tests are committed ("отдельно, запиши в roadmap и коммить тесты").
+
 ## Handover
 
-- Waiting for: the second test pass by a fresh `test-engineer`.
+- Waiting for: the review by `reviewer`, base `workflow/rework`.
 - To read: the plan; the diff of the branch against `workflow/rework`.
-- Documents changed (against `workflow/rework`, which main lacks), all committed: `docs/requirements/development-mode.md` (added), `docs/requirements/identity.md`, `docs/requirements/audit.md`, `docs/requirements/README.md`, `docs/roadmap.md`, `docs/development/frontend.md`, `docs/development/backend.md`, `README.md` (changed). No change since the last stop.
-- State: T1 to T6 and T4a done and committed. Backend PASS, docs PASS, `trace` 207/207 (agents' reports; no verifier run yet).
+- Documents changed (against `workflow/rework`), all committed: `docs/requirements/development-mode.md` (added), `docs/requirements/identity.md`, `docs/requirements/audit.md`, `docs/requirements/README.md`, `docs/development/frontend.md`, `docs/development/backend.md`, `README.md` (changed); `docs/roadmap.md` (changed; new since the last stop: Next, 2 **Unreadable audit details**, and Tracking core moved to 3).
+- State: T1 to T7 done and committed. The second pass found a real bug outside this change (AUD-6.5), recorded in the roadmap. Backend, frontend and docs verification PASS, `trace` 207/207 (agents' reports; no verifier run yet).
 - Open questions: none.
-- Next: second test pass (tests of details), including the permanent read-back test of the sample data through the API and a check that times inside details match the rows they describe; then the review loop with `reviewer`, base `workflow/rework`; then `verifier` with scope `all`.
+- Next: the review loop with `reviewer` (default model), base `workflow/rework`, then `verifier` with scope `all`.
 
 ## Agents
 
@@ -177,3 +180,4 @@ Made for the backend-less mode and dropped with it: changes lasting until the pa
 | backend-dev | definition | af11e30ac7a78ae64 | T4, T6 | 197k |
 | test-engineer | definition | ae4075b294b54f22c | T4a | 64k |
 | backend-dev | definition | a1295d41e4f3299ce | T4 rework | 74k |
+| test-engineer | definition | a9014d20f66fe408e | second pass | 101k |

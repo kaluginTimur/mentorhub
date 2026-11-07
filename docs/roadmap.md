@@ -18,7 +18,8 @@ An item is an intention, not a settled solution: it names a goal, and any way of
 In this order:
 
 1. **Sample center:** a fictional training center in the local run: personas for every role and access state, plausible data restored on every start, and simulated API failures, to review screens per role.
-2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
+2. **Unreadable audit details:** a user's history answers 500 when an entry's details are valid JSON but not an object, though AUD-6.5 says such an entry is left out and the read does not fail. Found by the second test pass of the sample center; the application never writes such details, only direct SQL can. A test of AUD-6.5 with details that are not an object, then the fix.
+3. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
 
 ## Later
 
