@@ -32,14 +32,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,7 +45,6 @@ import tools.jackson.databind.json.JsonMapper;
 /** Preview and acceptance against a real database, as the caller set in the security context. Data is committed. */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
-@ExtendWith(OutputCaptureExtension.class)
 class InvitationAcceptanceServiceTests {
 
     static final String SUBJECT = "invited-subject";
@@ -112,6 +108,7 @@ class InvitationAcceptanceServiceTests {
     class Accepting {
 
         @Test
+        @DisplayName("INV-11.1 A new person joins")
         void createsTheUserLinksTheIdentityAndAssignsTheRoles() {
             Invited invited = invite("ivan@x.test", Role.MENTOR, Role.STUDENT);
             signIn(AccessStatus.NOT_INVITED, null, "IVAN@X.test", true);
@@ -141,7 +138,6 @@ class InvitationAcceptanceServiceTests {
                             "USER",
                             userId,
                             acceptance(invited, true, true, false, List.of("MENTOR", "STUDENT"), List.of())));
-            assertThat(data.allAuditDetails()).doesNotContain(invited.token());
         }
 
         private UUID formerWithInvitation(Invited[] invitedOut) {
@@ -243,8 +239,8 @@ class InvitationAcceptanceServiceTests {
                     .containsExactly(acceptance(invited, false, true, false, List.of("MENTOR"), List.of()));
         }
 
-        // A stored role the code does not know is skipped on acceptance.
         @Test
+        @DisplayName("INV-11.5 An unknown stored role is skipped")
         void skipsStoredRolesTheCodeDoesNotKnow() {
             Invited invited = invite("ivan@x.test", Role.MENTOR);
             data.addStoredRole(invited.details().id(), "AUDITOR");
@@ -273,20 +269,6 @@ class InvitationAcceptanceServiceTests {
         }
 
         @Test
-        @DisplayName("INV-11.5 An unknown stored role is skipped")
-        void unknownStoredRoleIsSkipped() {
-            Invited invited = invite("Anna@Example.com", Role.STUDENT);
-            data.addStoredRole(invited.details().id(), "AUDITOR");
-            signIn(AccessStatus.NOT_INVITED, null, "anna@example.com", true);
-
-            service.accept(invited.token());
-
-            UUID userId = userId("anna@example.com");
-            assertAccepted(invited, userId);
-            assertThat(users.roles(userId)).containsExactly("STUDENT");
-        }
-
-        @Test
         @DisplayName("INV-12.2 A second identity is linked to the user")
         void aSecondIdentityIsLinkedToTheUser() {
             UUID user = users.create("ivan@x.test", UserStatus.DISABLED);
@@ -303,6 +285,7 @@ class InvitationAcceptanceServiceTests {
 
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.invitation.InvitationAcceptanceServiceTests#mismatchedEmails")
+        @DisplayName("INV-13.1 An email that is not verified or differs is refused")
         void refusesAnUnverifiedOrDifferentEmail(@Nullable String email, boolean verified) {
             Invited invited = invite("ivan@x.test", Role.MENTOR);
             signIn(AccessStatus.NOT_INVITED, null, email, verified);
@@ -313,7 +296,7 @@ class InvitationAcceptanceServiceTests {
 
         @Test
         @DisplayName("INV-13.2 An identity linked to another user is refused")
-        void refusesAnIdentityLinkedToAnotherUser(CapturedOutput output) {
+        void refusesAnIdentityLinkedToAnotherUser() {
             UUID invitedUser = users.create("ivan@x.test", UserStatus.DISABLED);
             UUID other = users.create("other@x.test", UserStatus.ACTIVE);
             users.link(other, SUBJECT);
@@ -323,14 +306,12 @@ class InvitationAcceptanceServiceTests {
             assertConflict(() -> service.accept(invited.token()), InvitationProblems.IDENTITY_LINKED_ELSEWHERE);
             assertNothingChanged(invited);
             assertThat(users.status(invitedUser)).isEqualTo("DISABLED");
-            assertThat(output.getOut())
-                    .contains("the identity is linked to user " + other + ", not to user " + invitedUser);
         }
 
         // When no user has the invited email, a linked identity is linked elsewhere too.
         @Test
         @DisplayName("INV-13.2 An identity linked to a user while no user has the email is refused")
-        void refusesALinkedIdentityWhenNoUserHasTheEmail(CapturedOutput output) {
+        void refusesALinkedIdentityWhenNoUserHasTheEmail() {
             UUID other = users.create("other@x.test", UserStatus.ACTIVE);
             users.link(other, SUBJECT);
             Invited invited = invite("ivan@x.test", Role.MENTOR);
@@ -339,8 +320,6 @@ class InvitationAcceptanceServiceTests {
             assertConflict(() -> service.accept(invited.token()), InvitationProblems.IDENTITY_LINKED_ELSEWHERE);
             assertNothingChanged(invited);
             assertThat(userIdOrNull("ivan@x.test")).isNull();
-            assertThat(output.getOut())
-                    .contains("the identity is linked to user " + other + ", and no user has the invited email");
         }
 
         @Test

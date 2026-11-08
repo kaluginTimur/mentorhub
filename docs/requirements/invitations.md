@@ -143,7 +143,7 @@ The system SHALL let a caller who holds `USERS_INVITE` revoke an open invitation
 
 ### INV-7 Getting a new link
 
-The system SHALL let a caller who holds `USERS_INVITE` give an open invitation, pending or expired, a new link, which replaces the old one and restarts the expiry. This is audited (AUD-7).
+The system SHALL let a caller who holds `USERS_INVITE` give an open invitation, pending or expired, a new link, which replaces the old one, so the old link is invalid (INV-10.2), and restarts the expiry. This is audited (AUD-7).
 
 #### INV-7.1 A new link has a new token and a new expiry
 
@@ -164,12 +164,6 @@ The system SHALL let a caller who holds `USERS_INVITE` give an open invitation, 
 - WHEN an administrator asks for a new link for each
 - THEN each response is 409 `invitation-closed`
 - AND the invitations are unchanged
-
-#### INV-7.4 The old link stops working
-
-- GIVEN a pending invitation with a link
-- WHEN an administrator asks for a new link
-- THEN previewing the old link is answered 404 `invitation-invalid`
 
 ### INV-8 Reading the link of a pending invitation
 
@@ -243,12 +237,6 @@ The system SHALL let a signed-in caller of any access status (IDN-3) accept an i
 - GIVEN a pending invitation for `Anna@Example.com`
 - WHEN an identity with the verified email `anna@example.com` accepts it
 - THEN the invitation is accepted
-
-#### INV-11.3 Acceptance needs a signed-in caller
-
-- GIVEN a pending invitation
-- WHEN a caller without a token accepts it
-- THEN the response is 401
 
 #### INV-11.4 The next request of the new user passes the gate
 

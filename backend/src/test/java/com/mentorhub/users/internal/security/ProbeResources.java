@@ -8,4 +8,6 @@ import org.springframework.stereotype.Component;
 class ProbeResources {
 
     void change(UUID id) {}
+
+    void create(PermissionProbeController.ProbeBody body) {}
 }

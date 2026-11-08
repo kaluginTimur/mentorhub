@@ -6,12 +6,18 @@ import com.mentorhub.users.NoPermissionRequired;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import com.mentorhub.web.NotFoundException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,6 +52,17 @@ class PermissionProbeController {
     public void change(@PathVariable UUID id) {
         resources.change(id);
     }
+
+    @PostMapping("/managed-resources")
+    @RequirePermission(Permission.USERS_MANAGE)
+    public void create(@Valid @RequestBody ProbeBody body) {
+        resources.create(body);
+    }
+
+    /** A request body with validated properties, as the generated request types have. */
+    record ProbeBody(
+            @NotBlank @Nullable String name,
+            @NotNull @Min(1) @Nullable Integer count) {}
 
     @GetMapping("/missing")
     @NoPermissionRequired

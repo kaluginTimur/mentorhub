@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -127,6 +128,25 @@ class WebSliceSecurityTests {
                 .asArray()
                 .containsExactly("id");
         assertThat(result).bodyJson().extractingPath("$.errors[0].message").isEqualTo("must be a UUID");
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("PLT-2.1 An invalid body field is named")
+    void eachInvalidBodyFieldIsNamedAndNothingChanges() {
+        MvcTestResult result = mvc.post()
+                .uri("/api/v1/test/managed-resources")
+                .with(TestAuthentications.activeUser(UUID.randomUUID(), Permission.USERS_MANAGE))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"count\": 0}")
+                .exchange();
+
+        assertProblem(result, HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.errors[*].field")
+                .asArray()
+                .containsExactly("count", "name");
         then(resources).shouldHaveNoInteractions();
     }
 
