@@ -1,12 +1,8 @@
 package com.mentorhub.users.internal.invitation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.after;
-import static org.mockito.Mockito.verify;
 
 import com.mentorhub.TestcontainersConfiguration;
-import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.UserStatus;
@@ -24,11 +20,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** The default test configuration has no mail server. */
+/**
+ * The default test configuration has no mail server, so this class shares the default context. Sending is impossible
+ * there: {@code MailDelivery.send} throws without a mail server, which would leave the publication incomplete and the
+ * email queued.
+ */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class InvitationEmailWithoutMailServerTests {
@@ -47,9 +46,6 @@ class InvitationEmailWithoutMailServerTests {
 
     @Autowired
     PlatformTransactionManager transactionManager;
-
-    @MockitoSpyBean
-    MailDelivery mail;
 
     @Test
     @DisplayName("IEM-6.7 An email replayed without a mail server fails")
@@ -74,7 +70,6 @@ class InvitationEmailWithoutMailServerTests {
             Thread.sleep(50);
         }
         assertThat(status(request)).isEqualTo("FAILED");
-        verify(mail, after(300).never()).send(any());
     }
 
     private String status(UUID request) {

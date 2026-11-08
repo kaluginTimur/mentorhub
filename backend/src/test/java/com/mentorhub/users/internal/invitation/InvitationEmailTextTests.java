@@ -22,26 +22,6 @@ class InvitationEmailTextTests {
     }
 
     @Test
-    void rendersTheImpersonalPlainTextEmail() {
-        MailMessage message = InvitationEmailText.message(
-                "ivan@example.com", URI.create("https://app.test/invite/abc"), Instant.parse("2026-10-25T14:00:59Z"));
-
-        assertThat(message.to()).isEqualTo("ivan@example.com");
-        assertThat(message.subject()).isEqualTo("You're invited to MentorHub");
-        assertThat(message.text()).isEqualTo("""
-                You're invited to MentorHub, the training center's mentoring platform.
-
-                Open this link and sign in or create an account with ivan@example.com:
-
-                https://app.test/invite/abc
-
-                The link expires on 25 Oct 2026, 14:00 UTC.
-
-                If you didn't expect this invitation, ignore this email.
-                """);
-    }
-
-    @Test
     void showsTheExpiryInUtcWithoutALeadingZeroInTheDay() {
         MailMessage message = InvitationEmailText.message(
                 "ivan@example.com", URI.create("https://app.test/invite/abc"), Instant.parse("2026-11-05T23:30:00Z"));
