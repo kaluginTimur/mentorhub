@@ -2,7 +2,7 @@
 # Installs the toolchains that the remote sandbox image lacks: Node 24 (frontend/.nvmrc) and JDK 25 (docs/development/backend.md).
 # The JDK comes from the conda-forge package, verified against its repodata SHA-256.
 # Starts the Docker daemon and provides postgres:18 for Testcontainers. Docker failures only warn.
-# Also provides ~/.nvm/nvm-exec and installs frontend dependencies. The dev stack is not started here: the backend's
+# Installs Chromium for playwright-cli when missing (warn-only). Also provides ~/.nvm/nvm-exec and installs frontend dependencies. The dev stack is not started here: the backend's
 # spring-boot-docker-compose support starts infra/compose.yaml on `spring-boot:run`.
 set -euo pipefail
 
@@ -86,6 +86,17 @@ fi
 if [ ! -d "$CLAUDE_PROJECT_DIR/frontend/node_modules" ]; then
   (cd "$CLAUDE_PROJECT_DIR/frontend" && npm ci) >/dev/null 2>&1 \
     || echo "npm ci in frontend failed; run it manually" >&2
+fi
+
+# Chromium for playwright-cli (the manual tester); installed only when the revision it needs is missing. A failure only warns.
+if [ -d "$CLAUDE_PROJECT_DIR/frontend/node_modules/@playwright/cli" ]; then
+  (
+    cd "$CLAUDE_PROJECT_DIR/frontend"
+    chromium_dir="$(npx playwright-cli install-browser chromium --dry-run 2>/dev/null | awk '/chromium-[0-9]+$/ && /Install location/ {print $NF; exit}')"
+    if [ -z "$chromium_dir" ] || [ ! -e "$chromium_dir/INSTALLATION_COMPLETE" ]; then
+      npx playwright-cli install-browser chromium --with-deps >/dev/null 2>&1
+    fi
+  ) || echo "Could not install Chromium for playwright-cli; the manual tester will report NOT RUN" >&2
 fi
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then

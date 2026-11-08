@@ -68,24 +68,11 @@ After each report, list what changed in the test files since the red commit. A c
 
 **Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
 
-**Stop when the frontend is green.** The user looks at the screens on the sample center, signed in as the personas the report names, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
-
-**List of details.** Show the user each developer's list. What the user agrees with stays as it is. For the rest, follow stage 5 of `docs/process.md`: a matter of taste goes to the developer with an ordinary test; a rule goes into the requirement first, then to `test-engineer`, then to the developer.
-
-## Tests of details
-
-Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer` for its second pass. Doubtful behavior it reports goes to the user. A failing test it reports goes to the developer who owns the area, or to the user when it is not clearly a bug. Note in the plan whether it found a real bug: **Stages** in `docs/process.md` says the pass is removed if it finds none.
-
-## Review loop
-
-1. Run `reviewer` on the scope (the default model), with the base ref and the plan's path.
-2. Show the user every finding at once, blockers to minors, with your recommendation. The user decides what to fix.
-3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement against the code, not against the finding's wording.
-4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. A new blocker or major from it goes back to step 2.
+**When the frontend is green,** run `manual-tester` on the changed screens: the screens, the personas and the states from the plan and the requirements. Run the manual checks from the report on `manual-tester` too, with the `model` parameter set to `haiku`, the steps as a numbered list. Then **stop**: the user reads its report and screenshots (`.screens/<change>/<run>/`) and chooses what goes to `frontend-dev`. Relay their choice in their words. After the fixes, run `manual-tester` once more on the affected states only, then the user looks at the screens themselves, on the sample center, signed in as the personas the report names. `NOT RUN` from `manual-tester` is a broken environment: show the error and do not work around it.
 
 ## Verify and finish
 
 1. Run `verifier` with scope `all`.
 2. Report what was built per requirement, the verification table, `trace`, open items and a proposed commit message. **Stop** for the user to accept.
-3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item and the plan. Show the user these changes, and each passage added to a guide or widened with the four answers the **Guides** section of `docs/README.md` asks for; remove a passage the user does not agree with.
+3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item, the plan and `.screens/<change>/`. Show the user these changes, and each passage added to a guide or widened with the four answers the **Guides** section of `docs/README.md` asks for; remove a passage the user does not agree with.
 4. Commit only if the user asks. Then suggest `/pr`, and `/usage-review` once the pull request is open.

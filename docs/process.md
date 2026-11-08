@@ -14,6 +14,7 @@ The Authority column of `docs/README.md` says which document decides when two di
 | Designer | Works out the requirements and the plan with the owner | Decide what the product does |
 | Test engineer | Writes the tests that carry scenario ids and the tests of details, and owns shared test infrastructure | Read the implementation for the tests with ids; fix doubtful behavior in a test |
 | Developer | Writes the code to pass the tests, and unit tests for non-obvious algorithms | Change a test engineer's test |
+| Manual tester | Tests the running application through its UI: looks at the changed screens in each state as the personas who see them, runs manual checks, reports what is implausible | Edit code, tests or documents; fix what it finds |
 | Reviewer | Checks requirements or a diff independently | Edit anything |
 
 The test engineer and the developer are separate agents with separate contexts.
@@ -58,7 +59,7 @@ The requirements, the contract, the plan and these tests are then committed toge
 
 ### 5. Implement
 
-Developers work through the tasks of the plan, in the order it gives. The owner checks the backend once its tests are green, at any further checkpoint the plan names, and looks at the screens at the end, on the sample center.
+Developers work through the tasks of the plan, in the order it gives. The owner checks the backend once its tests are green, at any further checkpoint the plan names, and looks at the screens at the end, on the sample center. Before the owner does, the manual tester looks at the changed screens and runs the manual checks; the owner chooses what the developer fixes, and the manual tester re-checks the affected states once.
 
 **List of details.** After implementation, a developer lists the details visible to a user that it chose on its own. The list shows only what the agent recognizes as a choice.
 
