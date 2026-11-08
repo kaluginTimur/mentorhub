@@ -43,7 +43,7 @@ export interface ConfirmResult {
 })
 export class ConfirmDialog {
   protected readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
-  protected readonly ref = inject<MatDialogRef<ConfirmDialog>>(MatDialogRef);
+  protected readonly ref = inject<MatDialogRef<ConfirmDialog, true | ConfirmResult>>(MatDialogRef);
   protected readonly checked = signal(this.data.checkbox?.checked ?? false);
 
   protected result(): true | ConfirmResult {

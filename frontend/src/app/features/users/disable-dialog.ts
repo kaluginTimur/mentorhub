@@ -81,12 +81,12 @@ export class DisableDialog {
   protected readonly disableForm = form(this.model, (path) => {
     required(path.reason, { message: 'Choose a reason' });
     required(path.comment, {
-      when: ({ valueOf }) => valueOf(path.reason) === 'OTHER',
+      when: (field) => field.valueOf(path.reason) === 'OTHER',
       message: 'Enter a comment',
     });
-    validate(path.comment, ({ value, valueOf }) => {
-      const text = value();
-      if (text.length > 0 && text.trim() === '' && valueOf(path.reason) === 'OTHER') {
+    validate(path.comment, (field) => {
+      const text = field.value();
+      if (text.length > 0 && text.trim() === '' && field.valueOf(path.reason) === 'OTHER') {
         return { kind: 'required', message: 'Enter a comment' };
       }
       return text.trim().length > COMMENT_LIMIT

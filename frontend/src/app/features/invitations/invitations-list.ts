@@ -35,7 +35,11 @@ import { InvitationStatus } from '../../core/api/models/invitation-status';
 import { Role } from '../../core/api/models/role';
 import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
 import { ClientConfigService } from '../../core/client-config.service';
-import { ConfirmDialog, ConfirmResult } from '../../shared/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmDialogData,
+  ConfirmResult,
+} from '../../shared/confirm-dialog/confirm-dialog';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS } from '../users/labels';
 import { InviteDialog, InviteDialogData } from './invite-dialog';
@@ -276,18 +280,21 @@ export class InvitationsList {
     if (this.isBusy(invitation.id)) {
       return;
     }
-    const ref = this.dialog.open(ConfirmDialog, {
-      width: '420px',
-      data: {
-        title: `Get a new link for ${invitation.email}?`,
-        text: 'The previous link will stop working.',
-        confirmLabel: 'Get a new link',
-        ...(this.emailEnabled()
-          ? { checkbox: { label: 'Send the new link by email', checked: true } }
-          : {}),
+    const ref = this.dialog.open<ConfirmDialog, ConfirmDialogData, true | ConfirmResult>(
+      ConfirmDialog,
+      {
+        width: '420px',
+        data: {
+          title: `Get a new link for ${invitation.email}?`,
+          text: 'The previous link will stop working.',
+          confirmLabel: 'Get a new link',
+          ...(this.emailEnabled()
+            ? { checkbox: { label: 'Send the new link by email', checked: true } }
+            : {}),
+        },
       },
-    });
-    const result: true | ConfirmResult | undefined = await firstValueFrom(ref.afterClosed());
+    );
+    const result = await firstValueFrom(ref.afterClosed());
     if (!result) {
       return;
     }
