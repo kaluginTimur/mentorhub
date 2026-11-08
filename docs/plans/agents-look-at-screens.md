@@ -1,6 +1,6 @@
 # Agents look at screens
 
-Branch: `feature/agents-look-at-screens`
+Branch: `claude/practical-planck-fe16cx` (the branch this cloud session develops on; the plan's first name, `feature/agents-look-at-screens`, was never used)
 Roadmap item: **Agents look at screens** (Next, 2): agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised, in local and cloud sessions alike.
 Requirements approved: 2026-11-09 "план прочитал, возражений не имею" (the scope and decisions of this plan; the change has no requirements)
 <!-- Only the user's explicit approval of the requirements as they stand: replace "none" with <YYYY-MM-DD> "<their words>". This change has no requirements: the line records the approval of the scope. -->
@@ -62,12 +62,18 @@ None: there are no scenarios. The change is checked by a trial run on a real scr
 | T1 Tooling: `playwright-cli` devDependency, `.gitignore`, `README.md` setup tried locally, `session-start.sh`, allow rules for the commands | none | `frontend-dev` | done |
 | T2 The `manual-tester` definition, `docs/process.md` Roles and stage 5, `/feature`, `.claude/README.md`; docs verification green. **Checkpoint:** the owner reads the diff of T1 and T2 | none | `frontend-dev` | done |
 | T3 Trial run, local: `manual-tester` on Users and Invitations, personas `admin@` and `mentor@`, reaching the list's own error state; the owner reads the report and the screenshots | none | coordinator, `manual-tester` | done |
-| T4 Trial run, cloud: the same brief in a cloud session; settles whether the pre-installed browser fits | none | coordinator, `manual-tester` | pending |
+| T4 Trial run, cloud: the same brief in a cloud session; settles whether the pre-installed browser fits | none | coordinator, `manual-tester` | in progress (blocked by the environment, see Partial work) |
 | T5 Fixes from the trial runs to the definition or the setup, if any | none | `frontend-dev` | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
 ## Partial work
+
+**T4, blocked by the environment (2026-11-08, cloud session, run `20261108-2054`).** No screen was looked at; no `.screens/` folder exists; no data changed. Stack: `npm start` answered on :4200 and was stopped again; `./mvnw spring-boot:run` failed at 20:54:53Z.
+
+- Blocker 1, Docker images: `docker compose up --wait` got HTTP 429 from Docker Hub for `axllent/mailpit:v1.31.4`, and `keycloak/keycloak:26.8.1` was not present ("No such image"). `session-start.sh` pre-pulls only `postgres:18`, through `mirror.gcr.io`. Verified workaround by the investigator: `mirror.gcr.io/keycloak/keycloak:26.8.1` and `mirror.gcr.io/axllent/mailpit:v1.31.4` both pull, and tagging them to the names compose expects gives the images it needs. `quay.io` is forbidden by the proxy. Not verified: a full `spring-boot:run` or `compose up --wait` after the tagging. The images stay in this container's Docker, ignored by git.
+- Blocker 2, browser: `@playwright/cli` 0.1.23 needs Chrome for Testing 157.0.8103.15 (playwright chromium v1252). The download from `cdn.playwright.dev` gets a 403 CONNECT from the proxy (policy denial, five times), so `install-browser chromium --with-deps` in `session-start.sh` cannot succeed here; it only warns. The container has chromium-1243 (Chrome 153) under `/opt/pw-browsers`. Verified workaround: a `playwright-cli --config <file>` with `launchOptions.executablePath` set to `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`; `open about:blank` worked with it. The config file is outside the repository, in the scratchpad. Not verified: `open http://localhost:4200` (a throwaway server on 4200 was denied by the permission classifier and not retried), and `snapshot`/`screenshot` with the older Chrome.
+- Permissions: no command was prompted by the agent's run, but the agent says the prompting depends on the session's permission mode, so the allow list is not proven sufficient. `date` ran without a prompt here. The agent started the processes with `setsid` inside a subshell, which the allow-list patterns do not match literally.
 
 ## Red tests
 
@@ -95,18 +101,15 @@ None: there are no scenarios.
 
 ## Handover
 
-- Waiting for: the owner to run T4 in a cloud session.
-- To read: this plan.
-- T5 (committed): `.claude/agents/manual-tester.md` gains: snapshots written with `--filename` into the run folder and searched with grep/head, or of one element; role and text locators over refs; `select` for the DEV-3 switch; `screenshot --full-page`; `<run>` from `date +%Y%m%d-%H%M`; wait or snapshot after a `goto` that may redirect. No new allow rule; whether `date` prompts is seen in T4 (add `Bash(date *)` if it does).
-- T3 result (local, run `20261109-0000`, screenshots in `.screens/agents-look-at-screens/20261109-0000/`): stack started and stopped by the agent without prompts, no data changed, all states of both lists reached except the list's first-load error (out of reach by decision); the mentor on `/users/{id}` not confirmed (a redirect read too early, fixed in T5).
-- Documents changed:
-  - `docs/roadmap.md`, changed (committed in `d997676`, the commit this branch is built on): the item worked out in `/explore`, its product decisions, and an idea on meaning lost in shortened passages.
-  - `docs/plans/agents-look-at-screens.md`, added (committed in `82acc80`, changed since): this plan.
-  - `README.md`, changed (committed in `82acc80`): Setup gains installing Chromium for `playwright-cli`, the WSL libraries (`--with-deps`, not tried: needs `sudo`) and a check.
-  - `docs/process.md`, changed (committed in `82acc80`): a Manual tester row in Roles; one sentence in stage 5.
-- State: T1, T2 committed in `82acc80`; T3 done; T5 committed; the branch pushed; T4 pending.
-- Open questions: none.
-- Next: T4 needs a cloud session: the owner opens this branch in Claude Code on the web and runs `/feature agents-look-at-screens`; the coordinator there briefs `manual-tester` with the T3 brief (Users and Invitations, `admin@` and `mentor@`, the list's own error state) and checks whether the pre-installed browser fits and `session-start.sh` installs Chromium. Then stage 7 (review) and stage 8.
+- Waiting for: the owner's decisions on the two T4 blockers below, then a re-run of T4 in this cloud session.
+- To read: this plan, Partial work first.
+- Open questions (owner decides):
+  1. **Browser revision.** Either (a) the owner allows `cdn.playwright.dev` (and `playwright.download.prss.microsoft.com`, the ffmpeg fallback) in the environment's network policy, so `install-browser chromium` gets revision 1252 and the stock setup works; or (b) the trial runs the pre-installed Chromium 1243 through a `--config` with `executablePath`. Option (b) needs a config file for `playwright-cli` in the repository (for example `frontend/.playwright/cli.config.json`, if git-ignored or committed on purpose) or a per-run config outside it; the Chrome 153 vs 157 mismatch for snapshots and screenshots is not yet tested. The coordinator recommends trying (b) first to settle T4, then deciding on (a) for durability.
+  2. **Docker images.** Rate-limited pulls of Keycloak and Mailpit break the stack in cloud sessions. Proposed change to the cloud setup script (or `session-start.sh`): pull those images through `mirror.gcr.io` and tag them, as `postgres:18` already is, deriving the list from `docker compose -f infra/compose.yaml config --images` rather than hardcoding it. Not applied; the owner decides where the change goes.
+  3. **Permissions.** Whether `date` and the `setsid` launch need allow rules depends on the permission mode; the owner decides whether to add rules (the plan says a `Bash(date *)` rule only if it prompts).
+- Documents changed: none in this stop; the plan is the only file changed. (For T4 itself, nothing in the repository changed: the stack's images and `frontend/.playwright-cli/` are git-ignored.)
+- State: T1, T2 committed in `82acc80`; T3 done; T5 committed; the branch pushed; T4 in progress, blocked. Working tree: this plan edit only, not committed.
+- Next: after the owner's answers, re-run T4 with the brief in Partial work (Users and Invitations, `admin@` and `mentor@`, the list's own error state), then stage 7 (review) and stage 8.
 
 ## Agents
 
@@ -114,3 +117,5 @@ None: there are no scenarios.
 |---|---|---|---|---|
 | frontend-dev | sonnet | ad63877eb745d0cdb | implementation (T1, T2, T5) | 81k |
 | manual-tester | sonnet | af4b2a9d422ffd344 | implementation (T3) | 74k |
+| manual-tester | sonnet | a579d444faf4ce575 | implementation (T4, NOT RUN) | 29k reported |
+| general-purpose | sonnet | a05b33d5061c26904 | implementation (T4 blocker investigation) | 81k reported |
