@@ -11,7 +11,7 @@ An item is an intention, not a settled solution: it names a goal, and any way of
 
 ## Now
 
-- **Workflow rework:** spec-driven documents and agent process (`docs/workflow-rework.md`).
+Nothing in progress.
 
 ## Next
 
