@@ -68,7 +68,20 @@ After each report, list what changed in the test files since the red commit. A c
 
 **Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
 
-**When the frontend is green,** run `manual-tester` on the changed screens: the screens, the personas and the states from the plan and the requirements. Run the manual checks from the report on `manual-tester` too, with the `model` parameter set to `haiku`, the steps as a numbered list. Then **stop**: the user reads its report and screenshots (`.screens/<change>/<run>/`) and chooses what goes to `frontend-dev`. Relay their choice in their words. After the fixes, run `manual-tester` once more on the affected states only, then the user looks at the screens themselves, on the sample center, signed in as the personas the report names. `NOT RUN` from `manual-tester` is a broken environment: show the error and do not work around it.
+**When the frontend is green,** run `manual-tester` on the changed screens: the screens, the personas and the states from the plan and the requirements. Run the manual checks from the report on `manual-tester` too, with the `model` parameter set to `haiku`, the steps as a numbered list. Then **stop**: the user reads its report and screenshots (`.screens/<change>/<run>/`) and chooses what goes to `frontend-dev`. Relay their choice in their words. After the fixes, run `manual-tester` once more on the affected states only, then the user looks at the screens themselves, on the sample center, signed in as the personas the report names. A `NOT RUN` from `manual-tester` is a broken environment: show its error to the user and, if they agree, send it to the environment investigation of **Relaying reports**; do not retry it another way.
+
+**List of details.** Show the user each developer's list. What the user agrees with stays as it is. For the rest, follow stage 5 of `docs/process.md`: a matter of taste goes to the developer with an ordinary test; a rule goes into the requirement first, then to `test-engineer`, then to the developer.
+
+## Tests of details
+
+Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer` for its second pass. Doubtful behavior it reports goes to the user. A failing test it reports goes to the developer who owns the area, or to the user when it is not clearly a bug. Note in the plan whether it found a real bug: **Stages** in `docs/process.md` says the pass is removed if it finds none.
+
+## Review loop
+
+1. Run `reviewer` on the scope (the default model), with the base ref and the plan's path.
+2. Show the user every finding at once, blockers to minors, with your recommendation. The user decides what to fix.
+3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement against the code, not against the finding's wording.
+4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. A new blocker or major from it goes back to step 2.
 
 ## Verify and finish
 

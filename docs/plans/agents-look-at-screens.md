@@ -27,7 +27,7 @@ None. The change is about the agents, the process and the setup; no behavior of 
 ## Design
 
 **The agent, `.claude/agents/manual-tester.md`.**
-- `model: sonnet`, the 5-minute cache (it runs once, without pauses), no context-budget hook (it cannot write the plan's Partial work). Tools: `Bash`, `Read`, `Grep`, `Glob`, with no `Edit` or `Write`, so that "edits no tracked files" holds by construction: screenshots are written by `playwright-cli` into `.screens/`.
+- `model: sonnet`, the 5-minute cache (it runs once, without pauses), no context-budget hook (it cannot write the plan's Partial work). Tools: `Bash`, `Read`, `Grep`, `Glob`, with no `Edit` or `Write`, so that it has no file-editing tool; "edits no tracked files" holds by its instructions, since `Bash` can write: screenshots are written by `playwright-cli` into `.screens/`.
 - Two kinds of brief, one definition: **look at screens** (the brief names the screens, the personas and the states, taken from the plan and the requirements; the agent adds a state it sees the screen has) and **manual checks** (numbered steps; the coordinator passes `model: haiku`).
 - **The stack.** It checks `http://localhost:4200` and `http://localhost:8080/actuator/health`. Not running: it starts the backend (`./mvnw spring-boot:run`) and the frontend (`npm start`) in the background with the commands from `README.md`, waits for both, and stops exactly those processes when done (never `docker compose down`: the compose services started by Spring Boot stay, as after a person's run). Running: it uses it as is, never restarts or stops it, and its data changes land in the owner's database, so the report lists them.
 - **Sign-in.** Through the Keycloak form, persona email and the password `mentorhub` from `README.md`; one named `playwright-cli` session per persona, so personas do not share cookies.
@@ -35,7 +35,7 @@ None. The change is about the agents, the process and the setup; no behavior of 
 - **What it reads.** The accessibility snapshot to find elements and states; a screenshot for each screen, persona and state it reports on, read back to judge the look. Screenshots: `.screens/<change>/<run>/<screen>-<persona>-<state>.png`, `<run>` a timestamp.
 - **A broken environment** (no browser, missing system packages, a stack that does not start): NOT RUN with the exact command and error, no workaround.
 - **Report** as the decision of 2026-11-09 says.
-- Its commands are written once in the definition and each matches an allow rule in `.claude/settings.json` (the `playwright-cli` calls, the health checks, the two start commands; stopping its processes goes through the permission mode).
+- Its commands are written once in the definition; the health checks, the `playwright-cli` calls and the two start commands each match an allow rule in `.claude/settings.json` (the `playwright-cli` calls, the health checks, the two start commands; stopping its processes goes through the permission mode).
 
 **Tooling.**
 - `@playwright/cli` (binary `playwright-cli`): the developer confirms the npm package name and the latest version with `npm view` (or `api-lookup`) before adding it as an exact devDependency of `frontend/`, and runs it with `~/.nvm/nvm-exec npx playwright-cli` from `frontend/`.
@@ -96,31 +96,42 @@ None: there are no scenarios.
 - 2026-11-09: The other T3 findings stay as they are: no status chip, the paginator over old rows during a slow search, the sample row "Emma Brooks". T5 accepted, committed and the branch pushed for T4 ("chip не нужен, остальное оставляем, коммить и пушь").
 - 2026-11-08 (T4, cloud): the owner chose option (b) for the browser: the pre-installed Chromium 1243 through a `playwright-cli --config` file kept outside the repository, and "try option b first, then re-run T4".
 - 2026-11-09 (T4 questions): 1 — the cloud environment's network policy allows the Playwright download hosts, so the stock setup gets the lockfile's revision (option a; the owner configures the environment; no config for the pre-installed browser); 2 — `session-start.sh` pulls the compose images through `mirror.gcr.io`; 3 — answered by PLT-9.1 and USR-12, nothing to fix; 4 — no allow rules for `date` or `setsid`; 5 — T6 ("по рекомендациям: 1 — a, 2 — да, 5 — запускай T6").
+- 2026-11-09 (review 1): fix findings 1–10 in one round by `frontend-dev`; the coordinator fixes the plan facts of 11; `docs/roadmap.md` stays (the item is deleted at stage 8) ("по рекомендациям, запускай исправления").
 - From the exploration (roadmap product decisions): `playwright-cli`; the stack rule; screenshots in a git-ignored folder opened in the IDE; a screen's own error state is reached with the failure switch on an open screen; Chromium needs system packages in WSL; the `/feature` phrase is fixed.
 
 ## Handover
 
-- Waiting for: the owner, on the T6 diff and its commit and push; the owner allows the Playwright download hosts in the cloud environment. Then stage 7 (review) and stage 8.
-- T6 (committed): `manual-tester.md` keeps the `$!` of each `setsid` start and never searches for a process (`ps`, `pgrep`, `lsof`); `session-start.sh` pulls every image of `docker compose config --images` plus `postgres:18` through `mirror.gcr.io` (registry-qualified images as they are; pulls not run here, only the name classification), and its header and warning name `cdn.playwright.dev` and `playwright.download.prss.microsoft.com` (found in playwright-core). `bash -n` PASS.
-- Local coordinator, after pulling T4 (2026-11-09): question 3 is answered by the requirements: the unavailable card with Retry on a failed list load is PLT-9.1, and the mentor ending on home is USR-12 / PERM-7, as T3 found; nothing new goes to `frontend-dev`. New, from the T4 tool notes: the agent killed a wrong process group after finding it with `ps | awk`; the definition should keep the group id from the launch (`$!` of the `setsid` start) and never search for it. The screenshots of T4 stayed in the cloud.
-- To read: this plan, then the T4 report in the Handover (the screenshots are in `.screens/agents-look-at-screens/20261108-2110/`, git-ignored).
-- T4 result (cloud, run `20261108-2110`): the stack started and stopped by the agent (the compose services stay); `actuator/health` UP, :4200 answered 200, both ready about 33 s after launch. Personas `admin@mentorhub.local` and `mentor@mentorhub.local`, viewport 1280x720. No data changed: only filters, paging and the DEV-3 switch. Nothing prompted or was refused.
-  - Users, admin: default page 1 "as the requirement says"; page 2 "likely a bug" (known issue #28, column widths shift between pages); empty states "as the requirement says"; loading (old rows stay, progress bar, paginator not visible in the screenshot) "doubtful, owner decides" (matches the T3 note, accepted); error (the whole content area replaced by the global "MentorHub is unavailable. Try again later." alert with Retry, filters and table gone) "doubtful, owner decides": the agent did not read the requirement for the list's own error, so it cannot say whether the global message is intended.
-  - Invitations, admin: default page 1 "likely a bug" (known issue #27: the Invited column is narrow, "Alma Admin-Mentor" wraps over three lines); page 2 "likely a bug" (the same width shift); Revoked filter "as the requirement says" (paginator range correct); error (Offline mode) the same global alert as Users, "doubtful, owner decides"; the Sending-email status is plausible sample data.
-  - Mentor: after sign-in the home "Welcome, Mark" with no nav links; `/users` and `/invitations` end on `/`. "As the requirement says, assuming the mentor has no access"; the agent did not read the access requirement.
-  - Not reached: the mentor on `/users/{id}`; the Pending, Expired and Accepted filters and the Server error mode on Invitations; the list's first-load error (out of reach by decision).
-- Tool notes for the definition (not changed, owner decides): `--config` is accepted by `open` only, not by `snapshot` or `screenshot`; the later commands of the same session keep the browser, so only `open` needs it. The agent's first attempt to find the frontend's process group used `ps | awk` and killed the wrong group; it then killed the groups by PID.
-- Environment, now outside the repository: the two Docker images are tagged locally from `mirror.gcr.io`; the browser config is in the scratchpad, `/tmp/claude-0/-home-user-mentorhub/d51fc84e-be2e-544b-a530-b2e92f727c55/scratchpad/cli.config.json`. The scratchpad does not survive a new cloud session.
-- Open questions from T4: all decided (Decisions, 2026-11-09 "T4 questions").
+- Waiting for: `verifier` (scope `all`); then the final report for the owner's acceptance.
+- After the confirmation run (owner: "да, делай правки, коммить, пушь и запускай verifier"): `manual-tester.md` says a `run_in_background` start reports "completed" because `setsid` forks (judge by the health checks), and names the DEV-3 select (`role=combobox[name='Simulated API failures']`, modes `normal`, `slow`, `server-error`, `offline`, from `failure-switch.ts`); the doubled blank line in `session-start.sh` removed. Committed and pushed with the review-1 fixes.
+- Re-review (Sonnet): findings 1–10 fixed; minors: the trailing ` *` of the start rules may not match if redirections are stripped before matching (the run below had no prompt); two blank lines in `session-start.sh`.
+- Confirmation run (`manual-tester`, local, run `20261109-0240`, Users as admin: loaded, own error, Retry → empty with the search kept): every stack command ran without a prompt (in auto mode, so that shows the classifier or a rule let it through, not which); `.pgid` files held the right group leaders; ports 4200 and 8080 free after the stop; no data changed. Friction: a `run_in_background` start reports "completed" within seconds although the stack keeps running (`setsid`); the DEV-3 switch is set with `select "role=combobox[name='Simulated API failures']" "Server error"`. Finding again "doubtful": the error card replaces the filters too (PLT-9.1 decided in T4: as required).
+- Fix round of review 1 (uncommitted): 1 the three `/feature` sections restored verbatim (the skill differs from `origin/main` only in the manual-tester paragraph and the finish step); 2 `.playwright-cli/` in `frontend/.prettierignore`; 3 `setsid cmd & echo $!` failed in the agent's job-control shell (`setsid` forks), so the started process writes its own pgid: `cd <repo>/backend && setsid sh -c 'echo $$ > <run>/backend.pgid; exec ./mvnw spring-boot:run' > <run>/backend.log 2>&1 < /dev/null` with `run_in_background` (frontend alike), confirmed with `sleep`; step 4 kills only the ids in the `.pgid` files; 4 `CLAUDE_ENV_FILE` written right after the JDK; 5 three rules replace the dead ones: `Bash(mkdir -p *.screens/*)` and the two `setsid sh -c '…' *` forms (matching untested); 6 the write wording; 7 NOT RUN goes to the user, then on agreement to the investigation; 8 a warning when `@playwright/cli` is missing from `node_modules`; 9 headless runs launch `chromium-<rev>/chrome-linux64/chrome`, no change; 10 bare `npx` in `README.md`. `bash -n`, `format:check`, `check-docs` PASS.
+- To read: this plan.
+- Review 1 (`reviewer`, base `origin/main` 3ec4dca; local `main` is stale at 8e6dcb1), all findings:
+  1. major: `/feature` lost its List of details, Tests of details and Review loop sections in `82acc80` (verified by the coordinator); restore them as on `origin/main`, after the manual-tester paragraph.
+  2. major: `frontend/.playwright-cli/` is not in `frontend/.prettierignore`: after a tester run `npm run format:check` fails and `format` rewrites the tool's files.
+  3. major, possible: the start commands give no `$!` (no `&`; with `cd … && setsid … &` the `$!` is a subshell's); write the exact form (`cd <dir>; setsid <cmd> > <log> 2>&1 < /dev/null & echo $!`) and confirm the group id in a trial.
+  4. major, possible: `session-start.sh` writes `CLAUDE_ENV_FILE` last; with the new pulls and the Chromium install a 600 s timeout would leave the session without Node and the JDK; write it right after their install.
+  5. minor: the allow rules `Bash(./mvnw spring-boot:run)` and `Bash(~/.nvm/nvm-exec npm start)` never match the `setsid` forms; the plan's "each matches an allow rule" is untrue.
+  6. minor: "Your tools cannot write files" is false (Bash redirects); no edits to tracked files holds by instruction only.
+  7. minor: `/feature` line 47 sends environment failures to a `general-purpose` investigation, line 71 says NOT RUN is not worked around: say NOT RUN goes to the user and, on agreement, to that investigation.
+  8. minor: `npm ci` runs only without `node_modules`; a cached older `node_modules` skips Chromium silently: warn.
+  9. minor, possible: the revision check ignores `chromium_headless_shell-<rev>`, which headless runs may use.
+  10. minor: `README.md:130` mixes bare `npm ci` with `~/.nvm/nvm-exec npx`; use bare `npm`/`npx` for a person.
+  11. minor: plan facts (allow rules, "by construction", State and Next lines); `docs/roadmap.md` "Nothing in progress" under Now.
 - Documents changed: the plan only in this stop (the T4 run changed no tracked file).
-- State: T1–T5 done and committed (T4's two cloud commits fast-forwarded from `claude/practical-planck-fe16cx`, not yet pushed to `feature/agents-look-at-screens`); T6 done and committed; the branch pushed. Stage 7: `reviewer` running on the whole change against `main` ("да, коммить, пушь и запускай ревью").
-- Next: commit and push (with the owner's word), then stage 7: `reviewer` on the whole change against `main`.
+- State: T1–T6 done, committed and pushed (`811f69d`); review 1, its fix round, the re-review and the confirmation run done, committed and pushed.
+- Open questions: none.
+- Next: one fix round to `frontend-dev` (continue it if under 150k) with the accepted findings; then a Sonnet re-review if substantial; then `verifier` with scope `all`.
 
 ## Agents
 
 | Agent | Model | Id | Phase | Context |
 |---|---|---|---|---|
-| frontend-dev | sonnet | ad63877eb745d0cdb | implementation (T1, T2, T5, T6) | 86k |
+| frontend-dev | sonnet | ad63877eb745d0cdb | implementation (T1, T2, T5, T6), review 1 fixes | 102k |
 | manual-tester | sonnet | af4b2a9d422ffd344 | implementation (T3) | 74k |
 | manual-tester | sonnet | a579d444faf4ce575 | implementation (T4 NOT RUN, then T4 re-run, done) | 29k at the first run; resumed for the re-run, size not reported |
 | general-purpose | sonnet | a05b33d5061c26904 | implementation (T4 blocker investigation) | 81k reported |
+| reviewer | opus | ade5602f58dcde813 | review (1) | 98k |
+| reviewer | sonnet | afa043d8f00767999 | review (re-review 1) | 27k |
+| manual-tester | sonnet | a4dbd5e83d50783b4 | review (confirmation run) | 24k |

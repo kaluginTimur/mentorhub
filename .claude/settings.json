@@ -35,8 +35,9 @@
       "Bash(~/.nvm/nvm-exec npx playwright-cli *)",
       "Bash(curl -sS -o /dev/null -w \"%{http_code}\" http://localhost:4200)",
       "Bash(curl -sS http://localhost:8080/actuator/health)",
-      "Bash(./mvnw spring-boot:run)",
-      "Bash(~/.nvm/nvm-exec npm start)",
+      "Bash(mkdir -p *.screens/*)",
+      "Bash(setsid sh -c 'echo $$ > *.screens/*/backend.pgid; exec ./mvnw spring-boot:run' *)",
+      "Bash(setsid sh -c 'echo $$ > *.screens/*/frontend.pgid; exec ~/.nvm/nvm-exec npm start' *)",
       "Bash(gh auth status *)",
       "Bash(gh pr view *)",
       "Bash(gh pr list *)"

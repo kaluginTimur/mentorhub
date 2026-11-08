@@ -48,6 +48,15 @@ EOF
   mv "$tmp/jdk" "$JDK_DIR"
 fi
 
+export JAVA_HOME="$JDK_DIR"
+export PATH="$NODE_DIR/bin:$JDK_DIR/bin:$PATH"
+
+# Written now, before the steps that only warn, so a session keeps Node and the JDK whatever they do.
+if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  echo "export JAVA_HOME=\"$JDK_DIR\"" >> "$CLAUDE_ENV_FILE"
+  echo "export PATH=\"$NODE_DIR/bin:$JDK_DIR/bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+fi
+
 start_docker() {
   if docker info >/dev/null 2>&1; then
     return 0
@@ -89,9 +98,6 @@ else
   echo "Docker daemon did not start; see $HOME/dockerd.log" >&2
 fi
 
-export JAVA_HOME="$JDK_DIR"
-export PATH="$NODE_DIR/bin:$JDK_DIR/bin:$PATH"
-
 # The commands in docs/development/frontend.md and the allow rules call ~/.nvm/nvm-exec. The sandbox has no nvm, and the
 # Node on PATH already satisfies frontend/.nvmrc, so the wrapper only runs its arguments.
 if [ ! -e "$HOME/.nvm/nvm-exec" ]; then
@@ -107,7 +113,9 @@ if [ ! -d "$CLAUDE_PROJECT_DIR/frontend/node_modules" ]; then
 fi
 
 # Chromium for playwright-cli (the manual tester); installed only when the revision it needs is missing. A failure only warns.
-if [ -d "$CLAUDE_PROJECT_DIR/frontend/node_modules/@playwright/cli" ]; then
+if [ ! -d "$CLAUDE_PROJECT_DIR/frontend/node_modules/@playwright/cli" ]; then
+  echo "playwright-cli is not installed; run npm ci in frontend (the manual tester will report NOT RUN)" >&2
+else
   (
     cd "$CLAUDE_PROJECT_DIR/frontend"
     chromium_dir="$(npx playwright-cli install-browser chromium --dry-run 2>/dev/null | awk '/chromium-[0-9]+$/ && /Install location/ {print $NF; exit}')"
@@ -115,9 +123,4 @@ if [ -d "$CLAUDE_PROJECT_DIR/frontend/node_modules/@playwright/cli" ]; then
       npx playwright-cli install-browser chromium --with-deps >/dev/null 2>&1
     fi
   ) || echo "Could not install Chromium for playwright-cli (the network policy must allow cdn.playwright.dev and playwright.download.prss.microsoft.com); the manual tester will report NOT RUN" >&2
-fi
-
-if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-  echo "export JAVA_HOME=\"$JDK_DIR\"" >> "$CLAUDE_ENV_FILE"
-  echo "export PATH=\"$NODE_DIR/bin:$JDK_DIR/bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
 fi
