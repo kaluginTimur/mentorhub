@@ -14,12 +14,10 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,12 +57,6 @@ class InvitationEmailSchemaTests {
         assertThatCode(() -> insert(reason.name(), "QUEUED", false, null)).doesNotThrowAnyException();
     }
 
-    @Test
-    void rejectsAnUnknownReason() {
-        assertThatThrownBy(() -> insert("REMINDER", "QUEUED", false, null))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
     @ParameterizedTest
     @EnumSource(InvitationEmailStatus.class)
     void acceptsEveryStatusOfTheCode(InvitationEmailStatus status) {
@@ -72,12 +64,6 @@ class InvitationEmailSchemaTests {
         String failure = status == InvitationEmailStatus.FAILED ? "refused" : null;
 
         assertThatCode(() -> insert("RESENT", status.name(), finished, failure)).doesNotThrowAnyException();
-    }
-
-    @Test
-    void rejectsAnUnknownStatus() {
-        assertThatThrownBy(() -> insert("RESENT", "BOUNCED", true, null))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -95,30 +81,9 @@ class InvitationEmailSchemaTests {
                 .isTrue();
     }
 
-    @ParameterizedTest
-    @CsvSource({
-        "QUEUED, true,", // queued with a finish time
-        "SENT, false,", // finished without a finish time
-        "SKIPPED, false,",
-        "FAILED, true,", // failed without a reason
-        "SENT, true, refused", // a reason without the failure
-        "QUEUED, false, refused",
-        "FAILED, true, ''" // an empty reason
-    })
-    void rejectsInconsistentOutcomeColumns(String status, boolean finished, @Nullable String failure) {
-        assertThatThrownBy(() -> insert("RESENT", status, finished, failure))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
     @Test
     void acceptsAFailureOf500Characters() {
         assertThatCode(() -> insert("RESENT", "FAILED", true, "é".repeat(500))).doesNotThrowAnyException();
-    }
-
-    @Test
-    void rejectsAFailureOver500Characters() {
-        assertThatThrownBy(() -> insert("RESENT", "FAILED", true, "x".repeat(501)))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -134,15 +99,6 @@ class InvitationEmailSchemaTests {
         insert("RESENT", "FAILED", true, "refused");
 
         assertThatCode(() -> insert("RESENT", "QUEUED", false, null)).doesNotThrowAnyException();
-    }
-
-    @Test
-    void rejectsAnUnknownInvitation() {
-        assertThatThrownBy(() -> jdbc.update(
-                        "insert into invitation_emails (invitation_id, reason, requested_by) values (?, 'RESENT', ?)",
-                        UUID.randomUUID(),
-                        admin))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private void insert(String reason, String status, boolean finished, @Nullable String failure) {

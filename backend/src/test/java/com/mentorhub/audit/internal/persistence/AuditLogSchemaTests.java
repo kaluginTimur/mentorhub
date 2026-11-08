@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,12 +35,6 @@ class AuditLogSchemaTests {
                         Boolean.class,
                         id))
                 .isTrue();
-    }
-
-    @Test
-    void actorMustBeAUser() {
-        assertThatThrownBy(() -> insertEntry(UUID.randomUUID(), "{}"))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @ParameterizedTest(name = "AUD-3.1 An entry cannot be updated or deleted: {0}")

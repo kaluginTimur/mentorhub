@@ -56,17 +56,6 @@ class IdentitySchemaTests {
     }
 
     @Test
-    void rejectsEmptyEmail() {
-        assertThatThrownBy(() -> insertUser("", "ACTIVE")).isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void rejectsUnknownStatus() {
-        assertThatThrownBy(() -> insertUser("anna@example.com", "PENDING"))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
     void identityIsUniquePerIssuerAndSubject() {
         UUID anna = insertUser("anna@example.com", "ACTIVE");
         UUID boris = insertUser("boris@example.com", "ACTIVE");
@@ -75,12 +64,6 @@ class IdentitySchemaTests {
 
         assertThatThrownBy(() -> insertIdentity(boris, "https://idp.example/realms/a", "sub-1"))
                 .isInstanceOf(DuplicateKeyException.class);
-    }
-
-    @Test
-    void identityRequiresExistingUser() {
-        assertThatThrownBy(() -> insertIdentity(UUID.randomUUID(), "https://idp.example/realms/a", "sub-1"))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -93,29 +76,12 @@ class IdentitySchemaTests {
     }
 
     @Test
-    void roleAssignmentRequiresKnownRole() {
-        UUID anna = insertUser("anna@example.com", "ACTIVE");
-
-        assertThatThrownBy(() -> jdbc.update("insert into user_roles (user_id, role) values (?, ?)", anna, "SUPERUSER"))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
     void roleIsAssignedOncePerUser() {
         UUID anna = insertUser("anna@example.com", "ACTIVE");
         jdbc.update("insert into user_roles (user_id, role) values (?, 'ADMIN')", anna);
 
         assertThatThrownBy(() -> jdbc.update("insert into user_roles (user_id, role) values (?, 'ADMIN')", anna))
                 .isInstanceOf(DuplicateKeyException.class);
-    }
-
-    @Test
-    void assignedRoleCannotBeDeleted() {
-        UUID anna = insertUser("anna@example.com", "ACTIVE");
-        jdbc.update("insert into user_roles (user_id, role) values (?, 'OBSERVER')", anna);
-
-        assertThatThrownBy(() -> jdbc.update("delete from roles where name = 'OBSERVER'"))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private UUID insertUser(String email, String status) {

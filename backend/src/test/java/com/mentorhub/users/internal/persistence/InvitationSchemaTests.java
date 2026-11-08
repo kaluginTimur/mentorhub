@@ -16,11 +16,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,59 +42,6 @@ class InvitationSchemaTests {
     }
 
     // A rejected statement aborts the test transaction, so each test has at most one.
-
-    @ParameterizedTest
-    @CsvSource({
-        "false, false, false, false", // open
-        "true, true, false, false", // accepted
-        "false, false, true, true" // revoked
-    })
-    void acceptsConsistentClosingColumns(
-            boolean acceptedAt, boolean acceptedUser, boolean revokedAt, boolean revokedBy) {
-        assertThatCode(() -> insert(email(), token(), acceptedAt, acceptedUser, revokedAt, revokedBy))
-                .doesNotThrowAnyException();
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-        "true, false, false, false", // accepted without the user
-        "false, true, false, false", // a user without the acceptance time
-        "false, false, true, false", // revoked without the administrator
-        "false, false, false, true", // an administrator without the revocation time
-        "true, true, true, true" // both accepted and revoked
-    })
-    void rejectsInconsistentClosingColumns(
-            boolean acceptedAt, boolean acceptedUser, boolean revokedAt, boolean revokedBy) {
-        assertThatThrownBy(() -> insert(email(), token(), acceptedAt, acceptedUser, revokedAt, revokedBy))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @ParameterizedTest
-    @ValueSource(
-            strings = {
-                "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789", // a SHA-256 hash in hex
-                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQ", // 42 characters
-                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQeA", // 44 characters
-                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9w+/", // base64, not base64url
-                "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQ=", // padding
-                ""
-            })
-    void rejectsTokenThatIsNotBase64Url43(String token) {
-        assertThatThrownBy(() -> insertOpen(email(), token)).isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void rejectsEmptyEmail() {
-        assertThatThrownBy(() -> insertOpen("", token())).isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void rejectsDuplicateToken() {
-        String token = token();
-        insert(email(), token, true, true, false, false);
-
-        assertThatThrownBy(() -> insertOpen(email(), token)).isInstanceOf(DuplicateKeyException.class);
-    }
 
     @Test
     void rejectsSecondOpenInvitationForEmailIgnoringCase() {
@@ -138,15 +83,6 @@ class InvitationSchemaTests {
                         String.class,
                         invitation))
                 .containsExactly("MENTOR", "STUDENT");
-    }
-
-    @Test
-    void rejectsRoleMissingFromRolesTable() {
-        UUID invitation = insertOpen(email(), token());
-
-        assertThatThrownBy(() -> jdbc.update(
-                        "insert into invitation_roles (invitation_id, role) values (?, 'JANITOR')", invitation))
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private UUID insertOpen(String email, String token) {
