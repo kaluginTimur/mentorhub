@@ -6,7 +6,7 @@ Which document holds what, for people and agents alike. Before writing something
 |---|---|---|---|
 | `docs/constitution.md` | The rules every change keeps, each with its reason | Rules of the domain (requirements), of one area (its guide), of how an agent works (`AGENTS.md`); common knowledge about tools and frameworks; the mechanics of a decision (the decision) | Its rules: no other document relaxes them |
 | `docs/process.md` | How a change goes from an idea to main: stages, gates, roles, rules for tests | One client's commands and agents (its configuration folder, such as `.claude/`) | The process |
-| `docs/roadmap.md` | The future: stages, planned items, ideas, preliminary product decisions | What is implemented (requirements, decisions) | Nothing: items are intentions |
+| `docs/roadmap.md` | The future: stages, planned items, ideas, preliminary product decisions | What is implemented (requirements, decisions); bugs (GitHub issues) | Nothing: items are intentions |
 | `docs/requirements/` | What the system does, as users and API clients see it | How it is built; UI detail, exact strings, timings, field limits (code) | The behavior they describe |
 | `api/openapi.yaml` | The API: operations, schemas, error types | Behavior beyond the shape of a call (requirements) | The API |
 | `docs/architecture/decisions/` | Cross-cutting, hard-to-reverse choices that had real alternatives, with the reasons and the rejected alternatives | Conventions (guides), implementation details (code) | Architecture |
