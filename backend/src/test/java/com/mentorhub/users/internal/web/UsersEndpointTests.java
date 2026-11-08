@@ -238,8 +238,8 @@ class UsersEndpointTests {
                 .containsExactlyInAnyOrder("firstName", "lastName", "phone");
     }
 
-    // A user without roles changes their own profile; GET /me returns the new values.
     @Test
+    @DisplayName("USR-9.1 A user without roles saves their own profile")
     void userWithoutRolesUpdatesTheirOwnProfile() {
         UUID maria = users.create("maria@x.test", UserStatus.ACTIVE);
         users.link(maria, "maria");
@@ -247,6 +247,9 @@ class UsersEndpointTests {
         MvcTestResult result = send(HttpMethod.PUT, "/api/v1/me/profile", PROFILE_BODY, "maria");
 
         assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.user.id").isEqualTo(maria.toString());
+        assertThat(result).bodyJson().extractingPath("$.user.firstName").isEqualTo("Ivan");
+        assertThat(result).bodyJson().extractingPath("$.user.lastName").isEqualTo("Sidorov");
         assertThat(result).bodyJson().extractingPath("$.user.phone").isEqualTo("+77011234567");
         MvcTestResult me = send(HttpMethod.GET, "/api/v1/me", "", "maria");
         assertThat(me).bodyJson().extractingPath("$.user.firstName").isEqualTo("Ivan");

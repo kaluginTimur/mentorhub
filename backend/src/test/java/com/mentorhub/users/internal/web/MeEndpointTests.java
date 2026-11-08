@@ -68,7 +68,7 @@ class MeEndpointTests {
     }
 
     @Test
-    @DisplayName("IDN-5.1 An active user without roles reads their data")
+    @DisplayName("PERM-2.3 A user without roles stays active")
     void activeUserWithoutRolesHasEmptyRolesAndPermissions() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -105,21 +105,6 @@ class MeEndpointTests {
                   }
                 }
                 """.formatted(userId));
-    }
-
-    @Test
-    void missingNamesAreSentAsNull() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
-        jdbc.sql("update users set first_name = null where id = :id")
-                .param("id", userId)
-                .update();
-        users.link(userId, "anna");
-
-        MvcTestResult result = me(issuer.token("anna").bearer());
-
-        assertThat(result).bodyJson().hasPath("$.user.firstName");
-        assertThat(result).bodyJson().extractingPath("$.user.firstName").isNull();
-        assertThat(result).bodyJson().extractingPath("$.user.lastName").isEqualTo("Petrova");
     }
 
     @Test

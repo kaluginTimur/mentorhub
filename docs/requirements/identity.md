@@ -46,7 +46,7 @@ The system SHALL let a request through only when the identity in the token is li
 
 #### IDN-3.1 An identity that is not linked is refused and nothing is created
 
-- GIVEN a signed-in identity that is not linked to any user, and no bootstrap applies to it
+- GIVEN an active administrator, so that no bootstrap applies (IDN-6), and a signed-in identity that is not linked to any user
 - WHEN it calls an operation other than reading the current user
 - THEN the response is 403 with the problem type `not-invited`
 - AND no user, link or role is created

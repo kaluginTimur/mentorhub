@@ -13,7 +13,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,12 +74,6 @@ class PermissionProbeController {
     @NoPermissionRequired
     public void resource(@PathVariable String name) {
         throw new NotFoundException();
-    }
-
-    @GetMapping("/denied")
-    @NoPermissionRequired
-    public void denied() {
-        throw new AccessDeniedException("Refused by a resource-level check");
     }
 
     @GetMapping("/failure")

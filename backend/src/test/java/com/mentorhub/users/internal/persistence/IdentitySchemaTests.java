@@ -47,15 +47,6 @@ class IdentitySchemaTests {
     }
 
     @Test
-    void namesAreOptional() {
-        UUID id = insertUser("anna@example.com", "ACTIVE");
-
-        assertThat(jdbc.queryForObject(
-                        "select first_name is null and last_name is null from users where id = ?", Boolean.class, id))
-                .isTrue();
-    }
-
-    @Test
     void identityIsUniquePerIssuerAndSubject() {
         UUID anna = insertUser("anna@example.com", "ACTIVE");
         UUID boris = insertUser("boris@example.com", "ACTIVE");

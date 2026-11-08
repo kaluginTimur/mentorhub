@@ -96,6 +96,7 @@ class LockoutConcurrencyTests {
     // Each change writes an audit entry whose actor foreign key share-locks the caller's row, which the other
     // change holds; the row lock must not conflict with that (no deadlock).
     @RepeatedTest(10)
+    @DisplayName("USR-7.5 Two administrators changing each other at the same moment both succeed (profiles)")
     void administratorsUpdatingEachOthersProfileBothSucceed() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.updateProfile(adminB, new ProfileInput("Bea", "Bright", null))),
@@ -105,6 +106,7 @@ class LockoutConcurrencyTests {
     }
 
     @RepeatedTest(10)
+    @DisplayName("USR-7.5 Two administrators changing each other at the same moment both succeed (roles)")
     void administratorsSettingEachOthersRolesKeepingAdminBothSucceed() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.setRoles(adminB, Set.of(Role.ADMIN, Role.MENTOR))),
