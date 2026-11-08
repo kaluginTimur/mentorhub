@@ -3,11 +3,11 @@ package com.mentorhub.audit.internal.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mentorhub.TestcontainersConfiguration;
 import com.mentorhub.audit.AuditEntry;
 import com.mentorhub.audit.AuditLog;
 import com.mentorhub.audit.AuditPage;
 import com.mentorhub.audit.RecordedAuditEntry;
+import com.mentorhub.support.IntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,14 +16,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@IntegrationTest
 class AuditLogServiceTests {
 
     @Autowired

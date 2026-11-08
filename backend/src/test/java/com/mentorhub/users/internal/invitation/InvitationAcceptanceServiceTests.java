@@ -3,7 +3,7 @@ package com.mentorhub.users.internal.invitation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.IntegrationTest;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.AccessStatus;
@@ -36,15 +36,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Preview and acceptance against a real database, as the caller set in the security context. Data is committed. */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@IntegrationTest
 class InvitationAcceptanceServiceTests {
 
     static final String SUBJECT = "invited-subject";

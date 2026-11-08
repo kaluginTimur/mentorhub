@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.mentorhub.support.ControllerSliceTest;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.AccessStatus;
@@ -16,7 +17,6 @@ import com.mentorhub.users.internal.domain.RoleFilter;
 import com.mentorhub.users.internal.domain.UserChange;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestAuthentications;
-import com.mentorhub.users.internal.security.WebSliceSecurity;
 import com.mentorhub.users.internal.service.HistoryActor;
 import com.mentorhub.users.internal.service.LockoutProblems;
 import com.mentorhub.users.internal.service.ManagedUser;
@@ -48,8 +48,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -59,8 +57,7 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester.MockMvcRequest
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@WebMvcTest(UsersController.class)
-@Import(WebSliceSecurity.class)
+@ControllerSliceTest(UsersController.class)
 class UsersControllerTest {
 
     static final UUID CALLER_ID = UUID.fromString("0b6f1d2e-6a51-4f36-9b0c-5f2d8f3a1c10");

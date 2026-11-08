@@ -2,10 +2,10 @@ package com.mentorhub;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.util.List;
 import java.util.UUID;
@@ -15,10 +15,7 @@ import org.springdoc.webmvc.api.OpenApiWebMvcResource;
 import org.springdoc.webmvc.ui.SwaggerWelcomeWebMvc;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.endpoint.web.PathMappedEndpoints;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -26,9 +23,7 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** Without the dev profile only health is served, without details. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+@EndpointTest
 class ProductionProfileTests {
 
     private static final List<String> DEVELOPMENT_PATHS = List.of(

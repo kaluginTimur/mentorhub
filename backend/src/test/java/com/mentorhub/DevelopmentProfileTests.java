@@ -3,12 +3,9 @@ package com.mentorhub;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mentorhub.mail.MailDelivery;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
+import com.mentorhub.support.EndpointTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
@@ -17,10 +14,8 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
  * The dev profile serves Swagger UI, the API docs, the contract and the actuator info and modulith endpoints, and sends
  * email to Mailpit.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@EndpointTest
 @ActiveProfiles("dev")
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
 class DevelopmentProfileTests {
 
     @Autowired

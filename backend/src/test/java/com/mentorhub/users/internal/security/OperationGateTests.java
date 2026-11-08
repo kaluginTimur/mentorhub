@@ -2,7 +2,7 @@ package com.mentorhub.users.internal.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.ApiOperations.Operation;
 import com.mentorhub.web.Problems;
@@ -14,9 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -32,9 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
  * each answers 401, and a caller who is not invited or disabled is refused, except the contract's public operations
  * and the operations the requirements exempt from the gate. The mechanism itself is tested against the probe.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+@EndpointTest
 class OperationGateTests {
 
     /** Reading the current user and accepting an invitation admit every signed-in caller (IDN-3, IDN-5, INV-11). */

@@ -10,10 +10,10 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.mentorhub.TestcontainersConfiguration;
 import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.mail.MailDeliveryException;
 import com.mentorhub.mail.MailMessage;
+import com.mentorhub.support.IntegrationTest;
 import com.mentorhub.support.Mailpit;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
@@ -59,7 +59,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -81,8 +80,8 @@ import tools.jackson.databind.json.JsonMapper;
  * resubmitting stale deliveries. Data is committed; each test waits until the event publication registry is empty, which
  * also shows that completed publications are deleted.
  */
-@Import({TestcontainersConfiguration.class, InvitationEmailTests.FailingListener.class})
-@SpringBootTest
+@IntegrationTest
+@Import(InvitationEmailTests.FailingListener.class)
 @ExtendWith(OutputCaptureExtension.class)
 class InvitationEmailTests {
 

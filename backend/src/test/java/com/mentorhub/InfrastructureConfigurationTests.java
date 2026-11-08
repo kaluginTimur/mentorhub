@@ -2,15 +2,13 @@ package com.mentorhub;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mentorhub.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /** Spec invitation-emails: Modulith creates the registry's table. */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@IntegrationTest
 class InfrastructureConfigurationTests {
 
     @Autowired

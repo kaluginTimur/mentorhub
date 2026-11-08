@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 
+import com.mentorhub.support.ControllerSliceTest;
 import com.mentorhub.users.Permission;
 import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.Problems;
@@ -13,8 +14,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -22,8 +21,7 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** The slice setup other modules' controller tests use. */
-@WebMvcTest(PermissionProbeController.class)
-@Import(WebSliceSecurity.class)
+@ControllerSliceTest(PermissionProbeController.class)
 class WebSliceSecurityTests {
 
     @Autowired
