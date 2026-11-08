@@ -46,6 +46,13 @@ describe('describeEntry', () => {
     ],
     [
       {
+        action: 'USER_BOOTSTRAPPED_ADMIN',
+        bootstrap: { adminAdded: false, enabled: true, identityLinked: false, userCreated: false },
+      },
+      'Bootstrap (enabled the user)',
+    ],
+    [
+      {
         action: 'USER_INVITATION_ACCEPTED',
         invitation: {
           invitationId: 'i1',

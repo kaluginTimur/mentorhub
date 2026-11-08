@@ -37,14 +37,13 @@ describe('AccessScreen', () => {
     ['invitation-only', 'Access by invitation only', 'by invitation'],
     ['ended', 'Your access has ended', 'Contact the training center'],
     ['pending', 'Your access is being set up', 'Contact an administrator.'],
-  ])('IDN-10.1 shows the %s message, Sign out and no menu', async (access, title, text) => {
+  ])('IDN-10.1 shows the %s message, Sign out', async (access, title, text) => {
     const element = await open(access);
     const headings = element.querySelectorAll('h1');
     expect(headings).toHaveLength(1);
     expect(headings[0].textContent).toBe(title);
     expect(element.textContent).toContain(text);
     expect(element.querySelector('button')?.textContent).toContain('Sign out');
-    expect(element.querySelector('mat-toolbar, nav, mat-menu')).toBeNull();
   });
 
   it('focuses the title and signs out on request', async () => {

@@ -139,9 +139,8 @@ describe('InvitationsList', () => {
     input.value = 'ivan';
     input.dispatchEvent(new Event('input'));
     expect(TestBed.inject(Router).url).toBe('/invitations?page=2');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/invitations?q=ivan'));
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/invitations?q=ivan');
     expect(listParams()).toEqual(expect.objectContaining({ q: 'ivan', page: 0 }));
   });
 

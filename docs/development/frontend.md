@@ -68,6 +68,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 - A shared piece (a pure function, a shared component, a guard factory, a handler several actions use) is tested once, in its own spec or through the one host whose scenario it serves, one test per branch. Other hosts test only that they use it.
 - Assert the result (the route, what is rendered, the request sent), not how often a dependency was called, and never what exists only in a test double. Stub a signal with a signal, so the test reads its state.
 - Extend a test rather than copy it.
+- No fixed waits: advance fake timers past a debounce, or wait for the result (`vi.waitFor`), rather than sleeping for real time.
 
 ## Pitfalls
 

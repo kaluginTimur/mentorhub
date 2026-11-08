@@ -34,17 +34,14 @@ describe('authInterceptor', () => {
 
   it('PLT-7.1 attaches the token to a non-public API request', async () => {
     expect(await authorizationOf('/api/v1/me')).toBe('Bearer tok');
+    expect(await authorizationOf('/api/v1/invitations/accept')).toBe('Bearer tok');
+    expect(await authorizationOf('/api/v1/invitations')).toBe('Bearer tok');
   });
 
   it('PLT-7.2 does not attach the token to public API endpoints', async () => {
     expect(await authorizationOf('/api/v1/system/info')).toBeNull();
     expect(await authorizationOf('/api/v1/system/client-config')).toBeNull();
     expect(await authorizationOf('/api/v1/invitations/preview')).toBeNull();
-  });
-
-  it('attaches the token to accept and the management endpoints', async () => {
-    expect(await authorizationOf('/api/v1/invitations/accept')).toBe('Bearer tok');
-    expect(await authorizationOf('/api/v1/invitations')).toBe('Bearer tok');
   });
 
   it('PLT-7.3 does not attach the token to other URLs', async () => {
