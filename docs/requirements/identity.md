@@ -123,12 +123,6 @@ The system SHALL let the person who controls the configured bootstrap email beco
 - THEN the identity is linked to that user and no second user is created
 - AND the user is active and has the administrator role
 
-#### IDN-6.10 Recovery clears the reason and comment of a disabling
-
-- GIVEN no active administrator, and a user with the bootstrap email who was disabled with a reason and a comment
-- WHEN the identity of that user signs in with a verified email equal to the address
-- THEN the user is active and has no reason or comment of a disabling
-
 #### IDN-6.3 An active administrator switches the rule off for an identity that is not linked
 
 - GIVEN an active administrator, and an identity that is not linked, with a verified email equal to the bootstrap address
@@ -177,6 +171,12 @@ The system SHALL let the person who controls the configured bootstrap email beco
 - THEN all of them succeed
 - AND exactly one user, one link of the identity and one administrator role exist
 
+#### IDN-6.10 Recovery clears the reason and comment of a disabling
+
+- GIVEN no active administrator, and a user with the bootstrap email who was disabled with a reason and a comment
+- WHEN the identity of that user signs in with a verified email equal to the address
+- THEN the user is active and has no reason or comment of a disabling
+
 ### IDN-7 Development users
 
 The system SHALL create development users that match accounts in the local identity provider only in development mode (decision 0003), and on every start there SHALL bring each back to its configured status and exactly its configured roles.
@@ -203,17 +203,17 @@ The identity provider SHALL report an email as verified only after its owner con
 - WHEN a person registers an account
 - THEN the email is reported as verified only after the person confirms it
 
-#### IDN-8.3 An email is registered once
-
-- GIVEN the local identity provider and an account with an email
-- WHEN another person tries to register the same email
-- THEN the registration is refused
-
 #### IDN-8.2 A token for the client carries the API audience
 
 - GIVEN a person signed in to the MentorHub client at the local identity provider
 - WHEN the client receives the access token
 - THEN the token's audience contains the MentorHub API
+
+#### IDN-8.3 An email is registered once
+
+- GIVEN the local identity provider and an account with an email
+- WHEN another person tries to register the same email
+- THEN the registration is refused
 
 ### IDN-9 Signing in and out in the client
 

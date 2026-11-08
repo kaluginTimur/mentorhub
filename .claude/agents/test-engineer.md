@@ -29,7 +29,7 @@ Before the code exists, write one test for each new or changed scenario in the p
 - Do not read the implementation. Use the plan's **What the tests rely on** for anything that does not exist yet.
 - Backend: go through the API against the stubs the contract step left, with real tokens and the database as the guide describes, so nothing depends on classes that do not exist.
 - Frontend: when a component does not exist, create it empty, with the inputs the plan fixes, so the spec compiles. That is the only code outside tests you may add.
-- A removed scenario: its test loses the id from its name and stays, unless the requirement now says the opposite. Then report it.
+- A removed scenario: its test goes if the behavior is gone or another test checks it; otherwise it loses the id from its name and stays as a test of a detail. If the requirement now says the opposite, report it.
 
 Run every new test. Each must fail on an assertion, for the reason the scenario gives. A compile error or a failure in the test's own setup is not red: fix it. A test that passes before the code exists proves nothing: report it, because the behavior may already exist.
 

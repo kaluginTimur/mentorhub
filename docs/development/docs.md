@@ -51,8 +51,8 @@ The system SHALL create an invitation for a new email (decision 0003).
 - A rule about access, data, state transitions, security or irreversible actions, or one whose breach is hard to notice, has a scenario, however short the rule is. A requirement may go without scenarios only when a mistake is seen at once on the ordinary path and cheap to fix: a rare state, such as an error response, does not qualify, nor does a ban on showing what the user must not see.
 - Hiding an action the server would refuse anyway is not such a ban and needs no scenario. An operational detail, such as a log warning, stays out of the requirements, in the code and a test without an id. So do exact strings, timings and field limits.
 - A scenario refers to a table instead of retelling its rows. A table is for a catalog or for rules without scenarios: a rule with a scenario keeps its behavior in the scenario.
-- The next number is the highest in the file plus one, for requirements and scenarios alike, and a removed id is not reused. Gaps are fine.
-- When a scenario is removed, its test loses the id from its name and stays.
+- The next number is the highest in the file plus one for a requirement, and the highest of its requirement plus one for a scenario. The number of a removed id may come back: `validate` and `trace` reject every reference and test that still cites a removed id. Gaps are fine.
+- When a scenario is removed, so is its test if the behavior is gone or another test checks it; a test of behavior that stays and that nothing else checks loses the id and stays as a test of a detail.
 - References are written `(INV-1)`, `(INV-1.1)` and `(decision 0003)`, and must resolve. Only these forms are checked: "decisions 0003 and 0004" is not.
 - A test cites one scenario: its name starts with the scenario id. In JUnit that is `@DisplayName("INV-1.1 ...")` on the test method, in Vitest `it('INV-1.1 ...', ...)`. Tests without an id, such as unit tests of an algorithm or end-to-end journeys, are allowed and do not count as coverage. Skipped tests do not count either. Tests skipped conditionally do count, because that is known only when they run: `@EnabledIf`, `@DisabledIf` and similar annotations, `it.skipIf` and `it.runIf`.
 
@@ -71,7 +71,7 @@ node --test scripts/requirements.test.mjs
 node scripts/requirements.mjs trace
 ```
 
-`scripts/requirements.mjs trace` fails (exit code 1) on everything `validate` fails on, and on a scenario without a test and a test that cites a missing scenario. `scripts/requirements.mjs validate` alone fails on requirements and an index that are missing or break the **Requirements** format, on duplicate ids and on references that do not resolve.
+`scripts/requirements.mjs trace` fails (exit code 1) on everything `validate` fails on, and on a scenario without a test and a test that cites a missing scenario. `scripts/requirements.mjs validate` alone fails on requirements and an index that are missing or break the **Requirements** format, on duplicate ids, on ids out of ascending order (gaps are allowed) and on references that do not resolve.
 
 `scripts/check-docs.mjs` fails (exit code 1) on broken references:
 - a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` or `.claude/` that does not exist and is not gitignored;
