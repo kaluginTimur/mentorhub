@@ -110,7 +110,3 @@ The `api-lookup` subagent follows this section. Implementation agents ask it and
 - Exports: the package's `.d.ts` files (see `types` / `exports` in its `package.json`).
 - The generated client: `frontend/src/app/core/api/` (run `npm run generate:api` if it is missing).
 - The Angular CLI MCP server (`.mcp.json`) offers best practices, documentation search and examples for the installed Angular version. It starts with the default Node, so the default must satisfy `.nvmrc` (`nvm alias default 24`).
-
-## Development tools
-
-- A development-only tool (such as the failure simulator, DEV-3) is wired through `frontend/src/environments/dev-tools.ts`, and the `production` configuration of `frontend/angular.json` replaces that file with `dev-tools.prod.ts`, so the tool is absent from the production build. `npm run build` then runs `frontend/scripts/check-prod-build.mjs`, which fails when a production build contains a tool's marker (see the comment in `dev-tools.ts`).
