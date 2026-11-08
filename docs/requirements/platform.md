@@ -10,14 +10,14 @@ What every API operation and every screen relies on, whatever the feature: how e
 
 The system SHALL answer every failed API call with an RFC 9457 problem document, with the type `about:blank` when the error has no MentorHub problem type, and SHALL NOT expose exception text or other internals.
 
-#### PLT-1.2 An unexpected failure is a generic 500
+#### PLT-1.1 An unexpected failure is a generic 500
 
 - GIVEN an operation that fails with an unexpected error
 - WHEN an active user calls it
 - THEN the response is 500 as a problem document with `type` `about:blank`
 - AND the response does not contain the text of the error
 
-#### PLT-1.3 A failure before the operation is reached is also a problem document
+#### PLT-1.2 A failure before the operation is reached is also a problem document
 
 - GIVEN a trusted identity provider whose keys cannot be obtained
 - WHEN a caller sends a request with a token of that provider
@@ -194,21 +194,21 @@ The client SHALL show a full-page message that MentorHub is unavailable, with a 
 
 Every screen that shows a paged list (PLT-3) with a search or filters SHALL behave alike, and the capability that owns the list names only its own filters and order. The search, filters and page SHALL survive a reload, a change of the search or a filter SHALL show the first page, and an empty list SHALL say whether nothing exists yet or nothing matches.
 
-#### PLT-9.3 A failed load offers Retry
+#### PLT-9.1 A failed load offers Retry
 
 - GIVEN the API fails to answer the list
 - WHEN the screen loads
 - THEN it says that MentorHub is unavailable and offers Retry
 - AND Retry loads the list again
 
-#### PLT-9.4 A page past the last one says so
+#### PLT-9.2 A page past the last one says so
 
 - GIVEN a list with items and an address whose page is past the last one
 - WHEN the screen loads
 - THEN it says that there are no items on this page
 - AND the user can move to another page
 
-#### PLT-9.5 A refused list takes the user home
+#### PLT-9.3 A refused list takes the user home
 
 - GIVEN a user for whom the API refuses the list with 403
 - WHEN the screen loads

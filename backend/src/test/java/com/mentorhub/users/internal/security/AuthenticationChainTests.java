@@ -220,7 +220,7 @@ class AuthenticationChainTests {
     }
 
     @Test
-    @DisplayName("PERM-3.3 Removing a role takes effect on the next request")
+    @DisplayName("PERM-3.2 Removing a role takes effect on the next request")
     void removedRoleTakesEffectWithTheSameToken() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
@@ -235,7 +235,7 @@ class AuthenticationChainTests {
     }
 
     @Test
-    @DisplayName("PERM-3.4 Adding a role takes effect on the next request")
+    @DisplayName("PERM-3.3 Adding a role takes effect on the next request")
     void addedRoleTakesEffectWithTheSameToken() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -267,7 +267,7 @@ class AuthenticationChainTests {
     }
 
     @Test
-    @DisplayName("PLT-1.2 An unexpected failure is a generic 500")
+    @DisplayName("PLT-1.1 An unexpected failure is a generic 500")
     void unexpectedErrorIsAProblemWithoutMentorHubType() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");

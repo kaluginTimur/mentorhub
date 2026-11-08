@@ -92,7 +92,7 @@ describe('InvitePage', () => {
     expect(element.querySelector('h1')?.textContent).toBe("You're invited to MentorHub");
   });
 
-  it('INV-20.4 moves the token to session storage and removes it from the address and router', async () => {
+  it('INV-20.3 moves the token to session storage and removes it from the address and router', async () => {
     await open('/invite/tok123');
     expect(session.token()).toBe('tok123');
     expect(TestBed.inject(Router).url).toBe('/invite');
@@ -100,7 +100,7 @@ describe('InvitePage', () => {
     expect(api.invoke).toHaveBeenCalledWith(previewInvitation, { body: { token: 'tok123' } });
   });
 
-  it('INV-20.7 sends no token to the identity provider', async () => {
+  it('INV-20.6 sends no token to the identity provider', async () => {
     const { element } = await open('/invite/tok123');
     button(element, 'Sign in')?.click();
     await vi.waitFor(() => expect(auth.signIn).toHaveBeenCalled());
@@ -236,7 +236,7 @@ describe('InvitePage', () => {
       return { harness, element };
     }
 
-    it('INV-20.3 shows the other account on a mismatch', async () => {
+    it('INV-20.2 shows the other account on a mismatch', async () => {
       auth.accountIdentity.mockResolvedValue({ email: 'other@example.com' });
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:invitation-email-mismatch'),
@@ -250,7 +250,7 @@ describe('InvitePage', () => {
       expect(document.activeElement).toBe(element.querySelector('h1'));
     });
 
-    it('INV-20.5 asks to verify the email when the emails are equal ignoring case', async () => {
+    it('INV-20.4 asks to verify the email when the emails are equal ignoring case', async () => {
       auth.accountIdentity.mockResolvedValue({ email: 'Ivan@Example.com' });
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:invitation-email-mismatch'),
@@ -261,7 +261,7 @@ describe('InvitePage', () => {
       expect(session.token()).toBe('tok123');
     });
 
-    it('INV-20.6 explains an account that belongs to another user', async () => {
+    it('INV-20.5 explains an account that belongs to another user', async () => {
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:identity-linked-elsewhere'),
       );
@@ -271,7 +271,7 @@ describe('InvitePage', () => {
       );
     });
 
-    it('INV-20.8 signing out of an account of another user forgets the link', async () => {
+    it('INV-20.7 signing out of an account of another user forgets the link', async () => {
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:identity-linked-elsewhere'),
       );

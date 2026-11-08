@@ -183,7 +183,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        @DisplayName("USR-2.4 NONE finds users without a known role")
+        @DisplayName("USR-2.1 NONE finds users without a known role")
         void noneFindsUsersWithoutAKnownRole() {
             UUID noRole = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID unknownOnly = user("c@x.test", "C", "C", UserStatus.ACTIVE);
@@ -626,7 +626,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        @DisplayName("USR-10.3 An acceptance entry names the administrator who invited")
+        @DisplayName("USR-10.1 An acceptance entry names the administrator who invited")
         void invitationAcceptedEntryHasTheInviterAndKnownRoles() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID invitation = UUID.fromString("5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
@@ -642,7 +642,7 @@ class UserAdministrationServiceTests {
         }
 
         @Test
-        @DisplayName("USR-10.4 An acceptance entry is shown with no inviter when the inviter cannot be resolved")
+        @DisplayName("USR-10.2 An acceptance entry is shown with no inviter when the inviter cannot be resolved")
         void invitationAcceptedEntryWithAnUnknownInviterHasNoInviter() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE);
             UUID unknown = UUID.fromString("00000000-0000-4000-8000-0000000000aa");

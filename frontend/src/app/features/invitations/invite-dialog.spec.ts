@@ -141,7 +141,7 @@ describe('InviteDialog', () => {
     await vi.waitFor(() => expect(closed).toHaveBeenCalled());
   });
 
-  it('INV-19.2 shows the active-user conflict with a link to the user', async () => {
+  it('INV-19.1 shows the active-user conflict with a link to the user', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
     );
@@ -156,7 +156,7 @@ describe('InviteDialog', () => {
     expect(link.getAttribute('href')).toBe('/users/u7');
   });
 
-  it('INV-19.4 keeps the entered values after a conflict', async () => {
+  it('INV-19.3 keeps the entered values after a conflict', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
     );
@@ -170,7 +170,7 @@ describe('InviteDialog', () => {
     expect(checkbox(root, 'Mentor').checked).toBe(true);
   });
 
-  it('INV-19.3 shows the existing-invitation conflict with a link to the list', async () => {
+  it('INV-19.2 shows the existing-invitation conflict with a link to the list', async () => {
     api.invoke.mockRejectedValue(
       problem(409, { type: 'urn:mentorhub:problem:invitation-exists', invitationId: 'i7' }),
     );
@@ -269,7 +269,7 @@ describe('InviteDialog', () => {
       expect(root.textContent).toContain('Send this link to ivan@example.com.');
     });
 
-    it('IEM-11.2 shows an inline alert on 409 email-unavailable and keeps the values', async () => {
+    it('IEM-11.1 shows an inline alert on 409 email-unavailable and keeps the values', async () => {
       api.invoke.mockRejectedValue(
         problem(409, { type: 'urn:mentorhub:problem:email-unavailable' }),
       );

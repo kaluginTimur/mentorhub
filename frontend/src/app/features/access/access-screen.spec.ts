@@ -53,13 +53,13 @@ describe('AccessScreen', () => {
     expect(auth.signOut).toHaveBeenCalledOnce();
   });
 
-  it('IDN-10.4 re-checks access when another tab reports a change', async () => {
+  it('IDN-10.3 re-checks access when another tab reports a change', async () => {
     await open('invitation-only');
     changed();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
 
-  it('IDN-10.4 re-checks access when the tab becomes visible, not when it is hidden', async () => {
+  it('IDN-10.3 re-checks access when the tab becomes visible, not when it is hidden', async () => {
     await open('pending');
     const state = vi.spyOn(document, 'visibilityState', 'get');
     state.mockReturnValue('hidden');

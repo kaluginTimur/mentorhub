@@ -203,41 +203,41 @@ The identity provider SHALL report an email as verified only after its owner con
 
 The client SHALL sign in a visitor through the identity provider (authorization code with PKCE) and return them to the page they opened, SHALL retry a failed sign-in or a rejected token once, and then SHALL show the unavailable message (PLT-8). Signing out ends the session at the identity provider.
 
-#### IDN-9.2 A callback without a session or with a temporary error is retried once
+#### IDN-9.1 A callback without a session or with a temporary error is retried once
 
 - GIVEN a callback that returns without a session, or with the error `temporarily_unavailable`
 - WHEN the client handles the callback
 - THEN sign-in is started again once, without showing an error
 
-#### IDN-9.3 Any other error, and a second failed callback, are shown
+#### IDN-9.2 Any other error, and a second failed callback, are shown
 
 - GIVEN a callback that returns another error such as `access_denied`, or a retried callback that fails as well
 - WHEN the client handles the callback
 - THEN the unavailable message is shown
 - AND sign-in is not started again
 
-#### IDN-9.4 A rejected token starts sign-in again once
+#### IDN-9.3 A rejected token starts sign-in again once
 
 - GIVEN a signed-in user on a page
 - WHEN a non-public API operation answers 401
 - THEN sign-in is started again once
 - AND after it the user returns to the same page
 
-#### IDN-9.5 A token rejected right after a fresh sign-in shows the unavailable message
+#### IDN-9.4 A token rejected right after a fresh sign-in shows the unavailable message
 
 - GIVEN a user who has just signed in again after a 401
 - WHEN the API answers 401 again before accepting any request
 - THEN the unavailable message is shown
 - AND sign-in is not started again
 
-#### IDN-9.6 Signing out ends the session and asks to sign in again (manual)
+#### IDN-9.5 Signing out ends the session and asks to sign in again (manual)
 
 - GIVEN a signed-in user
 - WHEN the user chooses Sign out
 - THEN the session at the identity provider ends
 - AND the application asks the user to sign in
 
-#### IDN-9.7 A sign-out that fails does not leave the user signed in
+#### IDN-9.6 A sign-out that fails does not leave the user signed in
 
 - GIVEN a signed-in user
 - WHEN signing out at the identity provider fails
@@ -256,19 +256,19 @@ The client SHALL show an active user with at least one role the application, and
 - AND the screen offers Sign out
 - AND the application's menu is not shown
 
-#### IDN-10.3 A change of access is shown on the next navigation
+#### IDN-10.2 A change of access is shown on the next navigation
 
 - GIVEN a user working in the application whose access has changed (disabled, or roles changed by an administrator)
 - WHEN the user navigates
 - THEN the screen for the new state is shown, or the permissions the client uses are those after the change
 
-#### IDN-10.4 An access screen notices a change of access
+#### IDN-10.3 An access screen notices a change of access
 
 - GIVEN an access screen is shown
 - WHEN the browser tab becomes visible again, or another tab of the same browser reports that access changed
 - THEN the client reloads the current user and shows the screen for the new state, which is the application when the user is now active with roles
 
-#### IDN-10.5 A refusal because access ended shows the screen for the new state
+#### IDN-10.4 A refusal because access ended shows the screen for the new state
 
 - GIVEN a user working in the application whose access has ended or never existed
 - WHEN the API refuses a request with `not-invited` or `access-ended`

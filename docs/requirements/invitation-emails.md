@@ -252,7 +252,7 @@ The client SHALL offer every email option (the choice with a new invitation, the
 
 The client SHALL request the email when the choice is on, and the link view (INV-19) SHALL then say that an email with the link is on its way to the invited address.
 
-#### IEM-11.2 An unavailable mail server is explained
+#### IEM-11.1 An unavailable mail server is explained
 
 - GIVEN email is enabled on the page and the server answers 409 `email-unavailable`
 - WHEN the user creates an invitation in the invite dialog, or confirms a new link with the choice on
@@ -263,20 +263,20 @@ The client SHALL request the email when the choice is on, and the link view (INV
 
 The client SHALL offer the action to send an email on the rows of pending invitations only, before copying the link (INV-17), and send without a confirmation, and SHALL explain a refusal.
 
-#### IEM-12.2 A queued email is explained
+#### IEM-12.1 A queued email is explained
 
 - GIVEN a pending row and the server answers 409 `email-queued`
 - WHEN the user sends the email
 - THEN the client says that an email is already on its way
 - AND the list reloads
 
-#### IEM-12.3 An unavailable mail server is explained on the row
+#### IEM-12.2 An unavailable mail server is explained on the row
 
 - GIVEN a pending row and the server answers 409 `email-unavailable`
 - WHEN the user sends the email
 - THEN the client says that sending email is not available and the page should be reloaded
 
-#### IEM-12.4 A closed or unknown invitation is explained
+#### IEM-12.3 A closed or unknown invitation is explained
 
 - GIVEN a pending row and the server answers 409 `invitation-closed` or 404
 - WHEN the user sends the email

@@ -718,7 +718,7 @@ describe('InvitationsList', () => {
       expect(listCalls()).toBe(1);
     });
 
-    it('IEM-12.2 explains 409 email-queued and reloads', async () => {
+    it('IEM-12.1 explains 409 email-queued and reloads', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -738,7 +738,7 @@ describe('InvitationsList', () => {
       await vi.waitFor(() => expect(listCalls()).toBe(2));
     });
 
-    it('IEM-12.3 explains 409 email-unavailable', async () => {
+    it('IEM-12.2 explains 409 email-unavailable', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -785,7 +785,7 @@ describe('InvitationsList', () => {
     it.each([
       [409, 'urn:mentorhub:problem:invitation-closed'],
       [404, 'urn:mentorhub:problem:not-found'],
-    ])('IEM-12.4 treats a %i like Copy link', async (status, type) => {
+    ])('IEM-12.3 treats a %i like Copy link', async (status, type) => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
@@ -864,7 +864,7 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('IEM-11.2 shows a snackbar when the new link cannot be emailed', async () => {
+    it('IEM-11.1 shows a snackbar when the new link cannot be emailed', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();

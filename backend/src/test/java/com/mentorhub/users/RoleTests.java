@@ -9,14 +9,14 @@ import org.junit.jupiter.api.Test;
 class RoleTests {
 
     @Test
-    @DisplayName("PERM-1.3 An administrator holds the user permissions")
+    @DisplayName("PERM-1.1 An administrator holds the user permissions")
     void adminHasUserPermissions() {
         assertThat(Role.ADMIN.permissions())
                 .containsExactlyInAnyOrder(Permission.USERS_READ, Permission.USERS_MANAGE, Permission.USERS_INVITE);
     }
 
     @Test
-    @DisplayName("PERM-1.3 The other roles hold no permission")
+    @DisplayName("PERM-1.1 The other roles hold no permission")
     void otherRolesHaveNoPermissions() {
         assertThat(Arrays.stream(Role.values()).filter(role -> role != Role.ADMIN))
                 .allSatisfy(role -> assertThat(role.permissions()).isEmpty());
