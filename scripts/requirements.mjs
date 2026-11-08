@@ -96,7 +96,7 @@ function parseCapability(root, file, prefix, errors) {
       }
       const id = `${match[1]}-${match[2]}`;
       checkPrefix(i, id, match[1]);
-      requirement = { id, line: i, statement: false, scenarios: [] };
+      requirement = { id, number: Number(match[2]), line: i, statement: false, scenarios: [] };
       requirements.push(requirement);
       textLines.push({ i, text: match[3] });
       return;
@@ -113,7 +113,7 @@ function parseCapability(root, file, prefix, errors) {
       if (!requirement || `${match[1]}-${match[2]}` !== requirement.id) {
         report(i, `scenario ${id} is under ${requirement?.id ?? 'no requirement'}`);
       }
-      scenario = { id, line: i, manual: Boolean(match[5]), when: false, then: false };
+      scenario = { id, number: Number(match[3]), line: i, manual: Boolean(match[5]), when: false, then: false };
       requirement?.scenarios.push(scenario);
       textLines.push({ i, text: match[4] });
       return;
@@ -131,7 +131,15 @@ function parseCapability(root, file, prefix, errors) {
     if (!sections.has(name)) errors.push(`${relative}: missing section "## ${name}"`);
   }
   if (sections.has('Requirements') && requirements.length === 0) errors.push(`${relative}: no requirements`);
+  // Gaps are allowed, but the numbers ascend.
+  const checkOrder = (items) =>
+    items.forEach((item, k) => {
+      const previous = items[k - 1];
+      if (previous && item.number < previous.number) report(item.line, `${item.id} comes after ${previous.id}`);
+    });
+  checkOrder(requirements);
   for (const item of requirements) {
+    checkOrder(item.scenarios);
     if (!item.statement) report(item.line, `${item.id} has no statement with SHALL or MUST`);
     for (const { id, line, when, then } of item.scenarios) {
       if (!when) report(line, `${id} has no "- WHEN" line`);

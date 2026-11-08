@@ -18,12 +18,12 @@ The Authority column of `docs/README.md` says which document decides when two di
 
 The test engineer and the developer are separate agents with separate contexts.
 
-Only the owner promotes ideas, makes product decisions and amends the constitution. An agent proposes, and says which is which: in the roadmap, plans and decisions, what the owner decided stays apart from what an agent inferred.
+Only the owner promotes ideas, makes product decisions and amends the constitution. An agent proposes, and says which is which: in plans and decisions, what the owner decided stays apart from what an agent inferred. The roadmap holds only what the owner proposed or approved: an agent adds an item, an idea or a product decision only with the owner's word, so nothing in it is marked.
 
 ## Choosing a path
 
 - **A bug,** where the code departs from a requirement: a test with the requirement's id and the fix. No document changes.
-- **A small change of behavior:** the requirement, its test and the code, in one commit, with no plan.
+- **A small change of behavior:** the requirement, its test and the code, in one commit, with no plan. The owner approves the changed requirement first.
 - **Everything else,** including anything touching more than one or two requirements, the contract or a migration: the stages below.
 
 A change with about 8 to 10 scenarios or more, or with many requirements that have none, should be split. The agent suggests it and the owner decides.
@@ -32,7 +32,7 @@ A change with about 8 to 10 scenarios or more, or with many requirements that ha
 
 ### 1. Explore (optional)
 
-Turns a vague idea into items in `docs/roadmap.md`: one line of scope that names the goal, what is out of scope, the capabilities it touches, product decisions marked as the owner's, and a split of a big idea into several items. It writes no requirements. Notes live in a temporary `docs/explorations/<topic>.md`, deleted once the items exist. A throwaway experiment in a separate branch is part of this stage, when an agent suggests one and the owner wants it; it leaves findings, not code.
+Turns a vague idea into items in `docs/roadmap.md`: one line of scope that names the goal, what is out of scope, the capabilities it touches, the owner's product decisions, and a split of a big idea into several items. It writes no requirements. Notes live in a temporary `docs/explorations/<topic>.md`, deleted once the items exist. A throwaway experiment in a separate branch is part of this stage, when an agent suggests one and the owner wants it; it leaves findings, not code.
 
 An agent that notices a brainstorm growing in an ordinary session offers to continue in this stage.
 
@@ -46,7 +46,7 @@ On a new branch, the designer starts the temporary plan `docs/plans/<change>.md`
 
 ### 3. Plan
 
-The designer completes the plan: the requirement ids it touches, the design, the tasks with their ids, and what the tests rely on before code exists (component inputs, `data-testid` selectors). A developer changes `api/openapi.yaml`, adds any migration, and keeps the build green with stubs.
+The designer completes the plan: the requirement ids it touches, the design, the tasks with their ids, and what the tests rely on before code exists (component inputs, `data-testid` selectors). A developer changes `api/openapi.yaml`, adds any migration, and keeps the build green with stubs. When the change adds or changes what a screen shows, a task adds its data to the sample center, the dev data set described in `docs/development/backend.md`, so that every state of those screens can be seen.
 
 **Plan gate.** The owner reads the plan and the diff of the contract and the migration, and approves. The tests and the code rely on them, so a poor design would be redone along with both.
 
@@ -58,7 +58,7 @@ The requirements, the contract, the plan and these tests are then committed toge
 
 ### 5. Implement
 
-Developers work through the tasks of the plan, in the order it gives. The owner checks the backend once its tests are green, at any further checkpoint the plan names, and looks at the screens at the end.
+Developers work through the tasks of the plan, in the order it gives. The owner checks the backend once its tests are green, at any further checkpoint the plan names, and looks at the screens at the end, on the sample center.
 
 **List of details.** After implementation, a developer lists the details visible to a user that it chose on its own. The list shows only what the agent recognizes as a choice.
 
@@ -76,7 +76,7 @@ The reviewer checks the whole diff, the owner decides what to fix, and there is 
 
 ### 8. Finish
 
-Delete the plan. An architectural choice with real alternatives goes to the decisions. A rule that later changes in an area must follow goes to that area's guide, in a few lines, as the **Guides** section of `docs/README.md` says. Everything else about how the change is built stays in the code, with a comment where it is not obvious; when in doubt, it is a comment. The roadmap item is deleted, and its product decisions move to the requirements or the decisions. All of it goes into the same pull request as the code.
+Delete the plan. An architectural choice with real alternatives goes to the decisions. A rule that later changes in an area must follow goes to that area's guide, in a few lines, as the **Guides** section of `docs/README.md` says; each passage added to a guide or widened comes to the owner with the answers that section asks for, and stays only if the owner agrees. Everything else about how the change is built stays in the code, with a comment where it is not obvious; when in doubt, it is a comment. The roadmap item is deleted, and its product decisions move to the requirements or the decisions. All of it goes into the same pull request as the code.
 
 ## Stopping for the owner
 
@@ -87,6 +87,8 @@ A new session continues from the plan and what its handover names, not from the 
 ## Tests
 
 - A test of a scenario cites its id and checks the scenario at the level the scenario describes. Each scenario has one owning level: no duplicate backend and frontend tests of one rule.
+- A rule is tested once, at the level that owns it. A test at another level that would fail for the same broken behavior and for no other is a duplicate. Rules of the platform, such as authentication and the problem format, are tested once, not again for each feature.
+- The id goes on the test at the owning level. A twin of it at another level is deleted, not kept without the id.
 - A developer who finds a wrong test stops and reports it. The requirement decides: if it is unambiguous, the test engineer fixes the test; if it is ambiguous, the owner decides and the requirement is clarified.
 - End-to-end journey tests carry no id and complement scenario tests. They do not replace them.
 

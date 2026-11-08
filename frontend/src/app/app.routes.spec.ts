@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -18,7 +19,10 @@ describe('routes', () => {
     phone: null,
   };
 
+  const load = vi.fn();
+
   beforeEach(() => {
+    load.mockReset().mockResolvedValue({ status: 'ACTIVE', user });
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -26,14 +30,14 @@ describe('routes', () => {
           provide: AuthService,
           useValue: {
             ensureSignedIn: vi.fn().mockResolvedValue({ kind: 'signed-in', returnUrl: null }),
-            startupError: { set: vi.fn() },
+            startupError: signal(false),
             signOut: vi.fn(),
           },
         },
         {
           provide: CurrentUserService,
           useValue: {
-            load: vi.fn().mockResolvedValue({ status: 'ACTIVE', user }),
+            load,
             user: () => user,
             name: () => displayName(user),
             hasPermission: () => false,
@@ -57,11 +61,31 @@ describe('routes', () => {
     expect(TestBed.inject(Router).url).toBe('/');
   });
 
-  it('shows no Users link without USERS_READ', async () => {
+  it('shows the application menu to an active user with roles', async () => {
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/users');
+    await harness.navigateByUrl('/');
     await harness.fixture.whenStable();
-    const links = [...(harness.fixture.nativeElement as HTMLElement).querySelectorAll('a')];
-    expect(links.map((a) => a.textContent?.trim())).not.toContain('Users');
+    expect(
+      (harness.fixture.nativeElement as HTMLElement).querySelector('mat-toolbar'),
+    ).not.toBeNull();
   });
+
+  it.each([
+    ['not linked', { status: 'NOT_INVITED' }, '/access/invitation-only'],
+    ['disabled', { status: 'DISABLED' }, '/access/ended'],
+    ['active without roles', { status: 'ACTIVE', user: { ...user, roles: [] } }, '/access/pending'],
+  ])(
+    'IDN-10.1 shows a user who is %s their access screen without the application menu',
+    async (_name, me, url) => {
+      load.mockResolvedValue(me);
+      const harness = await RouterTestingHarness.create();
+      await harness.navigateByUrl('/');
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+      const element = harness.fixture.nativeElement as HTMLElement;
+      expect(TestBed.inject(Router).url).toBe(url);
+      expect(element.querySelector('h1')).not.toBeNull();
+      expect(element.querySelector('mat-toolbar, nav, mat-menu')).toBeNull();
+    },
+  );
 });

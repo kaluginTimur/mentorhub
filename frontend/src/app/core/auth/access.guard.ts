@@ -76,7 +76,9 @@ async function evaluate(
       return false;
     }
     currentUser.failedUrl = signIn.returnUrl ?? stripCallbackParams(state.url);
-    // the address bar keeps the requested URL, so a browser reload repeats the load
+    // the address bar keeps the requested URL, so a browser reload repeats the load, but only after a failure on the
+    // initial load or back/forward: after an in-app navigation the address bar still shows the previous URL, and after
+    // a sign-in callback the library has rewritten it to `/`. Retry always uses failedUrl.
     return new RedirectCommand(router.parseUrl('/unavailable'), { skipLocationChange: true });
   }
 

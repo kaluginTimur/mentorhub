@@ -109,9 +109,11 @@ Do not use `docker compose down -v` for this: it also deletes the `postgres-data
 
 ```bash
 cd backend && ./mvnw verify
-cd frontend && npm ci && npm run lint && npm test -- --watch=false && npm run build
-node scripts/check-docs.mjs
+cd frontend && npm ci && npm run format:check && npm run lint && npm test -- --watch=false && npm run build
+node --test scripts/requirements.test.mjs && node scripts/requirements.mjs trace
 ```
+
+The pre-commit hook also runs `node scripts/check-docs.mjs`.
 
 ## Setup
 

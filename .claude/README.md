@@ -53,13 +53,13 @@ What must hold regardless of mode belongs in a hook or a deny/ask rule.
 
 | Hook | Blocks or reports |
 |---|---|
-| `guard-files.mjs` | Edits to generated code (`frontend/src/app/core/api/`, `backend/target/`) and to migrations that are committed or recorded in the dev database |
-| `guard-bash.mjs` | What a prefix rule cannot express: `docker compose down -v`, `docker system prune --volumes`, `flyway clean`, destructive SQL in any case, `git reset --hard`, force push, `git clean -f`, discarding all changes, `git pull --rebase`, amend, deleting branches (flags in any position), mutating applied migrations |
+| `guard-files.mjs` | Edits to generated code (`frontend/src/app/core/api/`, `backend/target/`) and to migrations in main |
+| `guard-bash.mjs` | What a prefix rule cannot express: `docker compose down -v`, `docker system prune --volumes`, `flyway clean`, destructive SQL in any case, `git reset --hard`, force push, `git clean -f`, discarding all changes, `git pull --rebase`, amend, deleting branches (flags in any position), mutating migrations in main |
 | `check-frontend.mjs` | Reports `provideApiConfiguration('/')` and literal colors or fonts in components |
 
 A hook is added only for an error that is silent (build and tests miss it), irreversible, or a project policy. Local machine quirks and compiler errors are not hook material.
 
-Permissions in `settings.json`: the verification commands run without prompts; `git commit`, `git push` and `docker compose down` always ask; reading `.env` files is denied. Destructive commands with a fixed prefix (`docker volume rm`/`prune`, `dropdb`, `git rebase`, `git filter-branch`, `git stash drop`/`clear`, `git reflog expire`, `git update-ref -d`) are denied there too: they need no code and hold even when a hook cannot run. Prefix rules only match the command as written, so everything that depends on flags or content stays in `guard-bash.mjs`.
+Permissions in `settings.json`: the verification commands run without prompts, so the commands in the `bash` blocks of the guides' Verification and Checking an API sections must each match an allow rule, and a changed command changes its rule too (`scripts/check-docs.mjs` fails otherwise); `git commit`, `git push` and `docker compose down` always ask; reading `.env` files is denied. Destructive commands with a fixed prefix (`docker volume rm`/`prune`, `dropdb`, `git rebase`, `git filter-branch`, `git stash drop`/`clear`, `git reflog expire`, `git update-ref -d`) are denied there too: they need no code and hold even when a hook cannot run. Prefix rules only match the command as written, so everything that depends on flags or content stays in `guard-bash.mjs`.
 
 ## Cost and context
 
@@ -69,7 +69,7 @@ Every tool call re-sends the agent's whole context; prompt caching makes the re-
 |---|---|
 | `backend-dev` and `frontend-dev` use the 1-hour cache (`experimental.cacheTtl` in their definitions) | Subagents default to a 5-minute cache, and every review pause (7–38 minutes) expired it: each resume rewrote the agent's whole history, up to about 390k tokens. That was 38% of `backend-dev`'s cost; replayed with the 1-hour cache, it costs 29% less. |
 | The other agents keep the 5-minute cache | They run once without pauses; the 1-hour cache only raises their write price (about +20% for `reviewer`). |
-| A fresh `backend-dev` between tasks once its context passes about 150k | About half of a long-running agent's context is earlier reasoning; every call re-reads it. The report's "Notes for the next task" and the plan carry what the next task needs. |
+| A context budget of about 250k for `backend-dev`, `frontend-dev` and `test-engineer`: a `PostToolUse` hook in their definitions (`.claude/hooks/context-budget.mjs`) tells the agent to finish its step and stop with a PARTIAL report and a handover, and a fresh agent continues. Between tasks, a fresh agent above about 150k; one task per brief | About half of a long-running agent's context is earlier reasoning; every call re-reads it. A check between briefs alone did not hold: in the sample center, T4 and T6 in one brief took one agent to 194k. The hook acts within the agent's turn, after each tool result, but cannot interrupt a running tool; agents follow it only because their definitions say it is legitimate, since a message after a tool result otherwise reads as an injection. |
 | Contract and migration are one checkpoint | Two small steps, one pause and one resume instead of two. |
 | A handover in the plan before every stop for you, `/clear` instead of `/compact`, idle compaction off (`settings.json`) | The coordinator re-read an average 178k context on 143 calls, and a review that outlasts the cache writes the whole history again. The plan restores a new session exactly; a compaction summary is lossy, and idle compaction would compact during a long review. |
 | All review findings at once, one fix round, re-reviews on Sonnet limited to the previous findings and the fix diff | Each full review is 70–200k tokens on Opus; the frontend took four. |

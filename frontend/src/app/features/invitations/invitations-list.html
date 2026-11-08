@@ -83,7 +83,7 @@
                   }
                 }
               </div>
-              @if (invitation.lastEmail; as email) {
+              @if (emailEnabled() && invitation.lastEmail; as email) {
                 <div class="secondary" [class.failed]="email.status === 'FAILED'">
                   @switch (email.status) {
                     @case ('QUEUED') {

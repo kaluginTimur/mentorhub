@@ -30,10 +30,12 @@ Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 
 ## Agents and briefs
 
-Brief every agent with the plan's path and the task to do. It reads the rest itself.
+Brief every agent with the plan's path and one task. It reads the rest itself.
 
 - **Within a task** (feedback, rework): continue the same agent with `SendMessage`.
-- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one.
+- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one, since the context budget would soon stop it in the middle of the next task.
+- **Context budget:** past about 250k, a hook in `backend-dev`, `frontend-dev` and `test-engineer` tells the agent to finish its step and stop with a PARTIAL report and a handover. The agent writes the handover into the plan's Partial work under its task itself, so that it is not retold. On PARTIAL, check that it is there, do not rewrite it, keep the task `in progress`, and brief a fresh agent of the same type with the same task, saying that it continues from the handover. Never continue the stopped agent. When the task is done, delete its Partial work.
+- **An agent that ends without its report** (an error, a stop, a session that ended, a report without a status): if it can still be continued (this session; in a cloud session, its transcript as below), continue it once with `SendMessage`: end with the report, and if the task is not done, with status PARTIAL and the handover its Context budget section asks for. Otherwise brief a fresh agent of the same type with the same task, saying that there is no handover: it starts from `git status`, `git diff` and the plan, and runs the verification of its area before going on. Write into the plan's Partial work, under the task, that the agent stopped without a handover, and when.
 - **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If not, start a fresh agent of the same type.
 
 Before every brief or `SendMessage`, check that the current branch is the plan's. Never switch branches while an agent is running: background agents write to the same working tree.
@@ -46,7 +48,7 @@ A failure an agent attributes to the environment (network, Docker, tool versions
 
 ## Plan
 
-Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in the design only what the agents would otherwise guess. Tasks follow the feature, not a fixed pipeline, and each names the scenarios it serves. Propose a checkpoint on a hard part. Then brief `backend-dev` for the contract and any migration.
+Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in the design only what the agents would otherwise guess. Tasks follow the feature, not a fixed pipeline, and each names the scenarios it serves. When screens change, a `backend-dev` task adds their sample data, as the backend guide says, before the frontend stop. Propose a checkpoint on a hard part. Then brief `backend-dev` for the contract and any migration.
 
 **Stop at the plan gate:** the user reads the plan and the diff of the contract and the migration. Relay remarks to the agent or fix the plan. Go on only when the user approves, and record that.
 
@@ -66,7 +68,7 @@ After each report, list what changed in the test files since the red commit. A c
 
 **Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
 
-**Stop when the frontend is green.** The user looks at the screens, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
+**Stop when the frontend is green.** The user looks at the screens on the sample center, signed in as the personas the report names, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
 
 **List of details.** Show the user each developer's list. What the user agrees with stays as it is. For the rest, follow stage 5 of `docs/process.md`: a matter of taste goes to the developer with an ordinary test; a rule goes into the requirement first, then to `test-engineer`, then to the developer.
 
@@ -85,5 +87,5 @@ Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer
 
 1. Run `verifier` with scope `all`.
 2. Report what was built per requirement, the verification table, `trace`, open items and a proposed commit message. **Stop** for the user to accept.
-3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item and the plan. Show the user these changes.
+3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item and the plan. Show the user these changes, and each passage added to a guide or widened with the four answers the **Guides** section of `docs/README.md` asks for; remove a passage the user does not agree with.
 4. Commit only if the user asks. Then suggest `/pr`, and `/usage-review` once the pull request is open.

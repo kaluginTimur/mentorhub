@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * An audited change to a user; its components are the details of the audit entry (spec user-administration, Audit).
+ * An audited change to a user; its components are the details of the audit entry (AUD-7).
  */
 public sealed interface UserChange {
 

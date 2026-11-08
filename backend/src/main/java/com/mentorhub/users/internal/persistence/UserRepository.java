@@ -28,7 +28,7 @@ public class UserRepository {
 
     /**
      * Key of the transaction-scoped advisory lock that serializes every change that can remove an active administrator
-     * (spec user-administration, Authorization). Taken before any user row lock.
+     * (USR-7). Taken before any user row lock.
      */
     private static final long ADMINISTRATORS_LOCK = 7_301_946_532_015_100_001L;
 

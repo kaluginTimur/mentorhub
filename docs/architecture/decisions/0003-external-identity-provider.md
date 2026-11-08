@@ -8,6 +8,7 @@ There are two kinds of users: mentors (employees, corporate SSO in the future) a
 
 - The application stores no passwords and does not implement sign-in itself. The backend is an OAuth2 resource server and validates JWTs. The frontend is an OIDC client (Authorization Code + PKCE).
 - The identity provider is Keycloak (locally in `infra/compose.yaml`, with the realm stored as JSON in the repository). The corporate provider is later connected to it through identity brokering.
+- The application trusts a verified email (`email_verified`) for the administrator bootstrap and invitation acceptance. Keycloak's "trust email" setting is therefore enabled only for brokered providers that verify addresses themselves (Google, the corporate provider), and self-registration requires email verification.
 - The internal user ID is separate from the provider's identifier: `users(id)` and `user_identities(user_id, issuer, subject)`. Domain data references only `users.id`, never `sub`.
 - Roles are stored in the application database, not in Keycloak (decision 0004).
 - The list of trusted issuers is configuration (`JwtIssuerAuthenticationManagerResolver`), so migrating to another provider requires no code changes.

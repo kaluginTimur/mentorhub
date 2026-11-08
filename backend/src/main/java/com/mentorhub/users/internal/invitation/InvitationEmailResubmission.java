@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  * not tolerate a delivery while one is still running. The age counts from the publication, so a publication still
  * waiting in the executor or still sending is resubmitted too; {@link InvitationEmailSender} runs the deliveries of one
  * request one at a time, and a request that is no longer queued is not sent again. Assumes a single application
- * instance (spec, Asynchronous delivery).
+ * instance (decision 0006).
  */
 @Component
 class InvitationEmailResubmission {

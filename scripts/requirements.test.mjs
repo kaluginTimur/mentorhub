@@ -171,6 +171,20 @@ test('validate requires WHEN and THEN on a manual scenario too', () => {
   assertFails(run('validate', documents(content)), /INV-1\.1.*WHEN/);
 });
 
+test('validate rejects a requirement out of order', () => {
+  const second = REQUIREMENT.replaceAll('INV-1', 'INV-2');
+  assertFails(run('validate', documents(capability(`${second}\n${REQUIREMENT}`))), /INV-1 comes after INV-2/);
+});
+
+test('validate rejects a scenario out of order and accepts gaps', () => {
+  const scenario = (m) => `\n#### INV-1.${m} Case ${m}\n\n- WHEN x\n- THEN y\n`;
+  assert.equal(run('validate', documents(capability(`${REQUIREMENT}${scenario(3)}`))).status, 0);
+  assertFails(
+    run('validate', documents(capability(`${REQUIREMENT}${scenario(10)}${scenario(2)}`))),
+    /INV-1\.2 comes after INV-1\.10/,
+  );
+});
+
 test('validate rejects a scenario under the wrong requirement', () => {
   const content = capability(REQUIREMENT.replace('#### INV-1.1', '#### INV-2.1'));
   assertFails(run('validate', documents(content)), /INV-2\.1.*under INV-1/);

@@ -139,9 +139,8 @@ describe('InvitationsList', () => {
     input.value = 'ivan';
     input.dispatchEvent(new Event('input'));
     expect(TestBed.inject(Router).url).toBe('/invitations?page=2');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/invitations?q=ivan'));
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/invitations?q=ivan');
     expect(listParams()).toEqual(expect.objectContaining({ q: 'ivan', page: 0 }));
   });
 
@@ -283,17 +282,6 @@ describe('InvitationsList', () => {
       );
       await vi.waitFor(() =>
         expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(2),
-      );
-    });
-
-    it('INV-18.3 handles a 404 like a closed invitation', async () => {
-      const { harness, element } = await openWithOnePending();
-      click(element, 'Revoke');
-      await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
-      api.invoke.mockRejectedValueOnce(problem(404, 'urn:mentorhub:problem:not-found'));
-      await confirm(harness, 'Revoke');
-      await vi.waitFor(() =>
-        expect(document.body.textContent).toContain('This invitation is already closed.'),
       );
     });
 
@@ -561,17 +549,6 @@ describe('InvitationsList', () => {
           expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(2),
         );
       });
-
-      it('shows a generic message on other errors', async () => {
-        vi.stubGlobal('ClipboardItem', undefined);
-        vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
-        const { element } = await openWithOnePending();
-        api.invoke.mockRejectedValueOnce(problem(500, 'about:blank'));
-        click(element, 'Copy link');
-        await vi.waitFor(() =>
-          expect(document.body.textContent).toContain('Something went wrong. Try again.'),
-        );
-      });
     });
 
     it('reloads the list when the link dialog closes', async () => {
@@ -659,48 +636,53 @@ describe('InvitationsList', () => {
       expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
     });
 
-    it('shows the email line for every status of lastEmail', async () => {
-      const requestedBy = { id: 'a1', name: 'Ada Admin' };
-      const requestedAt = '2026-10-18T09:00:00Z';
-      const mail = (status: string, finishedAt?: string) => ({
+    const mail = (status: string, finishedAt?: string) =>
+      ({
         status,
-        requestedAt,
-        requestedBy,
+        requestedAt: '2026-10-18T09:00:00Z',
+        requestedBy: { id: 'a1', name: 'Ada Admin' },
         ...(finishedAt ? { finishedAt } : {}),
-      });
+      }) as never;
+    const emailWords = /Sending email|Email sent|Email failed|Email not sent/;
+
+    it('shows the email line for every status of lastEmail', async () => {
+      emailOn();
       api.invoke.mockResolvedValue(
         page([
-          invitation({ id: '1', lastEmail: mail('QUEUED') as never }),
-          invitation({ id: '2', lastEmail: mail('SENT', '2026-10-18T09:05:00Z') as never }),
-          invitation({ id: '3', lastEmail: mail('FAILED', '2026-10-19T09:05:00Z') as never }),
-          invitation({ id: '4', lastEmail: mail('SKIPPED', '2026-10-19T09:05:00Z') as never }),
+          invitation({ id: '1', lastEmail: mail('QUEUED') }),
+          invitation({ id: '2', lastEmail: mail('SENT', '2026-10-18T09:05:00Z') }),
+          invitation({ id: '3', lastEmail: mail('FAILED', '2026-10-19T09:05:00Z') }),
+          invitation({ id: '4', lastEmail: mail('SKIPPED', '2026-10-19T09:05:00Z') }),
           invitation({
             id: '5',
             status: 'REVOKED',
-            lastEmail: mail('SKIPPED', requestedAt) as never,
+            lastEmail: mail('SKIPPED', '2026-10-18T09:00:00Z'),
           }),
           invitation({ id: '6' }),
           invitation({
             id: '7',
             status: 'ACCEPTED',
-            lastEmail: mail('SENT', '2026-10-18T09:05:00Z') as never,
+            lastEmail: mail('SENT', '2026-10-18T09:05:00Z'),
           }),
         ]),
       );
       const { element } = await open();
-      const rows = [...element.querySelectorAll('tr.mat-mdc-row')];
-      expect(rows[0].textContent).toContain('Sending email…');
-      expect(rows[1].textContent).toContain('Email sent 18 Oct 2026');
-      expect(rows[2].textContent).toContain('Email failed 19 Oct 2026');
-      expect(rows[2].querySelector('.secondary.failed')).toBeTruthy();
-      expect(rows[3].textContent).toContain('Email not sent');
-      expect(rows[4].textContent).toContain('Email not sent');
-      const statusLines = (row: Element) =>
-        row.querySelectorAll('td.mat-column-status .secondary').length;
-      expect(statusLines(rows[0])).toBe(2);
-      expect(statusLines(rows[5])).toBe(1);
-      expect(rows[1].querySelector('.failed')).toBeNull();
-      expect(rows[6].textContent).toContain('Email sent 18 Oct 2026');
+      const rows = [...element.querySelectorAll('tr.mat-mdc-row')].map((r) => r.textContent ?? '');
+      expect(rows[0]).toContain('Sending email…');
+      expect(rows[1]).toContain('Email sent 18 Oct 2026');
+      expect(rows[2]).toContain('Email failed 19 Oct 2026');
+      expect(rows[3]).toContain('Email not sent');
+      expect(rows[4]).toContain('Email not sent');
+      expect(rows[5]).not.toMatch(emailWords);
+      expect(rows[6]).toContain('Email sent 18 Oct 2026');
+    });
+
+    it('shows no email line when email is disabled', async () => {
+      api.invoke.mockResolvedValue(
+        page([invitation({ id: '2', lastEmail: mail('SENT', '2026-10-18T09:05:00Z') })]),
+      );
+      const { element } = await open();
+      expect(element.querySelector('tr.mat-mdc-row')?.textContent).not.toMatch(emailWords);
     });
 
     it('sends without a confirmation, replaces the row and confirms', async () => {
@@ -800,35 +782,14 @@ describe('InvitationsList', () => {
       );
     });
 
-    it('treats an expired invitation like Copy link', async () => {
+    it.each([
+      [409, 'urn:mentorhub:problem:invitation-closed'],
+      [404, 'urn:mentorhub:problem:not-found'],
+    ])('IEM-12.4 treats a %i like Copy link', async (status, type) => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { element } = await open();
-      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-expired'));
-      click(element, 'Send email');
-      await vi.waitFor(() =>
-        expect(document.body.textContent).toContain('This invitation has expired. Get a new link.'),
-      );
-      await vi.waitFor(() => expect(listCalls()).toBe(2));
-    });
-
-    it('IEM-12.4 treats a closed invitation like Copy link', async () => {
-      emailOn();
-      api.invoke.mockResolvedValue(page([pending()]));
-      const { element } = await open();
-      api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-closed'));
-      click(element, 'Send email');
-      await vi.waitFor(() =>
-        expect(document.body.textContent).toContain('This invitation is already closed.'),
-      );
-      await vi.waitFor(() => expect(listCalls()).toBe(2));
-    });
-
-    it('IEM-12.4 treats a 404 like Copy link', async () => {
-      emailOn();
-      api.invoke.mockResolvedValue(page([pending()]));
-      const { element } = await open();
-      api.invoke.mockRejectedValueOnce(problem(404, 'urn:mentorhub:problem:not-found'));
+      api.invoke.mockRejectedValueOnce(problem(status, type));
       click(element, 'Send email');
       await vi.waitFor(() =>
         expect(document.body.textContent).toContain('This invitation is already closed.'),

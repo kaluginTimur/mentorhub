@@ -45,13 +45,13 @@ In this order of priority:
 1. **Authorization and privacy.** Every requirement in `docs/requirements/` holds on every path the change touches: resource-level access checks, visibility on every read path (lists, search, counters, exports, events, mappings), internal user IDs, invitation-only registration. Negative tests exist.
 2. **Contract.** The change starts from the contract; implementation and contract agree (status codes, nullability, errors); generated code is untouched.
 3. **Architecture.** Module boundaries and the architecture decisions.
-4. **Data.** Existing migrations untouched; the schema encodes the rules of the requirements (constraints, foreign keys, indexes); no data loaded outside its transaction.
+4. **Data.** Migrations in main untouched; the schema encodes the rules of the requirements (constraints, foreign keys, indexes); no data loaded outside its transaction.
 5. **Stack idioms.** The conventions and every pitfall listed in the area's development guide. Pitfalls that compile but are wrong matter most.
 6. **Audit.** State changes the requirements mark as audited are recorded.
-7. **Frontend.** The guide's conventions, styling only through theme tokens, accessibility, screens matching the requirements and the UI guidelines.
+7. **Frontend.** The guide's conventions, styling only through theme tokens, accessibility, screens matching the requirements and the UI guidelines, and sample data for every state the changed screens show differently.
 8. **Correctness.** Bugs, error handling, transactions, N+1 queries, concurrency.
 9. **Tests.** Each new or changed scenario has a test citing its id, at the level the scenario describes, and it would fail without the change. A test with an id changed after the plan's red commit is a blocker unless the plan records the user's approval. No rule is tested twice on different levels.
-10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line. Report too, as a minor, a guide passage the change added that fails the test in the **Guides** section of `docs/README.md`: it describes how this change is built rather than a rule for later changes in the area.
+10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line. Report too, as a minor, a guide passage the change added or widened that fails the **Guides** section of `docs/README.md`: it describes how this change is built rather than a rule for later changes, it copies what its source lists, or its answers to that section's four questions are missing from the plan's handover or do not hold (above all, a source that already holds it).
 11. **Hygiene.** Comments only for non-obvious points; all text in English.
 
 ## Requirements mode

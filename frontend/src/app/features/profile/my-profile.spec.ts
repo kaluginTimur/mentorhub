@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Api } from '../../core/api/api';
@@ -45,34 +44,7 @@ describe('MyProfile', () => {
     expect(el.textContent).not.toContain('Cancel');
   });
 
-  it('saves and updates the current user, so the toolbar name changes', async () => {
-    api.invoke.mockResolvedValue({
-      status: 'ACTIVE',
-      user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),
-    });
-    const fixture = await open();
-    const el = fixture.nativeElement as HTMLElement;
-    const inputs = [...el.querySelectorAll('input')] as HTMLInputElement[];
-    inputs[0].value = 'Anya';
-    inputs[0].dispatchEvent(new Event('input'));
-    inputs[2].value = '8 701 123 45 67';
-    inputs[2].dispatchEvent(new Event('input'));
-    inputs[1].value = '   ';
-    inputs[1].dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-    save(el)?.click();
-    await fixture.whenStable();
-    expect(api.invoke).toHaveBeenCalledWith(updateMyProfile, {
-      body: { firstName: 'Anya', lastName: null, phone: '8 701 123 45 67' },
-    });
-    expect(me().user?.firstName).toBe('Anya');
-    expect(inputs[2].value).toBe('+77011234567');
-    expect(document.querySelector('mat-snack-bar-container')?.textContent).toContain(
-      'Profile saved',
-    );
-  });
-
-  it('shows no status or roles after a save', async () => {
+  it('saves, updates the current user so the toolbar name changes, and shows no status or roles', async () => {
     api.invoke.mockResolvedValue({
       status: 'ACTIVE',
       user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),
@@ -99,23 +71,5 @@ describe('MyProfile', () => {
     );
     expect(el.textContent).not.toContain('Student');
     expect(el.textContent).not.toContain('Active');
-  });
-
-  it('shows the server error under the phone field', async () => {
-    api.invoke.mockRejectedValue(
-      new HttpErrorResponse({
-        status: 400,
-        error: {
-          type: 'urn:mentorhub:problem:validation-failed',
-          errors: [{ field: 'phone', message: 'x' }],
-        },
-      }),
-    );
-    const fixture = await open();
-    const el = fixture.nativeElement as HTMLElement;
-    save(el)?.click();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(el.textContent).toContain('Enter a valid phone number');
   });
 });

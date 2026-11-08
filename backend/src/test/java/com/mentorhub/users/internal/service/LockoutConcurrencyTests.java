@@ -2,7 +2,7 @@ package com.mentorhub.users.internal.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.IntegrationTest;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.DisableReason;
@@ -24,8 +24,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -33,8 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * Parallel changes that can remove an administrator never leave the installation without one, and parallel
  * changes never fail with a deadlock.
  */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@IntegrationTest
 class LockoutConcurrencyTests {
 
     private static final String OK = "OK";
@@ -96,6 +93,7 @@ class LockoutConcurrencyTests {
     // Each change writes an audit entry whose actor foreign key share-locks the caller's row, which the other
     // change holds; the row lock must not conflict with that (no deadlock).
     @RepeatedTest(10)
+    @DisplayName("USR-7.5 Two administrators changing each other at the same moment both succeed (profiles)")
     void administratorsUpdatingEachOthersProfileBothSucceed() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.updateProfile(adminB, new ProfileInput("Bea", "Bright", null))),
@@ -105,6 +103,7 @@ class LockoutConcurrencyTests {
     }
 
     @RepeatedTest(10)
+    @DisplayName("USR-7.5 Two administrators changing each other at the same moment both succeed (roles)")
     void administratorsSettingEachOthersRolesKeepingAdminBothSucceed() throws Exception {
         List<String> outcomes = inParallel(
                 as(adminA, service -> service.setRoles(adminB, Set.of(Role.ADMIN, Role.MENTOR))),

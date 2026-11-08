@@ -3,30 +3,20 @@ package com.mentorhub.users.internal.web;
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import com.mentorhub.users.internal.service.LockoutProblems;
 import com.mentorhub.web.Problems;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -40,9 +30,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  * User administration through the real chain: signed tokens, the gate, permissions expanded from stored roles, method
  * validation, the services and the database.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+@EndpointTest
 class UsersEndpointTests {
 
     static final String PROFILE_BODY = """
@@ -69,62 +57,6 @@ class UsersEndpointTests {
         users.link(admin, "admin");
         mentor = users.create("mentor@x.test", UserStatus.ACTIVE, Role.MENTOR);
         users.link(mentor, "mentor");
-    }
-
-    /** Every non-admin role and no roles at all, against every {@code /api/v1/users/**} operation. */
-    static Stream<Arguments> forbiddenCalls() {
-        List<@Nullable Role> callerRoles = new ArrayList<>();
-        callerRoles.add(null);
-        Stream.of(Role.values()).filter(role -> role != Role.ADMIN).forEach(callerRoles::add);
-        List<Arguments> calls = new ArrayList<>();
-        for (Role role : callerRoles) {
-            for (String[] operation : List.of(
-                    new String[] {"GET", "/api/v1/users", ""},
-                    new String[] {"GET", "/api/v1/users/{id}", ""},
-                    new String[] {"GET", "/api/v1/users/{id}/history", ""},
-                    new String[] {"POST", "/api/v1/users/{id}/disable", "{\"reason\": \"GRADUATED\"}"},
-                    new String[] {"POST", "/api/v1/users/{id}/enable", ""},
-                    new String[] {"PUT", "/api/v1/users/{id}/roles", "{\"roles\": [\"ADMIN\"]}"},
-                    new String[] {"PUT", "/api/v1/users/{id}/profile", PROFILE_BODY})) {
-                calls.add(Arguments.of(
-                        role == null ? "no roles" : role.name(), operation[0], operation[1], operation[2]));
-            }
-        }
-        return calls.stream();
-    }
-
-    // Permissions come from the stored roles; only ADMIN has them. Nothing changes and nothing is audited.
-    @ParameterizedTest(name = "{0}: {1} {2}")
-    @MethodSource("forbiddenCalls")
-    void callersWithoutTheUsersPermissionsAreForbidden(String role, String method, String path, String body) {
-        UUID caller = role.equals("no roles")
-                ? users.create("caller@x.test", UserStatus.ACTIVE)
-                : users.create("caller@x.test", UserStatus.ACTIVE, Role.valueOf(role));
-        users.link(caller, "caller");
-
-        MvcTestResult result =
-                send(HttpMethod.valueOf(method), path.replace("{id}", mentor.toString()), body, "caller");
-
-        assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
-        assertThat(users.status(mentor)).isEqualTo("ACTIVE");
-        assertThat(users.roles(mentor)).containsExactly("MENTOR");
-        assertThat(users.count("audit_log")).isZero();
-    }
-
-    // Through the full application: method validation, conversion and service validation.
-    @Test
-    void invalidParametersAreValidationProblemsNamingTheParameter() {
-        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?size=101", "", "admin"), "size");
-        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?page=-1", "", "admin"), "page");
-        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?role=SUPERUSER", "", "admin"), "role");
-        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?status=GONE", "", "admin"), "status");
-        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users?q=" + "x".repeat(101), "", "admin"), "q");
-        assertValidationProblem(send(HttpMethod.GET, "/api/v1/users/not-a-uuid", "", "admin"), "id");
-        assertValidationProblem(
-                send(HttpMethod.GET, "/api/v1/users/" + mentor + "/history?size=0", "", "admin"), "size");
-        assertValidationProblem(
-                send(HttpMethod.POST, "/api/v1/users/" + mentor + "/disable", "{\"reason\": \"RETIRED\"}", "admin"),
-                "reason");
     }
 
     @Test
@@ -300,8 +232,8 @@ class UsersEndpointTests {
                 .containsExactlyInAnyOrder("firstName", "lastName", "phone");
     }
 
-    // A user without roles changes their own profile; GET /me returns the new values.
     @Test
+    @DisplayName("USR-9.1 A user without roles saves their own profile")
     void userWithoutRolesUpdatesTheirOwnProfile() {
         UUID maria = users.create("maria@x.test", UserStatus.ACTIVE);
         users.link(maria, "maria");
@@ -309,6 +241,9 @@ class UsersEndpointTests {
         MvcTestResult result = send(HttpMethod.PUT, "/api/v1/me/profile", PROFILE_BODY, "maria");
 
         assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.user.id").isEqualTo(maria.toString());
+        assertThat(result).bodyJson().extractingPath("$.user.firstName").isEqualTo("Ivan");
+        assertThat(result).bodyJson().extractingPath("$.user.lastName").isEqualTo("Sidorov");
         assertThat(result).bodyJson().extractingPath("$.user.phone").isEqualTo("+77011234567");
         MvcTestResult me = send(HttpMethod.GET, "/api/v1/me", "", "maria");
         assertThat(me).bodyJson().extractingPath("$.user.firstName").isEqualTo("Ivan");

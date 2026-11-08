@@ -1,8 +1,6 @@
 package com.mentorhub.users.internal.service;
 
 import com.mentorhub.users.CurrentUserProvider;
-import com.mentorhub.users.Permission;
-import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.DisableReason;
 import com.mentorhub.users.internal.domain.StoredRoles;
@@ -31,7 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * User administration (spec user-administration): the users list, a user, its history, and the audited changes with
+ * User administration (USR): the users list, a user, its history, and the audited changes with
  * the lockout rules. Administrators see every user, so the only resource-level rule is that an unknown id is
  * {@link NotFoundException}.
  *
@@ -69,7 +67,6 @@ public class UserAdministrationService {
     }
 
     /** @throws ValidationException for {@code q}, {@code page} or {@code size} */
-    @RequirePermission(Permission.USERS_READ)
     @Transactional(readOnly = true)
     public ResultPage<UserListEntry> list(UserQuery query) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -94,14 +91,12 @@ public class UserAdministrationService {
         return new ResultPage<>(items, query.page(), query.size(), users.count(search));
     }
 
-    @RequirePermission(Permission.USERS_READ)
     @Transactional(readOnly = true)
     public ManagedUser get(UUID userId) {
         return managedUser(users.findUser(userId).orElseThrow(NotFoundException::new));
     }
 
     /** Newest first; entries with an action the code does not know are left out. */
-    @RequirePermission(Permission.USERS_READ)
     @Transactional(readOnly = true)
     public ResultPage<UserHistoryEntry> history(UUID userId, int page, int size) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -136,7 +131,6 @@ public class UserAdministrationService {
      * @throws ValidationException for {@code comment}
      * @throws ConflictException {@link LockoutProblems#SELF_LOCKOUT} or {@link LockoutProblems#LAST_ADMIN}
      */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser disable(UUID userId, DisableReason reason, @Nullable String comment) {
         String validComment = disableComment(reason, comment);
@@ -158,7 +152,6 @@ public class UserAdministrationService {
     }
 
     /** Clears the reason and comment; roles are unchanged. Enabling an active user changes nothing. */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser enable(UUID userId) {
         UUID callerId = currentUser.currentUser().id();
@@ -178,7 +171,6 @@ public class UserAdministrationService {
      *
      * @throws ConflictException {@link LockoutProblems#SELF_LOCKOUT} or {@link LockoutProblems#LAST_ADMIN}
      */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser setRoles(UUID userId, Set<Role> roles) {
         Set<Role> requested = roles.isEmpty() ? EnumSet.noneOf(Role.class) : EnumSet.copyOf(roles);
@@ -216,7 +208,6 @@ public class UserAdministrationService {
      *
      * @throws ValidationException with one error per invalid field; nothing is stored
      */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser updateProfile(UUID userId, ProfileInput input) {
         ValidProfile profile = profileRules.validate(input);

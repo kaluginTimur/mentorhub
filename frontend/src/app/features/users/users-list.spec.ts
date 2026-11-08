@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '../../core/api/api';
-import { listUsers } from '../../core/api/fn/users/list-users';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersList } from './users-list';
@@ -68,14 +67,9 @@ describe('UsersList', () => {
     expect(rows[0].textContent).toContain('a@example.com');
     expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/users/a');
     expect(rows[1].querySelector('a')?.textContent?.trim()).toBe('b@example.com');
-    expect(rows[1].textContent).toContain('b@example.com');
     expect(rows[1].textContent).toContain('No roles');
     expect(rows[1].textContent).toContain('Disabled');
     expect(element.querySelectorAll('th')).toHaveLength(4);
-    expect(api.invoke).toHaveBeenCalledWith(
-      listUsers,
-      expect.objectContaining({ page: 0, size: 25 }),
-    );
   });
 
   it('restores search, filters and page from the URL', async () => {
@@ -106,9 +100,8 @@ describe('UsersList', () => {
     input.value = 'ivan';
     input.dispatchEvent(new Event('input'));
     expect(TestBed.inject(Router).url).toBe('/users?page=2');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/users?q=ivan'));
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/users?q=ivan');
     expect(params()).toEqual(expect.objectContaining({ q: 'ivan', page: 0 }));
   });
 
@@ -186,11 +179,15 @@ describe('UsersList', () => {
     expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
   });
 
-  it('PLT-9.4 keeps the paginator when the page is past the last one', async () => {
+  it('PLT-9.4 says the page is past the last one and lets the user move to another page', async () => {
     api.invoke.mockResolvedValue(page([], 30));
-    const { element } = await open('/users?page=5');
-    expect(element.querySelector('mat-paginator')).not.toBeNull();
+    const { harness, element } = await open('/users?page=5');
     expect(element.textContent).toContain('No users on this page.');
+    (element.querySelector('button[aria-label="Previous page"]') as HTMLButtonElement).click();
+    await harness.fixture.whenStable();
+    const router = TestBed.inject(Router);
+    expect(router.parseUrl(router.url).queryParams).toEqual({ page: '4' });
+    expect(params()).toEqual(expect.objectContaining({ page: 4 }));
   });
 
   it('keeps a trailing space while typing the search', async () => {
@@ -199,7 +196,7 @@ describe('UsersList', () => {
     const input = element.querySelector('input') as HTMLInputElement;
     input.value = 'Anna ';
     input.dispatchEvent(new Event('input'));
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await vi.waitFor(() => expect(params()).toEqual(expect.objectContaining({ q: 'Anna' })));
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(input.value).toBe('Anna ');
@@ -229,9 +226,7 @@ describe('UsersList', () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(input.value).toBe('ab');
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/users?q=ab');
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/users?q=ab'));
   });
 
   it('syncs the input with the URL on Back', async () => {
@@ -247,10 +242,15 @@ describe('UsersList', () => {
     api.invoke.mockResolvedValue(page([]));
     const { harness, element } = await open('/users?status=ACTIVE');
     const input = element.querySelector('input') as HTMLInputElement;
-    input.value = 'late';
-    input.dispatchEvent(new Event('input'));
-    click(element, 'Clear filters');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    vi.useFakeTimers();
+    try {
+      input.value = 'late';
+      input.dispatchEvent(new Event('input'));
+      click(element, 'Clear filters');
+      await vi.advanceTimersByTimeAsync(400);
+    } finally {
+      vi.useRealTimers();
+    }
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/users');
   });

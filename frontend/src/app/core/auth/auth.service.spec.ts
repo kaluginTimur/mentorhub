@@ -117,13 +117,14 @@ describe('AuthService', () => {
   });
 
   it('only checks the session on later navigations', async () => {
-    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: true }));
+    oidc.checkAuth.mockReturnValueOnce(of({ isAuthenticated: true }));
+    // processing the callback again would fail; a later navigation must rely on the session alone
+    oidc.checkAuth.mockReturnValue(of({ isAuthenticated: false }));
     oidc.isAuthenticated.mockReturnValue(of(true));
     const service = create();
     await service.ensureSignedIn('/');
     const result = await service.ensureSignedIn('/other');
     expect(result).toEqual({ kind: 'signed-in', returnUrl: null });
-    expect(oidc.checkAuth).toHaveBeenCalledOnce();
   });
 
   it('IDN-9.2 restarts sign-in once when the callback has no session (opened in another tab)', async () => {
@@ -225,7 +226,6 @@ describe('AuthService', () => {
     const service = create();
     service.handleUnauthorized();
     await vi.waitFor(() => expect(oidc.authorize).toHaveBeenCalledOnce());
-    expect(oidc.authorize).toHaveBeenCalledOnce();
     expect(sessionStorage.getItem('mentorhub.return-url')).toBe('/students');
   });
 

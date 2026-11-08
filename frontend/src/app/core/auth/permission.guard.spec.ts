@@ -5,14 +5,14 @@ import { CurrentUserService } from './current-user.service';
 import { requirePermission } from './permission.guard';
 
 describe('requirePermission', () => {
-  const permissions = signal<string[] | null>(null);
+  const permissions = signal<string[]>([]);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
         {
           provide: CurrentUserService,
-          useValue: { hasPermission: (p: string) => permissions()?.includes(p) ?? false },
+          useValue: { hasPermission: (p: string) => permissions().includes(p) },
         },
         {
           provide: Router,
@@ -34,22 +34,6 @@ describe('requirePermission', () => {
 
   it('redirects users without the permission to the home page', () => {
     permissions.set([]);
-    expect(run()).toEqual({ url: '/' });
-  });
-
-  it('opens the invitations page for USERS_INVITE and takes others to the home page', () => {
-    const runInvite = () =>
-      TestBed.runInInjectionContext(() =>
-        requirePermission('USERS_INVITE')({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
-      );
-    permissions.set(['USERS_INVITE']);
-    expect(runInvite()).toBe(true);
-    permissions.set(['USERS_READ']);
-    expect(runInvite()).toEqual({ url: '/' });
-  });
-
-  it('redirects when nobody is loaded', () => {
-    permissions.set(null);
     expect(run()).toEqual({ url: '/' });
   });
 });

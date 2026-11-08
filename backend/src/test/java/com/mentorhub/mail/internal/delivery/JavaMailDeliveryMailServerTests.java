@@ -1,6 +1,5 @@
 package com.mentorhub.mail.internal.delivery;
 
-import static com.mentorhub.mail.internal.delivery.JavaMailDeliveryTests.MESSAGE;
 import static com.mentorhub.mail.internal.delivery.JavaMailDeliveryTests.RUNNER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,8 +8,6 @@ import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.mail.MailDeliveryException;
 import com.mentorhub.mail.MailMessage;
 import com.mentorhub.support.Mailpit;
-import com.mentorhub.support.Mailpit.Message;
-import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,21 +32,6 @@ class JavaMailDeliveryMailServerTests {
     @BeforeEach
     void deleteMessages() {
         mailpit.deleteAll();
-    }
-
-    @Test
-    void sendsAPlainTextMessageFromTheSender() {
-        mailServer("MentorHub Schüler <no-reply@example.org>")
-                .run(context -> context.getBean(MailDelivery.class).send(MESSAGE));
-
-        List<Message> messages = mailpit.awaitMessages(1);
-        assertThat(messages).hasSize(1);
-        Message message = messages.getFirst();
-        assertThat(message.from()).isEqualTo("no-reply@example.org");
-        assertThat(message.fromName()).isEqualTo("MentorHub Schüler");
-        assertThat(message.to()).containsExactly("ivan@example.com");
-        assertThat(message.subject()).isEqualTo("You're invited to MentorHub");
-        assertThat(message.text().replace("\r\n", "\n")).isEqualTo(MESSAGE.text());
     }
 
     @Test

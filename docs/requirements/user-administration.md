@@ -111,7 +111,7 @@ The system SHALL let a caller with `USERS_MANAGE` replace a user's roles with ex
 
 ### USR-7 Locking the installation out is refused
 
-The system SHALL refuse, changing and recording nothing (AUD-4.1), a change that disables the caller, removes their own administrator role, or leaves no active administrator, even when requests run at the same moment. The administrator role of a disabled user does not count.
+The system SHALL refuse, changing and recording nothing (AUD-4.1), a change that disables the caller, removes their own administrator role, or leaves no active administrator, even when requests run at the same moment. The administrator role of a disabled user does not count. Parallel changes of users never end in a server error.
 
 #### USR-7.1 An administrator cannot disable themselves
 
@@ -140,6 +140,12 @@ The system SHALL refuse, changing and recording nothing (AUD-4.1), a change that
 - WHEN A disables B while A removes B's administrator role at the same moment
 - THEN both responses are 200
 - AND one active administrator remains
+
+#### USR-7.5 Two administrators changing each other at the same moment both succeed
+
+- GIVEN two active administrators A and B
+- WHEN A edits B's profile while B edits A's, or each sets the other's roles keeping the administrator role, at the same moment
+- THEN both responses are 200, never 500
 
 ### USR-8 Profile values
 

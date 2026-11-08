@@ -26,7 +26,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class InvitationRepository {
 
-    /** The status derivation of the spec; every read and the status filter use this one expression. */
+    /** The status derivation; every read and the status filter use this one expression. */
     private static final String STATUS = """
             case when i.accepted_at is not null then 'ACCEPTED'
                  when i.revoked_at is not null then 'REVOKED'

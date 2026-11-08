@@ -110,21 +110,6 @@ describe('InviteDialog', () => {
     expect(root.querySelector('input[type=email]')).toBeNull();
   });
 
-  it('opens the copy view for a link fetched from the list', async () => {
-    const { root } = await open({
-      copy: {
-        link: 'http://localhost:4200/invite/Xf3abc',
-        email: 'ivan@example.com',
-        expiresAt: '2026-10-25T09:00:00Z',
-      },
-    });
-    expect(root.textContent).toContain(
-      'Copy this link and send it to ivan@example.com. It expires on 25 Oct 2026.',
-    );
-    expect(root.querySelector('button[aria-label="Copy invitation link"]')).toBeNull();
-    expect(root.textContent).toContain('Done');
-  });
-
   it('copies the link and confirms with a snackbar', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });

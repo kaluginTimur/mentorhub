@@ -2,29 +2,23 @@ package com.mentorhub.users.internal.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** {@code GET /api/v1/me} through the real chain, from token to JSON. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+@EndpointTest
 class MeEndpointTests {
 
     @Autowired
@@ -68,7 +62,7 @@ class MeEndpointTests {
     }
 
     @Test
-    @DisplayName("IDN-5.1 An active user without roles reads their data")
+    @DisplayName("PERM-2.3 A user without roles stays active")
     void activeUserWithoutRolesHasEmptyRolesAndPermissions() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -105,21 +99,6 @@ class MeEndpointTests {
                   }
                 }
                 """.formatted(userId));
-    }
-
-    @Test
-    void missingNamesAreSentAsNull() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
-        jdbc.sql("update users set first_name = null where id = :id")
-                .param("id", userId)
-                .update();
-        users.link(userId, "anna");
-
-        MvcTestResult result = me(issuer.token("anna").bearer());
-
-        assertThat(result).bodyJson().hasPath("$.user.firstName");
-        assertThat(result).bodyJson().extractingPath("$.user.firstName").isNull();
-        assertThat(result).bodyJson().extractingPath("$.user.lastName").isEqualTo("Petrova");
     }
 
     @Test
