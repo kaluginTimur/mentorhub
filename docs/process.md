@@ -22,7 +22,7 @@ Only the owner promotes ideas, makes product decisions and amends the constituti
 
 ## Choosing a path
 
-- **A bug,** where the code departs from a requirement: a test with the requirement's id and the fix. No document changes.
+- **A bug,** where the code departs from a requirement: a test with the requirement's id and the fix. No document changes. A bug found during other work becomes a GitHub issue, not a roadmap item.
 - **A small change of behavior:** the requirement, its test and the code, in one commit, with no plan. The owner approves the changed requirement first.
 - **Everything else,** including anything touching more than one or two requirements, the contract or a migration: the stages below.
 
