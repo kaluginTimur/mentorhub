@@ -479,19 +479,14 @@ class InvitationsControllerTest {
         }
 
         @Test
-        void closedInvitationIsAConflictAndUnknownIdIsNotFound() {
+        void closedInvitationIsAConflict() {
             given(administration.revoke(INVITATION_ID))
                     .willThrow(new ConflictException(InvitationProblems.INVITATION_CLOSED, "Closed."));
-            given(administration.reissueLink(OTHER_ID, false)).willThrow(new NotFoundException());
 
             assertProblem(
                     send(HttpMethod.POST, "/api/v1/invitations/" + INVITATION_ID + "/revoke", "", admin()),
                     HttpStatus.CONFLICT,
                     InvitationProblems.INVITATION_CLOSED);
-            assertProblem(
-                    send(HttpMethod.POST, "/api/v1/invitations/" + OTHER_ID + "/link", "", admin()),
-                    HttpStatus.NOT_FOUND,
-                    Problems.NOT_FOUND);
         }
 
         @Test
@@ -598,13 +593,6 @@ class InvitationsControllerTest {
                     """.formatted(TOKEN));
         }
 
-        @Test
-        void unknownInvitationIsNotFound() {
-            given(administration.link(INVITATION_ID)).willThrow(new NotFoundException());
-
-            assertProblem(send(HttpMethod.GET, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
-        }
-
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#unavailableLinkTypes")
         void closedOrExpiredInvitationIsAConflict(URI type) {
@@ -647,13 +635,6 @@ class InvitationsControllerTest {
                     .extractingPath("$.lastEmail.requestedBy.name")
                     .isEqualTo("Anna Petrova");
             assertThat(result).bodyJson().doesNotHavePath("$.lastEmail.finishedAt");
-        }
-
-        @Test
-        void unknownInvitationIsNotFound() {
-            given(administration.sendEmail(INVITATION_ID)).willThrow(new NotFoundException());
-
-            assertProblem(send(HttpMethod.POST, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
         }
 
         @ParameterizedTest

@@ -107,7 +107,30 @@ class WebSliceSecurityTests {
         then(resources).shouldHaveNoInteractions();
     }
 
-    private MvcTestResult change(UUID id, Permission... permissions) {
+    @Test
+    @DisplayName("PERM-6.2 A missing resource is not found")
+    void missingResourceIsNotFoundForAHolderOfThePermission() {
+        willThrow(new NotFoundException()).given(resources).change(any());
+
+        assertProblem(change(UUID.randomUUID(), Permission.USERS_MANAGE), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("PLT-2.2 A path id that is not a UUID is named")
+    void pathIdThatIsNotAUuidIsNamed() {
+        MvcTestResult result = change("not-a-uuid", Permission.USERS_MANAGE);
+
+        assertProblem(result, HttpStatus.BAD_REQUEST, Problems.VALIDATION_FAILED);
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.errors[*].field")
+                .asArray()
+                .containsExactly("id");
+        assertThat(result).bodyJson().extractingPath("$.errors[0].message").isEqualTo("must be a UUID");
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    private MvcTestResult change(Object id, Permission... permissions) {
         return mvc.post()
                 .uri("/api/v1/test/managed-resources/{id}", id)
                 .with(TestAuthentications.activeUser(UUID.randomUUID(), permissions))

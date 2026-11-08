@@ -3,7 +3,6 @@ package com.mentorhub.users.internal.web;
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -32,7 +31,6 @@ import com.mentorhub.users.internal.service.UserListEntry;
 import com.mentorhub.users.internal.service.UserProfile;
 import com.mentorhub.users.internal.service.UserQuery;
 import com.mentorhub.web.ConflictException;
-import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.Problems;
 import java.net.URI;
 import java.time.Instant;
@@ -409,36 +407,6 @@ class UsersControllerTest {
             assertThat(result).bodyJson().extractingPath("$.disabledReason").isEqualTo("GRADUATED");
             assertThat(result).bodyJson().doesNotHavePath("$.disabledComment");
         }
-    }
-
-    static Stream<Arguments> operationsWithId() {
-        return userOperations().filter(arguments -> ((String) arguments.get()[1]).contains(USER_ID.toString()));
-    }
-
-    @ParameterizedTest
-    @MethodSource("operationsWithId")
-    @DisplayName("PLT-2.2 A path id that is not a UUID is named")
-    void idThatIsNotAUuidIsAValidationProblem(HttpMethod method, String uri, String body, Permission permission) {
-
-        MvcTestResult result = send(method, uri.replace(USER_ID.toString(), "not-a-uuid"), body, admin());
-
-        assertValidationProblem(result, "id");
-        assertThat(result).bodyJson().extractingPath("$.errors[0].message").isEqualTo("must be a UUID");
-        verifyNoInteractions(administration);
-    }
-
-    @ParameterizedTest
-    @MethodSource("operationsWithId")
-    @DisplayName("PERM-6.2 A missing resource is not found")
-    void unknownIdIsNotFoundOnEveryOperation(HttpMethod method, String uri, String body, Permission permission) {
-        given(administration.get(any())).willThrow(new NotFoundException());
-        given(administration.history(any(), anyInt(), anyInt())).willThrow(new NotFoundException());
-        given(administration.disable(any(), any(), any())).willThrow(new NotFoundException());
-        given(administration.enable(any())).willThrow(new NotFoundException());
-        given(administration.setRoles(any(), any())).willThrow(new NotFoundException());
-        given(administration.updateProfile(any(), any())).willThrow(new NotFoundException());
-
-        assertProblem(send(method, uri, body, admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
     }
 
     @Nested

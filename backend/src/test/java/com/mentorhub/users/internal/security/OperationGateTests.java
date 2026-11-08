@@ -4,17 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mentorhub.TestcontainersConfiguration;
 import com.mentorhub.users.internal.domain.UserStatus;
+import com.mentorhub.users.internal.security.ApiOperations.Operation;
 import com.mentorhub.web.Problems;
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import org.assertj.core.api.SoftAssertions;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,9 +24,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MockMvcTester.MockMvcRequestBuilder;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
-import org.yaml.snakeyaml.Yaml;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -48,8 +39,6 @@ class OperationGateTests {
 
     /** Reading the current user and accepting an invitation admit every signed-in caller (IDN-3, IDN-5, INV-11). */
     static final Set<String> GATE_EXEMPTIONS = Set.of("getMe", "acceptInvitation");
-
-    static final List<String> HTTP_METHODS = List.of("get", "put", "post", "delete", "patch", "head", "options");
 
     @Autowired
     MockMvcTester mvc;
@@ -74,21 +63,10 @@ class OperationGateTests {
         users.link(users.create("disabled@example.com", UserStatus.DISABLED), "disabled");
     }
 
-    record Operation(String method, String path, String operationId, boolean isPublic) {
-
-        String key() {
-            return method + " " + path;
-        }
-
-        String uri() {
-            return path.replaceAll("\\{[^}]+}", UUID.randomUUID().toString());
-        }
-    }
-
     @Test
-    void everyServedOperationIsBehindAuthenticationAndTheGateUnlessTheDocumentsExemptIt() throws IOException {
-        List<Operation> operations = contractOperations();
-        assertThat(servedOperations())
+    void everyServedOperationIsBehindAuthenticationAndTheGateUnlessTheDocumentsExemptIt() {
+        List<Operation> operations = ApiOperations.fromContract();
+        assertThat(ApiOperations.served(handlerMapping))
                 .as("operations the application serves under /api/v1 compared with the contract")
                 .containsExactlyInAnyOrderElementsOf(
                         operations.stream().map(Operation::key).toList());
@@ -108,7 +86,7 @@ class OperationGateTests {
 
         SoftAssertions softly = new SoftAssertions();
         for (Operation operation : operations) {
-            String name = operation.operationId() + " (" + operation.key() + ")";
+            String name = operation.name();
             String withoutToken = outcome(operation, null);
             String asNotInvited = outcome(operation, notInvited);
             String asDisabled = outcome(operation, disabled);
@@ -156,47 +134,5 @@ class OperationGateTests {
                         .readTree(result.getResponse().getContentAsByteArray())
                         .path("type")
                         .asString();
-    }
-
-    /** {@code METHOD path} of each handler under {@code /api/v1/}, without the test probe. */
-    private Set<String> servedOperations() {
-        return handlerMapping.getHandlerMethods().entrySet().stream()
-                .filter(entry -> entry.getValue().getBeanType() != PermissionProbeController.class)
-                .flatMap(entry -> {
-                    Set<RequestMethod> methods =
-                            entry.getKey().getMethodsCondition().getMethods();
-                    List<String> names = methods.isEmpty()
-                            ? List.of("ANY")
-                            : methods.stream().map(RequestMethod::name).toList();
-                    return entry.getKey().getPatternValues().stream()
-                            .filter(pattern -> pattern.startsWith("/api/v1/"))
-                            .flatMap(pattern -> names.stream().map(method -> method + " " + pattern));
-                })
-                .collect(Collectors.toSet());
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<Operation> contractOperations() throws IOException {
-        Map<String, Object> contract;
-        try (Reader reader = Files.newBufferedReader(Path.of("..", "api", "openapi.yaml"))) {
-            contract = new Yaml().load(reader);
-        }
-        assertThat((List<Object>) contract.get("security"))
-                .as("the contract requires a token by default")
-                .isNotEmpty();
-        List<Operation> operations = new ArrayList<>();
-        Map<String, Map<String, Object>> paths = (Map<String, Map<String, Object>>) contract.get("paths");
-        paths.forEach((path, item) -> item.forEach((method, value) -> {
-            if (HTTP_METHODS.contains(method)) {
-                Map<String, Object> operation = (Map<String, Object>) value;
-                Object security = operation.get("security");
-                operations.add(new Operation(
-                        method.toUpperCase(),
-                        path,
-                        (String) operation.get("operationId"),
-                        security instanceof List<?> list && list.isEmpty()));
-            }
-        }));
-        return operations;
     }
 }
