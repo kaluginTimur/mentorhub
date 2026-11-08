@@ -17,8 +17,10 @@ Nothing in progress.
 
 In this order:
 
-1. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
-2. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+1. **Nullability checked by the build:** the JSpecify contract of the main code is enforced by the backend verification, not only by the IDE. Out of scope: tests, style and other static checks. Touches no capability: the backend build only.
+2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
+3. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+4. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
 
 ## Later
 
@@ -46,6 +48,14 @@ Not implemented yet, and preliminary: each is discussed again when its feature i
 ### Pilot
 
 - Features do not depend on SMTP or corporate SSO being present; email is optional per deployment.
+
+### Nullability checked by the build
+
+- Leaning toward NullAway through Error Prone, with only NullAway enabled. A throwaway experiment (November 2026) found that NullAway reports the real nullability findings of IDEA's inspections in the main code without their noise, while the default Error Prone checks reported mostly noise. Error Prone on JDK 25 needs `--add-exports` options for the Maven JVM.
+- Tests are not checked.
+- The current findings are fixed in one pass before the check is enforced, together with the undisputed cosmetic findings of IDEA and Error Prone (redundant casts and throws, diamonds, modifiers, missing Javadoc summaries), which get no check.
+- It goes before the tracking core, so that the tracking core is written under the check.
+- Check of the workflow: on the tracking core and the next feature, watch the reviewer's findings about nullability and how many iterations an agent spends to get the build green. A style mistake the reviewer catches in agents' code feature after feature gets a rule in the cheapest place that can check it: an Error Prone check, a test, PMD, a custom check; the guide only when nothing can check it.
 
 ### Tracking core: access lifecycle
 
