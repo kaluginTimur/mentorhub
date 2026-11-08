@@ -58,7 +58,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 ## Styling
 
 - Angular Material M3; the theme is in `frontend/src/styles.scss`.
-- Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...). No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change. A project hook flags violations.
+- Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...). No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change.
 - Screens follow `docs/ui/guidelines.md`.
 
 ## Tests
@@ -72,7 +72,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 
 ## Pitfalls
 
-- `provideApiConfiguration('')`, never `'/'`: contract paths already start with `/api` and the generated client joins `rootUrl` and the path, so `'/'` produces `//api/...`. A project hook flags it.
+- `provideApiConfiguration('')`, never `'/'`: contract paths already start with `/api` and the generated client joins `rootUrl` and the path, so `'/'` produces `//api/...`.
 - Material and CDK code reached by a static import in `app.config.ts`, interceptors or guards lands in the initial bundle together with everything lazy routes use from it. Load rarely used pieces with `import()` (for example the snack bar in `error.interceptor.ts`) and watch the initial-size budget in the build output.
 - Angular requires Node ^24.15. An older default Node fails with `EBADENGINE`, including the Angular CLI MCP server.
 - Angular conventions changed recently (standalone and `OnPush` by default, signal APIs, native control flow); older examples use the previous style. Follow [Angular conventions](#angular-conventions).
@@ -88,7 +88,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 
 ## Verification
 
-The definition of done for frontend work. Run each command exactly in this form, in separate shell calls. `~/.nvm/nvm-exec` runs the command with the Node version from `.nvmrc`, and these forms match the allow rules in `.claude/settings.json` (change both together):
+The definition of done for frontend work. Run each command exactly in this form, in separate shell calls. `~/.nvm/nvm-exec` runs the command with the Node version from `.nvmrc`:
 
 ```bash
 cd frontend && ~/.nvm/nvm-exec npm run format:check

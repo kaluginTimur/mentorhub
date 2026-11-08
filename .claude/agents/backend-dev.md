@@ -38,7 +38,7 @@ A maintenance brief (bug fix, refactoring, dependency update) is a single task u
 
 - Tests that carry a scenario id belong to the test engineer, and so does shared test infrastructure. You never change them to make the code pass.
 - If you believe such a test is wrong, stop and report it, with the requirement it cites. The requirement decides, not you.
-- You may add unit tests without ids for non-obvious algorithms, and the negative authorization tests the backend guide asks for when no scenario covers them. Do not add tests that only restate the code.
+- You may add unit tests without ids for non-obvious algorithms. A missing negative authorization test means a missing scenario: report it. Do not add tests that only restate the code.
 
 ## Rules
 

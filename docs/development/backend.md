@@ -59,7 +59,7 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 
 - Migrations: `backend/src/main/resources/db/migration/V<n>__<description>.sql`. The schema is created by migrations only (no `ddl-auto`).
 - A migration that is not in main yet belongs to its change: edit it as the change goes, and keep the change's schema in one migration where it fits. Every `dev` start rebuilds the dev database from the migrations, and tests start from an empty Testcontainers database, so neither holds an old version.
-- A migration in main is never edited, renamed or deleted without the project owner's word: a database outside the repository may have applied it, and Flyway validates a CRC32 checksum over the file's lines, so even a comment change breaks startup there. Change the schema with a new migration instead. A project hook blocks edits to migrations in main.
+- A migration in main is never edited, renamed or deleted without the project owner's word: a database outside the repository may have applied it, and Flyway validates a CRC32 checksum over the file's lines, so even a comment change breaks startup there. Change the schema with a new migration instead.
 - Parallel branches can pick the same version number, and Flyway rejects duplicate versions. Before merging, rename your migration to the next free number after those in main.
 - Primary keys are `uuid` (`gen_random_uuid()`), timestamps are `timestamptz`.
 - Advisory locks (`pg_advisory_xact_lock`) use a fixed `long` key per purpose; a new lock picks a key no other lock uses (the administrator lock of the lockout rules is `ADMINISTRATORS_LOCK` in `UserRepository`). Lock order is the advisory lock first, then row locks. The class that takes a lock says in its comment which lock and in which order.
@@ -129,7 +129,7 @@ When unsure whether a class, annotation or method exists, check the real artifac
 
 ## Verification
 
-The definition of done for backend work. Run exactly this form; it matches the allow rules in `.claude/settings.json`, so agents can run it without prompts (change both together):
+The definition of done for backend work. Run exactly this form:
 
 ```bash
 cd backend && ./mvnw -B -q verify -Dmaven.test.redirectTestOutputToFile=true

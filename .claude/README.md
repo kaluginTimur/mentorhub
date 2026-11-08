@@ -59,7 +59,7 @@ What must hold regardless of mode belongs in a hook or a deny/ask rule.
 
 A hook is added only for an error that is silent (build and tests miss it), irreversible, or a project policy. Local machine quirks and compiler errors are not hook material.
 
-Permissions in `settings.json`: the verification commands run without prompts; `git commit`, `git push` and `docker compose down` always ask; reading `.env` files is denied. Destructive commands with a fixed prefix (`docker volume rm`/`prune`, `dropdb`, `git rebase`, `git filter-branch`, `git stash drop`/`clear`, `git reflog expire`, `git update-ref -d`) are denied there too: they need no code and hold even when a hook cannot run. Prefix rules only match the command as written, so everything that depends on flags or content stays in `guard-bash.mjs`.
+Permissions in `settings.json`: the verification commands run without prompts, so the commands in the `bash` blocks of the guides' Verification and Checking an API sections must each match an allow rule, and a changed command changes its rule too (`scripts/check-docs.mjs` fails otherwise); `git commit`, `git push` and `docker compose down` always ask; reading `.env` files is denied. Destructive commands with a fixed prefix (`docker volume rm`/`prune`, `dropdb`, `git rebase`, `git filter-branch`, `git stash drop`/`clear`, `git reflog expire`, `git update-ref -d`) are denied there too: they need no code and hold even when a hook cannot run. Prefix rules only match the command as written, so everything that depends on flags or content stays in `guard-bash.mjs`.
 
 ## Cost and context
 

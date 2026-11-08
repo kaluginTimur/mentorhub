@@ -18,12 +18,12 @@ The Authority column of `docs/README.md` says which document decides when two di
 
 The test engineer and the developer are separate agents with separate contexts.
 
-Only the owner promotes ideas, makes product decisions and amends the constitution. An agent proposes, and says which is which: in the roadmap, plans and decisions, what the owner decided stays apart from what an agent inferred.
+Only the owner promotes ideas, makes product decisions and amends the constitution. An agent proposes, and says which is which: in plans and decisions, what the owner decided stays apart from what an agent inferred. The roadmap holds only what the owner proposed or approved: an agent adds an item, an idea or a product decision only with the owner's word, so nothing in it is marked.
 
 ## Choosing a path
 
 - **A bug,** where the code departs from a requirement: a test with the requirement's id and the fix. No document changes.
-- **A small change of behavior:** the requirement, its test and the code, in one commit, with no plan.
+- **A small change of behavior:** the requirement, its test and the code, in one commit, with no plan. The owner approves the changed requirement first.
 - **Everything else,** including anything touching more than one or two requirements, the contract or a migration: the stages below.
 
 A change with about 8 to 10 scenarios or more, or with many requirements that have none, should be split. The agent suggests it and the owner decides.
@@ -32,7 +32,7 @@ A change with about 8 to 10 scenarios or more, or with many requirements that ha
 
 ### 1. Explore (optional)
 
-Turns a vague idea into items in `docs/roadmap.md`: one line of scope that names the goal, what is out of scope, the capabilities it touches, product decisions marked as the owner's, and a split of a big idea into several items. It writes no requirements. Notes live in a temporary `docs/explorations/<topic>.md`, deleted once the items exist. A throwaway experiment in a separate branch is part of this stage, when an agent suggests one and the owner wants it; it leaves findings, not code.
+Turns a vague idea into items in `docs/roadmap.md`: one line of scope that names the goal, what is out of scope, the capabilities it touches, the owner's product decisions, and a split of a big idea into several items. It writes no requirements. Notes live in a temporary `docs/explorations/<topic>.md`, deleted once the items exist. A throwaway experiment in a separate branch is part of this stage, when an agent suggests one and the owner wants it; it leaves findings, not code.
 
 An agent that notices a brainstorm growing in an ordinary session offers to continue in this stage.
 

@@ -10,7 +10,6 @@ The consistency check relies on these:
 - Placeholders go in angle brackets or start with `$` (`docs/plans/<change>.md`); they are not checked.
 - A file that does not exist yet is mentioned on a line that says so: "if it exists", "when it exists", "once it exists" or "(planned)". A directory reference (ending with `/`) may point to a directory that does not exist yet, as long as its parent does.
 - Agents and skills refer to document sections by their bold name: "the **Verification** section of `docs/development/backend.md`". Every guide in `docs/development/` has a Verification section.
-- Commands in `bash` blocks of the Verification and Checking an API sections must match an allow rule in `.claude/settings.json`, so agents can run them without prompts.
 
 ## Keeping decisions and requirements current
 
@@ -52,8 +51,9 @@ The system SHALL create an invitation for a new email (decision 0003).
 - Hiding an action the server would refuse anyway is not such a ban and needs no scenario. An operational detail, such as a log warning, stays out of the requirements, in the code and a test without an id. So do exact strings, timings and field limits.
 - A scenario refers to a table instead of retelling its rows. A table is for a catalog or for rules without scenarios: a rule with a scenario keeps its behavior in the scenario.
 - The next number is the highest in the file plus one for a requirement, and the highest of its requirement plus one for a scenario. The number of a removed id may come back: `validate` and `trace` reject every reference and test that still cites a removed id. Gaps are fine.
+- Two branches can take the same new id, since nothing hands numbers out centrally. `validate` catches it once both are merged, in the pre-commit hook and in CI on main, and the later change renumbers its ids and the tests that cite them.
 - When a scenario is removed, so is its test if the behavior is gone or another test checks it; a test of behavior that stays and that nothing else checks loses the id and stays as a test of a detail.
-- References are written `(INV-1)`, `(INV-1.1)` and `(decision 0003)`, and must resolve. Only these forms are checked: "decisions 0003 and 0004" is not.
+- References are written `(INV-1)`, `(INV-1.1)` and `(decision 0003)`, and must resolve. A requirement that relies on an architecture decision cites it. Only these forms are checked: "decisions 0003 and 0004" is not.
 - A test cites one scenario: its name starts with the scenario id. In JUnit that is `@DisplayName("INV-1.1 ...")` on the test method, in Vitest `it('INV-1.1 ...', ...)`. Tests without an id, such as unit tests of an algorithm or end-to-end journeys, are allowed and do not count as coverage. Skipped tests do not count either. Tests skipped conditionally do count, because that is known only when they run: `@EnabledIf`, `@DisabledIf` and similar annotations, `it.skipIf` and `it.runIf`.
 
 To read one requirement or scenario without its file, and to find who cites a capability or an id:
