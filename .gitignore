@@ -15,3 +15,7 @@ Thumbs.db
 
 .env
 .env.*
+
+.screens/
+# playwright-cli writes its page snapshots here, next to where it runs
+.playwright-cli/

@@ -17,7 +17,9 @@ The main session is the designer and the coordinator. Code and tests are written
                     ── plan gate: you read the plan and the diff ──
   test-engineer     red tests with ids → commit of requirements, contract, plan and tests, if you agree
   backend-dev       tasks of the plan, tests go green ── you check the backend ──
-  frontend-dev      tasks of the plan, in parallel unless the plan orders them ── you look at the screens ──
+  frontend-dev      tasks of the plan, in parallel unless the plan orders them
+  manual-tester     the changed screens as their personas, and the manual checks → you read its report ──
+                    frontend-dev fixes what you choose → manual-tester re-checks once ── you look at the screens ──
                     the list of details from both → you decide
   test-engineer     tests of details, in a fresh context (skipped for small changes)
   reviewer on the whole change → you decide what to fix → one fix round → re-review
@@ -77,7 +79,7 @@ Every tool call re-sends the agent's whole context; prompt caching makes the re-
 | `/spec` proposes splitting large features | A large task's own work, such as identity foundation's step 3 (+140k), is not reduced by any rule above. |
 | In a cloud session, `/feature` checks an agent's transcript folder before continuing it, and starts a fresh one otherwise | After a `/clear` there, an agent started meanwhile and later continued ran as `general-purpose`: without its model and 1-hour cache (invitation-emails: `frontend-dev` on Opus, two whole-cache rewrites). |
 | Subagents without a tool to start agents (cloud sessions) ask their `api-lookup` questions in the report | The coordinator asks `api-lookup`; probing APIs by compiling costs the implementation agent's context. |
-| Manual browser checks run on Haiku, and `/pr` does not watch a green pull request | A clear test case needs no stronger model (invitation-emails AC-19 ran on inherited Opus, 0.42M); every pull request event wakes the session and re-reads its whole context. |
+| Manual browser checks run on Haiku (`manual-tester` with `model: haiku`), and `/pr` does not watch a green pull request | A clear test case needs no stronger model (invitation-emails AC-19 ran on inherited Opus, 0.42M); every pull request event wakes the session and re-reads its whole context. |
 | `/spec` records its own `spec` phase | Otherwise its work lands in the next phase's record (invitation-emails: about 1M). |
 
 ### Measuring a session

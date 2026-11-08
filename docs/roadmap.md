@@ -18,8 +18,7 @@ Nothing in progress.
 In this order:
 
 1. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
-2. **Agents look at screens:** agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised. A browser automation server for the agents (for example Playwright through MCP) is a first guess. Touches the agents and `docs/process.md`, not the product.
-3. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+2. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
 
 ## Later
 
@@ -37,6 +36,7 @@ No commitment and no order.
 - Roles as data, editable in the UI (deferred in decision 0004).
 - A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0005).
 - End-to-end tests of scenarios on the real stack, with their own data rather than the sample center's.
+- Meaning lost in shortened or rewritten passages: find where trimming or rewriting the documents, agents and skills dropped something that still matters, and restore it where it belongs. Example: "a cloud session has no browser" in `/feature` lost "for them" and the pre-installed Playwright (commits 0c8e3e0, 9bcb62f). Not only `docs/development/` (the guides audit), but the requirements, `docs/process.md`, `.claude/agents` and `.claude/skills` too.
 - Every `dev` start now cleans the dev database, so a `dev` run no longer freezes a migration: reword that statement in `docs/development/backend.md` (How to run) and relax the hooks in `.claude/hooks/` that rely on it.
 
 ## Product decisions

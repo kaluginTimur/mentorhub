@@ -122,3 +122,21 @@ Enable the repository's git hooks once per clone; they check that documentation 
 ```bash
 git config core.hooksPath .githooks
 ```
+
+Install the browser that the manual tester (an agent that looks at the running screens) drives through `playwright-cli`, once per machine and again after `playwright-cli` is upgraded. Screenshots go to `.screens/`, which git ignores:
+
+```bash
+cd frontend && npm ci && npx playwright-cli install-browser chromium
+```
+
+On WSL or a bare Linux machine, Chromium also needs system libraries. Install them once with `sudo` (it asks for your password); the command is not needed when the check below already works:
+
+```bash
+cd frontend && npx playwright-cli install-browser chromium --with-deps
+```
+
+Check it (the session needs `--browser=chromium`: the default is an installed Google Chrome):
+
+```bash
+cd frontend && npx playwright-cli -s=check open http://example.com --browser=chromium && npx playwright-cli -s=check close
+```

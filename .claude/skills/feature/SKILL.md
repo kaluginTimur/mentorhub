@@ -64,11 +64,11 @@ A doubt the test engineer reports about a requirement goes to the user. If a req
 
 Brief `backend-dev` for the backend tasks and `frontend-dev` for the frontend ones. They may run in parallel, unless the plan orders them.
 
-After each report, list what changed in the test files since the red commit. A changed test that carries an id is a stop: **Tests** in `docs/process.md` says who decides. Do not pass it on as done.
+After each report, list what changed in the test files since the red commit. A changed test that carries an id is a stop: **Tests** in `docs/process.md` says who decides. Do not pass it on as done. Also compare `git diff --stat` with the files the brief named: a file the brief did not name, or one changed far more than its task needs (a skill or a document that lost whole sections), goes back to the agent before you relay the report.
 
 **Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
 
-**Stop when the frontend is green.** The user looks at the screens on the sample center, signed in as the personas the report names, with the manual checks from the report. A manual check the user cannot run (a cloud session has no browser) goes to a `general-purpose` agent with the `model` parameter set to `haiku`, with the steps as a numbered test case, the run commands from the guides, a headless browser, and PASS / FAIL / NOT RUN per step.
+**When the frontend is green,** run `manual-tester` on the changed screens: the screens, the personas and the states from the plan and the requirements. Run the manual checks from the report on `manual-tester` too, with the `model` parameter set to `haiku`, the steps as a numbered list. Then **stop**: the user reads its report and screenshots (`.screens/<change>/<run>/`) and chooses what goes to `frontend-dev`. Relay their choice in their words. After the fixes, run `manual-tester` once more on the affected states only, then the user looks at the screens themselves, on the sample center, signed in as the personas the report names. A `NOT RUN` from `manual-tester` is a broken environment: show its error to the user and, if they agree, send it to the environment investigation of **Relaying reports**; do not retry it another way.
 
 **List of details.** Show the user each developer's list. What the user agrees with stays as it is. For the rest, follow stage 5 of `docs/process.md`: a matter of taste goes to the developer with an ordinary test; a rule goes into the requirement first, then to `test-engineer`, then to the developer.
 
@@ -87,5 +87,5 @@ Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer
 
 1. Run `verifier` with scope `all`.
 2. Report what was built per requirement, the verification table, `trace`, open items and a proposed commit message. **Stop** for the user to accept.
-3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item and the plan. Show the user these changes, and each passage added to a guide or widened with the four answers the **Guides** section of `docs/README.md` asks for; remove a passage the user does not agree with.
+3. On acceptance, finish as stage 8 of `docs/process.md` says: an architectural choice to the decisions, a rule for later changes to a guide (the **Guides** section of `docs/README.md`), the rest stays in code comments; delete the roadmap item, the plan and `.screens/<change>/`. Show the user these changes, and each passage added to a guide or widened with the four answers the **Guides** section of `docs/README.md` asks for; remove a passage the user does not agree with.
 4. Commit only if the user asks. Then suggest `/pr`, and `/usage-review` once the pull request is open.

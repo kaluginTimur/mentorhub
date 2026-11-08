@@ -278,7 +278,9 @@ const chainLast = perSession.reduce((a, p) => (p.last && p.last > a ? p.last : a
 function featureSize(feature) {
   const branch = `feature/${feature}`;
   const head = git(['rev-parse', '--verify', '-q', branch]) ? branch : 'HEAD';
-  const base = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])?.replace(/^origin\//, '') ?? 'main';
+  const defaultBranch = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])?.replace(/^origin\//, '') ?? 'main';
+  // The remote-tracking branch, not the local one: a local default branch that was not pulled makes the change look as large as everything merged since.
+  const base = git(['rev-parse', '--verify', '-q', `refs/remotes/origin/${defaultBranch}`]) ? `origin/${defaultBranch}` : defaultBranch;
   // Once the branch is merged, its changes are the merge commit's diff against its first parent.
   const merge = head !== 'HEAD' && git(['merge-base', '--is-ancestor', head, base]) !== null
     ? git(['rev-list', '--ancestry-path', '--merges', '--reverse', `${head}..${base}`])?.split('\n')[0]
