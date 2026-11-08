@@ -37,14 +37,14 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 
 ## Sample center
 
-The sample center is what a `dev` start puts in the database: the personas of DEV-1 and a plausible training center, the same on every start. Tests do not use it; they create their own data.
+The sample center is the dev data set: the personas of DEV-1 and a training center, restored on every `dev` start (DEV-2). Tests do not use it; they create their own data.
 
 When a feature adds or changes what a screen shows, it adds its data to the sample center in the same slice (C-3):
 
 - Rows go into the owning module's script in `backend/src/main/resources/db/sample/`; a new module adds its script to `SampleCenter.SAMPLE_DATA`, after the scripts its foreign keys point at.
 - Every id and every token is fixed; the header of the script lists its id ranges. Times are relative to the start (`now() - interval '...'`), times inside JSON too, taken from the row they describe and written as the application writes them.
 - A row points at a user by email, not by id. The audit entries of the feature's actions are rows too, derived with `insert ... select` from the rows they describe.
-- The data shows every state a screen shows differently (each status, each reason, an empty and a filled optional value, a list longer than one page, each kind of history entry), and holds no row the application could not have produced. Check it on the screens, signed in as the personas who see them.
+- The data shows every state a screen shows differently (each status, each reason, an empty and a filled optional value, a list longer than one page, each kind of history entry), and holds no row the application could not have produced.
 
 ## Errors
 
@@ -134,7 +134,7 @@ When unsure whether a class, annotation or method exists, check the real artifac
 | Build, tests, formatting, module checks | `./mvnw verify` |
 | Format | `./mvnw spotless:apply` |
 | Regenerate API interfaces | `./mvnw -q generate-sources` |
-| Run on :8080 in the `dev` profile (starts Postgres, Keycloak and Mailpit from `infra/compose.yaml`). Every start replaces the dev database with the sample center data | `./mvnw spring-boot:run` |
+| Run on :8080 in the `dev` profile (starts Postgres, Keycloak and Mailpit from `infra/compose.yaml`) | `./mvnw spring-boot:run` |
 | Run in the `dev` profile with Postgres from Testcontainers; no Keycloak (start it with `docker compose -f infra/compose.yaml up -d keycloak` to sign in) and no Mailpit, so emails end failed | `TestMentorHubApplication` in `backend/src/test` |
 
 ## Verification
