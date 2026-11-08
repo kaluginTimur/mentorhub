@@ -20,12 +20,12 @@ Read `README.md` for the development users (all have the password `mentorhub`) a
 
 1. Check it: `curl -sS -o /dev/null -w "%{http_code}" http://localhost:4200` and `curl -sS http://localhost:8080/actuator/health`.
 2. Running: use it as is. Never restart or stop it. Your data changes land in the owner's database: list them in the report.
-3. Not running: start what is missing in the background, each under `setsid` so that its whole process tree can be stopped through its process group, and note the PIDs:
+3. Not running: start what is missing in the background, each under `setsid` so that its whole process tree can be stopped through its process group, and write down at once the `$!` of each start: it is the process group id, kept for step 4:
    - `cd <repo>/backend && setsid ./mvnw spring-boot:run`
    - `cd <repo>/frontend && setsid ~/.nvm/nvm-exec npm start`
 
    Wait until both checks answer (200 and `"status":"UP"`); the backend takes a minute or more. A stack that does not come up is a broken environment (below).
-4. When done, stop only what you started: `kill -- -<PID>` for each process group. Never `docker compose down`: the services Spring Boot started from `infra/compose.yaml` stay, as after a person's run. If the stop is denied, do not work around it: report that the stack is still running, with the process group PIDs and the exact `kill -- -<PID>` command for the owner to run.
+4. When done, stop only the group ids you kept from the launch: `kill -- -<PID>`. Never search for a process group or PID by name or port (`ps`, `pgrep`, `lsof`): a wrong match stops someone else's process. Never `docker compose down`: the services Spring Boot started from `infra/compose.yaml` stay, as after a person's run. If the stop is denied, do not work around it: report that the stack is still running, with the process group PIDs and the exact `kill -- -<PID>` command for the owner to run.
 
 ## The browser
 
