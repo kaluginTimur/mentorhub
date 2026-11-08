@@ -18,8 +18,7 @@ Nothing in progress.
 In this order:
 
 1. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
-2. **Agents look at screens:** agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised, in local and cloud sessions alike. Out of scope: failing a single endpoint to show a screen's first-load error state (DEV stays as it is). Touches the agents, `docs/process.md` and `README.md`, not the product.
-3. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+2. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
 
 ## Later
 
@@ -47,15 +46,6 @@ Not implemented yet, and preliminary: each is discussed again when its feature i
 ### Pilot
 
 - Features do not depend on SMTP or corporate SSO being present; email is optional per deployment.
-
-### Agents look at screens
-
-- The browser is driven through `playwright-cli` from the shell. Compared with Playwright MCP on the Users screen, the cost was about the same, and the CLI needs no MCP configuration for the session, subagents or the Haiku manual checks.
-- If the stack is not running, the agent starts it and stops it when done; if it is running, the agent looks alongside the owner and never restarts or stops it, since a dev start replaces the data.
-- Screenshots go to a git-ignored folder in the repository, so the owner opens them in the IDE.
-- A screen's own error state is reached with the failure switch (DEV-3) on an open screen, followed by a request of the screen itself (a filter, a page, an action): a navigation with the switch on shows the full-page message (PLT-8.2), as a real outage would.
-- In WSL, Chromium needs system packages installed once by a person with `sudo`; cloud sessions have Chromium pre-installed. Both Playwright tools default to the Chrome channel and need Chromium chosen explicitly.
-- The phrase "a cloud session has no browser" in `/feature` is fixed: it is the user who has no browser for the app in a cloud session, not the agent.
 
 ### Tracking core: access lifecycle
 
