@@ -62,18 +62,14 @@ None: there are no scenarios. The change is checked by a trial run on a real scr
 | T1 Tooling: `playwright-cli` devDependency, `.gitignore`, `README.md` setup tried locally, `session-start.sh`, allow rules for the commands | none | `frontend-dev` | done |
 | T2 The `manual-tester` definition, `docs/process.md` Roles and stage 5, `/feature`, `.claude/README.md`; docs verification green. **Checkpoint:** the owner reads the diff of T1 and T2 | none | `frontend-dev` | done |
 | T3 Trial run, local: `manual-tester` on Users and Invitations, personas `admin@` and `mentor@`, reaching the list's own error state; the owner reads the report and the screenshots | none | coordinator, `manual-tester` | done |
-| T4 Trial run, cloud: the same brief in a cloud session; settles whether the pre-installed browser fits | none | coordinator, `manual-tester` | in progress (blocked by the environment, see Partial work) |
+| T4 Trial run, cloud: the same brief in a cloud session; settles whether the pre-installed browser fits | none | coordinator, `manual-tester` | done (run `20261108-2110`, see Handover) |
 | T5 Fixes from the trial runs to the definition or the setup, if any | none | `frontend-dev` | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
 ## Partial work
 
-**T4, blocked by the environment (2026-11-08, cloud session, run `20261108-2054`).** No screen was looked at; no `.screens/` folder exists; no data changed. Stack: `npm start` answered on :4200 and was stopped again; `./mvnw spring-boot:run` failed at 20:54:53Z.
-
-- Blocker 1, Docker images: `docker compose up --wait` got HTTP 429 from Docker Hub for `axllent/mailpit:v1.31.4`, and `keycloak/keycloak:26.8.1` was not present ("No such image"). `session-start.sh` pre-pulls only `postgres:18`, through `mirror.gcr.io`. Verified workaround by the investigator: `mirror.gcr.io/keycloak/keycloak:26.8.1` and `mirror.gcr.io/axllent/mailpit:v1.31.4` both pull, and tagging them to the names compose expects gives the images it needs. `quay.io` is forbidden by the proxy. Not verified: a full `spring-boot:run` or `compose up --wait` after the tagging. The images stay in this container's Docker, ignored by git.
-- Blocker 2, browser: `@playwright/cli` 0.1.23 needs Chrome for Testing 157.0.8103.15 (playwright chromium v1252). The download from `cdn.playwright.dev` gets a 403 CONNECT from the proxy (policy denial, five times), so `install-browser chromium --with-deps` in `session-start.sh` cannot succeed here; it only warns. The container has chromium-1243 (Chrome 153) under `/opt/pw-browsers`. Verified workaround: a `playwright-cli --config <file>` with `launchOptions.executablePath` set to `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`; `open about:blank` worked with it. The config file is outside the repository, in the scratchpad. Not verified: `open http://localhost:4200` (a throwaway server on 4200 was denied by the permission classifier and not retried), and `snapshot`/`screenshot` with the older Chrome.
-- Permissions: no command was prompted by the agent's run, but the agent says the prompting depends on the session's permission mode, so the allow list is not proven sufficient. `date` ran without a prompt here. The agent started the processes with `setsid` inside a subshell, which the allow-list patterns do not match literally.
+None.
 
 ## Red tests
 
@@ -97,19 +93,29 @@ None: there are no scenarios.
 - 2026-11-09: If stopping the stack is denied, `manual-tester` does not work around it and reports the running stack with the PIDs and the command for the owner. T1 and T2 accepted and committed with the plan ("передавай правку и коммить").
 - 2026-11-09: T3 accepted; friction items 1–5 go to T5, 6 and 7 stay; product findings 1–3 became GitHub issues #26 (paginator range past the last page), #27 (Invitations Invited column squeezed), #28 (Users column widths shift) ("согласен, запускай T5 и заведи issues по 1, 2, 3").
 - 2026-11-09: The other T3 findings stay as they are: no status chip, the paginator over old rows during a slow search, the sample row "Emma Brooks". T5 accepted, committed and the branch pushed for T4 ("chip не нужен, остальное оставляем, коммить и пушь").
+- 2026-11-08 (T4, cloud): the owner chose option (b) for the browser: the pre-installed Chromium 1243 through a `playwright-cli --config` file kept outside the repository, and "try option b first, then re-run T4".
 - From the exploration (roadmap product decisions): `playwright-cli`; the stack rule; screenshots in a git-ignored folder opened in the IDE; a screen's own error state is reached with the failure switch on an open screen; Chromium needs system packages in WSL; the `/feature` phrase is fixed.
 
 ## Handover
 
-- Waiting for: the owner's decisions on the two T4 blockers below, then a re-run of T4 in this cloud session.
-- To read: this plan, Partial work first.
+- Waiting for: the owner's reading of the T4 report and screenshots, and the owner's decisions on the open questions below. Then stage 7 (review) and stage 8.
+- To read: this plan, then the T4 report in the Handover (the screenshots are in `.screens/agents-look-at-screens/20261108-2110/`, git-ignored).
+- T4 result (cloud, run `20261108-2110`): the stack started and stopped by the agent (the compose services stay); `actuator/health` UP, :4200 answered 200, both ready about 33 s after launch. Personas `admin@mentorhub.local` and `mentor@mentorhub.local`, viewport 1280x720. No data changed: only filters, paging and the DEV-3 switch. Nothing prompted or was refused.
+  - Users, admin: default page 1 "as the requirement says"; page 2 "likely a bug" (known issue #28, column widths shift between pages); empty states "as the requirement says"; loading (old rows stay, progress bar, paginator not visible in the screenshot) "doubtful, owner decides" (matches the T3 note, accepted); error (the whole content area replaced by the global "MentorHub is unavailable. Try again later." alert with Retry, filters and table gone) "doubtful, owner decides": the agent did not read the requirement for the list's own error, so it cannot say whether the global message is intended.
+  - Invitations, admin: default page 1 "likely a bug" (known issue #27: the Invited column is narrow, "Alma Admin-Mentor" wraps over three lines); page 2 "likely a bug" (the same width shift); Revoked filter "as the requirement says" (paginator range correct); error (Offline mode) the same global alert as Users, "doubtful, owner decides"; the Sending-email status is plausible sample data.
+  - Mentor: after sign-in the home "Welcome, Mark" with no nav links; `/users` and `/invitations` end on `/`. "As the requirement says, assuming the mentor has no access"; the agent did not read the access requirement.
+  - Not reached: the mentor on `/users/{id}`; the Pending, Expired and Accepted filters and the Server error mode on Invitations; the list's first-load error (out of reach by decision).
+- Tool notes for the definition (not changed, owner decides): `--config` is accepted by `open` only, not by `snapshot` or `screenshot`; the later commands of the same session keep the browser, so only `open` needs it. The agent's first attempt to find the frontend's process group used `ps | awk` and killed the wrong group; it then killed the groups by PID.
+- Environment, now outside the repository: the two Docker images are tagged locally from `mirror.gcr.io`; the browser config is in the scratchpad, `/tmp/claude-0/-home-user-mentorhub/d51fc84e-be2e-544b-a530-b2e92f727c55/scratchpad/cli.config.json`. The scratchpad does not survive a new cloud session.
 - Open questions (owner decides):
-  1. **Browser revision.** Either (a) the owner allows `cdn.playwright.dev` (and `playwright.download.prss.microsoft.com`, the ffmpeg fallback) in the environment's network policy, so `install-browser chromium` gets revision 1252 and the stock setup works; or (b) the trial runs the pre-installed Chromium 1243 through a `--config` with `executablePath`. Option (b) needs a config file for `playwright-cli` in the repository (for example `frontend/.playwright/cli.config.json`, if git-ignored or committed on purpose) or a per-run config outside it; the Chrome 153 vs 157 mismatch for snapshots and screenshots is not yet tested. The coordinator recommends trying (b) first to settle T4, then deciding on (a) for durability.
-  2. **Docker images.** Rate-limited pulls of Keycloak and Mailpit break the stack in cloud sessions. Proposed change to the cloud setup script (or `session-start.sh`): pull those images through `mirror.gcr.io` and tag them, as `postgres:18` already is, deriving the list from `docker compose -f infra/compose.yaml config --images` rather than hardcoding it. Not applied; the owner decides where the change goes.
-  3. **Permissions.** Whether `date` and the `setsid` launch need allow rules depends on the permission mode; the owner decides whether to add rules (the plan says a `Bash(date *)` rule only if it prompts).
-- Documents changed: none in this stop; the plan is the only file changed. (For T4 itself, nothing in the repository changed: the stack's images and `frontend/.playwright-cli/` are git-ignored.)
-- State: T1, T2 committed in `82acc80`; T3 done; T5 committed; the branch pushed; T4 in progress, blocked. Working tree: this plan edit only, not committed.
-- Next: after the owner's answers, re-run T4 with the brief in Partial work (Users and Invitations, `admin@` and `mentor@`, the list's own error state), then stage 7 (review) and stage 8.
+  1. **Browser durability.** Option (b) works now but depends on a file in the scratchpad. Choose: (a) allow `cdn.playwright.dev` (and `playwright.download.prss.microsoft.com`) in the environment's network policy, so the stock setup gets revision 1252; or (b') keep a `playwright-cli` config for the pre-installed 1243 in the repository (for example `frontend/.playwright/cli.config.json`, committed or git-ignored), or make the setup script write it.
+  2. **Docker images.** Rate-limited pulls of Keycloak and Mailpit break the stack in new cloud sessions. Proposed change to the cloud setup script or `session-start.sh`: pull those images through `mirror.gcr.io` and tag them, as `postgres:18` already is, deriving the list from `docker compose -f infra/compose.yaml config --images`. Not applied; the owner decides where it goes.
+  3. **Triage of the T4 findings.** Which go to `frontend-dev`: the Invitations and Users width shifts are already #27 and #28; the global error alert on both lists, and the mentor's redirect, need the owner's reading of the requirements (the coordinator can check them against the requirement text if asked).
+  4. **Permissions.** `date` and the `setsid` launch ran without a prompt in this session, but the agent says prompting depends on the permission mode. The owner decides whether to add allow rules.
+  5. **Definition.** The `--config` note above: whether `manual-tester.md` should say that only `open` takes it.
+- Documents changed: the plan only in this stop (the T4 run changed no tracked file).
+- State: T1, T2 committed in `82acc80`; T3 done; T5 committed; the branch pushed in `79078f9`; T4 done; the plan's T4 edit is uncommitted until this stop is committed.
+- Next: the owner's reading of the T4 findings and decisions 1–5, then stage 7 (review) and stage 8.
 
 ## Agents
 
@@ -117,5 +123,5 @@ None: there are no scenarios.
 |---|---|---|---|---|
 | frontend-dev | sonnet | ad63877eb745d0cdb | implementation (T1, T2, T5) | 81k |
 | manual-tester | sonnet | af4b2a9d422ffd344 | implementation (T3) | 74k |
-| manual-tester | sonnet | a579d444faf4ce575 | implementation (T4, NOT RUN) | 29k reported |
+| manual-tester | sonnet | a579d444faf4ce575 | implementation (T4 NOT RUN, then T4 re-run, done) | 29k at the first run; resumed for the re-run, size not reported |
 | general-purpose | sonnet | a05b33d5061c26904 | implementation (T4 blocker investigation) | 81k reported |
