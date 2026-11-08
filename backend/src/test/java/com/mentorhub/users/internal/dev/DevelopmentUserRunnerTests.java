@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.DefaultApplicationArguments;
@@ -57,8 +58,8 @@ class DevelopmentUserRunnerTests {
         runner.run(new DefaultApplicationArguments());
     }
 
-    // AC-30, S8: every access status is available without manual setup.
     @Test
+    @DisplayName("Every development user has its status")
     void everyDevelopmentUserSignsInWithItsStatus() {
         assertMe(ADMIN, "ACTIVE", List.of("ADMIN"));
         assertMe(MENTOR, "ACTIVE", List.of("MENTOR"));
@@ -79,6 +80,7 @@ class DevelopmentUserRunnerTests {
     }
 
     @Test
+    @DisplayName("IDN-7.3 A restart restores the configured access")
     void restoresStatusAndExactlyTheConfiguredRoles() {
         UUID mentor = userId("mentor@mentorhub.local");
         jdbc.sql("update users set status = 'DISABLED', disabled_reason = 'SECURITY' where id = :id")

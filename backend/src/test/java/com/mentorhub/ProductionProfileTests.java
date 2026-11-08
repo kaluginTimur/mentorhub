@@ -2,32 +2,28 @@ package com.mentorhub;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springdoc.webmvc.api.OpenApiWebMvcResource;
 import org.springdoc.webmvc.ui.SwaggerWelcomeWebMvc;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.endpoint.web.PathMappedEndpoints;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-/** AC-25: without the dev profile only health is served, without details. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+/** Without the dev profile only health is served, without details. */
+@EndpointTest
 class ProductionProfileTests {
 
     private static final List<String> DEVELOPMENT_PATHS = List.of(
@@ -66,6 +62,7 @@ class ProductionProfileTests {
     }
 
     @Test
+    @DisplayName("PLT-6.2 Health is public and shows no details")
     void healthShowsNoDetails() {
         MvcTestResult result = mvc.get().uri("/actuator/health").exchange();
 
@@ -75,6 +72,7 @@ class ProductionProfileTests {
     }
 
     @Test
+    @DisplayName("PLT-6.1 Development tools are not served in production")
     void developmentPathsAreDeniedEvenToAnAdministrator() {
         var users = new TestUsers(jdbc);
         users.deleteAll();

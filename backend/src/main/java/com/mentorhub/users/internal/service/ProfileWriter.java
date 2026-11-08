@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
-/** Stores a validated profile and audits the changed fields (AC-16, AC-17); shared by both profile operations. */
+/** Stores a validated profile and audits the changed fields; shared by both profile operations. */
 @Component
 class ProfileWriter {
 

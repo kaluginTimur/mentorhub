@@ -4,7 +4,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * A role and the permissions it grants (ADR 0004). Must equal the {@code roles} table and the {@code Role} enum of
+ * A role and the permissions it grants (decision 0004). Must equal the {@code roles} table and the {@code Role} enum of
  * the API contract. Authorization checks use permissions, never roles.
  */
 public enum Role {

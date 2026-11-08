@@ -2,22 +2,21 @@
 
 <What changed and why, per scenario or per fix, in a few bullets.>
 
-Spec: `docs/features/<feature>.md` <or "none: maintenance change">
-
 ## Changes
 
+- **Requirements:** <capabilities and ids added, changed or removed, or "none">
 - **Contract:** <endpoints added or changed, or "none">
 - **Database:** <new migrations and what they add, or "none">
 - **Backend:** <modules and behavior>
 - **Frontend:** <screens and behavior>
 
-## Acceptance criteria
+## Scenarios
 
-| AC | Tests | Manual check |
-|---|---|---|
-| AC-1 | <test names> | <steps, or "-"> |
+<`trace` result, and each manual scenario with its steps. For a change without new scenarios, how the fix was verified.>
 
-<Omit the table for changes without a spec; describe how the fix was verified instead.>
+## Details chosen by agents
+
+<The list of details the user accepted, or "none". Omit for a maintenance change.>
 
 ## Verification
 

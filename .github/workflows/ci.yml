@@ -38,3 +38,13 @@ jobs:
       - run: npm run lint
       - run: npm test -- --watch=false
       - run: npm run build
+
+  requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: frontend/.nvmrc
+      - run: node --test scripts/requirements.test.mjs
+      - run: node scripts/requirements.mjs trace

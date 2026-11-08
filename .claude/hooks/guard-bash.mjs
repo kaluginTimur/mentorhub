@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { APPLIED_MIGRATION_REASON, MIGRATION_DIR, deny, isAppliedMigration, readInput, repoRoot, toPosix } from './lib.mjs';
+import { MIGRATION_IN_MAIN_REASON, MIGRATION_DIR, deny, isMigrationInMain, readInput, repoRoot, toPosix } from './lib.mjs';
 
 const MANUAL = 'If it is really needed, ask the user to run it manually with the `!` prefix.';
 
@@ -52,8 +52,8 @@ if (migrations.length && MUTATES_FILE.test(command)) {
   const root = repoRoot(cwd);
   for (const token of migrations) {
     // Resolve by file name: the command may run after a `cd` the hook cannot see.
-    if (root && isAppliedMigration(root, MIGRATION_DIR + path.posix.basename(toPosix(token)))) {
-      deny(`${token}: ${APPLIED_MIGRATION_REASON}`);
+    if (root && isMigrationInMain(root, MIGRATION_DIR + path.posix.basename(toPosix(token)))) {
+      deny(`${token}: ${MIGRATION_IN_MAIN_REASON}`);
     }
   }
 }

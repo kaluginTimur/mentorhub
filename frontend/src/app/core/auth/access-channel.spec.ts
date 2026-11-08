@@ -16,8 +16,10 @@ describe('AccessChannel', () => {
     sender.notifyChanged();
     await vi.waitFor(() => expect(handler).toHaveBeenCalledOnce());
     off();
+    const later = vi.fn();
+    receiver.onChanged(later);
     sender.notifyChanged();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await vi.waitFor(() => expect(later).toHaveBeenCalledOnce());
     expect(handler).toHaveBeenCalledOnce();
   });
 

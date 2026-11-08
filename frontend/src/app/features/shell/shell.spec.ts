@@ -38,15 +38,11 @@ describe('shell', () => {
     });
   });
 
-  it('shows the name in the account menu and signs out (AC-6, AC-8)', async () => {
+  it('shows the email in the account menu and signs out', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
-    const trigger = element.querySelector('button') as HTMLButtonElement;
-    expect(trigger.textContent).toContain('Anna Petrova');
-    expect(trigger.getAttribute('aria-label')).toBe('Account menu for Anna Petrova');
-
-    trigger.click();
+    (element.querySelector('button') as HTMLButtonElement).click();
     await fixture.whenStable();
     const overlay = document.body.textContent;
     expect(overlay).toContain('anna@example.com');
@@ -57,14 +53,22 @@ describe('shell', () => {
     expect(auth.signOut).toHaveBeenCalledOnce();
   });
 
-  it('shows only the email when no name is set (AC-6)', async () => {
-    user.update((u) => ({ ...u, firstName: null, lastName: null }));
-    const fixture = TestBed.createComponent(Shell);
-    await fixture.whenStable();
-    expect((fixture.nativeElement as HTMLElement).querySelector('button')?.textContent).toContain(
-      'anna@example.com',
-    );
-    user.update((u) => ({ ...u, firstName: 'Anna', lastName: 'Petrova' }));
+  it.each([
+    ['both names', 'Anna', 'Petrova', 'Anna Petrova'],
+    ['only the first name', 'Anna', null, 'Anna'],
+    ['only the last name', null, 'Petrova', 'Petrova'],
+    ['the email when no name is set', null, null, 'anna@example.com'],
+  ])('IDN-11.1 shows %s in the account menu', async (_case, firstName, lastName, expected) => {
+    user.update((u) => ({ ...u, firstName, lastName }));
+    try {
+      const fixture = TestBed.createComponent(Shell);
+      await fixture.whenStable();
+      const trigger = (fixture.nativeElement as HTMLElement).querySelector('button');
+      expect(trigger?.textContent).toContain(expected);
+      expect(trigger?.getAttribute('aria-label')).toBe(`Account menu for ${expected}`);
+    } finally {
+      user.update((u) => ({ ...u, firstName: 'Anna', lastName: 'Petrova' }));
+    }
   });
 
   it('greets the user and shows the version on the home page', async () => {
@@ -94,7 +98,7 @@ describe('shell', () => {
     ).not.toBeNull();
   });
 
-  it('shows the Users link only with USERS_READ (AC-22)', async () => {
+  it('shows the Users link only with USERS_READ', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Users');
     const original = user();
@@ -109,7 +113,7 @@ describe('shell', () => {
     expect(link(fixture.nativeElement)).toBeUndefined();
   });
 
-  it('shows the Invitations link only with USERS_INVITE (AC-18)', async () => {
+  it('shows the Invitations link only with USERS_INVITE', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
     const original = user();
@@ -125,7 +129,7 @@ describe('shell', () => {
     user.set(original);
   });
 
-  it('has Profile above Sign out in the account menu (AC-27)', async () => {
+  it('has Profile above Sign out in the account menu', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     (fixture.nativeElement as HTMLElement).querySelector('button')?.click();

@@ -26,7 +26,7 @@ cd frontend && npm ci && npm start
 
 ## Sign-in and development users
 
-MentorHub stores no passwords: sign-in goes through Keycloak (`docs/adr/0003-external-identity-provider.md`). Locally, Keycloak runs from `infra/compose.yaml` and imports the `mentorhub` realm from `infra/keycloak/mentorhub-realm.json`.
+MentorHub stores no passwords: sign-in goes through Keycloak (`docs/architecture/decisions/0003-external-identity-provider.md`). Locally, Keycloak runs from `infra/compose.yaml` and imports the `mentorhub` realm from `infra/keycloak/mentorhub-realm.json`.
 
 Every development user has the password `mentorhub`:
 
@@ -40,7 +40,7 @@ Every development user has the password `mentorhub`:
 | `stranger@mentorhub.local` | Keycloak only, not linked until it accepts an invitation ("Access by invitation only") |
 
 - On every start in the `dev` profile, the backend creates or updates these users in its database, so no manual setup is needed.
-- `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/adr/0005-administrator-bootstrap.md`).
+- `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/requirements/identity.md`).
 - New accounts can be registered at Keycloak ("Register" on the sign-in page). Registration requires email verification: open the verification email in Mailpit. "Forgot password?" also sends its email there.
 
 ### Inviting and accepting locally
@@ -87,18 +87,17 @@ Do not use `docker compose down -v` for this: it also deletes the `postgres-data
 | `backend/` | Spring Boot 4 + Spring Modulith |
 | `frontend/` | Angular 22 + Angular Material |
 | `infra/` | Docker Compose and the Keycloak realm for the local environment |
-| `docs/adr/` | Architecture decision records |
-| `docs/architecture/` | Domain model and invariants |
-| `docs/development/` | Development guides (backend, frontend, documentation): conventions, commands, verification |
-| `docs/features/` | Feature specifications |
+| `docs/` | Documentation; `docs/README.md` says which document holds what |
 
 ## Checks (same as CI)
 
 ```bash
 cd backend && ./mvnw verify
-cd frontend && npm ci && npm run lint && npm test -- --watch=false && npm run build
-node scripts/check-docs.mjs
+cd frontend && npm ci && npm run format:check && npm run lint && npm test -- --watch=false && npm run build
+node --test scripts/requirements.test.mjs && node scripts/requirements.mjs trace
 ```
+
+The pre-commit hook also runs `node scripts/check-docs.mjs`.
 
 ## Setup
 

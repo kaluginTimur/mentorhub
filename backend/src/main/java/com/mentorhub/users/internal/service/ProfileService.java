@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The caller's own profile (S8, AC-17). Any active user may change it, with or without roles; it only ever changes the
+ * The caller's own profile. Any active user may change it, with or without roles; it only ever changes the
  * caller's own user, never an id from the request.
  */
 @Service

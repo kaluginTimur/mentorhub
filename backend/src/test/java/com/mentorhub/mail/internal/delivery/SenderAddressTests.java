@@ -22,7 +22,6 @@ class SenderAddressTests {
         assertThat(SenderAddress.parse(from).getAddress()).isIn("no-reply@example.org", "no-reply@mentorhub.local");
     }
 
-    // Spec invitation-emails, AC-1.
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(

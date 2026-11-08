@@ -15,11 +15,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 /**
- * ADR 0005: while no active user has the ADMIN role, the identity with the verified bootstrap email becomes an active
+ * Decision 0005: while no active user has the ADMIN role, the identity with the verified bootstrap email becomes an active
  * administrator. Idempotent and safe under concurrent first requests: after the unlocked check finds no active
  * administrator, the administrator lock serializes the rule with other bootstraps and with lockout changes, and the
  * check runs again. Only a transaction that changed something logs the warning and writes
- * {@code USER_BOOTSTRAPPED_ADMIN} (AC-20).
+ * {@code USER_BOOTSTRAPPED_ADMIN}.
  */
 public class AdministratorBootstrap {
 

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -28,7 +28,7 @@ describe('InvitePage', () => {
     accountIdentity: vi.fn(),
     signIn: vi.fn(),
     signOut: vi.fn(),
-    startupError: { set: vi.fn() },
+    startupError: signal(false),
   };
   const currentUser = { me: { set: vi.fn() } };
   const accessChannel = { notifyChanged: vi.fn() };
@@ -36,6 +36,7 @@ describe('InvitePage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.startupError.set(false);
     sessionStorage.clear();
     api.invoke.mockImplementation(async (fn) => {
       if (fn === previewInvitation) return PREVIEW;
@@ -78,7 +79,7 @@ describe('InvitePage', () => {
   const button = (element: HTMLElement, text: string) =>
     [...element.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
 
-  it('shows a loading state while the invitation is checked (AC-21)', async () => {
+  it('shows a loading state while the invitation is checked', async () => {
     let release!: (value: unknown) => void;
     api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
     const harness = await RouterTestingHarness.create();
@@ -91,12 +92,19 @@ describe('InvitePage', () => {
     expect(element.querySelector('h1')?.textContent).toBe("You're invited to MentorHub");
   });
 
-  it('moves the token to session storage and removes it from the address and router (AC-21)', async () => {
+  it('INV-20.4 moves the token to session storage and removes it from the address and router', async () => {
     await open('/invite/tok123');
     expect(session.token()).toBe('tok123');
     expect(TestBed.inject(Router).url).toBe('/invite');
     expect(api.invoke).toHaveBeenCalledTimes(1);
     expect(api.invoke).toHaveBeenCalledWith(previewInvitation, { body: { token: 'tok123' } });
+  });
+
+  it('INV-20.7 sends no token to the identity provider', async () => {
+    const { element } = await open('/invite/tok123');
+    button(element, 'Sign in')?.click();
+    await vi.waitFor(() => expect(auth.signIn).toHaveBeenCalled());
+    expect(JSON.stringify(auth.signIn.mock.calls)).not.toContain('tok123');
   });
 
   it('resets the auto-accept flag when a fresh link is opened', async () => {
@@ -108,7 +116,7 @@ describe('InvitePage', () => {
     expect(button(element, 'Accept invitation')).toBeTruthy();
   });
 
-  it('offers sign-in and registration with the invited email for a visitor (AC-21)', async () => {
+  it('offers sign-in and registration with the invited email for a visitor', async () => {
     const { element } = await open();
     expect(element.querySelectorAll('h1')).toHaveLength(1);
     expect(element.textContent).toContain(
@@ -138,37 +146,41 @@ describe('InvitePage', () => {
     auth.signIn.mockResolvedValue(false);
     const { element } = await open();
     button(element, 'Sign in')?.click();
-    await vi.waitFor(() => expect(auth.startupError.set).toHaveBeenCalledWith(true));
+    await vi.waitFor(() => expect(auth.startupError()).toBe(true));
     expect(session.autoAccept()).toBe(false);
   });
 
   it.each([
     ['invitation-invalid', 404],
     ['validation-failed', 400],
-  ])('shows the invalid link message on %s and forgets the token (AC-21)', async (type, status) => {
-    api.invoke.mockRejectedValue(problem(status, `urn:mentorhub:problem:${type}`));
-    const { element } = await open();
-    expect(element.querySelector('h1')?.textContent).toBe('Invitation not valid');
-    expect(element.querySelector('[role=alert]')?.textContent).toContain(
-      'This invitation link is invalid or has expired. Ask the person who invited you for a new link.',
-    );
-    expect(session.token()).toBeNull();
-    expect(element.querySelector('button')).toBeNull();
-  });
+  ])(
+    'INV-20.1 shows the invalid link message on %s and forgets the token',
+    async (type, status) => {
+      api.invoke.mockRejectedValue(problem(status, `urn:mentorhub:problem:${type}`));
+      const { element } = await open();
+      expect(element.querySelector('h1')?.textContent).toBe('Invitation not valid');
+      expect(element.querySelector('[role=alert]')?.textContent).toContain(
+        'This invitation link is invalid or has expired. Ask the person who invited you for a new link.',
+      );
+      expect(session.token()).toBeNull();
+      expect(element.querySelector('button')).toBeNull();
+    },
+  );
 
-  it('shows the invalid message when there is no token at all', async () => {
+  it('INV-20.1 shows the invalid message when there is no token at all', async () => {
     const { element } = await open('/invite');
     expect(element.querySelector('h1')?.textContent).toBe('Invitation not valid');
+    expect(element.querySelector('button')).toBeNull();
     expect(api.invoke).not.toHaveBeenCalled();
   });
 
-  it('uses the token kept in session storage after the round trip (AC-21)', async () => {
+  it('uses the token kept in session storage after the round trip', async () => {
     session.setToken('kept');
     await open('/invite');
     expect(api.invoke).toHaveBeenCalledWith(previewInvitation, { body: { token: 'kept' } });
   });
 
-  it('shows the account and accepts on request when already signed in (AC-21)', async () => {
+  it('shows the account and accepts on request when already signed in', async () => {
     auth.isSignedIn.mockResolvedValue(true);
     auth.accountIdentity.mockResolvedValue({ email: 'me@example.com' });
     const { harness, element } = await open();
@@ -183,7 +195,7 @@ describe('InvitePage', () => {
     expect(session.token()).toBeNull();
   });
 
-  it('signs out for another account and keeps the token (AC-21)', async () => {
+  it('signs out for another account and keeps the token', async () => {
     auth.isSignedIn.mockResolvedValue(true);
     const { element } = await open();
     button(element, 'Use another account')?.click();
@@ -191,7 +203,7 @@ describe('InvitePage', () => {
     expect(session.token()).toBe('tok123');
   });
 
-  it('accepts without another click after returning from the identity provider (AC-21)', async () => {
+  it('accepts without another click after returning from the identity provider', async () => {
     auth.isSignedIn.mockResolvedValue(true);
     session.setToken('tok123');
     session.setAutoAccept(true);
@@ -201,7 +213,7 @@ describe('InvitePage', () => {
     expect(session.autoAccept()).toBe(false);
   });
 
-  it('shows a progress state while accepting (AC-21)', async () => {
+  it('shows a progress state while accepting', async () => {
     auth.isSignedIn.mockResolvedValue(true);
     const { harness, element } = await open();
     let release!: (value: unknown) => void;
@@ -224,7 +236,7 @@ describe('InvitePage', () => {
       return { harness, element };
     }
 
-    it('shows the other account on a mismatch (AC-21)', async () => {
+    it('INV-20.3 shows the other account on a mismatch', async () => {
       auth.accountIdentity.mockResolvedValue({ email: 'other@example.com' });
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:invitation-email-mismatch'),
@@ -234,10 +246,11 @@ describe('InvitePage', () => {
         "This invitation is for ivan@example.com, but you're signed in as other@example.com.",
       );
       expect(button(element, 'Use another account')).toBeTruthy();
+      expect(session.token()).toBe('tok123');
       expect(document.activeElement).toBe(element.querySelector('h1'));
     });
 
-    it('asks to verify the email when the emails are equal ignoring case (AC-21)', async () => {
+    it('INV-20.5 asks to verify the email when the emails are equal ignoring case', async () => {
       auth.accountIdentity.mockResolvedValue({ email: 'Ivan@Example.com' });
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:invitation-email-mismatch'),
@@ -245,9 +258,10 @@ describe('InvitePage', () => {
       expect(element.querySelector('[role=alert]')?.textContent).toContain(
         'Verify your email in your account first, then try again.',
       );
+      expect(session.token()).toBe('tok123');
     });
 
-    it('explains an account that belongs to another user and signs out (AC-21)', async () => {
+    it('INV-20.6 explains an account that belongs to another user', async () => {
       const { element } = await acceptWith(
         problem(409, 'urn:mentorhub:problem:identity-linked-elsewhere'),
       );
@@ -255,12 +269,18 @@ describe('InvitePage', () => {
       expect(element.querySelector('[role=alert]')?.textContent).toContain(
         'This account already belongs to another MentorHub user. Contact the person who invited you.',
       );
+    });
+
+    it('INV-20.8 signing out of an account of another user forgets the link', async () => {
+      const { element } = await acceptWith(
+        problem(409, 'urn:mentorhub:problem:identity-linked-elsewhere'),
+      );
       button(element, 'Sign out')?.click();
       expect(auth.signOut).toHaveBeenCalledOnce();
       expect(session.token()).toBeNull();
     });
 
-    it('shows the invalid message when the link stopped working (AC-21)', async () => {
+    it('shows the invalid message when the link stopped working', async () => {
       const { element } = await acceptWith(
         problem(404, 'urn:mentorhub:problem:invitation-invalid'),
       );
@@ -268,7 +288,7 @@ describe('InvitePage', () => {
       expect(session.token()).toBeNull();
     });
 
-    it('shows the unavailable card and retries the acceptance (AC-21)', async () => {
+    it('shows the unavailable card and retries the acceptance', async () => {
       const { harness, element } = await acceptWith(problem(500, 'about:blank'));
       expect(element.querySelector('[role=alert]')?.textContent).toContain(
         'MentorHub is unavailable',
@@ -280,7 +300,7 @@ describe('InvitePage', () => {
     });
   });
 
-  it('shows the unavailable card when the preview fails and retries it (AC-21)', async () => {
+  it('shows the unavailable card when the preview fails and retries it', async () => {
     api.invoke.mockRejectedValueOnce(problem(500, 'about:blank'));
     const { harness, element } = await open();
     expect(element.querySelector('[role=alert]')?.textContent).toContain(

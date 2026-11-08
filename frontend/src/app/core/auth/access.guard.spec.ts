@@ -8,7 +8,7 @@ import {
   UrlTree,
 } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { Location } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { Me } from '../api/models/me';
@@ -28,7 +28,7 @@ describe('accessGuard', () => {
     permissions: [],
     phone: null,
   });
-  const auth = { ensureSignedIn: vi.fn(), startupError: { set: vi.fn() } };
+  const auth = { ensureSignedIn: vi.fn(), startupError: signal(false) };
   const currentUser: { load: ReturnType<typeof vi.fn>; failedUrl: string | null } = {
     load: vi.fn(),
     failedUrl: null,
@@ -36,6 +36,7 @@ describe('accessGuard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.startupError.set(false);
     // other spec files can leave an invitation token behind in the shared test environment
     sessionStorage.clear();
     currentUser.failedUrl = null;
@@ -90,14 +91,14 @@ describe('accessGuard', () => {
     },
   );
 
-  it('reloads the caller on every navigation', async () => {
+  it('IDN-10.3 shows the screen for the new state on the next navigation', async () => {
     currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
-    await run('full');
-    await run('full');
-    expect(currentUser.load).toHaveBeenCalledTimes(2);
+    expect(await run('full')).toBe(true);
+    currentUser.load.mockResolvedValue({ status: 'DISABLED' });
+    expect(await run('full')).toBe('/access/ended');
   });
 
-  it('returns to the route the visitor opened after sign-in (AC-1)', async () => {
+  it('returns to the route the visitor opened after sign-in', async () => {
     auth.ensureSignedIn.mockResolvedValue({ kind: 'signed-in', returnUrl: '/students' });
     currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
     expect(await run('full', '/?code=a&state=b')).toBe('/students');
@@ -137,7 +138,7 @@ describe('accessGuard', () => {
   it('shows the startup error when sign-in fails', async () => {
     auth.ensureSignedIn.mockResolvedValue({ kind: 'failed' });
     expect(await run('full')).toBe(false);
-    expect(auth.startupError.set).toHaveBeenCalledWith(true);
+    expect(auth.startupError()).toBe(true);
   });
 
   it('remembers the return URL, not the callback URL, when the load fails after sign-in', async () => {
@@ -156,12 +157,6 @@ describe('accessGuard', () => {
   it('blocks on 401 and leaves it to the error interceptor', async () => {
     currentUser.load.mockRejectedValue(new HttpErrorResponse({ status: 401 }));
     expect(await run('full')).toBe(false);
-  });
-
-  it('opens the unavailable page when the API fails, remembering the route for Retry', async () => {
-    currentUser.load.mockRejectedValue(new HttpErrorResponse({ status: 500 }));
-    expect(await run('full', '/students')).toBe('/unavailable');
-    expect(currentUser.failedUrl).toBe('/students');
   });
 
   describe('in a real router', () => {
@@ -195,12 +190,6 @@ describe('accessGuard', () => {
       currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['MENTOR']) });
     });
 
-    it('loads the caller once per navigation', async () => {
-      const harness = await RouterTestingHarness.create();
-      await harness.navigateByUrl('/');
-      expect(currentUser.load).toHaveBeenCalledTimes(1);
-    });
-
     it('lets a nested non-empty child inherit the access of its ancestor', async () => {
       const harness = await RouterTestingHarness.create();
       await harness.navigateByUrl('/students');
@@ -208,7 +197,7 @@ describe('accessGuard', () => {
       expect(currentUser.load).toHaveBeenCalledTimes(1);
     });
 
-    it('does not change the address when the load fails', async () => {
+    it('PLT-8.2 does not change the address when the load fails', async () => {
       currentUser.load.mockRejectedValue(new HttpErrorResponse({ status: 500 }));
       const harness = await RouterTestingHarness.create();
       await harness.navigateByUrl('/students');

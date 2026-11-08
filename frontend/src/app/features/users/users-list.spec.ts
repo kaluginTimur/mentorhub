@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '../../core/api/api';
-import { listUsers } from '../../core/api/fn/users/list-users';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersList } from './users-list';
@@ -50,7 +49,7 @@ describe('UsersList', () => {
 
   const params = () => api.invoke.mock.calls.at(-1)?.[1] as Record<string, unknown>;
 
-  it('shows the users with roles and status (AC-1, AC-22)', async () => {
+  it('shows the users with roles and status', async () => {
     api.invoke.mockResolvedValue(
       page([
         summary('a', { firstName: 'Anna', lastName: 'Petrova', roles: ['ADMIN', 'MENTOR'] }),
@@ -65,18 +64,15 @@ describe('UsersList', () => {
     expect(rows[0].textContent).toContain('Anna Petrova');
     expect(rows[0].textContent).toContain('Administrator');
     expect(rows[0].textContent).toContain('Mentor');
+    expect(rows[0].textContent).toContain('a@example.com');
     expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/users/a');
-    expect(rows[1].textContent).toContain('b@example.com');
+    expect(rows[1].querySelector('a')?.textContent?.trim()).toBe('b@example.com');
     expect(rows[1].textContent).toContain('No roles');
     expect(rows[1].textContent).toContain('Disabled');
     expect(element.querySelectorAll('th')).toHaveLength(4);
-    expect(api.invoke).toHaveBeenCalledWith(
-      listUsers,
-      expect.objectContaining({ page: 0, size: 25 }),
-    );
   });
 
-  it('restores search, filters and page from the URL (AC-23)', async () => {
+  it('restores search, filters and page from the URL', async () => {
     api.invoke.mockResolvedValue(page([summary('a')], 60));
     const { element } = await open('/users?q=ann&status=DISABLED&role=NONE&page=1');
     expect(params()).toEqual({ q: 'ann', status: 'DISABLED', role: 'NONE', page: 1, size: 25 });
@@ -95,7 +91,7 @@ describe('UsersList', () => {
     });
   });
 
-  it('writes the search to the URL 300 ms after typing stops (AC-23)', async () => {
+  it('writes the search to the URL 300 ms after typing stops', async () => {
     api.invoke.mockResolvedValue(page([summary('a')]));
     const { harness, element } = await open('/users?page=2');
     const input = element.querySelector('input') as HTMLInputElement;
@@ -104,20 +100,41 @@ describe('UsersList', () => {
     input.value = 'ivan';
     input.dispatchEvent(new Event('input'));
     expect(TestBed.inject(Router).url).toBe('/users?page=2');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/users?q=ivan'));
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/users?q=ivan');
     expect(params()).toEqual(expect.objectContaining({ q: 'ivan', page: 0 }));
   });
 
-  it('shows the empty state without filters (AC-23)', async () => {
+  it.each([
+    ['Status', 'Active', { status: 'ACTIVE' }],
+    ['Role', 'No roles', { role: 'NONE' }],
+  ])('shows the first page when the %s filter changes', async (label, option, query) => {
+    api.invoke.mockResolvedValue(page([summary('a')], 60));
+    const { harness, element } = await open('/users?page=2');
+    const field = [...element.querySelectorAll('mat-form-field')].find((f) =>
+      f.textContent?.includes(label),
+    );
+    (field?.querySelector('mat-select') as HTMLElement).click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const choice = [...document.querySelectorAll('mat-option')].find(
+      (o) => o.textContent?.trim() === option,
+    );
+    (choice as HTMLElement).click();
+    await harness.fixture.whenStable();
+    const router = TestBed.inject(Router);
+    expect(router.parseUrl(router.url).queryParams).toEqual(query);
+    expect(params()).toEqual(expect.objectContaining({ ...query, page: 0 }));
+  });
+
+  it('shows the empty state without filters', async () => {
     api.invoke.mockResolvedValue(page([]));
     const { element } = await open();
     expect(element.textContent).toContain('No users yet.');
     expect(element.textContent).not.toContain('Clear filters');
   });
 
-  it('shows the empty state with filters and clears them (AC-23)', async () => {
+  it('shows the empty state with filters and clears them', async () => {
     api.invoke.mockResolvedValue(page([]));
     const { harness, element } = await open('/users?q=zzz&status=ACTIVE');
     expect(element.textContent).toContain('No users match the filters.');
@@ -130,7 +147,7 @@ describe('UsersList', () => {
     expect(params()).toEqual(expect.objectContaining({ q: undefined, status: undefined }));
   });
 
-  it('shows the progress bar and keeps the rows while loading (AC-23)', async () => {
+  it('shows the progress bar and keeps the rows while loading', async () => {
     api.invoke.mockResolvedValueOnce(page([summary('a')]));
     const { harness, element } = await open();
     let release!: (value: unknown) => void;
@@ -149,7 +166,7 @@ describe('UsersList', () => {
     expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(2);
   });
 
-  it('shows the unavailable card and retries (AC-23)', async () => {
+  it('PLT-9.3 shows the unavailable card and retries', async () => {
     api.invoke.mockRejectedValueOnce(new Error('down'));
     const { harness, element } = await open();
     expect(element.querySelector('[role=alert]')?.textContent).toContain(
@@ -162,11 +179,15 @@ describe('UsersList', () => {
     expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
   });
 
-  it('keeps the paginator when the page is past the last one', async () => {
+  it('PLT-9.4 says the page is past the last one and lets the user move to another page', async () => {
     api.invoke.mockResolvedValue(page([], 30));
-    const { element } = await open('/users?page=5');
-    expect(element.querySelector('mat-paginator')).not.toBeNull();
+    const { harness, element } = await open('/users?page=5');
     expect(element.textContent).toContain('No users on this page.');
+    (element.querySelector('button[aria-label="Previous page"]') as HTMLButtonElement).click();
+    await harness.fixture.whenStable();
+    const router = TestBed.inject(Router);
+    expect(router.parseUrl(router.url).queryParams).toEqual({ page: '4' });
+    expect(params()).toEqual(expect.objectContaining({ page: 4 }));
   });
 
   it('keeps a trailing space while typing the search', async () => {
@@ -175,7 +196,7 @@ describe('UsersList', () => {
     const input = element.querySelector('input') as HTMLInputElement;
     input.value = 'Anna ';
     input.dispatchEvent(new Event('input'));
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await vi.waitFor(() => expect(params()).toEqual(expect.objectContaining({ q: 'Anna' })));
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(input.value).toBe('Anna ');
@@ -205,9 +226,7 @@ describe('UsersList', () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(input.value).toBe('ab');
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/users?q=ab');
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/users?q=ab'));
   });
 
   it('syncs the input with the URL on Back', async () => {
@@ -223,15 +242,20 @@ describe('UsersList', () => {
     api.invoke.mockResolvedValue(page([]));
     const { harness, element } = await open('/users?status=ACTIVE');
     const input = element.querySelector('input') as HTMLInputElement;
-    input.value = 'late';
-    input.dispatchEvent(new Event('input'));
-    click(element, 'Clear filters');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    vi.useFakeTimers();
+    try {
+      input.value = 'late';
+      input.dispatchEvent(new Event('input'));
+      click(element, 'Clear filters');
+      await vi.advanceTimersByTimeAsync(400);
+    } finally {
+      vi.useRealTimers();
+    }
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/users');
   });
 
-  it('sends the user home when the API refuses the list with 403', async () => {
+  it('PLT-9.5 sends the user home when the API refuses the list with 403', async () => {
     api.invoke.mockRejectedValue(
       new HttpErrorResponse({ status: 403, error: { type: 'urn:mentorhub:problem:forbidden' } }),
     );
@@ -240,7 +264,7 @@ describe('UsersList', () => {
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/'));
   });
 
-  describe('Invite button (AC-18)', () => {
+  describe('Invite button', () => {
     const inviteButton = (element: HTMLElement) =>
       [...element.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Invite');
 

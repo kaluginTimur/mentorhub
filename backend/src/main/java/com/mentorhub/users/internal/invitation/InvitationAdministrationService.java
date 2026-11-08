@@ -3,7 +3,6 @@ package com.mentorhub.users.internal.invitation;
 import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.users.CurrentUserProvider;
 import com.mentorhub.users.Permission;
-import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.StoredRoles;
@@ -42,21 +41,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Managing invitations (spec invitations, AC-1 to AC-7; spec invitation-links): only holders of
+ * Managing invitations: only holders of
  * {@link Permission#USERS_INVITE}, who see every invitation and the link of a pending one, so the only resource-level
  * rule is that an unknown id is {@link NotFoundException}. Revocation, new links and email requests lock the invitation
- * row, which serializes them with acceptance (AC-15).
+ * row, which serializes them with acceptance.
  *
- * <p>Email requests (spec invitation-emails, AC-2 to AC-7): stored, audited and published as
+ * <p>Email requests: stored, audited and published as
  * {@link InvitationEmailRequested} in the changing transaction; {@link InvitationEmailSender} sends them after the
- * commit. Whether email is enabled is checked after the invitation's own errors (AC-6), so a refused request rolls back
+ * commit. Whether email is enabled is checked after the invitation's own errors, so a refused request rolls back
  * the whole change.
  */
 @Service
 public class InvitationAdministrationService {
 
     static final int MAX_EMAIL_LENGTH = 254;
-    /** The maximum email length, so a search for any valid email works (AC-4). */
+    /** The maximum email length, so a search for any valid email works. */
     static final int MAX_QUERY_LENGTH = MAX_EMAIL_LENGTH;
 
     static final int MAX_PAGE_SIZE = 100;
@@ -99,8 +98,6 @@ public class InvitationAdministrationService {
     }
 
     /**
-     * AC-1 to AC-3, AC-15; spec invitation-emails, AC-2.
-     *
      * @param email trimmed, stored as entered after trimming, compared ignoring case
      * @param roles as requested; a {@code null} item is a violation reported together with the email's
      * @param sendEmail whether to email the link to the invited address
@@ -109,7 +106,6 @@ public class InvitationAdministrationService {
      *     {@link InvitationProblems#INVITATION_EXISTS} with {@code invitationId}, or
      *     {@link InvitationProblems#EMAIL_UNAVAILABLE}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public IssuedInvitation create(
             @Nullable String email, Collection<? extends @Nullable Role> roles, boolean sendEmail) {
@@ -135,15 +131,14 @@ public class InvitationAdministrationService {
         UUID invitationId = insert(validEmail, token, callerId, invitedRoles);
         auditTrail.created(callerId, invitationId, validEmail, invitedRoles);
         if (sendEmail) {
-            // After the insert, which decides invitation-exists (AC-6); the exception rolls the insert back.
+            // After the insert, which decides invitation-exists; the exception rolls the insert back.
             requireEmailEnabled();
             requestEmail(invitationId, InvitationEmailReason.CREATED, callerId);
         }
         return new IssuedInvitation(details(load(invitationId)), properties.link(token));
     }
 
-    /** AC-4. @throws ValidationException for {@code q}, {@code page} or {@code size} */
-    @RequirePermission(Permission.USERS_INVITE)
+    /** @throws ValidationException for {@code q}, {@code page} or {@code size} */
     @Transactional(readOnly = true)
     public ResultPage<InvitationDetails> list(InvitationQuery query) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -166,12 +161,9 @@ public class InvitationAdministrationService {
     }
 
     /**
-     * AC-6.
-     *
      * @throws NotFoundException for an unknown id
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public InvitationDetails revoke(UUID invitationId) {
         UUID callerId = currentUser.currentUser().id();
@@ -182,15 +174,14 @@ public class InvitationAdministrationService {
     }
 
     /**
-     * AC-7: a new token replaces the old one and the expiry becomes now plus the link lifetime. Spec
-     * invitation-emails, AC-3: with {@code sendEmail}, an email with the new link is requested, unless one is still
+     * A new token replaces the old one and the expiry becomes now plus the link lifetime. With
+     * {@code sendEmail}, an email with the new link is requested, unless one is still
      * queued; that one builds its link when it is sent, so it carries the new link.
      *
      * @throws NotFoundException for an unknown id
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED} or
      *     {@link InvitationProblems#EMAIL_UNAVAILABLE}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public IssuedInvitation reissueLink(UUID invitationId, boolean sendEmail) {
         UUID callerId = currentUser.currentUser().id();
@@ -211,7 +202,7 @@ public class InvitationAdministrationService {
     }
 
     /**
-     * Spec invitation-links, AC-1, AC-2, AC-7: the current link of a pending invitation, for any holder of the
+     * The current link of a pending invitation, for any holder of the
      * permission. Read-only and not audited. Not locked: a concurrent new link may make the returned link stale (the
      * spec's accepted edge case).
      *
@@ -219,7 +210,6 @@ public class InvitationAdministrationService {
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED} or
      *     {@link InvitationProblems#INVITATION_EXPIRED}
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional(readOnly = true)
     public PendingInvitationLink link(UUID invitationId) {
         StoredInvitationLink stored = invitations.findLink(invitationId).orElseThrow(NotFoundException::new);
@@ -232,14 +222,13 @@ public class InvitationAdministrationService {
     }
 
     /**
-     * Spec invitation-emails, AC-4 to AC-6: requests an email with the current link of a pending invitation; the token
+     * Requests an email with the current link of a pending invitation; the token
      * and the expiry stay unchanged. Any holder of the permission may send it, not only the inviter.
      *
      * @throws NotFoundException for an unknown id
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}, {@link InvitationProblems#INVITATION_EXPIRED},
      *     {@link InvitationProblems#EMAIL_UNAVAILABLE} or {@link InvitationProblems#EMAIL_QUEUED}, in this order
      */
-    @RequirePermission(Permission.USERS_INVITE)
     @Transactional
     public InvitationDetails sendEmail(UUID invitationId) {
         UUID callerId = currentUser.currentUser().id();

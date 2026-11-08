@@ -23,7 +23,7 @@ describe('App', () => {
     });
   });
 
-  it('shows the startup error as an alert with a Retry action (AC-28)', async () => {
+  it('PLT-8.1 shows the startup error as an alert with a Retry action', async () => {
     startupError.set(true);
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
@@ -74,7 +74,7 @@ describe('App', () => {
     expect(redirecting()).toBe(false);
   });
 
-  it('Retry reloads without the sign-in callback parameters', async () => {
+  it('PLT-8.3 Retry reloads without the sign-in callback parameters', async () => {
     startupError.set(true);
     const assign = vi.fn();
     vi.spyOn(globalThis, 'location', 'get').mockReturnValue({

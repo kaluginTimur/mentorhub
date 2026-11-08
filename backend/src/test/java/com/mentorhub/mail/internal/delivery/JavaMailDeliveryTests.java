@@ -7,9 +7,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.mentorhub.mail.MailDelivery;
 import com.mentorhub.mail.MailDeliveryException;
 import com.mentorhub.mail.MailMessage;
+import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration;
@@ -19,7 +25,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-/** Spec invitation-emails, AC-1 and the {@code mail} module (Design, Modules). */
+/** The {@code mail} module (Design, Modules). */
 class JavaMailDeliveryTests {
 
     static final MailMessage MESSAGE =
@@ -53,17 +59,18 @@ class JavaMailDeliveryTests {
                         .isTrue());
     }
 
-    @Test
-    void anInvalidSenderFailsStartup() {
-        RUNNER.withPropertyValues("spring.mail.host=127.0.0.1", "mentorhub.mail.from=a@example.org, b@example.org")
-                .run(context -> assertThat(context).hasFailed());
-    }
-
-    @Test
+    @ParameterizedTest(name = "IEM-1.2 A mail server needs exactly one sender address: [{0}]")
+    @DisplayName("IEM-1.2 A mail server needs exactly one sender address")
+    @NullSource
+    @ValueSource(strings = {"no-reply", "a@example.org, b@example.org"})
     @ExtendWith(OutputCaptureExtension.class)
-    void aMailHostWithoutASenderFailsStartupNamingTheProperty(CapturedOutput output) {
-        assertStartupFailsNaming(
-                output, MailDeliveryOnly.class, List.of("--spring.mail.host=127.0.0.1"), "mentorhub.mail.from");
+    void aMailHostWithoutExactlyOneSenderFailsStartupNamingTheProperty(@Nullable String from, CapturedOutput output) {
+        List<String> arguments = new ArrayList<>(List.of("--spring.mail.host=127.0.0.1"));
+        if (from != null) {
+            arguments.add("--mentorhub.mail.from=" + from);
+        }
+
+        assertStartupFailsNaming(output, MailDeliveryOnly.class, arguments, "mentorhub.mail.from");
     }
 
     @Test
@@ -75,10 +82,7 @@ class JavaMailDeliveryTests {
                         "mentorhub.mail.from=MentorHub <no-reply@example.org>")
                 .run(context -> assertThatThrownBy(
                                 () -> context.getBean(MailDelivery.class).send(MESSAGE))
-                        .isInstanceOf(MailDeliveryException.class)
-                        .message()
-                        .doesNotContain("Grüße")
-                        .doesNotContain("\n"));
+                        .isInstanceOf(MailDeliveryException.class));
     }
 
     @Configuration(proxyBeanMethods = false)

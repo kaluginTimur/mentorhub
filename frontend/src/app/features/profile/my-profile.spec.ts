@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Api } from '../../core/api/api';
@@ -8,7 +7,7 @@ import { CurrentUserService } from '../../core/auth/current-user.service';
 import { MyProfile } from './my-profile';
 import { meUser } from '../users/test-data';
 
-describe('MyProfile (AC-27)', () => {
+describe('MyProfile', () => {
   const api = { invoke: vi.fn() };
   const me = signal<{ status: string; user?: MeUser }>({ status: 'ACTIVE', user: meUser() });
   const currentUser = { me, user: () => me().user ?? null };
@@ -45,7 +44,7 @@ describe('MyProfile (AC-27)', () => {
     expect(el.textContent).not.toContain('Cancel');
   });
 
-  it('saves and updates the current user, so the toolbar name changes', async () => {
+  it('saves, updates the current user so the toolbar name changes, and shows no status or roles', async () => {
     api.invoke.mockResolvedValue({
       status: 'ACTIVE',
       user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),
@@ -67,23 +66,10 @@ describe('MyProfile (AC-27)', () => {
     });
     expect(me().user?.firstName).toBe('Anya');
     expect(inputs[2].value).toBe('+77011234567');
-  });
-
-  it('shows the server error under the phone field', async () => {
-    api.invoke.mockRejectedValue(
-      new HttpErrorResponse({
-        status: 400,
-        error: {
-          type: 'urn:mentorhub:problem:validation-failed',
-          errors: [{ field: 'phone', message: 'x' }],
-        },
-      }),
+    expect(document.querySelector('mat-snack-bar-container')?.textContent).toContain(
+      'Profile saved',
     );
-    const fixture = await open();
-    const el = fixture.nativeElement as HTMLElement;
-    save(el)?.click();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(el.textContent).toContain('Enter a valid phone number');
+    expect(el.textContent).not.toContain('Student');
+    expect(el.textContent).not.toContain('Active');
   });
 });

@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +37,7 @@ class IssuerFailureTests {
     JsonMapper jsonMapper;
 
     @Test
+    @DisplayName("PLT-1.3 A failure before the operation is reached is also a problem document")
     void unavailableIssuerKeysAnswerAProblemWithoutInternals() throws Exception {
         HttpResponse<String> response = getMe(TestIssuer.UNREACHABLE_ISSUER);
 

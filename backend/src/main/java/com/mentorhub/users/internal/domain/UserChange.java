@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * An audited change to a user; its components are the details of the audit entry (spec user-administration, Audit).
+ * An audited change to a user; its components are the details of the audit entry (AUD-7).
  */
 public sealed interface UserChange {
 
@@ -71,7 +71,7 @@ public sealed interface UserChange {
         }
     }
 
-    /** What the administrator bootstrap (ADR 0005) did. */
+    /** What the administrator bootstrap did. */
     record BootstrappedAdmin(boolean userCreated, boolean identityLinked, boolean enabled, boolean adminAdded)
             implements UserChange {
         @Override
@@ -85,7 +85,7 @@ public sealed interface UserChange {
     }
 
     /**
-     * What accepting an invitation did (spec invitations, AC-16). Role names as stored; a reader keeps only the roles
+     * What accepting an invitation did. Role names as stored; a reader keeps only the roles
      * it knows.
      *
      * @param invitedBy {@code users.id} of the administrator who created the invitation

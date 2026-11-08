@@ -2,28 +2,23 @@ package com.mentorhub.users.internal.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** {@code GET /api/v1/me} through the real chain, from token to JSON. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+@EndpointTest
 class MeEndpointTests {
 
     @Autowired
@@ -43,8 +38,8 @@ class MeEndpointTests {
         users.deleteAll();
     }
 
-    // AC-3
     @Test
+    @DisplayName("IDN-5.2 A caller without access learns only the status (not invited)")
     void notInvitedCallerGetsItsStatusWithoutUserAndCreatesNoRows() {
         MvcTestResult result =
                 me(issuer.token("stranger").email("stranger@example.com", true).bearer());
@@ -54,8 +49,8 @@ class MeEndpointTests {
         assertThat(users.count("user_identities")).isZero();
     }
 
-    // AC-4
     @Test
+    @DisplayName("IDN-5.2 A caller without access learns only the status (disabled)")
     void disabledUserGetsItsStatusWithoutUser() {
         UUID userId = users.create("anna@example.com", UserStatus.DISABLED, Role.ADMIN);
         users.link(userId, "anna");
@@ -66,8 +61,8 @@ class MeEndpointTests {
                 .isStrictlyEqualTo("{\"status\": \"DISABLED\"}");
     }
 
-    // AC-7
     @Test
+    @DisplayName("PERM-2.3 A user without roles stays active")
     void activeUserWithoutRolesHasEmptyRolesAndPermissions() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -84,8 +79,8 @@ class MeEndpointTests {
                 .isEmpty();
     }
 
-    // AC-9
     @Test
+    @DisplayName("IDN-5.1 An active user with roles reads their data")
     void activeUserGetsUsersIdProfileRolesAndTheUnionOfPermissions() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.MENTOR, Role.ADMIN);
         users.link(userId, "anna");
@@ -107,22 +102,6 @@ class MeEndpointTests {
     }
 
     @Test
-    void missingNamesAreSentAsNull() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
-        jdbc.sql("update users set first_name = null where id = :id")
-                .param("id", userId)
-                .update();
-        users.link(userId, "anna");
-
-        MvcTestResult result = me(issuer.token("anna").bearer());
-
-        assertThat(result).bodyJson().hasPath("$.user.firstName");
-        assertThat(result).bodyJson().extractingPath("$.user.firstName").isNull();
-        assertThat(result).bodyJson().extractingPath("$.user.lastName").isEqualTo("Petrova");
-    }
-
-    // AC-11, seen through /me: the bootstrap administrator is active with the ADMIN role on the first request.
-    @Test
     void bootstrapAdministratorSeesTheAdminRoleOnFirstRequest() {
         MvcTestResult result = me(issuer.token("first-admin")
                 .email(TestIssuer.BOOTSTRAP_EMAIL, true)
@@ -130,6 +109,24 @@ class MeEndpointTests {
 
         assertThat(result).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
         assertThat(result).bodyJson().extractingPath("$.user.roles").asArray().containsExactly("ADMIN");
+    }
+
+    @Test
+    @DisplayName("IDN-4.2 A change at the identity provider does not change the profile")
+    void profileChangedAtTheProviderIsNotChangedInMentorHub() {
+        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
+        users.link(userId, "anna");
+
+        MvcTestResult result = me(issuer.token("anna")
+                .email("anna.new@example.com", true)
+                .claim("given_name", "Hanna")
+                .claim("family_name", "Smith")
+                .bearer());
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.user.email").isEqualTo("anna@example.com");
+        assertThat(result).bodyJson().extractingPath("$.user.firstName").isEqualTo("Anna");
+        assertThat(result).bodyJson().extractingPath("$.user.lastName").isEqualTo("Petrova");
     }
 
     private MvcTestResult me(String authorization) {

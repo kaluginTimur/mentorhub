@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The link side of invitations (spec invitations, AC-8 to AC-17): preview for anyone holding a valid link, and
+ * The link side of invitations: preview for anyone holding a valid link, and
  * acceptance for any signed-in caller in any access status. Neither needs a permission: the token is the
  * authorization, and acceptance also requires the token's verified email to equal the invitation's.
  *
@@ -64,7 +64,7 @@ public class InvitationAcceptanceService {
         this.meService = meService;
     }
 
-    /** AC-8, AC-9. @throws NotFoundException {@link InvitationProblems#INVITATION_INVALID} unless pending */
+    /** @throws NotFoundException {@link InvitationProblems#INVITATION_INVALID} unless pending */
     @Transactional(readOnly = true)
     public PreviewedInvitation preview(String token) {
         StoredInvitation invitation = InvitationTokens.ifWellFormed(token)
@@ -75,8 +75,8 @@ public class InvitationAcceptanceService {
     }
 
     /**
-     * AC-10 to AC-16, in one transaction. Accepting again an invitation already accepted by the user the caller's
-     * identity is linked to changes nothing (AC-14).
+     * In one transaction. Accepting again an invitation already accepted by the user the caller's
+     * identity is linked to changes nothing.
      *
      * @return the caller as stored after acceptance
      * @throws NotFoundException {@link InvitationProblems#INVITATION_INVALID}

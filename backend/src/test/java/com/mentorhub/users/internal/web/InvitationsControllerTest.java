@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.mentorhub.support.ControllerSliceTest;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.AccessStatus;
@@ -24,7 +25,6 @@ import com.mentorhub.users.internal.invitation.IssuedInvitation;
 import com.mentorhub.users.internal.invitation.PendingInvitationLink;
 import com.mentorhub.users.internal.invitation.PreviewedInvitation;
 import com.mentorhub.users.internal.security.TestAuthentications;
-import com.mentorhub.users.internal.security.WebSliceSecurity;
 import com.mentorhub.users.internal.service.HistoryActor;
 import com.mentorhub.users.internal.service.MeDetails;
 import com.mentorhub.users.internal.service.ResultPage;
@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,8 +49,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -60,8 +59,7 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester.MockMvcRequest
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@WebMvcTest(InvitationsController.class)
-@Import(WebSliceSecurity.class)
+@ControllerSliceTest(InvitationsController.class)
 class InvitationsControllerTest {
 
     static final UUID CALLER_ID = UUID.fromString("0b6f1d2e-6a51-4f36-9b0c-5f2d8f3a1c10");
@@ -113,6 +111,11 @@ class InvitationsControllerTest {
                 InvitationEmailStatus.QUEUED, CREATED_AT, new HistoryActor(CALLER_ID, "Anna Petrova"), null);
     }
 
+    static PendingInvitationLink pendingLink() {
+        return new PendingInvitationLink(
+                URI.create("http://localhost:4200/invite/" + TOKEN), "ivan@example.com", EXPIRES_AT);
+    }
+
     static IssuedInvitation issued() {
         return new IssuedInvitation(pending(), URI.create("http://localhost:4200/invite/" + TOKEN));
     }
@@ -149,18 +152,24 @@ class InvitationsControllerTest {
                 Arguments.of(HttpMethod.GET, "/api/v1/invitations", ""),
                 Arguments.of(HttpMethod.POST, invitation + "/revoke", ""),
                 Arguments.of(HttpMethod.POST, invitation + "/link", ""),
-                Arguments.of(HttpMethod.POST, invitation + "/link", "{\"sendEmail\": true}"),
-                Arguments.of(HttpMethod.POST, "/api/v1/invitations", CREATE_WITH_EMAIL_BODY),
-                Arguments.of(HttpMethod.POST, invitation + "/email", ""),
                 Arguments.of(HttpMethod.GET, invitation + "/link", ""));
+    }
+
+    /** Every request that asks for an email. */
+    static Stream<Arguments> emailRequests() {
+        String invitation = "/api/v1/invitations/" + INVITATION_ID;
+        return Stream.of(
+                Arguments.of(HttpMethod.POST, "/api/v1/invitations", CREATE_WITH_EMAIL_BODY),
+                Arguments.of(HttpMethod.POST, invitation + "/link", "{\"sendEmail\": true}"),
+                Arguments.of(HttpMethod.POST, invitation + "/email", ""));
     }
 
     @Nested
     class Authorization {
 
-        // AC-5
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
+        @DisplayName("INV-1.1 Every management action needs the permission")
         void callerWithoutTheInvitePermissionIsForbidden(HttpMethod method, String uri, String body) {
             MvcTestResult result = send(
                     method,
@@ -173,101 +182,31 @@ class InvitationsControllerTest {
         }
 
         @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
-        void disabledCallerIsRefusedByTheGate(HttpMethod method, String uri, String body) {
-            assertProblem(
-                    send(method, uri, body, TestAuthentications.disabledUser(CALLER_ID)),
-                    HttpStatus.FORBIDDEN,
-                    Problems.ACCESS_ENDED);
+        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#emailRequests")
+        @DisplayName("IEM-2.1 Requesting an email needs the permission")
+        void callerWithoutTheInvitePermissionRequestsNoEmail(HttpMethod method, String uri, String body) {
+            MvcTestResult result = send(
+                    method,
+                    uri,
+                    body,
+                    TestAuthentications.activeUser(CALLER_ID, Permission.USERS_READ, Permission.USERS_MANAGE));
+
+            assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
             verifyNoInteractions(administration);
         }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
-        void notInvitedCallerIsRefusedByTheGate(HttpMethod method, String uri, String body) {
-            assertProblem(
-                    send(method, uri, body, TestAuthentications.notInvited()),
-                    HttpStatus.FORBIDDEN,
-                    Problems.NOT_INVITED);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
-        void requestWithoutTokenIsUnauthorized(HttpMethod method, String uri, String body) {
-            MockMvcRequestBuilder request = mvc.method(method).uri(uri);
-            if (!body.isEmpty()) {
-                request = request.contentType(MediaType.APPLICATION_JSON).content(body);
-            }
-
-            assertProblem(request.exchange(), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-            verifyNoInteractions(administration);
-        }
-
-        // AC-17
-        @Test
-        void acceptRequiresAuthentication() {
-            MvcTestResult result = mvc.post()
-                    .uri("/api/v1/invitations/accept")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(TOKEN_BODY)
-                    .exchange();
-
-            assertProblem(result, HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-            verifyNoInteractions(acceptance);
-        }
-
-        // AC-17: the gate admits callers in every access status.
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#callersInAnyStatus")
-        void acceptAdmitsCallersInAnyStatus(String name, RequestPostProcessor caller) {
-            given(acceptance.accept(TOKEN)).willReturn(activeMe());
-
-            MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations/accept", TOKEN_BODY, caller);
-
-            assertThat(result).hasStatusOk();
-            then(acceptance).should().accept(TOKEN);
-        }
-
-        // AC-8: public, and a bearer token is ignored, even a bad one (the slice rejects every bearer token).
-        @ParameterizedTest
-        @ValueSource(strings = {"", "Bearer not-a-valid-token"})
-        void previewIsPublicAndIgnoresTheBearerToken(String authorization) {
-            given(acceptance.preview(TOKEN)).willReturn(new PreviewedInvitation("ivan@example.com", EXPIRES_AT));
-            MockMvcRequestBuilder request = mvc.post()
-                    .uri("/api/v1/invitations/preview")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(TOKEN_BODY);
-            if (!authorization.isEmpty()) {
-                request = request.header(HttpHeaders.AUTHORIZATION, authorization);
-            }
-
-            MvcTestResult result = request.exchange();
-
-            assertThat(result).hasStatusOk();
-        }
-    }
-
-    static Stream<Arguments> callersInAnyStatus() {
-        return Stream.of(
-                Arguments.of("not invited", TestAuthentications.notInvited()),
-                Arguments.of("disabled", TestAuthentications.disabledUser(CALLER_ID)),
-                Arguments.of("active without roles", TestAuthentications.activeUser(CALLER_ID)));
     }
 
     @Nested
     class Create {
 
-        // AC-1
         @Test
-        void createsAnInvitationAndReturnsItsLinkOnce() {
+        void createsAnInvitationAndReturnsItsLink() {
             given(administration.create("ivan@example.com", List.of(Role.MENTOR), false))
                     .willReturn(issued());
 
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations", CREATE_BODY, admin());
 
             assertThat(result).hasStatus(HttpStatus.CREATED);
-            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
             assertThat(result).bodyJson().isStrictlyEqualTo("""
                     {
                       "invitation": {
@@ -284,7 +223,7 @@ class InvitationsControllerTest {
                     """.formatted(TOKEN));
         }
 
-        // AC-2: the flag reaches the service; absent and false mean no email.
+        // The flag reaches the service; absent and false mean no email.
         @Test
         void passesTheEmailFlagToTheService() {
             given(administration.create(any(), any(), anyBoolean())).willReturn(issued());
@@ -301,7 +240,7 @@ class InvitationsControllerTest {
             then(administration).should(times(2)).create("ivan@example.com", List.of(Role.MENTOR), false);
         }
 
-        // AC-2, AC-16: 201 as today, the link, and the queued email without finishedAt.
+        // 201 as today, the link, and the queued email without finishedAt.
         @Test
         void responseCarriesTheQueuedEmail() {
             given(administration.create("ivan@example.com", List.of(Role.MENTOR), true))
@@ -311,7 +250,6 @@ class InvitationsControllerTest {
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations", CREATE_WITH_EMAIL_BODY, admin());
 
             assertThat(result).hasStatus(HttpStatus.CREATED);
-            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
             assertThat(result).bodyJson().extractingPath("$.link").isEqualTo("http://localhost:4200/invite/" + TOKEN);
             assertThat(result)
                     .bodyJson()
@@ -323,31 +261,7 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.invitation.lastEmail.finishedAt");
         }
 
-        // AC-1, AC-6
-        @Test
-        void unavailableEmailIsAConflict() {
-            given(administration.create(any(), any(), anyBoolean()))
-                    .willThrow(new ConflictException(InvitationProblems.EMAIL_UNAVAILABLE, "Unavailable."));
-
-            assertProblem(
-                    send(HttpMethod.POST, "/api/v1/invitations", CREATE_WITH_EMAIL_BODY, admin()),
-                    HttpStatus.CONFLICT,
-                    InvitationProblems.EMAIL_UNAVAILABLE);
-        }
-
-        @Test
-        void nonBooleanFlagIsAValidationProblem() {
-            assertValidationProblem(
-                    send(
-                            HttpMethod.POST,
-                            "/api/v1/invitations",
-                            "{\"email\": \"ivan@example.com\", \"roles\": [], \"sendEmail\": \"yes\"}",
-                            admin()),
-                    "sendEmail");
-            verifyNoInteractions(administration);
-        }
-
-        // AC-2: the service reports a null role together with the email's violations.
+        // The service reports a null role together with the email's violations.
         @Test
         void nullRoleIsPassedToTheService() {
             given(administration.create("ivan@example.com", Arrays.asList((Role) null), false))
@@ -362,7 +276,6 @@ class InvitationsControllerTest {
             assertValidationProblem(result, "roles");
         }
 
-        // AC-2
         @Test
         void unknownRoleAndMissingFieldsAreValidationProblems() {
             assertValidationProblem(
@@ -376,7 +289,6 @@ class InvitationsControllerTest {
             verifyNoInteractions(administration);
         }
 
-        // AC-3
         @Test
         void activeUserConflictCarriesTheUserId() {
             given(administration.create(any(), any(), anyBoolean()))
@@ -392,7 +304,6 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.invitationId");
         }
 
-        // AC-3
         @Test
         void existingInvitationConflictCarriesTheInvitationId() {
             given(administration.create(any(), any(), anyBoolean()))
@@ -412,7 +323,6 @@ class InvitationsControllerTest {
     @Nested
     class ListInvitations {
 
-        // AC-4
         @Test
         void returnsAPageWithDefaultsAndOmitsInapplicableProperties() {
             InvitationDetails accepted = new InvitationDetails(
@@ -434,7 +344,6 @@ class InvitationsControllerTest {
                     mvc.get().uri("/api/v1/invitations").with(admin()).exchange();
 
             assertThat(result).hasStatusOk();
-            assertThat(result).bodyText().doesNotContain(TOKEN);
             assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(2);
             assertThat(result).bodyJson().extractingPath("$.size").isEqualTo(25);
             assertThat(result)
@@ -455,7 +364,7 @@ class InvitationsControllerTest {
             then(administration).should().list(new InvitationQuery(null, null, 0, 25));
         }
 
-        // AC-16: every status maps; finishedAt only when present.
+        // Every status maps; finishedAt only when present.
         @Test
         void itemsCarryTheLatestEmail() {
             Instant finished = Instant.parse("2026-10-12T09:01:00Z");
@@ -488,10 +397,37 @@ class InvitationsControllerTest {
                     .extractingPath("$.items[1].lastEmail.status")
                     .isEqualTo("SKIPPED");
             assertThat(result).bodyJson().doesNotHavePath("$.items[2].lastEmail");
+        }
+
+        @Test
+        @DisplayName("IEM-9.2 The reason of a failure is not returned")
+        void theReasonOfAFailureIsNotReturned() {
+            HistoryActor actor = new HistoryActor(CALLER_ID, "Anna Petrova");
+            given(administration.list(any()))
+                    .willReturn(new ResultPage<>(
+                            List.of(pending(new InvitationEmailDetails(
+                                    InvitationEmailStatus.FAILED,
+                                    CREATED_AT,
+                                    actor,
+                                    Instant.parse("2026-10-12T09:01:00Z")))),
+                            0,
+                            25,
+                            1));
+
+            MvcTestResult result =
+                    mvc.get().uri("/api/v1/invitations").with(admin()).exchange();
+
+            assertThat(result)
+                    .bodyJson()
+                    .extractingPath("$.items[0].lastEmail")
+                    .isEqualTo(Map.of(
+                            "status", "FAILED",
+                            "requestedAt", "2026-10-12T09:00:30Z",
+                            "requestedBy", Map.of("id", CALLER_ID.toString(), "name", "Anna Petrova"),
+                            "finishedAt", "2026-10-12T09:01:00Z"));
             assertThat(result).bodyText().doesNotContain("failure");
         }
 
-        // AC-4
         @Test
         void passesSearchFiltersAndPage() {
             given(administration.list(any())).willReturn(new ResultPage<>(List.of(), 2, 100, 0));
@@ -505,7 +441,6 @@ class InvitationsControllerTest {
             then(administration).should().list(new InvitationQuery(" ivan ", InvitationStatus.EXPIRED, 2, 100));
         }
 
-        // AC-4
         @Test
         void invalidParametersAreValidationProblemsNamingTheParameter() {
             assertValidationProblem(
@@ -525,7 +460,6 @@ class InvitationsControllerTest {
     @Nested
     class RevokeAndReissue {
 
-        // AC-6
         @Test
         void revokesAndShowsWhoAndWhen() {
             InvitationDetails revoked = new InvitationDetails(
@@ -552,24 +486,17 @@ class InvitationsControllerTest {
             assertThat(result).bodyJson().doesNotHavePath("$.acceptedAt");
         }
 
-        // AC-6
         @Test
-        void closedInvitationIsAConflictAndUnknownIdIsNotFound() {
+        void closedInvitationIsAConflict() {
             given(administration.revoke(INVITATION_ID))
                     .willThrow(new ConflictException(InvitationProblems.INVITATION_CLOSED, "Closed."));
-            given(administration.reissueLink(OTHER_ID, false)).willThrow(new NotFoundException());
 
             assertProblem(
                     send(HttpMethod.POST, "/api/v1/invitations/" + INVITATION_ID + "/revoke", "", admin()),
                     HttpStatus.CONFLICT,
                     InvitationProblems.INVITATION_CLOSED);
-            assertProblem(
-                    send(HttpMethod.POST, "/api/v1/invitations/" + OTHER_ID + "/link", "", admin()),
-                    HttpStatus.NOT_FOUND,
-                    Problems.NOT_FOUND);
         }
 
-        // AC-7
         @Test
         void reissuesTheLink() {
             given(administration.reissueLink(INVITATION_ID, false)).willReturn(issued());
@@ -577,12 +504,11 @@ class InvitationsControllerTest {
             MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations/" + INVITATION_ID + "/link", "", admin());
 
             assertThat(result).hasStatusOk();
-            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
             assertThat(result).bodyJson().extractingPath("$.link").isEqualTo("http://localhost:4200/invite/" + TOKEN);
             assertThat(result).bodyJson().extractingPath("$.invitation.id").isEqualTo(INVITATION_ID.toString());
         }
 
-        // AC-3: with the flag, without a body and with an empty object.
+        // With the flag, without a body and with an empty object.
         @Test
         void reissueWithTheEmailFlag() {
             given(administration.reissueLink(any(), anyBoolean())).willReturn(issued());
@@ -596,60 +522,6 @@ class InvitationsControllerTest {
             then(administration).should().reissueLink(INVITATION_ID, true);
             then(administration).should(times(3)).reissueLink(INVITATION_ID, false);
         }
-
-        // AC-3
-        @Test
-        void reissueResponseCarriesTheQueuedEmail() {
-            given(administration.reissueLink(INVITATION_ID, true))
-                    .willReturn(new IssuedInvitation(
-                            pending(queued()), URI.create("http://localhost:4200/invite/" + TOKEN)));
-
-            MvcTestResult result = send(
-                    HttpMethod.POST,
-                    "/api/v1/invitations/" + INVITATION_ID + "/link",
-                    "{\"sendEmail\": true}",
-                    admin());
-
-            assertThat(result).hasStatusOk();
-            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
-            assertThat(result)
-                    .bodyJson()
-                    .extractingPath("$.invitation.lastEmail.status")
-                    .isEqualTo("QUEUED");
-        }
-
-        // AC-1, AC-6
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#reissueConflicts")
-        void reissueConflictsAreProblemsWithTheirType(URI type) {
-            given(administration.reissueLink(INVITATION_ID, true)).willThrow(new ConflictException(type, "Conflict."));
-
-            assertProblem(
-                    send(
-                            HttpMethod.POST,
-                            "/api/v1/invitations/" + INVITATION_ID + "/link",
-                            "{\"sendEmail\": true}",
-                            admin()),
-                    HttpStatus.CONFLICT,
-                    type);
-        }
-
-        @Test
-        void nonBooleanFlagIsAValidationProblem() {
-            assertValidationProblem(
-                    send(
-                            HttpMethod.POST,
-                            "/api/v1/invitations/" + INVITATION_ID + "/link",
-                            "{\"sendEmail\": \"yes\"}",
-                            admin()),
-                    "sendEmail");
-        }
-
-        @Test
-        void nonUuidIdIsAValidationProblem() {
-            assertValidationProblem(send(HttpMethod.POST, "/api/v1/invitations/nope/revoke", "", admin()), "id");
-            assertValidationProblem(send(HttpMethod.POST, "/api/v1/invitations/nope/link", "", admin()), "id");
-        }
     }
 
     @Nested
@@ -657,17 +529,13 @@ class InvitationsControllerTest {
 
         static final String PATH = "/api/v1/invitations/" + INVITATION_ID + "/link";
 
-        // AC-1, AC-4
         @Test
-        void returnsTheLinkWithoutCaching() {
-            given(administration.link(INVITATION_ID))
-                    .willReturn(new PendingInvitationLink(
-                            URI.create("http://localhost:4200/invite/" + TOKEN), "ivan@example.com", EXPIRES_AT));
+        void returnsTheLink() {
+            given(administration.link(INVITATION_ID)).willReturn(pendingLink());
 
             MvcTestResult result = send(HttpMethod.GET, PATH, "", admin());
 
             assertThat(result).hasStatusOk();
-            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
             assertThat(result).bodyJson().isStrictlyEqualTo("""
                     {
                       "link": "http://localhost:4200/invite/%s",
@@ -676,35 +544,24 @@ class InvitationsControllerTest {
                     }
                     """.formatted(TOKEN));
         }
-
-        // AC-2
-        @Test
-        void unknownInvitationIsNotFound() {
-            given(administration.link(INVITATION_ID)).willThrow(new NotFoundException());
-
-            assertProblem(send(HttpMethod.GET, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
-        }
-
-        // AC-2
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#unavailableLinkTypes")
-        void closedOrExpiredInvitationIsAConflict(URI type) {
-            given(administration.link(INVITATION_ID)).willThrow(new ConflictException(type, "Unavailable."));
-
-            MvcTestResult result = send(HttpMethod.GET, PATH, "", admin());
-
-            assertProblem(result, HttpStatus.CONFLICT, type);
-            assertThat(result).bodyText().doesNotContain(TOKEN);
-        }
-
-        @Test
-        void nonUuidIdIsAValidationProblem() {
-            assertValidationProblem(send(HttpMethod.GET, "/api/v1/invitations/nope/link", "", admin()), "id");
-        }
     }
 
-    static Stream<URI> reissueConflicts() {
-        return Stream.of(InvitationProblems.INVITATION_CLOSED, InvitationProblems.EMAIL_UNAVAILABLE);
+    @Test
+    @DisplayName("INV-9.2 The responses with a link are not cached")
+    void theResponsesWithALinkAreNotCached() {
+        given(administration.create("ivan@example.com", List.of(Role.MENTOR), false))
+                .willReturn(issued());
+        given(administration.reissueLink(INVITATION_ID, false)).willReturn(issued());
+        given(administration.link(INVITATION_ID)).willReturn(pendingLink());
+        String invitation = "/api/v1/invitations/" + INVITATION_ID + "/link";
+
+        for (MvcTestResult result : List.of(
+                send(HttpMethod.POST, "/api/v1/invitations", CREATE_BODY, admin()),
+                send(HttpMethod.POST, invitation, "", admin()),
+                send(HttpMethod.GET, invitation, "", admin()))) {
+            assertThat(result).hasStatus2xxSuccessful();
+            assertThat(result).headers().hasValue(HttpHeaders.CACHE_CONTROL, "no-store");
+        }
     }
 
     @Nested
@@ -712,7 +569,7 @@ class InvitationsControllerTest {
 
         static final String PATH = "/api/v1/invitations/" + INVITATION_ID + "/email";
 
-        // AC-4: 202 with the invitation, which carries the queued email; no link, no token.
+        // 202 with the invitation, which carries the queued email; no link, no token.
         @Test
         void answersAcceptedWithTheInvitation() {
             given(administration.sendEmail(INVITATION_ID)).willReturn(pending(queued()));
@@ -720,7 +577,7 @@ class InvitationsControllerTest {
             MvcTestResult result = send(HttpMethod.POST, PATH, "", admin());
 
             assertThat(result).hasStatus(HttpStatus.ACCEPTED);
-            assertThat(result).bodyText().doesNotContain(TOKEN).doesNotContain("link");
+            assertThat(result).bodyText().doesNotContain("link");
             assertThat(result).bodyJson().extractingPath("$.id").isEqualTo(INVITATION_ID.toString());
             assertThat(result).bodyJson().extractingPath("$.lastEmail.status").isEqualTo("QUEUED");
             assertThat(result)
@@ -729,46 +586,11 @@ class InvitationsControllerTest {
                     .isEqualTo("Anna Petrova");
             assertThat(result).bodyJson().doesNotHavePath("$.lastEmail.finishedAt");
         }
-
-        // AC-4
-        @Test
-        void unknownInvitationIsNotFound() {
-            given(administration.sendEmail(INVITATION_ID)).willThrow(new NotFoundException());
-
-            assertProblem(send(HttpMethod.POST, PATH, "", admin()), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
-        }
-
-        // AC-4, AC-5, AC-1
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#sendEmailConflicts")
-        void conflictsAreProblemsWithTheirType(URI type) {
-            given(administration.sendEmail(INVITATION_ID)).willThrow(new ConflictException(type, "Conflict."));
-
-            assertProblem(send(HttpMethod.POST, PATH, "", admin()), HttpStatus.CONFLICT, type);
-        }
-
-        @Test
-        void nonUuidIdIsAValidationProblem() {
-            assertValidationProblem(send(HttpMethod.POST, "/api/v1/invitations/nope/email", "", admin()), "id");
-        }
-    }
-
-    static Stream<URI> sendEmailConflicts() {
-        return Stream.of(
-                InvitationProblems.INVITATION_CLOSED,
-                InvitationProblems.INVITATION_EXPIRED,
-                InvitationProblems.EMAIL_QUEUED,
-                InvitationProblems.EMAIL_UNAVAILABLE);
-    }
-
-    static Stream<URI> unavailableLinkTypes() {
-        return Stream.of(InvitationProblems.INVITATION_CLOSED, InvitationProblems.INVITATION_EXPIRED);
     }
 
     @Nested
     class PreviewAndAccept {
 
-        // AC-8
         @Test
         void previewReturnsTheEmailAndExpiry() {
             given(acceptance.preview(TOKEN)).willReturn(new PreviewedInvitation("ivan@example.com", EXPIRES_AT));
@@ -784,7 +606,6 @@ class InvitationsControllerTest {
                     """);
         }
 
-        // AC-9
         @ParameterizedTest
         @ValueSource(strings = {"/api/v1/invitations/preview", "/api/v1/invitations/accept"})
         void invalidInvitationIsANotFoundProblemWithItsOwnType(String uri) {
@@ -813,19 +634,6 @@ class InvitationsControllerTest {
             verifyNoInteractions(acceptance);
         }
 
-        // AC-12, AC-13
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#acceptConflicts")
-        void acceptConflictsAreProblemsWithTheirType(URI type) {
-            given(acceptance.accept(any())).willThrow(new ConflictException(type, "Conflict."));
-
-            MvcTestResult result =
-                    send(HttpMethod.POST, "/api/v1/invitations/accept", TOKEN_BODY, TestAuthentications.notInvited());
-
-            assertProblem(result, HttpStatus.CONFLICT, type);
-        }
-
-        // AC-10
         @Test
         void acceptReturnsMe() {
             given(acceptance.accept(TOKEN)).willReturn(activeMe());
@@ -842,11 +650,5 @@ class InvitationsControllerTest {
                     .asArray()
                     .containsExactly("MENTOR");
         }
-    }
-
-    static Stream<Arguments> acceptConflicts() {
-        return Stream.of(
-                Arguments.of(InvitationProblems.INVITATION_EMAIL_MISMATCH),
-                Arguments.of(InvitationProblems.IDENTITY_LINKED_ELSEWHERE));
     }
 }

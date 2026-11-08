@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** Spec invitation-emails, AC-11 and AC-15: a short reason without the token. */
+/** A short failure reason without the token. */
 class InvitationEmailFailureTests {
 
     static final String TOKEN = "Xf3kq9WvT0bD2mJ7sL1pR8yZ4cN6hA5eG0uI3oK9wQe";

@@ -1,0 +1,17 @@
+---
+name: explore
+description: Turn a vague idea into items in docs/roadmap.md with the user, without writing requirements. Optional first stage of a change.
+argument-hint: "<idea or topic>"
+disable-model-invocation: true
+---
+
+Explore "$ARGUMENTS" with the user, as stage 1 of the **Stages** section of `docs/process.md` describes.
+
+1. Read `docs/roadmap.md`, the index of `docs/requirements/` and the capabilities the idea touches.
+2. Work it out one topic at a time: propose a concrete shape, give your recommendation, and ask only what the user has to decide. If the discussion grows, keep notes in `docs/explorations/<topic>.md`, so a new session can continue from them.
+3. Look for more than one way to reach the goal, and compare them before settling on one: this is the stage for alternatives.
+4. Suggest a throwaway experiment in a separate branch only when reading cannot answer a question, and run it only when the user wants it. Bring back findings, not code.
+5. Write the result into `docs/roadmap.md`: one line of scope for each item that names the goal rather than a way to reach it, what is out of scope, the capabilities it touches, and the user's product decisions, including a way to reach the goal the user leans toward. Split a big idea into several items. Write only what the user proposed or approved: offer your own suggestions, and add one only with the user's word. Only the user promotes an idea or reorders items.
+6. Delete the notes. Tell the user the next step: `/spec <change>` for an item they want to start.
+
+Write no requirements, contract or code here.

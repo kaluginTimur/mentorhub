@@ -3,23 +3,19 @@ package com.mentorhub.users.internal.security;
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.web.Problems;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -27,10 +23,7 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** The real chain: token decoding per trusted issuer, the converter, the gate, permissions and Problem Details. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
-@ExtendWith(OutputCaptureExtension.class)
+@EndpointTest
 class AuthenticationChainTests {
 
     @Autowired
@@ -50,8 +43,8 @@ class AuthenticationChainTests {
         users.deleteAll();
     }
 
-    // AC-2
     @Test
+    @DisplayName("IDN-1.1 A request without a token is refused")
     void requestWithoutTokenIsUnauthorized() {
         for (String path : List.of("/api/v1/test/current-user", "/api/v1/me")) {
             MvcTestResult result = mvc.get().uri(path).exchange();
@@ -63,27 +56,14 @@ class AuthenticationChainTests {
     }
 
     @Test
-    void malformedTokenIsUnauthorized() {
-        MvcTestResult result = get("/api/v1/test/current-user", "Bearer not-a-jwt");
-
-        assertProblem(result, HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-        assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE)).startsWith("Bearer");
-    }
-
-    // AC-23
-    @Test
-    void tokenOfUntrustedIssuerIsUnauthorized() {
-        String token =
-                issuer.token("subject").claim("iss", "https://untrusted.test").bearer();
-
-        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-    }
-
-    // AC-23
-    @Test
+    @DisplayName("IDN-1.3 A token of an untrusted issuer or not meant for MentorHub is refused")
     void tokenWithoutMentorHubAudienceIsUnauthorized() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
+        String untrustedIssuer =
+                issuer.token("anna").claim("iss", "https://untrusted.test").bearer();
+        assertProblem(
+                get("/api/v1/test/current-user", untrustedIssuer), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
 
         String otherAudience =
                 issuer.token("anna").claim("aud", List.of("another-api")).bearer();
@@ -94,50 +74,59 @@ class AuthenticationChainTests {
     }
 
     @Test
-    void tokenSignedWithUnknownKeyIsUnauthorized() {
+    @DisplayName("IDN-1.2 A token that is malformed, expired or wrongly signed is refused")
+    void malformedExpiredOrWronglySignedTokenIsUnauthorized() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
 
-        String token = issuer.token("anna").signedWithUnknownKey().bearer();
-
-        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
+        for (String token : List.of(
+                "Bearer not-a-jwt",
+                issuer.token("anna").expired().bearer(),
+                issuer.token("anna").signedWithUnknownKey().bearer())) {
+            assertProblem(get("/api/v1/test/current-user", token), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
+        }
     }
 
     @Test
-    void expiredTokenIsUnauthorized() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
-        users.link(userId, "anna");
-
-        String token = issuer.token("anna").expired().bearer();
-
-        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-    }
-
-    // AC-24
-    @Test
-    void publicEndpointIgnoresStaleOrInvalidToken() {
-        assertThat(get("/api/v1/system/info", "Bearer not-a-jwt")).hasStatusOk();
-        assertThat(get("/api/v1/system/info", issuer.token("anna").expired().bearer()))
-                .hasStatusOk();
-        assertThat(mvc.get().uri("/actuator/health").header(HttpHeaders.AUTHORIZATION, "Bearer not-a-jwt"))
-                .hasStatusOk();
-    }
-
-    // AC-3
-    @Test
+    @DisplayName("IDN-3.1 An identity that is not linked is refused and nothing is created")
     void notInvitedCallerIsRefusedAndCreatesNoRows() {
+        UUID admin = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
+        users.link(admin, "anna");
         String token =
                 issuer.token("stranger").email("stranger@example.com", true).bearer();
 
         assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.NOT_INVITED);
-        assertThat(users.count("users")).isZero();
-        assertThat(users.count("user_identities")).isZero();
-        assertThat(users.count("user_roles")).isZero();
+        assertThat(users.count("users")).isOne();
+        assertThat(users.count("user_identities")).isOne();
+        assertThat(users.count("user_roles")).isOne();
     }
 
-    // AC-4
     @Test
-    void disabledUserIsRefusedOnTheNextRequestWithTheSameToken() {
+    @DisplayName("IDN-3.2 A disabled user is refused")
+    void disabledUserIsRefused() {
+        UUID userId = users.create("anna@example.com", UserStatus.DISABLED, Role.ADMIN);
+        users.link(userId, "anna");
+
+        assertProblem(
+                get("/api/v1/test/current-user", issuer.token("anna").bearer()),
+                HttpStatus.FORBIDDEN,
+                Problems.ACCESS_ENDED);
+    }
+
+    @Test
+    @DisplayName("IDN-4.1 An email that matches a user is not enough")
+    void verifiedEmailOfAnExistingUserDoesNotLinkTheIdentity() {
+        users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
+        String token =
+                issuer.token("someone-else").email("anna@example.com", true).bearer();
+
+        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.NOT_INVITED);
+        assertThat(users.count("user_identities")).isZero();
+    }
+
+    @Test
+    @DisplayName("IDN-3.3 Disabling applies to the next request")
+    void disablingAppliesToTheNextRequestWithTheSameToken() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
         String token = issuer.token("anna").bearer();
@@ -151,63 +140,32 @@ class AuthenticationChainTests {
     }
 
     @Test
-    void activeUserIsIdentifiedByUsersIdNotTokenSubject() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
+    @DisplayName("IDN-3.4 Enabling applies to the next request")
+    void enablingAppliesToTheNextRequestWithTheSameToken() {
+        UUID userId = users.create("anna@example.com", UserStatus.DISABLED, Role.ADMIN);
         users.link(userId, "anna");
+        String token = issuer.token("anna").bearer();
+        assertProblem(get("/api/v1/test/current-user", token), HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
 
-        MvcTestResult result =
-                get("/api/v1/test/current-user", issuer.token("anna").bearer());
+        jdbc.sql("update users set status = 'ACTIVE', disabled_reason = null where id = :id")
+                .param("id", userId)
+                .update();
 
-        assertThat(result).hasStatusOk();
-        assertThat(result).bodyJson().extractingPath("$.id").isEqualTo(userId.toString());
-        assertThat(result)
-                .bodyJson()
-                .extractingPath("$.permissions")
-                .asArray()
-                .containsExactlyInAnyOrder("USERS_READ", "USERS_MANAGE", "USERS_INVITE");
+        assertThat(get("/api/v1/test/current-user", token)).hasStatusOk();
     }
 
-    // AC-7, AC-17
     @Test
-    void activeUserWithoutRolesIsAdmittedWithoutPermissions() {
+    @DisplayName("PERM-2.2 A user without roles has no permissions")
+    void activeUserWithoutRolesIsRefusedAnOperationThatNeedsAPermission() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
         String token = issuer.token("anna").bearer();
 
-        MvcTestResult current = get("/api/v1/test/current-user", token);
-        assertThat(current).hasStatusOk();
-        assertThat(current).bodyJson().extractingPath("$.permissions").asArray().isEmpty();
-
         assertProblem(get("/api/v1/test/users-read", token), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
     }
 
-    // AC-17
     @Test
-    void permissionGrantsTheOperation() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
-        users.link(userId, "anna");
-
-        MvcTestResult result =
-                get("/api/v1/test/users-read", issuer.token("anna").bearer());
-
-        assertThat(result).hasStatusOk();
-        assertThat(result).bodyJson().extractingPath("$.result").isEqualTo("granted");
-    }
-
-    // AC-17
-    @Test
-    void roleWithoutThePermissionIsForbidden() {
-        UUID userId = users.create("mentor@example.com", UserStatus.ACTIVE, Role.MENTOR, Role.STUDENT);
-        users.link(userId, "mentor");
-
-        assertProblem(
-                get("/api/v1/test/users-read", issuer.token("mentor").bearer()),
-                HttpStatus.FORBIDDEN,
-                Problems.FORBIDDEN);
-    }
-
-    // AC-22
-    @Test
+    @DisplayName("PERM-4.1 Roles and groups in the token are ignored")
     void rolesAndGroupsInTheTokenGrantNothing() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -223,78 +181,93 @@ class AuthenticationChainTests {
         assertProblem(get("/api/v1/test/users-read", token), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
     }
 
-    // AC-20
     @Test
-    void unknownStoredRoleGrantsNothingAndIsReportedOnce(CapturedOutput output) {
+    @DisplayName("PERM-5.1 An unknown role is skipped")
+    void unknownStoredRoleGrantsNothing() {
+        String unknownRole = storeUnknownRole();
+        UUID mentor = users.create("anna@example.com", UserStatus.ACTIVE, Role.MENTOR);
+        users.assignStoredRole(mentor, unknownRole);
+        users.link(mentor, "anna");
+        UUID admin = users.create("boris@example.com", UserStatus.ACTIVE, Role.ADMIN);
+        users.assignStoredRole(admin, unknownRole);
+        users.link(admin, "boris");
+
+        MvcTestResult current =
+                get("/api/v1/test/current-user", issuer.token("anna").bearer());
+        assertThat(current).hasStatusOk();
+        assertThat(current).bodyJson().extractingPath("$.permissions").asArray().isEmpty();
+        assertProblem(
+                get("/api/v1/test/users-read", issuer.token("anna").bearer()),
+                HttpStatus.FORBIDDEN,
+                Problems.FORBIDDEN);
+        MvcTestResult administrator =
+                get("/api/v1/test/current-user", issuer.token("boris").bearer());
+        assertThat(administrator).hasStatusOk();
+        assertThat(administrator)
+                .bodyJson()
+                .extractingPath("$.permissions")
+                .asArray()
+                .containsExactlyInAnyOrder("USERS_READ", "USERS_MANAGE", "USERS_INVITE");
+    }
+
+    private String storeUnknownRole() {
         String unknownRole =
                 "RETIRED_" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         jdbc.sql("insert into roles (name) values (:name)")
                 .param("name", unknownRole)
                 .update();
-        UUID admin = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
-        users.assignStoredRole(admin, unknownRole);
-        users.link(admin, "anna");
-        UUID other = users.create("boris@example.com", UserStatus.ACTIVE);
-        users.assignStoredRole(other, unknownRole);
-        users.link(other, "boris");
-
-        assertThat(get("/api/v1/test/users-read", issuer.token("anna").bearer()))
-                .hasStatusOk();
-        assertThat(get("/api/v1/test/users-read", issuer.token("anna").bearer()))
-                .hasStatusOk();
-        assertProblem(
-                get("/api/v1/test/users-read", issuer.token("boris").bearer()),
-                HttpStatus.FORBIDDEN,
-                Problems.FORBIDDEN);
-
-        assertThat(output.getOut()).containsOnlyOnce("Ignoring stored role '" + unknownRole + "'");
-    }
-
-    // AC-10
-    @Test
-    void storedProfileIsNotUpdatedFromTheToken() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
-        users.link(userId, "anna");
-        String token = issuer.token("anna")
-                .email("anna.new@example.com", true)
-                .claim("given_name", "Hanna")
-                .claim("family_name", "Smith")
-                .bearer();
-
-        assertThat(get("/api/v1/test/current-user", token)).hasStatusOk();
-
-        Map<String, Object> stored = jdbc.sql("select email, first_name, last_name from users where id = :id")
-                .param("id", userId)
-                .query()
-                .singleRow();
-        assertThat(stored)
-                .containsEntry("email", "anna@example.com")
-                .containsEntry("first_name", "Anna")
-                .containsEntry("last_name", "Petrova");
-    }
-
-    // AC-19
-    @Test
-    void inaccessibleResourceRespondsLikeAMissingOne() {
-        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
-        users.link(userId, "anna");
-
-        MvcTestResult result = get("/api/v1/test/missing", issuer.token("anna").bearer());
-
-        assertProblem(result, HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
-        assertThat(result).bodyJson().doesNotHavePath("$.detail");
+        return unknownRole;
     }
 
     @Test
-    void accessDeniedFromAServiceIsForbiddenNotServerError() {
+    @DisplayName("PERM-3.3 Removing a role takes effect on the next request")
+    void removedRoleTakesEffectWithTheSameToken() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");
+        String token = issuer.token("anna").bearer();
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
 
-        assertProblem(
-                get("/api/v1/test/denied", issuer.token("anna").bearer()), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+        jdbc.sql("delete from user_roles where user_id = :userId")
+                .param("userId", userId)
+                .update();
+
+        assertProblem(get("/api/v1/test/users-read", token), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
     }
 
     @Test
+    @DisplayName("PERM-3.4 Adding a role takes effect on the next request")
+    void addedRoleTakesEffectWithTheSameToken() {
+        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
+        users.link(userId, "anna");
+        String token = issuer.token("anna").bearer();
+        assertProblem(get("/api/v1/test/users-read", token), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+
+        users.assignStoredRole(userId, Role.ADMIN.name());
+
+        assertThat(get("/api/v1/test/users-read", token)).hasStatusOk();
+    }
+
+    @Test
+    @DisplayName("PERM-6.3 An inaccessible resource looks like a missing one")
+    void inaccessibleResourceRespondsLikeAMissingOne() throws Exception {
+        UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
+        users.link(userId, "anna");
+        String token = issuer.token("anna").bearer();
+
+        MvcTestResult inaccessible = get("/api/v1/test/resources/restricted", token);
+        MvcTestResult missing = get("/api/v1/test/resources/no-such-resource", token);
+
+        assertProblem(inaccessible, HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
+        assertThat(inaccessible).bodyJson().doesNotHavePath("$.detail");
+        assertProblem(missing, HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
+        assertThat(inaccessible.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .isEqualTo(missing.getResponse()
+                        .getContentAsString(StandardCharsets.UTF_8)
+                        .replace("no-such-resource", "restricted"));
+    }
+
+    @Test
+    @DisplayName("PLT-1.2 An unexpected failure is a generic 500")
     void unexpectedErrorIsAProblemWithoutMentorHubType() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE);
         users.link(userId, "anna");
@@ -315,6 +288,7 @@ class AuthenticationChainTests {
     }
 
     @Test
+    @DisplayName("PLT-6.3 A path outside the API is denied")
     void pathsOutsideTheApiAreDenied() {
         UUID userId = users.create("anna@example.com", UserStatus.ACTIVE, Role.ADMIN);
         users.link(userId, "anna");

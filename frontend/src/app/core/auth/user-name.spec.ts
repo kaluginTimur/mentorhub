@@ -3,17 +3,8 @@ import { displayName, greetingName } from './user-name';
 describe('user name', () => {
   const email = 'anna@example.com';
 
-  it('joins first and last name', () => {
-    expect(displayName({ firstName: 'Anna', lastName: 'Petrova', email })).toBe('Anna Petrova');
-  });
-
-  it('uses the only name that is set', () => {
-    expect(displayName({ firstName: 'Anna', lastName: null, email })).toBe('Anna');
-    expect(displayName({ firstName: null, lastName: 'Petrova', email })).toBe('Petrova');
-  });
-
-  it('falls back to the email when no name is set', () => {
-    expect(displayName({ firstName: null, lastName: null, email })).toBe(email);
+  // the cases of IDN-11.1 are tested through the shell; this is the detail it does not show
+  it('treats blank names as not set', () => {
     expect(displayName({ firstName: ' ', lastName: '', email })).toBe(email);
   });
 

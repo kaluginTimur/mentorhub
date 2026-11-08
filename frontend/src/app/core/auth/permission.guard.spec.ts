@@ -4,15 +4,15 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@a
 import { CurrentUserService } from './current-user.service';
 import { requirePermission } from './permission.guard';
 
-describe('requirePermission (AC-22)', () => {
-  const permissions = signal<string[] | null>(null);
+describe('requirePermission', () => {
+  const permissions = signal<string[]>([]);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
         {
           provide: CurrentUserService,
-          useValue: { hasPermission: (p: string) => permissions()?.includes(p) ?? false },
+          useValue: { hasPermission: (p: string) => permissions().includes(p) },
         },
         {
           provide: Router,
@@ -34,11 +34,6 @@ describe('requirePermission (AC-22)', () => {
 
   it('redirects users without the permission to the home page', () => {
     permissions.set([]);
-    expect(run()).toEqual({ url: '/' });
-  });
-
-  it('redirects when nobody is loaded', () => {
-    permissions.set(null);
     expect(run()).toEqual({ url: '/' });
   });
 });

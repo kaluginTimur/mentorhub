@@ -20,13 +20,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * Invitations and their roles (spec invitations, Data model). Times come from the database's {@code now()}, so the
+ * Invitations and their roles. Times come from the database's {@code now()}, so the
  * derived status, the expiry and the creation time use one clock. Rows are never deleted.
  */
 @Repository
 public class InvitationRepository {
 
-    /** The status derivation of the spec; every read and the status filter use this one expression. */
+    /** The status derivation; every read and the status filter use this one expression. */
     private static final String STATUS = """
             case when i.accepted_at is not null then 'ACCEPTED'
                  when i.revoked_at is not null then 'REVOKED'
@@ -89,7 +89,7 @@ public class InvitationRepository {
                 .optional());
     }
 
-    /** The only read that returns a stored token (spec invitation-links, AC-1). */
+    /** The only read that returns a stored token. */
     public Optional<StoredInvitationLink> findLink(UUID id) {
         return jdbc.sql("select i.id, i.token, i.email, i.expires_at, %s as status from invitations i where i.id = :id"
                         .formatted(STATUS))

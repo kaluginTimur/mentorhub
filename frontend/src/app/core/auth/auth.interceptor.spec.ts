@@ -32,22 +32,19 @@ describe('authInterceptor', () => {
     return header;
   }
 
-  it('attaches the token to a non-public API request', async () => {
+  it('PLT-7.1 attaches the token to a non-public API request', async () => {
     expect(await authorizationOf('/api/v1/me')).toBe('Bearer tok');
+    expect(await authorizationOf('/api/v1/invitations/accept')).toBe('Bearer tok');
+    expect(await authorizationOf('/api/v1/invitations')).toBe('Bearer tok');
   });
 
-  it('does not attach the token to public API endpoints', async () => {
+  it('PLT-7.2 does not attach the token to public API endpoints', async () => {
     expect(await authorizationOf('/api/v1/system/info')).toBeNull();
     expect(await authorizationOf('/api/v1/system/client-config')).toBeNull();
     expect(await authorizationOf('/api/v1/invitations/preview')).toBeNull();
   });
 
-  it('attaches the token to accept and the management endpoints', async () => {
-    expect(await authorizationOf('/api/v1/invitations/accept')).toBe('Bearer tok');
-    expect(await authorizationOf('/api/v1/invitations')).toBe('Bearer tok');
-  });
-
-  it('does not attach the token to other URLs', async () => {
+  it('PLT-7.3 does not attach the token to other URLs', async () => {
     expect(await authorizationOf('https://example.org/api/v1/me')).toBeNull();
     expect(await authorizationOf('/assets/data.json')).toBeNull();
     expect(await authorizationOf('http://localhost:8180/realms/mentorhub/x')).toBeNull();

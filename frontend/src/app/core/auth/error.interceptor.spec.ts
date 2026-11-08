@@ -48,7 +48,7 @@ describe('errorInterceptor', () => {
       .flush(type ? { type, title: 't', status } : null, { status, statusText: 'x' });
   }
 
-  it('starts sign-in again on 401 (AC-28)', () => {
+  it('starts sign-in again on 401', () => {
     fail('/api/v1/me', 401);
     expect(auth.handleUnauthorized).toHaveBeenCalledOnce();
   });
@@ -64,7 +64,7 @@ describe('errorInterceptor', () => {
     expect(auth.confirmSignIn).toHaveBeenCalledOnce();
   });
 
-  it('shows a snackbar on 403 forbidden and stays on the page (AC-29)', async () => {
+  it('PERM-7.3 shows a snackbar on 403 forbidden and stays on the page', async () => {
     fail('/api/v1/users', 403, 'urn:mentorhub:problem:forbidden');
     await vi.waitFor(() =>
       expect(snackBar.open).toHaveBeenCalledWith(
@@ -78,7 +78,7 @@ describe('errorInterceptor', () => {
   it.each([
     ['urn:mentorhub:problem:access-ended', { status: 'DISABLED' }, '/access/ended'],
     ['urn:mentorhub:problem:not-invited', { status: 'NOT_INVITED' }, '/access/invitation-only'],
-  ])('reloads the caller and opens the access screen on %s (AC-5)', async (type, me, path) => {
+  ])('IDN-10.5 reloads the caller and opens the access screen on %s', async (type, me, path) => {
     currentUser.load.mockResolvedValue(me);
     fail('/api/v1/users', 403, type);
     await vi.waitFor(() => expect(router.navigateByUrl).toHaveBeenCalledWith(path));

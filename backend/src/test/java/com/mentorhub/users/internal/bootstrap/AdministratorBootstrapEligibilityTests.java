@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.mentorhub.users.internal.persistence.UserAuditTrail;
 import com.mentorhub.users.internal.persistence.UserRepository;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -13,7 +14,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 class AdministratorBootstrapEligibilityTests {
 
-    // AC-15
+    @DisplayName("IDN-6.6 No configured bootstrap address grants nothing")
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"  "})

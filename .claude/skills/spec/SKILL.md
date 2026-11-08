@@ -1,35 +1,41 @@
 ---
 name: spec
-description: Work out a feature spec with the user in the main session and write it to docs/features/<feature>.md (requirements, UI, design), then get it reviewed.
-argument-hint: "<feature-name>"
-arguments: [feature]
+description: Work out the requirements of a change with the user in the main session, edit docs/requirements/ on a new branch, get them reviewed, and stop at the requirements gate with a handover.
+argument-hint: "<change-name>"
+arguments: [change]
 disable-model-invocation: true
 ---
 
-Work out the spec for the feature `$feature` together with the user. The spec is the task statement for the implementation agents, so it must be complete enough that they never have to guess.
+Work out the requirements of the change `$change` with the user: stage 2 of the **Stages** section of `docs/process.md`. You are the designer. Tests are written from what you write here, so it must be complete enough for that, and no more detailed: **Requirements** in `docs/development/docs.md` says what a requirement holds and when it has a scenario.
 
-## Prepare
+## Start
 
-1. Read `AGENTS.md`, `docs/architecture/invariants.md`, every ADR in `docs/adr/`, the existing specs in `docs/features/`, `docs/ui/guidelines.md` if it exists, and the API contract for related endpoints.
-2. If `docs/features/$feature.md` exists, continue from it: summarize its state and the open questions, and work on what is missing.
-3. Use [template.md](template.md) as the structure.
+1. If `docs/plans/$change.md` exists, continue from its handover. Read only the plan and what the handover names, and stop reading there. If the plan is on another branch, say so and offer to switch.
+2. Otherwise run `git status`, ask how to proceed if there are unrelated changes, create the branch `feature/$change` from the default branch (or use the one the user prefers), and create the plan from [plan-template.md](plan-template.md).
+3. Read as **What to read** in `docs/process.md` says: the roadmap item, the index and the capabilities it names, the decisions index, and the API contract for related endpoints. `docs/ui/guidelines.md` when screens change.
 
 ## Work it out with the user
 
-Go section by section, one topic at a time. For each topic, propose a concrete draft based on what you have read, give your recommendation, and ask only what the user has to decide. Domain rules come from the user: never invent who may see or do what. When something is undecided, record it as an open question instead of guessing.
+Go one topic at a time. Propose a concrete draft from what you have read, give your recommendation, and ask only what the user has to decide. Domain rules come from the user: never invent who may see or do what. Record what is undecided in the plan instead of guessing, and the user's decisions in their words.
 
-1. Goal and scope, including what is out of scope. Check it against the product scope in the invariants.
-2. Roles and scenarios, then acceptance criteria (AC-n) in Given/When/Then form, each testable and linked to a scenario.
-3. Access matrix for every role and action, with cohort and track conditions, past cohorts, mentor reassignment and a graduate who becomes a mentor. Visibility of every data item. Audit events.
-4. UI: screens per role, content, actions, all states, text wireframes, patterns from the UI guidelines.
-5. Design: modules, data model, API sketch (method, path, purpose, roles, errors), how authorization and visibility are enforced, events between modules. If a decision is architectural (a new convention, a new technology, a cross-cutting rule), propose an ADR via `/adr`.
-6. Open questions.
-7. Size. Every implementation step carries the context of the step before it, so a large feature costs more per line than two small ones. If the spec has more than about 20 acceptance criteria, adds more than one new module, or mixes application code with new local infrastructure (an identity provider, a mail server), propose a split into features that can each be implemented and reviewed on their own, and let the user decide.
+1. Goal and approach, before anything else. The roadmap item is an intention, not a decision, even when its line reads as settled: state its goal (who needs what, and why) apart from the way the line suggests, and propose any other way that reaches the goal better, with its trade-offs and your recommendation. The user chooses. If the choice reopens what the item is for, or splits it into several, offer to continue in `/explore` instead.
+2. Scope and what is out of scope, into the plan. Check it against the product scope in the constitution.
+3. Who may do what, what each role sees, what is audited, error paths and empty states. Each becomes a requirement or an out-of-scope line, not a list of its own.
+4. Edit the capability files directly, as you go, so progress is not lost. A requirement that belongs to an existing capability goes there, and a change to another capability's behavior edits that capability.
+5. Size: at about 8 to 10 scenarios or more, or many requirements without any, suggest splitting the change, and let the user decide.
 
-Write the file in English as the sections become clear, so progress is not lost. Keep the status `draft`.
+A decision that meets the threshold in the decisions index goes through `/decision`.
+
+Do not commit. A scenario without a test fails the pre-commit hook; the requirements are committed with the red tests.
 
 ## Review
 
-When the draft is complete, run the `reviewer` subagent in spec mode with the prompt `docs/features/$feature.md`. Show the user its findings, agree on changes and apply them.
+When the draft is complete, run the `reviewer` subagent in requirements mode with the plan's path. Show the user every finding with your recommendation, agree on changes and apply them. One round.
 
-The spec becomes `approved` only when the user says so and no open question blocks implementation. Record the session as the feature's `spec` phase (`node .claude/scripts/agent-usage.mjs --record $feature spec --force`, without a session id: there is no progress log yet, so the Agents check cannot pass) and offer to commit the record with the spec. Then tell the user to run `/clear` and `/feature $feature` to start the implementation in a fresh context.
+## Stop at the requirements gate
+
+1. Add the agents to the plan's Agents table, and write the plan's handover: the capability files to read in full, the documents changed (built from git as the template says, so a decision or guide changed along the way is not missed), the open questions, and what to run after approval and after remarks.
+2. Record the session as the change's `spec` phase, without a session id: `node .claude/scripts/agent-usage.mjs --record $change spec`. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user.
+3. Tell the user which files to read, in full and not as a diff, and show the documents changed list as it is in the plan. Then say that reading may take as long as they like: the plan holds everything needed, so they can continue here, or run `/clear` first and then `/spec $change` for remarks or `/feature $change` once approved.
+
+The requirements are approved only when the user says so explicitly. Agreement with a finding or a single point is not approval. Record it in the plan's `Requirements approved:` line, with the date and the user's words.

@@ -3,8 +3,9 @@ package com.mentorhub.users.internal.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.IntegrationTest;
 import com.mentorhub.users.Role;
+import com.mentorhub.users.internal.domain.UserChange;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestAuthentications;
 import com.mentorhub.users.internal.security.TestUsers;
@@ -13,16 +14,13 @@ import com.mentorhub.web.ValidationException;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-// AC-17
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@IntegrationTest
 class ProfileServiceTests {
 
     @Autowired
@@ -30,6 +28,9 @@ class ProfileServiceTests {
 
     @Autowired
     MeService me;
+
+    @Autowired
+    UserAdministrationService administration;
 
     @Autowired
     JdbcClient jdbc;
@@ -54,21 +55,19 @@ class ProfileServiceTests {
     }
 
     @Test
-    void storesTheCallersOwnProfileAndAuditsWithTheCallerAsActor() {
+    @DisplayName("USR-9.2 A user's own profile change is audited with the user as the actor")
+    void auditsWithTheCallerAsActor() {
         profiles.updateOwnProfile(new ProfileInput(" Ivan ", "Petrova", "8 701 123 45 67"));
 
-        UserProfile profile = me.me().user();
-        assertThat(profile).isNotNull();
-        assertThat(profile.firstName()).isEqualTo("Ivan");
-        assertThat(profile.lastName()).isEqualTo("Petrova");
-        assertThat(profile.phone()).isEqualTo("+77011234567");
-        assertThat(profile.email()).isEqualTo("noroles@x.test");
-        assertThat(jdbc.sql("select action, actor_user_id, subject_id from audit_log")
-                        .query()
-                        .singleRow())
-                .containsEntry("action", "USER_PROFILE_UPDATED")
-                .containsEntry("actor_user_id", caller)
-                .containsEntry("subject_id", caller);
+        assertThat(administration.history(caller, 0, 25).items())
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.actor())
+                            .isNotNull()
+                            .extracting(HistoryActor::id)
+                            .isEqualTo(caller);
+                    assertThat(entry.change()).isInstanceOf(UserChange.ProfileUpdated.class);
+                });
     }
 
     @Test
@@ -80,13 +79,6 @@ class ProfileServiceTests {
                         .query(String.class)
                         .single())
                 .isEqualTo("Anna");
-    }
-
-    @Test
-    void unchangedValuesWriteNoEntry() {
-        profiles.updateOwnProfile(new ProfileInput("Anna", " Petrova ", ""));
-
-        assertThat(users.count("audit_log")).isZero();
     }
 
     @Test

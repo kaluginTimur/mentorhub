@@ -27,41 +27,17 @@ export function toPosix(p) {
   return p.replaceAll('\\', '/');
 }
 
-export function isCommitted(root, rel) {
-  return run('git', ['-C', root, 'cat-file', '-e', `HEAD:${rel}`]) !== null;
-}
-
-let appliedScripts;
-
-// Best effort: the dev database is only consulted when its compose container is running.
-export function appliedInDevDb(scriptName) {
-  if (appliedScripts === undefined) {
-    appliedScripts = new Set();
-    const id = run('docker', [
-      'ps', '-q',
-      '--filter', 'label=com.docker.compose.project=mentorhub',
-      '--filter', 'label=com.docker.compose.service=postgres',
-    ])?.trim().split('\n')[0];
-    if (id) {
-      const out = run('docker', [
-        'exec', id, 'psql', '-U', 'mentorhub', '-d', 'mentorhub', '-tAc',
-        'select script from flyway_schema_history where script is not null',
-      ]);
-      out?.split('\n').filter(Boolean).forEach((s) => appliedScripts.add(s.trim()));
-    }
-  }
-  return appliedScripts.has(scriptName);
-}
-
-export function isAppliedMigration(root, rel) {
+// A migration that is not in main yet belongs to its change and may be edited: the dev database is rebuilt from the
+// migrations on every dev start, and tests use an empty database. One in main may have been applied elsewhere.
+export function isMigrationInMain(root, rel) {
   if (!rel.startsWith(MIGRATION_DIR) || !rel.endsWith('.sql')) return false;
-  return isCommitted(root, rel) || appliedInDevDb(path.posix.basename(rel));
+  return ['main', 'origin/main'].some((ref) => run('git', ['-C', root, 'cat-file', '-e', `${ref}:${rel}`]) !== null);
 }
 
-export const APPLIED_MIGRATION_REASON =
-  'Flyway migration is already committed or applied to the dev database. Never modify, move or delete it: ' +
-  'Flyway validates checksums and the app will fail to start on any existing database. ' +
-  'Add a new migration V<next>__<description>.sql instead.';
+export const MIGRATION_IN_MAIN_REASON =
+  'This Flyway migration is in main. Never modify, move or delete it without the project owner\'s word: ' +
+  'a database outside the repository may have applied it, and Flyway validates checksums. ' +
+  'Add a new migration V<next>__<description>.sql instead, or edit the migration of this change if it has one.';
 
 export function deny(reason) {
   process.stdout.write(

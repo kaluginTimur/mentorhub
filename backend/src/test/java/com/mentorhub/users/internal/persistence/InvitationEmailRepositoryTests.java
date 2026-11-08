@@ -3,7 +3,7 @@ package com.mentorhub.users.internal.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.IntegrationTest;
 import com.mentorhub.users.internal.domain.InvitationEmailFailure;
 import com.mentorhub.users.internal.domain.InvitationEmailReason;
 import com.mentorhub.users.internal.domain.InvitationEmailStatus;
@@ -17,15 +17,12 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Spec invitation-emails, Data model; the request rows behind AC-2 to AC-5, AC-8 to AC-11 and AC-16. */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
+/** The request rows of invitation emails (Data model). */
+@IntegrationTest
 @Transactional
 class InvitationEmailRepositoryTests {
 
@@ -64,7 +61,6 @@ class InvitationEmailRepositoryTests {
         assertThat(queued.finishedAt()).isNull();
     }
 
-    // AC-5
     @Test
     void aSecondQueuedRequestIsADuplicateKey() {
         emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -82,7 +78,6 @@ class InvitationEmailRepositoryTests {
         assertThat(emails.findQueued(newInvitation())).isEmpty();
     }
 
-    // AC-8
     @Test
     void marksSentWithTheTime() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -95,7 +90,6 @@ class InvitationEmailRepositoryTests {
         assertThat(failure(id)).isNull();
     }
 
-    // AC-10
     @Test
     void marksSkipped() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.RESENT, admin);
@@ -105,7 +99,6 @@ class InvitationEmailRepositoryTests {
         assertThat(emails.lock(id).orElseThrow().status()).isEqualTo(InvitationEmailStatus.SKIPPED);
     }
 
-    // AC-11
     @Test
     void marksFailedWithTheReason() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.RESENT, admin);
@@ -119,7 +112,7 @@ class InvitationEmailRepositoryTests {
         assertThat(failure(id)).isEqualTo("550 mailbox unavailable");
     }
 
-    // AC-12: a request that already has an outcome keeps it.
+    // A request that already has an outcome keeps it.
     @Test
     void onlyAQueuedRequestChanges() {
         UUID id = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);
@@ -150,7 +143,6 @@ class InvitationEmailRepositoryTests {
         assertThat(emails.findQueued(invitation).orElseThrow().id()).isEqualTo(second);
     }
 
-    // AC-16
     @Test
     void findsTheLatestRequestOfEachInvitation() {
         UUID sent = emails.insertQueued(invitation, InvitationEmailReason.CREATED, admin);

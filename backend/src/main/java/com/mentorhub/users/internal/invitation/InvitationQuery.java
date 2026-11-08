@@ -4,7 +4,7 @@ import com.mentorhub.users.internal.domain.InvitationStatus;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The invitations list request (AC-4); {@code null} filters do not filter.
+ * The invitations list request; {@code null} filters do not filter.
  *
  * @param text searched in the email after trimming; blank means no search
  */

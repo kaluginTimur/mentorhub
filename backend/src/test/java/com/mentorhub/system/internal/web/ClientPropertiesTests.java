@@ -2,6 +2,7 @@ package com.mentorhub.system.internal.web;
 
 import static com.mentorhub.support.StartupFailures.assertStartupFailsNaming;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,8 +13,8 @@ import org.springframework.context.annotation.Configuration;
 @ExtendWith(OutputCaptureExtension.class)
 class ClientPropertiesTests {
 
-    // AC-26
     @Test
+    @DisplayName("PLT-5.1 Missing client configuration stops the application")
     void missingClientConfigurationFailsStartup(CapturedOutput output) {
         assertStartupFailsNaming(
                 output,

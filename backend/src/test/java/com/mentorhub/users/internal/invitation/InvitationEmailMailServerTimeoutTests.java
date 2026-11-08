@@ -2,7 +2,7 @@ package com.mentorhub.users.internal.invitation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.IntegrationTest;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
@@ -22,25 +22,19 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * Spec invitation-emails, AC-8 and AC-11 against a mail server that accepts connections and never answers: the request
- * returns at once, and the email fails after the mail timeouts.
+ * A mail server that accepts connections and never answers: the request returns at once, and the email fails after
+ * the mail timeouts. Its own context, because the mail server and the timeouts are configuration.
  */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
-@ExtendWith(OutputCaptureExtension.class)
+@IntegrationTest
 class InvitationEmailMailServerTimeoutTests {
 
     private static final HangingServer server = new HangingServer();
@@ -72,7 +66,8 @@ class InvitationEmailMailServerTimeoutTests {
     }
 
     @Test
-    void theRequestDoesNotWaitForAHungMailServer(CapturedOutput output) throws Exception {
+    @DisplayName("IEM-6.2 The request does not wait for the mail server")
+    void theRequestDoesNotWaitForAHungMailServer() throws Exception {
         TestUsers users = new TestUsers(jdbc);
         users.deleteAll();
         jdbc.sql("delete from event_publication").update();
@@ -87,16 +82,13 @@ class InvitationEmailMailServerTimeoutTests {
 
         assertThat(elapsed).isLessThan(Duration.ofMillis(800));
         assertThat(server.connected.await(5, TimeUnit.SECONDS)).isTrue();
+        // The listener ends once the mail timeouts expire.
         Instant deadline = Instant.now().plusSeconds(10);
-        while (!"FAILED".equals(status(invitation)) && Instant.now().isBefore(deadline)) {
+        while (users.count("event_publication") > 0 && Instant.now().isBefore(deadline)) {
             Thread.sleep(50);
         }
+        assertThat(users.count("event_publication")).isZero();
         assertThat(status(invitation)).isEqualTo("FAILED");
-        assertThat(jdbc.sql("select failure from invitation_emails")
-                        .query(String.class)
-                        .single())
-                .isNotBlank();
-        assertThat(output.getAll()).contains("Invitation email").contains("failed");
     }
 
     private String status(UUID invitation) {

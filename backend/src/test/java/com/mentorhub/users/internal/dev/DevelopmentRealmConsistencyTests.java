@@ -2,9 +2,11 @@ package com.mentorhub.users.internal.dev;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mentorhub.users.internal.security.TestIssuer;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -42,9 +44,48 @@ class DevelopmentRealmConsistencyTests {
                 .containsExactly("stranger@mentorhub.local");
     }
 
+    @Test
+    @DisplayName("IDN-8.1 A new account confirms its email")
+    void realmRequiresEmailVerification() {
+        JsonNode realm = realm();
+
+        assertThat(realm.path("registrationAllowed").asBoolean()).isTrue();
+        assertThat(realm.path("verifyEmail").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("IDN-8.3 An email is registered once")
+    void realmRefusesDuplicateEmails() {
+        JsonNode realm = realm();
+
+        assertThat(realm.path("duplicateEmailsAllowed").asBoolean()).isFalse();
+        assertThat(realm.path("registrationEmailAsUsername").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("IDN-8.2 A token for the client carries the API audience")
+    void webClientAccessTokenCarriesTheApiAudience() {
+        JsonNode client = realm().path("clients")
+                .valueStream()
+                .filter(candidate ->
+                        "mentorhub-web".equals(candidate.path("clientId").asString()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(client.path("protocolMappers").valueStream()).anySatisfy(mapper -> {
+            assertThat(mapper.path("protocolMapper").asString()).isEqualTo("oidc-audience-mapper");
+            JsonNode config = mapper.path("config");
+            assertThat(config.path("included.custom.audience").asString()).isEqualTo(TestIssuer.AUDIENCE);
+            assertThat(config.path("access.token.claim").asString()).isEqualTo("true");
+        });
+    }
+
+    private static JsonNode realm() {
+        return JsonMapper.builder().build().readTree(REALM.toFile());
+    }
+
     private static Map<String, String> realmEmailsById() {
-        JsonNode realm = JsonMapper.builder().build().readTree(REALM.toFile());
-        return realm.path("users")
+        return realm().path("users")
                 .valueStream()
                 .collect(Collectors.toMap(
                         user -> user.path("id").asString(),

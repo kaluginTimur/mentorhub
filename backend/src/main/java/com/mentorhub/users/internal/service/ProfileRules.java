@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
- * Profile values (AC-18): names trimmed, blank as {@code null}, at most 100 characters; the phone optional, parsed
+ * Profile values: names trimmed, blank as {@code null}, at most 100 characters; the phone optional, parsed
  * with the configured default region, valid, without an extension, and stored in E.164. The database has no check for
  * these rules (user decision), so every profile write goes through here.
  */

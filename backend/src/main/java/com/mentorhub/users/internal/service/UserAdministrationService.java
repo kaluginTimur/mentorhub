@@ -1,8 +1,6 @@
 package com.mentorhub.users.internal.service;
 
 import com.mentorhub.users.CurrentUserProvider;
-import com.mentorhub.users.Permission;
-import com.mentorhub.users.RequirePermission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.DisableReason;
 import com.mentorhub.users.internal.domain.StoredRoles;
@@ -31,11 +29,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * User administration (spec user-administration): the users list, a user, its history, and the audited changes with
+ * User administration (USR): the users list, a user, its history, and the audited changes with
  * the lockout rules. Administrators see every user, so the only resource-level rule is that an unknown id is
  * {@link NotFoundException}.
  *
- * <p>Lock order, the same everywhere to rule out deadlocks (AC-15): the administrator lock first, then the user row.
+ * <p>Lock order, the same everywhere to rule out deadlocks: the administrator lock first, then the user row.
  * Every change that can remove an active administrator takes the administrator lock before it counts the remaining
  * ones; other changes take only the row lock.
  */
@@ -68,8 +66,7 @@ public class UserAdministrationService {
         this.profileWriter = profileWriter;
     }
 
-    /** AC-1, AC-2. @throws ValidationException for {@code q}, {@code page} or {@code size} */
-    @RequirePermission(Permission.USERS_READ)
+    /** @throws ValidationException for {@code q}, {@code page} or {@code size} */
     @Transactional(readOnly = true)
     public ResultPage<UserListEntry> list(UserQuery query) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -94,15 +91,12 @@ public class UserAdministrationService {
         return new ResultPage<>(items, query.page(), query.size(), users.count(search));
     }
 
-    /** AC-4. */
-    @RequirePermission(Permission.USERS_READ)
     @Transactional(readOnly = true)
     public ManagedUser get(UUID userId) {
         return managedUser(users.findUser(userId).orElseThrow(NotFoundException::new));
     }
 
-    /** AC-19: newest first; entries with an action the code does not know are left out. */
-    @RequirePermission(Permission.USERS_READ)
+    /** Newest first; entries with an action the code does not know are left out. */
     @Transactional(readOnly = true)
     public ResultPage<UserHistoryEntry> history(UUID userId, int page, int size) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -131,13 +125,12 @@ public class UserAdministrationService {
     }
 
     /**
-     * AC-6, AC-7, AC-9, AC-13 to AC-15. Disabling a disabled user changes nothing, including its reason and comment.
+     * Disabling a disabled user changes nothing, including its reason and comment.
      *
      * @param comment trimmed; blank is none; at most 500 characters; required for {@link DisableReason#OTHER}
      * @throws ValidationException for {@code comment}
      * @throws ConflictException {@link LockoutProblems#SELF_LOCKOUT} or {@link LockoutProblems#LAST_ADMIN}
      */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser disable(UUID userId, DisableReason reason, @Nullable String comment) {
         String validComment = disableComment(reason, comment);
@@ -158,8 +151,7 @@ public class UserAdministrationService {
         return reload(userId);
     }
 
-    /** AC-8, AC-9: clears the reason and comment; roles are unchanged. Enabling an active user changes nothing. */
-    @RequirePermission(Permission.USERS_MANAGE)
+    /** Clears the reason and comment; roles are unchanged. Enabling an active user changes nothing. */
     @Transactional
     public ManagedUser enable(UUID userId) {
         UUID callerId = currentUser.currentUser().id();
@@ -174,12 +166,11 @@ public class UserAdministrationService {
     }
 
     /**
-     * AC-10 to AC-15: the known stored roles become exactly {@code roles}; stored roles the code does not know stay
+     * The known stored roles become exactly {@code roles}; stored roles the code does not know stay
      * untouched and are never reported.
      *
      * @throws ConflictException {@link LockoutProblems#SELF_LOCKOUT} or {@link LockoutProblems#LAST_ADMIN}
      */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser setRoles(UUID userId, Set<Role> roles) {
         Set<Role> requested = roles.isEmpty() ? EnumSet.noneOf(Role.class) : EnumSet.copyOf(roles);
@@ -213,11 +204,10 @@ public class UserAdministrationService {
     }
 
     /**
-     * AC-16, AC-18: another user's profile (or the caller's own, by id). Saving unchanged values writes no entry.
+     * Another user's profile (or the caller's own, by id). Saving unchanged values writes no entry.
      *
      * @throws ValidationException with one error per invalid field; nothing is stored
      */
-    @RequirePermission(Permission.USERS_MANAGE)
     @Transactional
     public ManagedUser updateProfile(UUID userId, ProfileInput input) {
         ValidProfile profile = profileRules.validate(input);
