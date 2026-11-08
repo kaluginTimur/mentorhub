@@ -131,29 +131,6 @@ class InvitationsEndpointTests {
         assertThat(users.count("audit_log")).isEqualTo(1);
     }
 
-    // The gate answers a disabled caller before any permission is looked at.
-    @ParameterizedTest(name = "{0} {1}")
-    @MethodSource("disabledCalls")
-    void disabledCallerIsRefusedByTheGate(String method, String path, String body) {
-        InvitationRef invitation = create(INVITED_EMAIL, "[]");
-        jdbc.sql("update users set status = 'DISABLED', disabled_reason = 'SECURITY' where id = :id")
-                .param("id", admin)
-                .update();
-
-        MvcTestResult result = send(
-                HttpMethod.valueOf(method), path.replace("{id}", invitation.id().toString()), body, "admin");
-
-        assertProblem(result, HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
-        assertThat(users.count("invitations")).isEqualTo(1);
-    }
-
-    static Stream<Arguments> disabledCalls() {
-        return forbiddenCalls()
-                .filter(arguments -> "no roles".equals(arguments.get()[0]))
-                .map(arguments -> Arguments.of(
-                        arguments.get()[1], arguments.get()[2], arguments.get()[3]));
-    }
-
     // From creation to a repeated accept, including the link's absence from the list.
     @Test
     void invitedPersonJoinsThroughTheLink() {

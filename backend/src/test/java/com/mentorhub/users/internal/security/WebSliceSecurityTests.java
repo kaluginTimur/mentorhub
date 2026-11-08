@@ -2,16 +2,23 @@ package com.mentorhub.users.internal.security;
 
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 
 import com.mentorhub.users.Permission;
+import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.Problems;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
+import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** The slice setup other modules' controller tests use. */
 @WebMvcTest(PermissionProbeController.class)
@@ -20,6 +27,9 @@ class WebSliceSecurityTests {
 
     @Autowired
     MockMvcTester mvc;
+
+    @MockitoBean
+    ProbeResources resources;
 
     @Test
     void anonymousRequestIsUnauthorized() {
@@ -66,5 +76,41 @@ class WebSliceSecurityTests {
                 .bodyJson()
                 .extractingPath("$.id")
                 .isEqualTo(userId.toString());
+    }
+
+    @Test
+    void holderOfThePermissionChangesTheResource() {
+        UUID id = UUID.randomUUID();
+
+        assertThat(change(id, Permission.USERS_MANAGE)).hasStatusOk();
+        then(resources).should().change(id);
+    }
+
+    @Test
+    @DisplayName("PERM-3.2 A caller without the permission is refused")
+    void callerWithoutThePermissionIsRefusedAndNothingChanges() {
+        MvcTestResult result = change(UUID.randomUUID(), Permission.USERS_READ, Permission.USERS_INVITE);
+
+        assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    // Without the permission check first, the lookup would answer 404 and tell the caller the id does not exist.
+    @Test
+    @DisplayName("PERM-6.1 The permission is checked before the resource is looked up")
+    void permissionIsCheckedBeforeAMissingResourceIsLookedUp() {
+        willThrow(new NotFoundException()).given(resources).change(any());
+
+        MvcTestResult result = change(UUID.randomUUID(), Permission.USERS_READ);
+
+        assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    private MvcTestResult change(UUID id, Permission... permissions) {
+        return mvc.post()
+                .uri("/api/v1/test/managed-resources/{id}", id)
+                .with(TestAuthentications.activeUser(UUID.randomUUID(), permissions))
+                .exchange();
     }
 }

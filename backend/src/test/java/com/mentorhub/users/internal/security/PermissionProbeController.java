@@ -7,9 +7,11 @@ import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import com.mentorhub.web.NotFoundException;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 class PermissionProbeController {
 
     private final CurrentUserProvider currentUsers;
+    private final ProbeResources resources;
 
-    PermissionProbeController(CurrentUserProvider currentUsers) {
+    PermissionProbeController(CurrentUserProvider currentUsers, ProbeResources resources) {
         this.currentUsers = currentUsers;
+        this.resources = resources;
     }
 
     @GetMapping("/current-user")
@@ -35,6 +39,12 @@ class PermissionProbeController {
     @RequirePermission(Permission.USERS_READ)
     public Map<String, String> usersRead() {
         return Map.of("result", "granted");
+    }
+
+    @PostMapping("/managed-resources/{id}")
+    @RequirePermission(Permission.USERS_MANAGE)
+    public void change(@PathVariable UUID id) {
+        resources.change(id);
     }
 
     @GetMapping("/missing")

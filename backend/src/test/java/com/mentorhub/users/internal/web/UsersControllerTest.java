@@ -188,56 +188,10 @@ class UsersControllerTest {
             assertThat(result).bodyJson().extractingPath("$.user.phone").isEqualTo("+77011234567");
             then(profileService).should().updateOwnProfile(new ProfileInput("Ivan", "Sidorov", "8 701 123 45 67"));
         }
-
-        // Disabled and not invited callers are refused by the gate, as on every operation but GET /me.
-        @Test
-        void gateRefusesCallersThatAreNotActive() {
-            assertProblem(
-                    send(
-                            HttpMethod.PUT,
-                            "/api/v1/me/profile",
-                            PROFILE_BODY,
-                            TestAuthentications.disabledUser(CALLER_ID)),
-                    HttpStatus.FORBIDDEN,
-                    Problems.ACCESS_ENDED);
-            assertProblem(
-                    send(HttpMethod.PUT, "/api/v1/me/profile", PROFILE_BODY, TestAuthentications.notInvited()),
-                    HttpStatus.FORBIDDEN,
-                    Problems.NOT_INVITED);
-            verifyNoInteractions(profileService);
-        }
     }
 
     @Nested
     class Authorization {
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#operationsWithId")
-        @DisplayName("PERM-6.1 The permission is checked before the resource is looked up")
-        void permissionIsCheckedBeforeTheIdIsLookedUp(
-                HttpMethod method, String uri, String body, Permission permission) {
-            given(administration.get(any())).willThrow(new NotFoundException());
-            given(administration.history(any(), anyInt(), anyInt())).willThrow(new NotFoundException());
-            given(administration.disable(any(), any(), any())).willThrow(new NotFoundException());
-            given(administration.enable(any())).willThrow(new NotFoundException());
-            given(administration.setRoles(any(), any())).willThrow(new NotFoundException());
-            given(administration.updateProfile(any(), any())).willThrow(new NotFoundException());
-
-            MvcTestResult result = send(method, uri, body, TestAuthentications.activeUser(CALLER_ID));
-
-            assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#userOperations")
-        @DisplayName("PERM-3.2 A caller without the permission is refused")
-        void callerWithoutPermissionsIsForbidden(HttpMethod method, String uri, String body, Permission permission) {
-            MvcTestResult result = send(method, uri, body, TestAuthentications.activeUser(CALLER_ID));
-
-            assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
-            verifyNoInteractions(administration);
-        }
 
         @ParameterizedTest
         @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#readOperations")
@@ -261,38 +215,6 @@ class UsersControllerTest {
                     send(method, uri, body, TestAuthentications.activeUser(CALLER_ID, Permission.USERS_READ));
 
             assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#userOperations")
-        void disabledCallerIsRefusedByTheGate(HttpMethod method, String uri, String body, Permission permission) {
-            assertProblem(
-                    send(method, uri, body, TestAuthentications.disabledUser(CALLER_ID)),
-                    HttpStatus.FORBIDDEN,
-                    Problems.ACCESS_ENDED);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#userOperations")
-        void notInvitedCallerIsRefusedByTheGate(HttpMethod method, String uri, String body, Permission permission) {
-            assertProblem(
-                    send(method, uri, body, TestAuthentications.notInvited()),
-                    HttpStatus.FORBIDDEN,
-                    Problems.NOT_INVITED);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.UsersControllerTest#userOperations")
-        void requestWithoutTokenIsUnauthorized(HttpMethod method, String uri, String body, Permission permission) {
-            MockMvcRequestBuilder request = mvc.method(method).uri(uri);
-            if (!body.isEmpty()) {
-                request = request.contentType(MediaType.APPLICATION_JSON).content(body);
-            }
-
-            assertProblem(request.exchange(), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
             verifyNoInteractions(administration);
         }
     }

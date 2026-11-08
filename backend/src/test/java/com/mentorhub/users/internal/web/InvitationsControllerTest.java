@@ -171,62 +171,6 @@ class InvitationsControllerTest {
             verifyNoInteractions(administration);
         }
 
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
-        void disabledCallerIsRefusedByTheGate(HttpMethod method, String uri, String body) {
-            assertProblem(
-                    send(method, uri, body, TestAuthentications.disabledUser(CALLER_ID)),
-                    HttpStatus.FORBIDDEN,
-                    Problems.ACCESS_ENDED);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
-        void notInvitedCallerIsRefusedByTheGate(HttpMethod method, String uri, String body) {
-            assertProblem(
-                    send(method, uri, body, TestAuthentications.notInvited()),
-                    HttpStatus.FORBIDDEN,
-                    Problems.NOT_INVITED);
-            verifyNoInteractions(administration);
-        }
-
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#managementOperations")
-        void requestWithoutTokenIsUnauthorized(HttpMethod method, String uri, String body) {
-            MockMvcRequestBuilder request = mvc.method(method).uri(uri);
-            if (!body.isEmpty()) {
-                request = request.contentType(MediaType.APPLICATION_JSON).content(body);
-            }
-
-            assertProblem(request.exchange(), HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-            verifyNoInteractions(administration);
-        }
-
-        @Test
-        void acceptRequiresAuthentication() {
-            MvcTestResult result = mvc.post()
-                    .uri("/api/v1/invitations/accept")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(TOKEN_BODY)
-                    .exchange();
-
-            assertProblem(result, HttpStatus.UNAUTHORIZED, Problems.UNAUTHORIZED);
-            verifyNoInteractions(acceptance);
-        }
-
-        // The gate admits callers in every access status.
-        @ParameterizedTest
-        @MethodSource("com.mentorhub.users.internal.web.InvitationsControllerTest#callersInAnyStatus")
-        void acceptAdmitsCallersInAnyStatus(String name, RequestPostProcessor caller) {
-            given(acceptance.accept(TOKEN)).willReturn(activeMe());
-
-            MvcTestResult result = send(HttpMethod.POST, "/api/v1/invitations/accept", TOKEN_BODY, caller);
-
-            assertThat(result).hasStatusOk();
-            then(acceptance).should().accept(TOKEN);
-        }
-
         // Public, and a bearer token is ignored, even a bad one (the slice rejects every bearer token).
         @ParameterizedTest
         @ValueSource(strings = {"", "Bearer not-a-valid-token"})
@@ -244,13 +188,6 @@ class InvitationsControllerTest {
 
             assertThat(result).hasStatusOk();
         }
-    }
-
-    static Stream<Arguments> callersInAnyStatus() {
-        return Stream.of(
-                Arguments.of("not invited", TestAuthentications.notInvited()),
-                Arguments.of("disabled", TestAuthentications.disabledUser(CALLER_ID)),
-                Arguments.of("active without roles", TestAuthentications.activeUser(CALLER_ID)));
     }
 
     @Nested
