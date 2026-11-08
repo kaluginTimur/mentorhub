@@ -2,12 +2,11 @@ package com.mentorhub.system.internal.dev;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
+import com.mentorhub.support.EndpointTest;
 import com.mentorhub.system.internal.dev.Personas.Persona;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.util.List;
 import java.util.Map;
@@ -16,9 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
@@ -32,10 +29,9 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  * A start in development mode, simulated by {@link SampleCenter#restore()}. The personas sign in with tokens of the
  * local Keycloak's issuer, signed by {@link TestIssuer}.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@EndpointTest
 @ActiveProfiles("dev")
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class, SampleCenterTests.LocalIssuer.class})
+@Import(SampleCenterTests.LocalIssuer.class)
 class SampleCenterTests {
 
     @Autowired

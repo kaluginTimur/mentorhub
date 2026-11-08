@@ -2,13 +2,10 @@ package com.mentorhub.system.internal.dev;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mentorhub.TestcontainersConfiguration;
-import com.mentorhub.users.internal.security.TestIssuerConfiguration;
+import com.mentorhub.support.EndpointTest;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
@@ -18,10 +15,9 @@ import org.springframework.test.context.ActiveProfiles;
  * empty, so no publication from before a start is delivered against the new data. Same context as
  * {@link SampleCenterTests}.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@EndpointTest
 @ActiveProfiles("dev")
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class, SampleCenterTests.LocalIssuer.class})
+@Import(SampleCenterTests.LocalIssuer.class)
 class SampleCenterEventPublicationTests {
 
     @Autowired
