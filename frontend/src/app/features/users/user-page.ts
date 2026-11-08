@@ -41,7 +41,7 @@ import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
 import { ConfirmDialog } from '../../shared/confirm-dialog/confirm-dialog';
 import { Loading } from '../../shared/loading/loading';
 import { Unavailable } from '../../shared/unavailable/unavailable';
-import { DisableDialog } from './disable-dialog';
+import { DisableDialog, DisableDialogData } from './disable-dialog';
 import { describeEntry } from './history-text';
 import { REASON_LABELS, ROLE_LABELS, STATUS_LABELS } from './labels';
 import { ProfileForm, ProfileValues } from '../../shared/profile-form/profile-form';
@@ -218,7 +218,7 @@ export class UserPage {
     if (this.isSelf()) {
       return;
     }
-    const ref = this.dialog.open(DisableDialog, {
+    const ref = this.dialog.open<DisableDialog, DisableDialogData, UserDetails>(DisableDialog, {
       width: '480px',
       data: {
         name: this.name(user),

@@ -41,6 +41,12 @@ module.exports = defineConfig([
     },
   },
   {
+    // Type-checked rules for the application code only; tests and their data stay on the rules above.
+    files: ['**/*.ts'],
+    ignores: ['**/*.spec.ts', '**/test-data.ts'],
+    extends: [tseslint.configs.recommendedTypeChecked],
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {
