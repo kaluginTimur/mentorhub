@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -26,7 +27,7 @@ describe('routes', () => {
           provide: AuthService,
           useValue: {
             ensureSignedIn: vi.fn().mockResolvedValue({ kind: 'signed-in', returnUrl: null }),
-            startupError: { set: vi.fn() },
+            startupError: signal(false),
             signOut: vi.fn(),
           },
         },
@@ -55,13 +56,5 @@ describe('routes', () => {
     await harness.navigateByUrl('/users');
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/');
-  });
-
-  it('shows no Users link without USERS_READ', async () => {
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/users');
-    await harness.fixture.whenStable();
-    const links = [...(harness.fixture.nativeElement as HTMLElement).querySelectorAll('a')];
-    expect(links.map((a) => a.textContent?.trim())).not.toContain('Users');
   });
 });

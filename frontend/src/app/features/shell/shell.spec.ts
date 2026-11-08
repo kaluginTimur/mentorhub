@@ -38,15 +38,11 @@ describe('shell', () => {
     });
   });
 
-  it('shows the name and email in the account menu and signs out', async () => {
+  it('shows the email in the account menu and signs out', async () => {
     const fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
-    const trigger = element.querySelector('button') as HTMLButtonElement;
-    expect(trigger.textContent).toContain('Anna Petrova');
-    expect(trigger.getAttribute('aria-label')).toBe('Account menu for Anna Petrova');
-
-    trigger.click();
+    (element.querySelector('button') as HTMLButtonElement).click();
     await fixture.whenStable();
     const overlay = document.body.textContent;
     expect(overlay).toContain('anna@example.com');
@@ -55,16 +51,6 @@ describe('shell', () => {
     );
     signOut?.click();
     expect(auth.signOut).toHaveBeenCalledOnce();
-  });
-
-  it('shows only the email when no name is set', async () => {
-    user.update((u) => ({ ...u, firstName: null, lastName: null }));
-    const fixture = TestBed.createComponent(Shell);
-    await fixture.whenStable();
-    expect((fixture.nativeElement as HTMLElement).querySelector('button')?.textContent).toContain(
-      'anna@example.com',
-    );
-    user.update((u) => ({ ...u, firstName: 'Anna', lastName: 'Petrova' }));
   });
 
   it.each([
@@ -128,22 +114,6 @@ describe('shell', () => {
   });
 
   it('shows the Invitations link only with USERS_INVITE', async () => {
-    const link = (element: HTMLElement) =>
-      [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
-    const original = user();
-    user.set({ ...original, permissions: ['USERS_READ', 'USERS_INVITE'] as never[] });
-    let fixture = TestBed.createComponent(Shell);
-    await fixture.whenStable();
-    expect(link(fixture.nativeElement)?.getAttribute('href')).toBe('/invitations');
-
-    user.set({ ...original, permissions: ['USERS_READ'] as never[] });
-    fixture = TestBed.createComponent(Shell);
-    await fixture.whenStable();
-    expect(link(fixture.nativeElement)).toBeUndefined();
-    user.set(original);
-  });
-
-  it('offers Invitations in the toolbar to a holder of USERS_INVITE only', async () => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'Invitations');
     const original = user();

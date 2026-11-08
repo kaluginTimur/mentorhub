@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -28,7 +28,7 @@ describe('InvitePage', () => {
     accountIdentity: vi.fn(),
     signIn: vi.fn(),
     signOut: vi.fn(),
-    startupError: { set: vi.fn() },
+    startupError: signal(false),
   };
   const currentUser = { me: { set: vi.fn() } };
   const accessChannel = { notifyChanged: vi.fn() };
@@ -36,6 +36,7 @@ describe('InvitePage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.startupError.set(false);
     sessionStorage.clear();
     api.invoke.mockImplementation(async (fn) => {
       if (fn === previewInvitation) return PREVIEW;
@@ -145,7 +146,7 @@ describe('InvitePage', () => {
     auth.signIn.mockResolvedValue(false);
     const { element } = await open();
     button(element, 'Sign in')?.click();
-    await vi.waitFor(() => expect(auth.startupError.set).toHaveBeenCalledWith(true));
+    await vi.waitFor(() => expect(auth.startupError()).toBe(true));
     expect(session.autoAccept()).toBe(false);
   });
 
