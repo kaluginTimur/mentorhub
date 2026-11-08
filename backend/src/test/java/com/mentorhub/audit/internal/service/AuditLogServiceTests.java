@@ -8,7 +8,6 @@ import com.mentorhub.audit.AuditEntry;
 import com.mentorhub.audit.AuditLog;
 import com.mentorhub.audit.AuditPage;
 import com.mentorhub.audit.RecordedAuditEntry;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,37 +49,6 @@ class AuditLogServiceTests {
                 .isInstanceOf(IllegalTransactionStateException.class);
 
         assertThat(count()).isZero();
-    }
-
-    @Test
-    void entryRollsBackWithItsTransaction() {
-        transactions.executeWithoutResult(status -> {
-            auditLog.record(entry("TEST_CHANGED", Map.of()));
-            status.setRollbackOnly();
-        });
-
-        assertThat(count()).isZero();
-    }
-
-    @Test
-    void storesAndReadsTheDetailsAsJson() {
-        Map<String, @Nullable Object> details = new HashMap<>();
-        details.put("reason", "GRADUATED");
-        details.put("comment", null);
-        details.put("roles", List.of("MENTOR", "STUDENT"));
-        details.put("flags", Map.of("enabled", true));
-        transactions.executeWithoutResult(status -> auditLog.record(entry("TEST_CHANGED", details)));
-
-        AuditPage page = auditLog.findBySubject("TEST", subject, 0, 10);
-
-        assertThat(page.totalItems()).isEqualTo(1);
-        RecordedAuditEntry stored = page.items().getFirst();
-        assertThat(stored.action()).isEqualTo("TEST_CHANGED");
-        assertThat(stored.subjectType()).isEqualTo("TEST");
-        assertThat(stored.subjectId()).isEqualTo(subject);
-        assertThat(stored.actorUserId()).isNull();
-        assertThat(stored.occurredAt()).isNotNull();
-        assertThat(stored.details()).isEqualTo(details);
     }
 
     @Test

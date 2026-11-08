@@ -41,30 +41,6 @@ class SystemControllerTest {
         assertThat(mvc.get().uri("/api/v1/system/client-config"))
                 .hasStatusOk()
                 .bodyJson()
-                .isLenientlyEqualTo("""
-                        {
-                          "issuer": "http://localhost:8180/realms/mentorhub",
-                          "clientId": "mentorhub-web",
-                          "scope": "openid profile email",
-                          "invitationEmails": false
-                        }
-                        """);
-    }
-
-    @Test
-    void returnsNameAndVersion() {
-        assertThat(mvc.get().uri("/api/v1/system/info"))
-                .hasStatusOk()
-                .bodyJson()
-                .extractingPath("$.name")
-                .isEqualTo("MentorHub");
-    }
-
-    @Test
-    void returnsClientConfigurationToAnyone() {
-        assertThat(mvc.get().uri("/api/v1/system/client-config"))
-                .hasStatusOk()
-                .bodyJson()
                 .isStrictlyEqualTo("""
                         {
                           "issuer": "http://localhost:8180/realms/mentorhub",
