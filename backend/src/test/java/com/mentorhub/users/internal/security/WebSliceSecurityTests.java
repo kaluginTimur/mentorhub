@@ -86,7 +86,7 @@ class WebSliceSecurityTests {
     }
 
     @Test
-    @DisplayName("PERM-3.2 A caller without the permission is refused")
+    @DisplayName("PERM-3.1 A caller without the permission is refused")
     void callerWithoutThePermissionIsRefusedAndNothingChanges() {
         MvcTestResult result = change(UUID.randomUUID(), Permission.USERS_READ, Permission.USERS_INVITE);
 

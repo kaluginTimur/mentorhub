@@ -91,7 +91,7 @@ describe('accessGuard', () => {
     },
   );
 
-  it('IDN-10.3 shows the screen for the new state on the next navigation', async () => {
+  it('IDN-10.2 shows the screen for the new state on the next navigation', async () => {
     currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
     expect(await run('full')).toBe(true);
     currentUser.load.mockResolvedValue({ status: 'DISABLED' });

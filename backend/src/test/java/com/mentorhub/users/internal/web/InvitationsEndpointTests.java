@@ -250,7 +250,7 @@ class InvitationsEndpointTests {
     }
 
     @Test
-    @DisplayName("INV-11.4 The next request of the new user passes the gate")
+    @DisplayName("INV-11.3 The next request of the new user passes the gate")
     void theNextRequestOfTheNewUserPassesTheGate() {
         InvitationRef invitation = create(INVITED_EMAIL, "[\"MENTOR\"]");
 

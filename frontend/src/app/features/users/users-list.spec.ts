@@ -166,7 +166,7 @@ describe('UsersList', () => {
     expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(2);
   });
 
-  it('PLT-9.3 shows the unavailable card and retries', async () => {
+  it('PLT-9.1 shows the unavailable card and retries', async () => {
     api.invoke.mockRejectedValueOnce(new Error('down'));
     const { harness, element } = await open();
     expect(element.querySelector('[role=alert]')?.textContent).toContain(
@@ -179,7 +179,7 @@ describe('UsersList', () => {
     expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
   });
 
-  it('PLT-9.4 says the page is past the last one and lets the user move to another page', async () => {
+  it('PLT-9.2 says the page is past the last one and lets the user move to another page', async () => {
     api.invoke.mockResolvedValue(page([], 30));
     const { harness, element } = await open('/users?page=5');
     expect(element.textContent).toContain('No users on this page.');
@@ -255,7 +255,7 @@ describe('UsersList', () => {
     expect(TestBed.inject(Router).url).toBe('/users');
   });
 
-  it('PLT-9.5 sends the user home when the API refuses the list with 403', async () => {
+  it('PLT-9.3 sends the user home when the API refuses the list with 403', async () => {
     api.invoke.mockRejectedValue(
       new HttpErrorResponse({ status: 403, error: { type: 'urn:mentorhub:problem:forbidden' } }),
     );

@@ -266,7 +266,7 @@ describe('UserPage', () => {
       expect(overlay().querySelector('textarea')?.getAttribute('aria-invalid')).toBe('true');
     });
 
-    it('USR-17.2 shows the 409 message in a snackbar and keeps the dialog open', async () => {
+    it('USR-17.1 shows the 409 message in a snackbar and keeps the dialog open', async () => {
       responses.set(disableUser, () => {
         throw problem(409, 'urn:mentorhub:problem:last-admin');
       });
@@ -371,7 +371,7 @@ describe('UserPage', () => {
       expect((buttonByText(element, 'Save') as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('USR-17.2 shows a 409 in a snackbar and keeps the selection', async () => {
+    it('USR-17.1 shows a 409 in a snackbar and keeps the selection', async () => {
       responses.set(setUserRoles, () => {
         throw problem(409, 'urn:mentorhub:problem:self-lockout');
       });

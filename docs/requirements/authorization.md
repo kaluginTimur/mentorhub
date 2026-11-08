@@ -26,7 +26,7 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 
 The capability that owns an action says which permission it needs.
 
-#### PERM-1.3 A role holds exactly the permissions in the table
+#### PERM-1.1 A role holds exactly the permissions in the table
 
 - GIVEN an active user with one role
 - WHEN the user's permissions are read
@@ -58,20 +58,20 @@ The system SHALL give a user the union of the permissions of all their roles. A 
 
 The system SHALL decide access by the permissions the caller holds now, never by a role name. They are read on every request, so a change of roles applies to the next request with the same token.
 
-#### PERM-3.2 A caller without the permission is refused
+#### PERM-3.1 A caller without the permission is refused
 
 - GIVEN an active user who does not hold the permission an operation needs
 - WHEN the user calls the operation
 - THEN the response is 403 `forbidden`
 - AND nothing is changed
 
-#### PERM-3.3 Removing a role takes effect on the next request
+#### PERM-3.2 Removing a role takes effect on the next request
 
 - GIVEN an administrator who has just lost the administrator role
 - WHEN they call an operation that needs `USERS_READ` with the same token as before
 - THEN the response is 403 `forbidden`
 
-#### PERM-3.4 Adding a role takes effect on the next request
+#### PERM-3.3 Adding a role takes effect on the next request
 
 - GIVEN an active user without roles who has just been given the administrator role
 - WHEN they call an operation that needs `USERS_READ` with the same token as before
@@ -125,7 +125,7 @@ The system SHALL check the permission before looking up any resource, so a calle
 
 The client SHALL offer actions, links and pages by the permissions of the current user, never by role names, and SHALL explain a refusal. The server enforces every rule regardless (PERM-3).
 
-#### PERM-7.3 A refusal is explained
+#### PERM-7.1 A refusal is explained
 
 - GIVEN a user who still sees an action that their permissions no longer allow
 - WHEN the server refuses the action with 403 `forbidden`

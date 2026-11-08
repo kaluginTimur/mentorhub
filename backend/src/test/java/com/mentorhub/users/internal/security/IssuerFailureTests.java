@@ -37,7 +37,7 @@ class IssuerFailureTests {
     JsonMapper jsonMapper;
 
     @Test
-    @DisplayName("PLT-1.3 A failure before the operation is reached is also a problem document")
+    @DisplayName("PLT-1.2 A failure before the operation is reached is also a problem document")
     void unavailableIssuerKeysAnswerAProblemWithoutInternals() throws Exception {
         HttpResponse<String> response = getMe(TestIssuer.UNREACHABLE_ISSUER);
 

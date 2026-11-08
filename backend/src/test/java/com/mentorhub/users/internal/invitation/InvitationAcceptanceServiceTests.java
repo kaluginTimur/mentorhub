@@ -237,7 +237,7 @@ class InvitationAcceptanceServiceTests {
         }
 
         @Test
-        @DisplayName("INV-11.5 An unknown stored role is skipped")
+        @DisplayName("INV-11.4 An unknown stored role is skipped")
         void skipsStoredRolesTheCodeDoesNotKnow() {
             Invited invited = invite("ivan@x.test", Role.MENTOR);
             data.addStoredRole(invited.details().id(), "AUDITOR");

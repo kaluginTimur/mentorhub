@@ -238,13 +238,13 @@ The system SHALL let a signed-in caller of any access status (IDN-3) accept an i
 - WHEN an identity with the verified email `anna@example.com` accepts it
 - THEN the invitation is accepted
 
-#### INV-11.4 The next request of the new user passes the gate
+#### INV-11.3 The next request of the new user passes the gate
 
 - GIVEN an identity that has just accepted an invitation
 - WHEN the identity sends its next request with the same token
 - THEN the request passes the gate (IDN-3)
 
-#### INV-11.5 An unknown stored role is skipped
+#### INV-11.4 An unknown stored role is skipped
 
 - GIVEN a pending invitation with a stored role that the application does not know and the student role
 - WHEN an identity with the invited verified email accepts it
@@ -380,19 +380,19 @@ The client SHALL ask for a confirmation before revoking an invitation or giving 
 
 The client SHALL let a holder of `USERS_INVITE` invite a person in a dialog with the email and the roles, then show the link view with the link, the invited email and the expiry. It SHALL report a person who has access or an invitation, and keep what was entered after a failure.
 
-#### INV-19.2 A person with access is reported
+#### INV-19.1 A person with access is reported
 
 - GIVEN the API answers 409 `user-active`
 - WHEN the user submits the dialog
 - THEN the dialog says that the person already has access, with a link to the page of the user
 
-#### INV-19.3 An existing invitation is reported
+#### INV-19.2 An existing invitation is reported
 
 - GIVEN the API answers 409 `invitation-exists`
 - WHEN the user submits the dialog
 - THEN the dialog says that there is already an invitation for the email, with a link to the invitations page filtered by that email
 
-#### INV-19.4 The entered values are kept after a conflict
+#### INV-19.3 The entered values are kept after a conflict
 
 - GIVEN the API answers 409 `user-active`
 - WHEN the user submits the dialog
@@ -409,37 +409,37 @@ The client SHALL serve a link to anyone without sign-in, check it first, accept 
 - THEN the page says that the link is invalid or has expired and to ask for a new one
 - AND it offers no sign-in
 
-#### INV-20.3 A mismatch of emails is explained
+#### INV-20.2 A mismatch of emails is explained
 
 - GIVEN a signed-in visitor on the page
 - WHEN the acceptance answers 409 `invitation-email-mismatch` with different emails
 - THEN the page shows both emails and offers another account
 
-#### INV-20.4 The address carries no token
+#### INV-20.3 The address carries no token
 
 - GIVEN a visitor who opens a link with a token
 - WHEN the page loads
 - THEN the address of the page is the landing address without the token, and the page still works with the link
 
-#### INV-20.5 An unverified email is explained
+#### INV-20.4 An unverified email is explained
 
 - GIVEN a signed-in visitor whose account email equals the invited one ignoring case
 - WHEN the acceptance answers 409 `invitation-email-mismatch`
 - THEN the page says to verify the email first
 
-#### INV-20.6 An account of another user is explained
+#### INV-20.5 An account of another user is explained
 
 - GIVEN a signed-in visitor on the page
 - WHEN the acceptance answers 409 `identity-linked-elsewhere`
 - THEN the page says that the account belongs to another MentorHub user and to contact the person who invited
 
-#### INV-20.7 The sign-in request carries no token
+#### INV-20.6 The sign-in request carries no token
 
 - GIVEN a visitor who opened a link with a token
 - WHEN the visitor chooses to sign in or to create an account
 - THEN neither the redirect address nor the sign-in state contains the token
 
-#### INV-20.8 Signing out of an account of another user forgets the link
+#### INV-20.7 Signing out of an account of another user forgets the link
 
 - GIVEN the page says that the account belongs to another MentorHub user
 - WHEN the visitor signs out

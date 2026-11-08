@@ -27,7 +27,7 @@ The system SHALL require `USERS_READ` to read users and their history and `USERS
 
 The system SHALL list users as a page (PLT-3) for a caller with `USERS_READ`, filtered by text, status and role. Only roles the running version knows are listed (decision 0004); the role filter `NONE` finds users without any.
 
-#### USR-2.4 NONE finds users without a known role
+#### USR-2.1 NONE finds users without a known role
 
 - GIVEN a user with no role, a user whose only stored role the running version does not know, and a user with a known role and an unknown one
 - WHEN an administrator lists users with the role filter `NONE`
@@ -87,7 +87,7 @@ The system SHALL let a caller with `USERS_MANAGE` enable a disabled user, cleari
 
 ### USR-6 Roles of a user
 
-The system SHALL let a caller with `USERS_MANAGE` replace a user's roles with exactly the requested set, leaving a stored role the running version does not know untouched (decision 0004). Roles of a disabled user can be changed. The change applies on the user's next request (PERM-3.3) and is audited, unless nothing changes (AUD-7, AUD-4.2).
+The system SHALL let a caller with `USERS_MANAGE` replace a user's roles with exactly the requested set, leaving a stored role the running version does not know untouched (decision 0004). Roles of a disabled user can be changed. The change applies on the user's next request (PERM-3.2) and is audited, unless nothing changes (AUD-7, AUD-4.2).
 
 #### USR-6.1 The roles become exactly the requested set
 
@@ -178,14 +178,14 @@ The system SHALL let every active user change their own first name, last name an
 
 The system SHALL return, for a caller with `USERS_READ`, the audit entries about a user (AUD-7, AUD-6), newest first and a page at a time (PLT-3), with the actor (none for the system) and what changed.
 
-#### USR-10.3 An acceptance entry names the administrator who invited
+#### USR-10.1 An acceptance entry names the administrator who invited
 
 - GIVEN a user who accepted an invitation from an administrator
 - WHEN an administrator reads the history of the user
 - THEN the entry has the user as the actor, whether the user was created and enabled, and the roles added and removed
 - AND it gives the administrator who created the invitation
 
-#### USR-10.4 An acceptance entry is shown when the inviter cannot be resolved
+#### USR-10.2 An acceptance entry is shown when the inviter cannot be resolved
 
 - GIVEN a user who accepted an invitation whose inviting administrator cannot be resolved
 - WHEN an administrator reads the history of the user
@@ -219,7 +219,7 @@ The client SHALL let a caller with `USERS_MANAGE` choose a user's roles and save
 
 The client SHALL disable on an administrator's own page what would lock them out, and explain a 409 `self-lockout` or `last-admin` refusal without losing the form.
 
-#### USR-17.2 A lockout conflict is explained and keeps the form
+#### USR-17.1 A lockout conflict is explained and keeps the form
 
 - GIVEN the server refuses a change with 409 `self-lockout` or `last-admin`
 - WHEN the client receives it, from the disable dialog or the roles save
