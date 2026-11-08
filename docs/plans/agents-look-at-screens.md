@@ -61,9 +61,9 @@ None: there are no scenarios. The change is checked by a trial run on a real scr
 |---|---|---|---|
 | T1 Tooling: `playwright-cli` devDependency, `.gitignore`, `README.md` setup tried locally, `session-start.sh`, allow rules for the commands | none | `frontend-dev` | done |
 | T2 The `manual-tester` definition, `docs/process.md` Roles and stage 5, `/feature`, `.claude/README.md`; docs verification green. **Checkpoint:** the owner reads the diff of T1 and T2 | none | `frontend-dev` | done |
-| T3 Trial run, local: after a restart, `manual-tester` on Users and Invitations, personas `admin@` and `mentor@`, reaching the list's own error state; the owner reads the report and the screenshots | none | coordinator, `manual-tester` | pending |
+| T3 Trial run, local: `manual-tester` on Users and Invitations, personas `admin@` and `mentor@`, reaching the list's own error state; the owner reads the report and the screenshots | none | coordinator, `manual-tester` | done |
 | T4 Trial run, cloud: the same brief in a cloud session; settles whether the pre-installed browser fits | none | coordinator, `manual-tester` | pending |
-| T5 Fixes from the trial runs to the definition or the setup, if any | none | `frontend-dev` | pending |
+| T5 Fixes from the trial runs to the definition or the setup, if any | none | `frontend-dev` | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -89,24 +89,28 @@ None: there are no scenarios.
 - 2026-11-09: No `Bash(kill *)` allow rule: stopping the stack the agent started goes through the permission mode ("да, убирай kill"). `@playwright/cli` with its alpha Playwright accepted (not objected to).
 - 2026-11-09: Both folders stay: `.screens/` for the report's screenshots, `.playwright-cli/` as the tool's git-ignored scratch ("да, оставляем обе").
 - 2026-11-09: If stopping the stack is denied, `manual-tester` does not work around it and reports the running stack with the PIDs and the command for the owner. T1 and T2 accepted and committed with the plan ("передавай правку и коммить").
+- 2026-11-09: T3 accepted; friction items 1–5 go to T5, 6 and 7 stay; product findings 1–3 became GitHub issues #26 (paginator range past the last page), #27 (Invitations Invited column squeezed), #28 (Users column widths shift) ("согласен, запускай T5 и заведи issues по 1, 2, 3").
+- 2026-11-09: The other T3 findings stay as they are: no status chip, the paginator over old rows during a slow search, the sample row "Emma Brooks". T5 accepted, committed and the branch pushed for T4 ("chip не нужен, остальное оставляем, коммить и пушь").
 - From the exploration (roadmap product decisions): `playwright-cli`; the stack rule; screenshots in a git-ignored folder opened in the IDE; a screen's own error state is reached with the failure switch on an open screen; Chromium needs system packages in WSL; the `/feature` phrase is fixed.
 
 ## Handover
 
-- Waiting for: nothing; next is T3.
+- Waiting for: the owner to run T4 in a cloud session.
 - To read: this plan.
+- T5 (committed): `.claude/agents/manual-tester.md` gains: snapshots written with `--filename` into the run folder and searched with grep/head, or of one element; role and text locators over refs; `select` for the DEV-3 switch; `screenshot --full-page`; `<run>` from `date +%Y%m%d-%H%M`; wait or snapshot after a `goto` that may redirect. No new allow rule; whether `date` prompts is seen in T4 (add `Bash(date *)` if it does).
+- T3 result (local, run `20261109-0000`, screenshots in `.screens/agents-look-at-screens/20261109-0000/`): stack started and stopped by the agent without prompts, no data changed, all states of both lists reached except the list's first-load error (out of reach by decision); the mentor on `/users/{id}` not confirmed (a redirect read too early, fixed in T5).
 - Documents changed:
   - `docs/roadmap.md`, changed (committed in `d997676`, the commit this branch is built on): the item worked out in `/explore`, its product decisions, and an idea on meaning lost in shortened passages.
-  - `docs/plans/agents-look-at-screens.md`, added: this plan.
-  - `README.md`, changed: Setup gains installing Chromium for `playwright-cli`, the WSL libraries (`--with-deps`, not tried: needs `sudo`) and a check.
-  - `docs/process.md`, changed: a Manual tester row in Roles; stage 5 gains the sentence that the manual tester looks at the changed screens and runs the manual checks before the owner, who chooses what the developer fixes, with one re-check.
-- State: T1 and T2 done and committed with the plan: `frontend/package.json`, lockfile, `.gitignore`, `README.md`, `.claude/hooks/session-start.sh` (cloud path not run), `.claude/settings.json` (five allow rules, no `kill`), `.claude/agents/manual-tester.md` (new), `docs/process.md`, `.claude/skills/feature/SKILL.md`, `.claude/README.md`. Frontend verification PASS (T1); `check-docs` PASS. Untested until T3: whether `setsid` and `kill -- -<PID>` pass the permission mode.
+  - `docs/plans/agents-look-at-screens.md`, added (committed in `82acc80`, changed since): this plan.
+  - `README.md`, changed (committed in `82acc80`): Setup gains installing Chromium for `playwright-cli`, the WSL libraries (`--with-deps`, not tried: needs `sudo`) and a check.
+  - `docs/process.md`, changed (committed in `82acc80`): a Manual tester row in Roles; one sentence in stage 5.
+- State: T1, T2 committed in `82acc80`; T3 done; T5 committed; the branch pushed; T4 pending.
 - Open questions: none.
-- Next: brief `manual-tester` for T3 (the new agent type was picked up in the running session, no restart needed).
-- On remarks: send them to `frontend-dev` (continue it in this session; a fresh one otherwise).
+- Next: T4 needs a cloud session: the owner opens this branch in Claude Code on the web and runs `/feature agents-look-at-screens`; the coordinator there briefs `manual-tester` with the T3 brief (Users and Invitations, `admin@` and `mentor@`, the list's own error state) and checks whether the pre-installed browser fits and `session-start.sh` installs Chromium. Then stage 7 (review) and stage 8.
 
 ## Agents
 
 | Agent | Model | Id | Phase | Context |
 |---|---|---|---|---|
-| frontend-dev | sonnet | ad63877eb745d0cdb | implementation (T1, T2) | 77k |
+| frontend-dev | sonnet | ad63877eb745d0cdb | implementation (T1, T2, T5) | 81k |
+| manual-tester | sonnet | af4b2a9d422ffd344 | implementation (T3) | 74k |

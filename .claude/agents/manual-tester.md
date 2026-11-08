@@ -33,15 +33,17 @@ Run `playwright-cli` from `frontend/` with the long form `~/.nvm/nvm-exec npx pl
 
 ```
 cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> open http://localhost:4200 --browser=chromium
-cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> snapshot
-cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> click|fill|goto|press ...
+cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> snapshot --filename=../.screens/<change>/<run>/snapshot.md
+cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> click|fill|goto|press|select ...
 cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> screenshot --filename=../.screens/<change>/<run>/<screen>-<persona>-<state>.png
 cd <repo>/frontend && ~/.nvm/nvm-exec npx playwright-cli -s=<persona> close
 ```
 
-`--browser=chromium` is needed on every `open`: the default looks for Google Chrome. `<change>` is the plan's name, `<run>` a timestamp such as `20261109-1530` chosen once per run. Sign in through the Keycloak form with the persona's email and `mentorhub`. Close every session when done.
+`--browser=chromium` is needed on every `open`: the default looks for Google Chrome. `<change>` is the plan's name, `<run>` the output of `date +%Y%m%d-%H%M`, taken once per run. Sign in through the Keycloak form with the persona's email and `mentorhub`. Close every session when done.
 
-Read the accessibility snapshot to find elements and see states. Take a screenshot for every screen, persona and state you report on, and read it back with `Read` to judge the look: layout, overflow, alignment, truncated text, empty areas, unreadable contrast, a state that does not match the requirements.
+A snapshot is long (about 400 lines for a 35-row page): write it to a file with `--filename` and search it with `grep` or `head`, or snapshot one element (`snapshot <locator>`), never read it whole. Prefer role and text locators (`role=searchbox`, `text=Clear filters`, `role=button[name=Retry]`) over snapshot refs, which change with every snapshot and navigation. `select <locator> <value>` sets the DEV-3 switch. After a `goto` that may redirect (sign-in, access screens), wait or snapshot again before judging the URL or the screen. Use `screenshot --full-page` for a page longer than the viewport.
+
+Use the snapshot to find elements and see states. Take a screenshot for every screen, persona and state you report on, and read it back with `Read` to judge the look: layout, overflow, alignment, truncated text, empty areas, unreadable contrast, a state that does not match the requirements.
 
 ## Reaching states
 
