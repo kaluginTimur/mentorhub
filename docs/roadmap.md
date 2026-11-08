@@ -20,6 +20,7 @@ In this order:
 1. **Mock mode:** run the frontend without a backend or sign-in, to review screens per role. Needs a decision first.
 2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
 3. **Agents look at screens:** agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised. A browser automation server for the agents (for example Playwright through MCP) is a first guess. Touches the agents and `docs/process.md`, not the product. Required by the owner (user).
+4. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features. Asked for by the owner (user); the interval is Claude's proposal.
 
 ## Later
 

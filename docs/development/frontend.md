@@ -65,6 +65,9 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 
 - Vitest. Replace the `Api` service via `providers` (see `frontend/src/app/features/shell/shell.spec.ts`).
 - Authentication tests replace `OidcSecurityService` (see `frontend/src/app/core/auth/auth.service.spec.ts`) or `AuthService` and `CurrentUserService` (guard, interceptors, components); no test talks to a real identity provider.
+- A shared piece (a pure function, a shared component, a guard factory, a handler several actions use) is tested once, in its own spec or through the one host whose scenario it serves, one test per branch. Other hosts test only that they use it.
+- Assert the result (the route, what is rendered, the request sent), not how often a dependency was called, and never what exists only in a test double. Stub a signal with a signal, so the test reads its state.
+- Extend a test rather than copy it.
 
 ## Pitfalls
 
