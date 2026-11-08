@@ -64,7 +64,7 @@ A doubt the test engineer reports about a requirement goes to the user. If a req
 
 Brief `backend-dev` for the backend tasks and `frontend-dev` for the frontend ones. They may run in parallel, unless the plan orders them.
 
-After each report, list what changed in the test files since the red commit. A changed test that carries an id is a stop: **Tests** in `docs/process.md` says who decides. Do not pass it on as done.
+After each report, list what changed in the test files since the red commit. A changed test that carries an id is a stop: **Tests** in `docs/process.md` says who decides. Do not pass it on as done. Also compare `git diff --stat` with the files the brief named: a file the brief did not name, or one changed far more than its task needs (a skill or a document that lost whole sections), goes back to the agent before you relay the report.
 
 **Stop when the backend is green,** and at any task the plan marks as a checkpoint. The user reviews the diff in their IDE. Relay their answer in their words. On approval, offer to commit only that work plus the plan.
 
