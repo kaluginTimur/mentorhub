@@ -17,10 +17,11 @@ Nothing in progress.
 
 In this order:
 
-1. **Sample center:** done on the branch `feature/sample-center`, not yet merged: a dev configuration of the real stack with personas and restored data, to review screens per role on realistic data. After the workflow rework merges: merge main into the branch (no rebase); in a conflict in the dev lines of **Configuration and profiles** in `docs/development/backend.md`, drop the issuer timeouts and keep nothing else there; move its tests under `system/internal/dev/` to the composed test annotations; verify and open its pull request. Until it merges, a dev database that applied an edited migration fails to start.
-2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
-3. **Agents look at screens:** agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised. A browser automation server for the agents (for example Playwright through MCP) is a first guess. Touches the agents and `docs/process.md`, not the product.
-4. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+1. **Unreadable audit details:** a user's history answers 500 when an entry's details are valid JSON but not an object, though AUD-6.5 says such an entry is left out and the read does not fail. Found by the second test pass of the sample center; the application never writes such details, only direct SQL can. A test of AUD-6.5 with details that are not an object, then the fix.
+2. **Close the gaps in scenario ids:** once, after the sample center merges, renumber the scenarios of `docs/requirements/` so that no gaps remain, with the tests, cross-references and comments that cite them, in one commit. All ids so far were born in the workflow rework and the sample center, so no older references break. Gaps stay allowed afterwards, as `docs/development/docs.md` says.
+3. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
+4. **Agents look at screens:** agents open the running application in a browser, sign in as a persona of the sample center and look at a screen in each of its states, so that `frontend-dev` checks its screens are plausible before the owner looks, and the manual checks of `/feature` have a browser that is set up rather than improvised. A browser automation server for the agents (for example Playwright through MCP) is a first guess. Touches the agents and `docs/process.md`, not the product.
+5. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
 
 ## Later
 
@@ -37,6 +38,8 @@ No commitment and no order.
 - Corporate SSO auto-provisioning, with role mapping through Keycloak identity provider mappers. An exception to invitation-only registration; needs its own decision.
 - Roles as data, editable in the UI (deferred in decision 0004).
 - A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0005).
+- End-to-end tests of scenarios on the real stack, with their own data rather than the sample center's.
+- Every `dev` start now cleans the dev database, so a `dev` run no longer freezes a migration: reword that statement in `docs/development/backend.md` (How to run) and relax the hooks in `.claude/hooks/` that rely on it.
 
 ## Product decisions
 

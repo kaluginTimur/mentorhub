@@ -1,19 +1,22 @@
+import { NgComponentOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
 import { stripCallbackParams } from './core/auth/api-urls';
+import { DEV_TOOL } from './core/dev/dev-tool';
 import { Loading } from './shared/loading/loading';
 import { Unavailable } from './shared/unavailable/unavailable';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Loading, Unavailable],
+  imports: [NgComponentOutlet, RouterOutlet, Loading, Unavailable],
   templateUrl: './app.html',
   host: { '(window:pageshow)': 'onPageShow($event)' },
 })
 export class App {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  protected readonly devTool = inject(DEV_TOOL, { optional: true });
   private readonly initialNavigationDone = signal(false);
 
   protected readonly startupError = this.auth.startupError;

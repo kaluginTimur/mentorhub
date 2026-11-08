@@ -30,4 +30,4 @@
 
 ## Open items
 
-<Follow-ups, known limitations, open questions, or "none".>
+<Follow-ups, known limitations, open questions of this pull request, or "none". Not roadmap items, even one this change uncovered, unless the pull request changes them.>

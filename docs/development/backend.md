@@ -34,7 +34,17 @@ Java 25, Spring Boot 4.1, Spring Modulith 2.1, PostgreSQL 18, Flyway, Maven (wra
 - Optional infrastructure stays out of `/actuator/health`: `management.health.mail.enabled: false` in `application.yaml` turns off Spring Boot's mail health indicator, so an unreachable mail server never makes the application unhealthy.
 - Email is optional (module `mail`, infrastructure without domain knowledge). It is enabled when `spring.mail.host` is set, and `mentorhub.mail.from` is then required. Without a host `MailDelivery.isEnabled()` is false, and a feature that sends email must work without it (IEM-1). The caller decides what to send and calls `MailDelivery.send` outside database transactions. Never enable `spring.mail.properties.mail.debug`: JavaMailSender then logs whole messages, links with secret tokens included; treat it like the bind-parameter logging warning in Security.
 - `application.yaml` never activates `dev`; only `./mvnw spring-boot:run` (through `backend/pom.xml`) and `TestMentorHubApplication` do.
-- In `dev`, `DevelopmentUserRunner` (`backend/src/main/java/com/mentorhub/users/internal/dev/`) creates or updates the development users of `mentorhub.development-users` on every start: identity link, status (a disabled user with its configured `disabled-reason` and `disabled-comment`) and exactly the configured roles. It writes no audit entries. They match the realm users of `infra/keycloak/mentorhub-realm.json` by fixed ids. Development users are never a Flyway migration.
+
+## Sample center
+
+The sample center is the dev data set: the personas of DEV-1 and a training center, restored on every `dev` start (DEV-2). Tests do not use it; they create their own data.
+
+When a feature adds or changes what a screen shows, it adds its data to the sample center in the same slice (C-3):
+
+- Rows go into the owning module's script in `backend/src/main/resources/db/sample/`; a new module adds its script to `SampleCenter.SAMPLE_DATA`, after the scripts its foreign keys point at.
+- Every id and every token is fixed; the header of the script lists its id ranges. Times are relative to the start (`now() - interval '...'`), times inside JSON too, taken from the row they describe and written as the application writes them.
+- A row points at a user by email, not by id. The audit entries of the feature's actions are rows too, derived with `insert ... select` from the rows they describe.
+- The data shows every state a screen shows differently (each status, each reason, an empty and a filled optional value, a list longer than one page, each kind of history entry), and holds no row the application could not have produced.
 
 ## Errors
 

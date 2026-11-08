@@ -9,6 +9,8 @@ spring:
     open-in-view: false
   flyway:
     locations: classpath:db/migration
+    # Only the dev profile's sample center may clean the database (application-dev.yaml).
+    clean-disabled: true
   # Email is enabled only when spring.mail.host is set; then mentorhub.mail.from is required. The timeouts (ms) keep a
   # hung mail server from holding a sending thread. Never enable mail.debug: it logs whole messages, links included.
   mail:

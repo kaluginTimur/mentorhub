@@ -33,36 +33,50 @@ Every development user has the password `mentorhub`:
 | Email | In MentorHub |
 |---|---|
 | `admin@mentorhub.local` | Active, ADMIN |
+| `coordinator@mentorhub.local` | Active, COORDINATOR |
 | `mentor@mentorhub.local` | Active, MENTOR |
 | `student@mentorhub.local` | Active, STUDENT |
+| `observer@mentorhub.local` | Active, OBSERVER |
+| `admin.mentor@mentorhub.local` | Active, ADMIN and MENTOR |
+| `mentor.coordinator@mentorhub.local` | Active, MENTOR and COORDINATOR |
 | `noroles@mentorhub.local` | Active, no roles ("Your access is being set up") |
-| `disabled@mentorhub.local` | Disabled ("Your access has ended") |
+| `disabled@mentorhub.local` | Disabled, MENTOR ("Your access has ended") |
 | `stranger@mentorhub.local` | Keycloak only, not linked until it accepts an invitation ("Access by invitation only") |
 
-- On every start in the `dev` profile, the backend creates or updates these users in its database, so no manual setup is needed.
+- On every start in the `dev` profile, the backend replaces its whole database with the sample center data, these users included (`docs/requirements/development-mode.md`). Everything changed while it ran is discarded: users, roles, profiles, invitations and the change history. Accounts registered at Keycloak stay there, linked to no user.
 - `admin@mentorhub.local` is also the administrator bootstrap address in `dev` (`docs/requirements/identity.md`).
 - New accounts can be registered at Keycloak ("Register" on the sign-in page). Registration requires email verification: open the verification email in Mailpit. "Forgot password?" also sends its email there.
 
+### The sample center data
+
+Besides the development users, the dev database holds a fictional training center (`backend/src/main/resources/db/sample/`; the header of each script describes it): 26 more users (students, mentors, a coordinator, an observer, users disabled for each reason), invitations in every status with invitation emails in every status, and the change history behind them. The users list and the invitations list have more than one page, and the user page of Daniel Kim has more history than one page. Sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local` to see them; the other development users see what their roles allow.
+
+The sample center has a pending invitation for `stranger@mentorhub.local` with the Mentor role and a fixed link:
+
+http://localhost:4200/invite/sample-center-invitation-token-000000000001
+
+Open it signed out to see the landing page, then sign in as `stranger@mentorhub.local` to accept it. The link works until it is accepted or revoked, or for 6 days after the start (it was created a day before); the next start brings it back.
+
 ### Inviting and accepting locally
 
-1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant. "Send the invitation by email" is checked by default: the email arrives in Mailpit. You can also copy the link from the "Invitation link" dialog, copy it again later with "Copy link", or send it again with "Send email" in the invitations list while it is pending.
+1. Sign in as `admin@mentorhub.local`, open "Users" and choose "Invite" (or open "Invitations"). Enter the email and the roles to grant. To invite `stranger@mentorhub.local` yourself, revoke the sample invitation for it in "Invitations" first: an open invitation blocks another one for the same email. "Send the invitation by email" is checked by default: the email arrives in Mailpit. You can also copy the link from the "Invitation link" dialog, copy it again later with "Copy link", or send it again with "Send email" in the invitations list while it is pending.
 2. Sign out, open the link and sign in with the invited email, or choose "Create an account" and verify the email through Mailpit. Accepting needs an email that Keycloak has verified; `stranger@mentorhub.local` is already verified.
 3. After accepting, you land on the home page with the invited roles; the user's page shows the acceptance in its history.
 
-Once `stranger@mentorhub.local` has accepted, it stays linked to its user until the dev database is reset; restarting the backend does not unlink it. Resetting the dev database means deleting the `postgres-data` volume, which deletes all local data, not only this user.
+Once `stranger@mentorhub.local` has accepted, it stays linked to its user until the backend is started again; the next start unlinks it, so it can accept again.
 
 ### User administration walkthrough
 
-1. Sign in as `admin@mentorhub.local`. The toolbar shows "Users"; other development users do not see it.
+1. Sign in as `admin@mentorhub.local`. The toolbar shows "Users"; development users without ADMIN do not see it.
 2. "Users" (`/users`) lists all users, with search by name or email and filters by status and role.
 3. Open a user (`/users/{id}`) to edit the profile, disable or enable the user (disabling asks for a reason), change roles, and read the change history. Your own page does not let you disable yourself or remove your own Administrator role.
 4. "Profile" in the account menu (`/profile`) edits your own name and phone; every active user with roles has it.
 
-The backend restores the development users on its next start: a development user disabled locally is enabled again, with its disable reason and comment cleared, and gets back exactly its configured roles (`DevelopmentUserRunner`). Profile changes and the change history stay.
+The next start of the backend brings back the sample center data: every development user gets back its status and exactly its roles in the table above, and profile changes and the change history made while it ran are gone.
 
 ### Profiles
 
-- The `dev` profile is activated only by `./mvnw spring-boot:run` and by `TestMentorHubApplication`. It trusts the local Keycloak, creates the development users and serves Swagger UI, the API docs and the actuator `info` and `modulith` endpoints.
+- The `dev` profile is activated only by `./mvnw spring-boot:run` and by `TestMentorHubApplication`. It trusts the local Keycloak, replaces the database with the sample center data on every start and serves Swagger UI, the API docs and the actuator `info` and `modulith` endpoints.
 - Without `dev` (production), only health is served, and the application refuses to start until the trusted issuers (`mentorhub.security.trusted-issuers`), the client configuration (`mentorhub.security.client.*`) and the frontend URL for invitation links (`mentorhub.app-url`) are set.
 - `TestMentorHubApplication` (in `backend/src/test`) runs `dev` with a throwaway Postgres from Testcontainers and does not start Keycloak. To sign in, start Keycloak first: `docker compose -f infra/compose.yaml up -d keycloak`.
 
@@ -74,7 +88,9 @@ Keycloak imports the realm only when it does not exist yet, so a changed `infra/
 docker compose -f infra/compose.yaml up -d --force-recreate keycloak
 ```
 
-This deletes Keycloak's own data, which lives inside the container: accounts registered locally, sessions and changes made in the admin console. The development users come back from the realm file. The dev database is not touched.
+This deletes Keycloak's own data, which lives inside the container: accounts registered locally, sessions and changes made in the admin console. The development users' accounts come back from the realm file. The dev database is not touched.
+
+A Keycloak container created before an account was added to the realm file lacks that account: recreate it once after pulling such a change (the sample center added `coordinator@`, `observer@`, `admin.mentor@` and `mentor.coordinator@mentorhub.local`).
 
 Do not use `docker compose down -v` for this: it also deletes the `postgres-data` volume, which holds the dev database.
 

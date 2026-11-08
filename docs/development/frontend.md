@@ -110,7 +110,3 @@ The `api-lookup` subagent follows this section. Implementation agents ask it and
 - Exports: the package's `.d.ts` files (see `types` / `exports` in its `package.json`).
 - The generated client: `frontend/src/app/core/api/` (run `npm run generate:api` if it is missing).
 - The Angular CLI MCP server (`.mcp.json`) offers best practices, documentation search and examples for the installed Angular version. It starts with the default Node, so the default must satisfy `.nvmrc` (`nvm alias default 24`).
-
-## Mock mode
-
-Not implemented yet. A dev-server mode that serves data generated from `api/openapi.yaml`, so screens can be reviewed before the backend exists, needs a decision first.

@@ -13,3 +13,4 @@ The prefix of a capability is the stable key of its ids. The order below is logi
 | [User administration](user-administration.md) | USR | Viewing and changing users, their profiles and roles |
 | [Invitations](invitations.md) | INV | Inviting a person, invitation links, accepting an invitation |
 | [Invitation emails](invitation-emails.md) | IEM | Sending invitations by email and tracking their delivery |
+| [Development mode](development-mode.md) | DEV | What a local development run does: personas, the sample center data restored on every start, simulated failures |
