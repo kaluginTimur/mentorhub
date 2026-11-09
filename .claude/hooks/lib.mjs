@@ -39,6 +39,31 @@ export const MIGRATION_IN_MAIN_REASON =
   'a database outside the repository may have applied it, and Flyway validates checksums. ' +
   'Add a new migration V<next>__<description>.sql instead, or edit the migration of this change if it has one.';
 
+// A detached HEAD (a rebase or a bisect in progress) is no branch, so it is not the default one.
+export function onDefaultBranch(root) {
+  const branch = run('git', ['-C', root, 'symbolic-ref', '--short', '-q', 'HEAD']);
+  return branch !== null && branch.trim() === 'main';
+}
+
+// Whether the checkout at root belongs to the project of this session: its own folder or one of its worktrees.
+// Another repository on the machine has its own rules about its default branch.
+export function isThisProject(root) {
+  const project = process.env.CLAUDE_PROJECT_DIR;
+  if (!project) return true;
+  const commonDir = (dir) => run('git', ['-C', dir, 'rev-parse', '--path-format=absolute', '--git-common-dir'])?.trim();
+  const mine = commonDir(project);
+  return !mine || commonDir(root) === mine;
+}
+
+export function isCommitted(root, rel) {
+  return run('git', ['-C', root, 'cat-file', '-e', `HEAD:${rel}`]) !== null;
+}
+
+export const DEFAULT_BRANCH_REASON =
+  'Nothing is changed on the default branch: every change starts with Choosing a path in docs/process.md ' +
+  '(the /change skill), where the owner confirms the goal, the approach and the path, and the change gets its branch. ' +
+  'Run that step first; do not just create a branch to get past this.';
+
 export function deny(reason) {
   process.stdout.write(
     JSON.stringify({

@@ -14,9 +14,17 @@
 
 <`trace` result, and each manual scenario with its steps. For a change without new scenarios, how the fix was verified.>
 
+## The owner's decisions
+
+<Each decision of the user about this change, in their words, from the plan or the brief, or what they confirmed at the path gate when the change had neither. "none" only when there were none.>
+
+## Guide passages
+
+<Each passage this change added to a guide or widened, with its answers to the four questions of the **Guides** section of `docs/README.md` and the user's agreement, or "none".>
+
 ## Details chosen by agents
 
-<The list of details the user accepted, or "none". Omit for a maintenance change.>
+<The list of details the user accepted, or "none". Omit for a change outside the requirements.>
 
 ## Verification
 

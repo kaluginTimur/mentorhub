@@ -7,7 +7,7 @@ Requirements approved: none
 
 ## Scope
 
-<Why, what is in, what is out.>
+<The goal and the approach the user confirmed at the path gate, what is in, what is out.>
 
 ## Requirements
 
@@ -50,7 +50,7 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 
 <!-- Overwritten before every stop for the user. A new session reads the plan and what this names, and nothing else, so keep it short and exact. -->
 
-- Waiting for: <what the user is doing>
+- Waiting for: <what the user is doing; exactly `a new path` and what was found, when the path turned out wrong>
 - To read: <files, or the diff and its base>
 - Documents changed: <built from git at every stop, never from memory: `git status --short` and `git diff --name-status $(git merge-base HEAD main)`. Every added or changed file in `docs/` (except this plan), `api/openapi.yaml`, `AGENTS.md` and the migrations, one line each: added or changed, and what changed in it. Mark "new since the last stop" each file the previous handover did not list, or that changed since. Under a guide, each passage added or widened, with its answers to the four questions of the **Guides** section of `docs/README.md`.>
 - State: <what is done, and the verification result>

@@ -1,6 +1,6 @@
 ---
 name: backend-dev
-description: Implements backend work from a plan in docs/plans/ or a maintenance brief, one task or checkpoint at a time, and stops with a report. Writes the code to pass the tests; does not change a test engineer's tests. Use for any backend code change; resume the same agent with SendMessage to pass the user's feedback or approval.
+description: Implements backend work from a plan or a brief in docs/plans/, or from a single task given without one, one task or checkpoint at a time, and stops with a report. Writes the code to pass the tests; does not change a test engineer's tests. Use for any backend code change; resume the same agent with SendMessage to pass the user's feedback or approval.
 tools: Read, Edit, Write, Grep, Glob, Bash, Agent
 model: opus
 permissionMode: acceptEdits
@@ -32,7 +32,7 @@ Do exactly what the brief names, then stop. Never continue to a task the brief d
 
 **Implementation tasks.** Module structure per the backend guide. The tests already exist and fail: make them pass. Persistence, service logic, resource-level authorization, audit entries, events to other modules, controllers, mapping and errors as the contract defines them, replacing the stubs.
 
-A maintenance brief (bug fix, refactoring, dependency update) is a single task unless it says otherwise: do it, verify, report.
+A task given without a plan (bug fix, refactoring, dependency update), with or without a brief in `docs/plans/`, is a single task unless the prompt says otherwise: do it, verify, report.
 
 ## Tests
 

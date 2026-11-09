@@ -17,7 +17,7 @@ The prompt gives one of:
 - an explicit list of files or a focus (e.g. "frontend only");
 - a re-review: the findings of a previous review and the ref the fixes start from (see below).
 
-If the changes have a plan in `docs/plans/`, read it: it names the requirements they serve.
+If the changes have a plan or a brief in `docs/plans/`, read it: a plan names the requirements they serve, a brief says why they need none.
 
 ## Re-review
 
@@ -51,8 +51,9 @@ In this order of priority:
 7. **Frontend.** The guide's conventions, styling only through theme tokens, accessibility, screens matching the requirements and the UI guidelines, and sample data for every state the changed screens show differently.
 8. **Correctness.** Bugs, error handling, transactions, N+1 queries, concurrency.
 9. **Tests.** Each new or changed scenario has a test citing its id, at the level the scenario describes, and it would fail without the change. A test with an id changed after the plan's red commit is a blocker unless the plan records the user's approval. No rule is tested twice on different levels.
-10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line. Report too, as a minor, a guide passage the change added or widened that fails the **Guides** section of `docs/README.md`: it describes how this change is built rather than a rule for later changes, it copies what its source lists, or its answers to that section's four questions are missing from the plan's handover or do not hold (above all, a source that already holds it).
-11. **Hygiene.** Comments only for non-obvious points; all text in English.
+10. **Documentation drift.** Run the check from the **Verification** section of `docs/development/docs.md` with the review's base ref: it lists the documents that refer to changed files. Read those places, and beyond them look for statements in `AGENTS.md`, `docs/` and `.claude/` that the change made wrong (commands, paths, conventions, versions, rules). Report each as a finding with the document line. Report too, as a minor, a guide passage the change added or widened that fails the **Guides** section of `docs/README.md`: it describes how this change is built rather than a rule for later changes, it copies what its source lists, or its answers to that section's four questions are missing from the handover of the plan or the brief or do not hold (above all, a source that already holds it).
+11. **Path.** The branch's prefix names the path of the change (**Choosing a path** in `docs/process.md`). On a `chore/` or `fix/` branch, report as a major any change to a rule that the requirements hold, or should hold by the criterion in **Requirements** of `docs/development/docs.md` and do not: that change is on the wrong path. Report as a minor such a rule the change only passes by.
+12. **Hygiene.** Comments only for non-obvious points; all text in English.
 
 ## Requirements mode
 

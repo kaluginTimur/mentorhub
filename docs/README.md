@@ -12,7 +12,7 @@ Which document holds what, for people and agents alike. Before writing something
 | `docs/architecture/decisions/` | Cross-cutting, hard-to-reverse choices that had real alternatives, with the reasons and the rejected alternatives | Conventions (guides), implementation details (code) | Architecture |
 | `docs/development/<area>.md` | What anyone changing code in the area needs before opening it: conventions, rules, pitfalls, commands, the verification | How one feature or component is built (comments in its code); behavior (requirements) | How work in the area is done |
 | `docs/ui/guidelines.md` | Page patterns and conventions shared by screens | The behavior of one screen (requirements, or the code) | How screens look and are laid out |
-| `docs/plans/<change>.md` | One change in progress: design, tasks, the owner's decisions, the handover | Anything meant to last: it is deleted before the pull request, after stage 8 of `docs/process.md` moves what lasts | That change, until it merges |
+| `docs/plans/<change>.md` | One change in progress, as a plan or, for a change outside the requirements, a brief: design, tasks, the owner's decisions, the handover | Anything meant to last: it is deleted before the pull request, after stage 8 of `docs/process.md` moves what lasts | That change, until it merges |
 | `docs/explorations/<topic>.md` | The notes of one exploration in progress | Anything meant to last: it is deleted once its roadmap items exist | Nothing |
 | The code, its comments and tests | How the system is built, and every detail no document above describes | | Everything the rows above do not cover |
 | `README.md` | Getting started for a person: setup, running, local accounts, checks | Rules of the project (constitution, guides) | |

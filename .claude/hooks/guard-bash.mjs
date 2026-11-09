@@ -1,5 +1,16 @@
 import path from 'node:path';
-import { MIGRATION_IN_MAIN_REASON, MIGRATION_DIR, deny, isMigrationInMain, readInput, repoRoot, toPosix } from './lib.mjs';
+import {
+  DEFAULT_BRANCH_REASON,
+  MIGRATION_IN_MAIN_REASON,
+  MIGRATION_DIR,
+  deny,
+  isMigrationInMain,
+  isThisProject,
+  onDefaultBranch,
+  readInput,
+  repoRoot,
+  toPosix,
+} from './lib.mjs';
 
 const MANUAL = 'If it is really needed, ask the user to run it manually with the `!` prefix.';
 
@@ -25,6 +36,13 @@ const GIT_DESTRUCTIVE = [
   /\bgit\b.*\bbranch\b.*\s-D\b/,
 ];
 
+// The git subcommand of a segment that runs git: after variable assignments and git's own options, of which only -C and
+// -c take a separate value. A segment that only mentions one (`echo git commit`, a commit message) does not match.
+const gitRuns = (subcommand) => new RegExp(`^(\\w+=\\S+\\s+)*git\\s+((-[Cc]\\s+\\S+|--?[\\w-]+(=\\S+)?)\\s+)*(${subcommand})(\\s|$)`);
+const GIT_COMMIT = gitRuns('commit');
+// A command that changes the branch first commits somewhere the hook cannot see.
+const GIT_CHANGES_BRANCH = gitRuns('checkout|switch');
+
 const MIGRATION_PATH = /[\w./-]*db\/migration\/[\w.-]+\.sql/g;
 const MUTATES_FILE =
   /\bsed\s+(-[a-zA-Z]*i|--in-place)|\bperl\s+-[a-zA-Z]*i|\brm\b|\bmv\b|\bgit\s+(rm|mv)\b|\btruncate\b|\btee\b|>\s*\S*db\/migration\/|\bcp\b[^;&|]*db\/migration\/\S+\.sql\s*($|[;&|])/;
@@ -45,6 +63,11 @@ for (const segment of segments) {
 
 if (SQL_CLIENT.test(command) && DESTRUCTIVE_SQL.test(command)) {
   deny(`Blocked: destructive SQL against a database. ${MANUAL}`);
+}
+
+if (segments.some((s) => GIT_COMMIT.test(s)) && !segments.some((s) => GIT_CHANGES_BRANCH.test(s))) {
+  const root = repoRoot(cwd);
+  if (root && isThisProject(root) && onDefaultBranch(root)) deny(`Blocked: a commit on the default branch. ${DEFAULT_BRANCH_REASON}`);
 }
 
 const migrations = command.match(MIGRATION_PATH) ?? [];

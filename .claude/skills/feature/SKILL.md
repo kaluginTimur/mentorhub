@@ -14,7 +14,7 @@ Take the change `$change` from approved requirements to a verified branch: stage
 
 ## Start
 
-1. Read the plan. If it is not on the current branch, find the branch that has it (`git log --all -1 --format='%h %D' -- docs/plans/$change.md`) and offer to switch. If there is none, stop and suggest `/spec $change`.
+1. Read the plan. If it is not on the current branch, find the branch that has it (`git log --all -1 --format='%h %D' -- docs/plans/$change.md`) and offer to switch. If there is none, stop and suggest `/change`. If the branch is not `feature/$change`, stop and ask: the branch's prefix names the path, and `/change` renames it.
 2. Check the plan's `Requirements approved:` line. If it says `none` (or is missing), ask the user whether they approve the requirements as they stand now, naming the files from the handover. On an explicit yes, write the date and their words into that line and go on. On remarks, stop and suggest `/spec $change`. Requirements stay uncommitted until the red tests, so an edit made after the approval cannot be detected: an approval covers the files as they stand when it is given.
 3. Continue from the handover. Read only what it names. If the plan and git disagree (a task marked done without its changes, changes for a task still pending), show the user the mismatch and ask; never guess. Agents from an earlier session cannot be continued: start fresh ones, briefed from the plan.
 
@@ -59,6 +59,8 @@ Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in 
 Brief `test-engineer` for its first pass. Check its report: every new or changed scenario has a test, and each failed on an assertion, not on compilation. `node scripts/requirements.mjs trace` must pass.
 
 Offer to commit the requirements, the contract, the plan and the tests together, and write the commit into the plan's Red tests. Commit only if the user agrees.
+
+If at any stage the change turns out to be on the wrong path (it changes no requirement after all), stop, write into the handover `Waiting for: a new path` with what you found and what is already made, and go to `/change`.
 
 A doubt the test engineer reports about a requirement goes to the user. If a requirement changes, it needs the user's reading again, for that part only.
 
