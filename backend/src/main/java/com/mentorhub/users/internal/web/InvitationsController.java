@@ -55,7 +55,7 @@ class InvitationsController implements InvitationsApi {
         // Bean validation checks the set, not its items: `[null]` binds to a set containing null, which the service
         // reports together with the email's violations.
         List<com.mentorhub.users.@Nullable Role> roles = invitationCreate.getRoles().stream()
-                .map(role -> role == null ? null : UsersMapper.role(role))
+                .<com.mentorhub.users.@Nullable Role>map(role -> role == null ? null : UsersMapper.role(role))
                 .toList();
         CreatedInvitation created = InvitationsMapper.created(administration.create(
                 invitationCreate.getEmail(), roles, Boolean.TRUE.equals(invitationCreate.getSendEmail())));

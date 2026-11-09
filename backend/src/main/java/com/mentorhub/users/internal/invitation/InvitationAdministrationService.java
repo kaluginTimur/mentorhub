@@ -98,6 +98,8 @@ public class InvitationAdministrationService {
     }
 
     /**
+     * Invites a person by email with the given roles.
+     *
      * @param email trimmed, stored as entered after trimming, compared ignoring case
      * @param roles as requested; a {@code null} item is a violation reported together with the email's
      * @param sendEmail whether to email the link to the invited address
@@ -138,7 +140,11 @@ public class InvitationAdministrationService {
         return new IssuedInvitation(details(load(invitationId)), properties.link(token));
     }
 
-    /** @throws ValidationException for {@code q}, {@code page} or {@code size} */
+    /**
+     * One page of invitations matching the query.
+     *
+     * @throws ValidationException for {@code q}, {@code page} or {@code size}
+     */
     @Transactional(readOnly = true)
     public ResultPage<InvitationDetails> list(InvitationQuery query) {
         List<FieldViolation> errors = new ArrayList<>();
@@ -161,6 +167,8 @@ public class InvitationAdministrationService {
     }
 
     /**
+     * Revokes a pending invitation.
+     *
      * @throws NotFoundException for an unknown id
      * @throws ConflictException {@link InvitationProblems#INVITATION_CLOSED}
      */

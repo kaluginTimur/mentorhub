@@ -24,7 +24,11 @@ public class InvitationAuditTrail {
         this.auditLog = auditLog;
     }
 
-    /** @param roles in enum order */
+    /**
+     * Records the creation of an invitation.
+     *
+     * @param roles in enum order
+     */
     public void created(UUID actorUserId, UUID invitationId, String email, Collection<Role> roles) {
         record(
                 actorUserId,

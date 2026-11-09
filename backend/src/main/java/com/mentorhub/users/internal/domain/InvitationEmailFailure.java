@@ -23,6 +23,8 @@ public record InvitationEmailFailure(String text) {
     }
 
     /**
+     * The failure of a description, with every secret replaced and the text made to fit one line.
+     *
      * @param description what failed, for example a mail exception's message
      * @param secrets values that must not be stored, such as the token; each occurrence is replaced before the text is
      *     shortened, so no part of a secret remains

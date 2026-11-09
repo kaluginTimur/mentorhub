@@ -140,3 +140,7 @@ Check it (the session needs `--browser=chromium`: the default is an installed Go
 ```bash
 cd frontend && npx playwright-cli -s=check open http://example.com --browser=chromium && npx playwright-cli -s=check close
 ```
+
+In IntelliJ IDEA, delegate the build to Maven (Settings → Build, Execution, Deployment → Build Tools → Maven → Runner → "Delegate IDE build/run actions to Maven"). The backend compiles through Error Prone with NullAway, configured for Maven only (`backend/.mvn/jvm.config`); IDEA's own builder fails with "plug-in not found: ErrorProne", and with it every run and debug from the IDE.
+
+Run backend applications and tests from IDEA with the working directory `backend/` (in each run configuration, and in the JUnit configuration template for new ones), as the Maven commands run: `spring.docker.compose.file` is relative to it, and from the repository root startup fails with "'files' content [../infra/compose.yaml] must exist".

@@ -64,7 +64,11 @@ public class InvitationAcceptanceService {
         this.meService = meService;
     }
 
-    /** @throws NotFoundException {@link InvitationProblems#INVITATION_INVALID} unless pending */
+    /**
+     * The invitation of a token, as the invited person sees it before accepting.
+     *
+     * @throws NotFoundException {@link InvitationProblems#INVITATION_INVALID} unless pending
+     */
     @Transactional(readOnly = true)
     public PreviewedInvitation preview(String token) {
         StoredInvitation invitation = InvitationTokens.ifWellFormed(token)

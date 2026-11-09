@@ -12,6 +12,7 @@ import java.util.Map;
 public class ConflictException extends RuntimeException {
 
     private final URI type;
+    private final String detail;
     private final Map<String, Object> extensions;
 
     public ConflictException(URI type, String detail) {
@@ -21,6 +22,7 @@ public class ConflictException extends RuntimeException {
     public ConflictException(URI type, String detail, Map<String, ?> extensions) {
         super(detail);
         this.type = type;
+        this.detail = detail;
         this.extensions = Collections.unmodifiableMap(new LinkedHashMap<>(extensions));
     }
 
@@ -29,7 +31,7 @@ public class ConflictException extends RuntimeException {
     }
 
     public String detail() {
-        return getMessage();
+        return detail;
     }
 
     /** Members added to the problem next to the standard ones; empty when there are none. */

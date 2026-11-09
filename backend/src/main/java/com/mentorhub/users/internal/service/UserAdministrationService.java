@@ -66,7 +66,11 @@ public class UserAdministrationService {
         this.profileWriter = profileWriter;
     }
 
-    /** @throws ValidationException for {@code q}, {@code page} or {@code size} */
+    /**
+     * One page of users matching the query.
+     *
+     * @throws ValidationException for {@code q}, {@code page} or {@code size}
+     */
     @Transactional(readOnly = true)
     public ResultPage<UserListEntry> list(UserQuery query) {
         List<FieldViolation> errors = new ArrayList<>();

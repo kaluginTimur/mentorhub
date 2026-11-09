@@ -290,7 +290,7 @@ public class UserRepository {
                 .optional();
     }
 
-    /** @return the number of inserted rows: 0 when the identity is already linked to any user */
+    /** Returns the number of inserted rows: 0 when the identity is already linked to any user. */
     public int linkIdentityIfAbsent(UUID userId, String issuer, String subject) {
         return jdbc.sql("""
                         insert into user_identities (user_id, issuer, subject)
@@ -359,7 +359,7 @@ public class UserRepository {
                 .update();
     }
 
-    /** @return the number of inserted rows: 0 when the user already has the role */
+    /** Returns the number of inserted rows: 0 when the user already has the role. */
     public int assignRoleIfAbsent(UUID userId, Role role) {
         return jdbc.sql("insert into user_roles (user_id, role) values (:userId, :role) on conflict do nothing")
                 .param("userId", userId)
@@ -368,10 +368,13 @@ public class UserRepository {
     }
 
     private List<String> roleNames(UUID userId) {
-        return jdbc.sql("select role from user_roles where user_id = :userId order by role")
+        // A single-column query maps SQL NULL to null, but user_roles.role is NOT NULL
+        @SuppressWarnings("NullAway")
+        List<String> names = jdbc.sql("select role from user_roles where user_id = :userId order by role")
                 .param("userId", userId)
                 .query(String.class)
                 .list();
+        return names;
     }
 
     private static StoredUser storedUser(ResultSet rs, List<String> roleNames) throws SQLException {
