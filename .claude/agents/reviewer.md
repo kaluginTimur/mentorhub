@@ -59,7 +59,8 @@ In this order of priority:
 Review the changes under `docs/requirements/` against the plan's scope, with the checklist of stage 2 in `docs/process.md`. Read more widely than a code review: the touched capabilities and those that cite them (`node scripts/requirements.mjs cited-by <prefix>`). Also check:
 - The format and the criterion in **Requirements** of `docs/development/docs.md`: one behavior per scenario, a rule about access, data, state, security or irreversible actions has a scenario, and a statement does not retell its scenarios.
 - The scope stays within the product scope in `docs/constitution.md`.
-- Size: at about 8 to 10 scenarios, say that the change could be split.
+- Access that depends on relations between people is defined for every role and action, and for how the relations change: cohort and track conditions, past cohorts, a mentor reassigned, a graduate who becomes a mentor, status changes and archived cohorts.
+- Size: at about 8 to 10 scenarios, more than one new module, or application code mixed with new local infrastructure, say that the change could be split.
 
 ## Report
 

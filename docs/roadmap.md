@@ -38,7 +38,6 @@ No commitment and no order.
 - Roles as data, editable in the UI (deferred in decision 0004).
 - A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0005).
 - End-to-end tests of scenarios on the real stack, with their own data rather than the sample center's.
-- Meaning lost in shortened or rewritten passages: find where trimming or rewriting the documents, agents and skills dropped something that still matters, and restore it where it belongs. Example: "a cloud session has no browser" in `/feature` lost "for them" and the pre-installed Playwright (commits 0c8e3e0, 9bcb62f). Not only `docs/development/` (the guides audit), but the requirements, `docs/process.md`, `.claude/agents` and `.claude/skills` too.
 - Every `dev` start now cleans the dev database, so a `dev` run no longer freezes a migration: reword that statement in `docs/development/backend.md` (How to run) and relax the hooks in `.claude/hooks/` that rely on it.
 
 ## Product decisions
@@ -55,11 +54,13 @@ Not implemented yet, and preliminary: each is discussed again when its feature i
 - After graduation, a configurable read-only grace period gives access to own feedback and grades.
 - Expulsion revokes access at once.
 - Data is kept; only access is revoked.
+- Disabling a user after an enrollment ends uses the disable reasons user administration already has.
 
 ### Tracking core: domain model
 
 - Processes are mixed: SWE students are individual, with their own dates and 1–3 students per mentor; QA studies in classic groups with lectures.
 - Enrollment is the center of the model, and Cohort an optional grouping.
+- A student's data is read and changed only by the student, a mentor assigned to that student's enrollment, a coordinator of the track, or an administrator. A role alone is not enough.
 - Observer rights are not defined yet; the tracking core defines them.
 
 ### Tracking core: notes

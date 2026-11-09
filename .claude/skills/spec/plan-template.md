@@ -32,6 +32,10 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 
 <!-- Written by an agent stopped by the context budget, under a heading with its task; a fresh agent continues from it. Deleted when the task is done. -->
 
+## Notes for later tasks
+
+<!-- From the developers' reports ("Notes for the next task"): what a fresh agent must know and cannot see in the plan or the diff. One line each, with the task it comes from. -->
+
 ## Red tests
 
 Commit: <the commit holding the requirements, the contract, this plan and the red tests>
