@@ -17,11 +17,12 @@ import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.web.client.RestOperations;
 
 /**
- * Resolves the authentication manager for a token's issuer: {@code null} (401) for an untrusted issuer. Decoders are
+ * Resolves the authentication manager for a token's issuer; an untrusted issuer is an invalid token (401). Decoders are
  * created on the first token of each issuer, so the application starts while the identity provider is unavailable.
  */
 final class TrustedIssuers implements AuthenticationManagerResolver<String> {
@@ -44,10 +45,10 @@ final class TrustedIssuers implements AuthenticationManagerResolver<String> {
     }
 
     @Override
-    public @Nullable AuthenticationManager resolve(String issuer) {
+    public AuthenticationManager resolve(String issuer) {
         SecurityProperties.TrustedIssuer config = trusted.get(issuer);
         if (config == null) {
-            return null;
+            throw new InvalidBearerTokenException("Invalid issuer");
         }
         return managers.computeIfAbsent(issuer, ignored -> manager(config));
     }

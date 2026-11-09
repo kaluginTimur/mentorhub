@@ -5,7 +5,11 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-/** @param name first and last name joined by a space, or the email when both are missing */
+/**
+ * A user as the history of a change names them.
+ *
+ * @param name first and last name joined by a space, or the email when both are missing
+ */
 public record HistoryActor(UUID id, String name) {
 
     public static HistoryActor of(UserName user) {

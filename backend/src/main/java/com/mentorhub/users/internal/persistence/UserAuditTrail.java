@@ -45,7 +45,11 @@ public class UserAuditTrail {
         this.jsonMapper = jsonMapper;
     }
 
-    /** @param actorUserId {@code null} for a change made by the system */
+    /**
+     * Records a change of a user.
+     *
+     * @param actorUserId {@code null} for a change made by the system
+     */
     public void record(@Nullable UUID actorUserId, UUID userId, UserChange change) {
         auditLog.record(new AuditEntry(
                 actorUserId,

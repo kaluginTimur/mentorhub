@@ -4,6 +4,8 @@ package com.mentorhub.users;
 public interface CurrentUserProvider {
 
     /**
+     * The active user of the current request.
+     *
      * @throws IllegalStateException when the request has no active user; the gate admits only active users to every
      *     operation except {@code GET /api/v1/me}, so this indicates a programming error
      */

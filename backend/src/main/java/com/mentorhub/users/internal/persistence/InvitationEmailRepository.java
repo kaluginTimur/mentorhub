@@ -95,17 +95,17 @@ public class InvitationEmailRepository {
                 .collect(Collectors.toMap(StoredInvitationEmail::invitationId, Function.identity()));
     }
 
-    /** @return whether the request was still queued and is now sent */
+    /** Returns whether the request was still queued and is now sent. */
     public boolean markSent(UUID id) {
         return finish(id, InvitationEmailStatus.SENT, null);
     }
 
-    /** @return whether the request was still queued and is now skipped */
+    /** Returns whether the request was still queued and is now skipped. */
     public boolean markSkipped(UUID id) {
         return finish(id, InvitationEmailStatus.SKIPPED, null);
     }
 
-    /** @return whether the request was still queued and is now failed */
+    /** Returns whether the request was still queued and is now failed. */
     public boolean markFailed(UUID id, InvitationEmailFailure failure) {
         return finish(id, InvitationEmailStatus.FAILED, failure.text());
     }

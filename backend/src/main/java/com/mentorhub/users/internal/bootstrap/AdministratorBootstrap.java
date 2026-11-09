@@ -43,13 +43,14 @@ public class AdministratorBootstrap {
     }
 
     public void applyIfEligible(SignInClaims claims) {
+        String email = claims.email();
         if (bootstrapEmail == null
                 || !claims.emailVerified()
-                || claims.email() == null
-                || !claims.email().equalsIgnoreCase(bootstrapEmail)) {
+                || email == null
+                || !email.equalsIgnoreCase(bootstrapEmail)) {
             return;
         }
-        transactions.executeWithoutResult(status -> apply(claims, claims.email(), status));
+        transactions.executeWithoutResult(status -> apply(claims, email, status));
     }
 
     private void apply(SignInClaims claims, String email, TransactionStatus transaction) {

@@ -21,6 +21,8 @@
 		<openapi-generator.version>7.26.0</openapi-generator.version>
 		<spotless.version>3.10.4</spotless.version>
 		<libphonenumber.version>9.0.41</libphonenumber.version>
+		<errorprone.version>2.52.0</errorprone.version>
+		<nullaway.version>0.14.3</nullaway.version>
 		<api.spec>${project.basedir}/../api/openapi.yaml</api.spec>
 		<!-- Only spring-boot:run (and start, test-run) use this property; process-aot and packaging never see dev -->
 		<spring-boot.run.profiles>dev</spring-boot.run.profiles>
@@ -179,6 +181,40 @@
 		</resources>
 
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<executions>
+					<!-- NullAway checks the @NullMarked main code only; the Error Prone flags need the add-exports in .mvn/jvm.config.
+						 Only NullAway is enabled: the default Error Prone checks reported mostly noise in this codebase, so a check
+						 is enabled by name. -->
+					<execution>
+						<id>default-compile</id>
+						<configuration>
+							<!-- Javac on JDK 23+ runs no annotation processors by default; keep it so with the plugin path set -->
+							<proc>none</proc>
+							<compilerArgs>
+								<arg>-XDcompilePolicy=simple</arg>
+								<arg>--should-stop=ifError=FLOW</arg>
+								<arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true -XepExcludedPaths:.*/target/generated-sources/.*</arg>
+							</compilerArgs>
+							<annotationProcessorPaths>
+								<path>
+									<groupId>com.google.errorprone</groupId>
+									<artifactId>error_prone_core</artifactId>
+									<version>${errorprone.version}</version>
+								</path>
+								<path>
+									<groupId>com.uber.nullaway</groupId>
+									<artifactId>nullaway</artifactId>
+									<version>${nullaway.version}</version>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

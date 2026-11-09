@@ -28,7 +28,8 @@ class SystemController implements SystemApi {
         this.name = name;
         // build-info.properties is produced by the Maven build; absent when running from an IDE
         BuildProperties build = buildProperties.getIfAvailable();
-        this.version = build != null ? build.getVersion() : "dev";
+        String buildVersion = build != null ? build.getVersion() : null;
+        this.version = buildVersion != null ? buildVersion : "dev";
         this.client = client;
         this.mail = mail;
     }

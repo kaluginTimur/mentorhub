@@ -83,7 +83,7 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
 
     /** {@code @Valid @RequestBody}: one error per invalid property. */
     @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+    protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         List<FieldViolation> errors = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> new FieldViolation(error.getField(), message(error)))
@@ -97,7 +97,7 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
 
     /** A path or query parameter that does not convert, such as a non-UUID {@code id} or an unknown enum value. */
     @Override
-    protected ResponseEntity<Object> handleTypeMismatch(
+    protected @Nullable ResponseEntity<Object> handleTypeMismatch(
             TypeMismatchException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         if (!(exception instanceof MethodArgumentTypeMismatchException mismatch)) {
             return super.handleTypeMismatch(exception, headers, status, request);
@@ -111,7 +111,7 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
      * that is not JSON at all, or has no property to blame, keeps Spring's generic 400.
      */
     @Override
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+    protected @Nullable ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         if (exception.getCause() instanceof DatabindException cause) {
             String field = propertyPath(cause);
