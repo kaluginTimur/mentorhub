@@ -16,13 +16,13 @@ Take the change `$change` from approved requirements to a verified branch: stage
 
 1. Read the plan. If it is not on the current branch, find the branch that has it (`git log --all -1 --format='%h %D' -- docs/plans/$change.md`) and offer to switch. If there is none, stop and suggest `/spec $change`.
 2. Check the plan's `Requirements approved:` line. If it says `none` (or is missing), ask the user whether they approve the requirements as they stand now, naming the files from the handover. On an explicit yes, write the date and their words into that line and go on. On remarks, stop and suggest `/spec $change`. Requirements stay uncommitted until the red tests, so an edit made after the approval cannot be detected: an approval covers the files as they stand when it is given.
-3. Continue from the handover. Read only what it names. Agents from an earlier session cannot be continued: start fresh ones, briefed from the plan.
+3. Continue from the handover. Read only what it names. If the plan and git disagree (a task marked done without its changes, changes for a task still pending), show the user the mismatch and ask; never guess. Agents from an earlier session cannot be continued: start fresh ones, briefed from the plan.
 
 ## Before every stop for the user
 
 Every stop below means these steps, in this order:
 
-1. Write the plan: task statuses, the user's decisions in their words, the agents with their context sizes, and the handover, with its documents changed built from git as the plan template says.
+1. Write the plan: task statuses, the user's decisions in their words, each report's "Notes for the next task" under Notes for later tasks, the agents with their context sizes, and the handover, with its documents changed built from git as the plan template says.
 2. Record the session under the current phase (`plan`, `implementation` or `review`), without a session id: `node .claude/scripts/agent-usage.mjs --record $change <phase>`. A later record of the same phase and session replaces it. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user.
 3. Relay the report as below, and say that the user can take their time: they can answer here, or run `/clear` first and then `/feature $change` to continue from the handover at a fraction of the context.
 
@@ -33,18 +33,20 @@ Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 Brief every agent with the plan's path and one task. It reads the rest itself.
 
 - **Within a task** (feedback, rework): continue the same agent with `SendMessage`.
-- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one, since the context budget would soon stop it in the middle of the next task.
+- **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one, since the context budget would soon stop it in the middle of the next task. Put the last report's "Notes for the next task" into its brief: the plan gets them only at the next stop.
 - **Context budget:** past about 250k, a hook in `backend-dev`, `frontend-dev` and `test-engineer` tells the agent to finish its step and stop with a PARTIAL report and a handover. The agent writes the handover into the plan's Partial work under its task itself, so that it is not retold. On PARTIAL, check that it is there, do not rewrite it, keep the task `in progress`, and brief a fresh agent of the same type with the same task, saying that it continues from the handover. Never continue the stopped agent. When the task is done, delete its Partial work.
 - **An agent that ends without its report** (an error, a stop, a session that ended, a report without a status): if it can still be continued (this session; in a cloud session, its transcript as below), continue it once with `SendMessage`: end with the report, and if the task is not done, with status PARTIAL and the handover its Context budget section asks for. Otherwise brief a fresh agent of the same type with the same task, saying that there is no handover: it starts from `git status`, `git diff` and the plan, and runs the verification of its area before going on. Write into the plan's Partial work, under the task, that the agent stopped without a handover, and when.
-- **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If not, start a fresh agent of the same type.
+- **Cloud sessions** (`CLAUDE_CODE_REMOTE=true`): before continuing an agent, check that its transcript is in the folder of the most recently written session: `ls -t ~/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl | head -1` names the session, and `<session>/subagents/agent-<id>.jsonl` must exist. If not, start a fresh agent of the same type, briefed with its last report, the user's feedback and the plan.
 
-Before every brief or `SendMessage`, check that the current branch is the plan's. Never switch branches while an agent is running: background agents write to the same working tree.
+Before every brief or `SendMessage`, check that the current branch is the plan's. If it is not, stop and ask the user. Never switch branches while an agent is running: background agents write to the same working tree.
 
 ## Relaying reports
 
 Show a short summary: what was done, where to look first, the verification result. Show decisions, deviations, the list of details, the documents changed from the handover and questions in full; never shorten a question.
 
 A failure an agent attributes to the environment (network, Docker, tool versions) goes to a `general-purpose` agent with the `model` parameter set to `sonnet`, to find the cause and a workaround. Until the cause is confirmed, it is an open question in the plan, not a fact.
+
+A report that stops with questions under "API lookups" comes from an agent that has no tool to start a subagent (a cloud session gives subagents none). Ask `api-lookup` yourself, all the symbols in one question, and continue the agent with the answers.
 
 ## Plan
 

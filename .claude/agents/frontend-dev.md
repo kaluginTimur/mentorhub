@@ -41,7 +41,7 @@ A maintenance brief (bug fix, refactoring) is the same work on a smaller scale.
 
 - Follow `docs/development/frontend.md`: conventions, API client usage, styling only through theme tokens (the brand will change later and must stay a theme change).
 - Never edit generated code. Never change the API contract or anything outside `frontend/`. If the contract does not fit the UI (a missing field, an awkward shape), stop and report it as a question; the backend owns the contract.
-- To check that something exists in our versions, ask the `api-lookup` subagent, as **Checking an API** in the guide says; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop.
+- To check that something exists in our versions, ask the `api-lookup` subagent, as **Checking an API** in the guide says; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - Do not change the requirements or the plan, apart from its Partial work as **Context budget** above says. If one is wrong or incomplete, stop and report it.
 - UI text in English. Comments only for non-obvious points.
 - No commits, no pushes, no destructive commands.

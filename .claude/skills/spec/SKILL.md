@@ -20,9 +20,9 @@ Go one topic at a time. Propose a concrete draft from what you have read, give y
 
 1. Goal and approach, before anything else. The roadmap item is an intention, not a decision, even when its line reads as settled: state its goal (who needs what, and why) apart from the way the line suggests, and propose any other way that reaches the goal better, with its trade-offs and your recommendation. The user chooses. If the choice reopens what the item is for, or splits it into several, offer to continue in `/explore` instead.
 2. Scope and what is out of scope, into the plan. Check it against the product scope in the constitution.
-3. Who may do what, what each role sees, what is audited, error paths and empty states. Each becomes a requirement or an out-of-scope line, not a list of its own.
+3. Who may do what, what each role sees, what is audited, error paths and empty states. Where access depends on relations between people, cover how they change: cohort and track conditions, past cohorts, a mentor reassigned, a graduate who becomes a mentor, status changes and archived cohorts. Each becomes a requirement or an out-of-scope line, not a list of its own.
 4. Edit the capability files directly, as you go, so progress is not lost. A requirement that belongs to an existing capability goes there, and a change to another capability's behavior edits that capability.
-5. Size: at about 8 to 10 scenarios or more, or many requirements without any, suggest splitting the change, and let the user decide.
+5. Size: at about 8 to 10 scenarios or more, or many requirements without any, or when the change adds more than one new module or mixes application code with new local infrastructure (an identity provider, a mail server), suggest splitting the change, and let the user decide.
 
 A decision that meets the threshold in the decisions index goes through `/decision`.
 

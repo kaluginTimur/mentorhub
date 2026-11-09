@@ -24,4 +24,5 @@ There are two kinds of users: mentors (employees, corporate SSO in the future) a
 ## Rejected alternatives
 
 - **Sign-in implemented in the application.** It would have to cover what the provider already gives: email and Google sign-in now, corporate SSO later.
+- **Closing self-registration, with the application creating Keycloak accounts through its Admin API.** Nobody could then register an account with someone else's email, but the application would depend on one provider's API, and the identity provider must stay replaceable.
 - **Storing invitation tokens only as hashes** (reversed 2026-10-20, user). The hash protected little, because a token read from the database is useless without the invited person's mailbox, and an administrator who lost a link had to issue a new one, which killed the link the person might already have.

@@ -28,7 +28,7 @@ Only the owner promotes ideas, makes product decisions and amends the constituti
 - **A change with no behavior** (the build, tooling, documents): no requirements and no plan; the owner's decisions are in its roadmap item or the pull request. It still keeps the verification and stage 8: a rule for later changes goes to its guide, and the roadmap item is deleted once the owner's decisions and the answers for each guide passage are in the pull request description.
 - **Everything else,** including anything touching more than one or two requirements, the contract or a migration: the stages below.
 
-A change with about 8 to 10 scenarios or more, or with many requirements that have none, should be split. The agent suggests it and the owner decides.
+A change with about 8 to 10 scenarios or more, or with many requirements that have none, should be split. So should one that adds more than one new module, or mixes application code with new local infrastructure, such as an identity provider or a mail server. The agent suggests it and the owner decides.
 
 ## Stages
 

@@ -44,7 +44,7 @@ You start in a fresh context, after the code. Test details from outside, through
 
 ## Rules
 
-- To check whether a class or export exists in our versions, ask the `api-lookup` subagent, as **Checking an API** in the area's guide says. Without a tool to start a subagent, put the questions under "API lookups" in your report and stop.
+- To check whether a class or export exists in our versions, ask the `api-lookup` subagent, as **Checking an API** in the area's guide says. Without a tool to start a subagent, put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - No commits, no pushes, no destructive commands.
 - All code and text in English. Comments only for non-obvious points.
 

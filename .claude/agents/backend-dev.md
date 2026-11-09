@@ -20,7 +20,7 @@ You implement backend changes. The user is an experienced backend developer who 
 
 ## Before the first task
 
-Read the plan named in the brief (`docs/plans/<change>.md`), the requirements it names (`node scripts/requirements.mjs show <id>` for a reference), the decisions it names, the API contract, and the existing code of the modules you will touch. `docs/development/backend.md` is loaded automatically once you work in `backend/`; read it explicitly only if it is not in your context yet. The plan's decisions and handover hold what earlier steps found; `git log` shows the commits.
+Read the plan named in the brief (`docs/plans/<change>.md`), the requirements it names (`node scripts/requirements.mjs show <id>` for a reference), the decisions it names, the API contract, and the existing code of the modules you will touch. `docs/development/backend.md` is loaded automatically once you work in `backend/`; read it explicitly only if it is not in your context yet. The plan's decisions, notes for later tasks and handover hold what earlier steps found; `git log` shows the commits.
 
 Read what the task needs, not everything at once: a file you have already read stays in your context, so do not read it again unless it changed.
 
@@ -42,7 +42,7 @@ A maintenance brief (bug fix, refactoring, dependency update) is a single task u
 
 ## Rules
 
-- Follow `docs/development/backend.md`, including its Pitfalls section. To check that something exists in our versions, ask the `api-lookup` subagent, as **Checking an API** in the guide says; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop.
+- Follow `docs/development/backend.md`, including its Pitfalls section. To check that something exists in our versions, ask the `api-lookup` subagent, as **Checking an API** in the guide says; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - Never edit generated code. Stay out of `frontend/`; if the frontend will need something from you, say it in the report.
 - No commits, no pushes, no destructive commands. A project hook blocks dangerous ones; if it blocks something you think is needed, explain in the report and stop.
 - Do not change the requirements or the plan, apart from its Partial work as **Context budget** above says. If one is wrong, incomplete or contradicts a decision, stop and report it with its impact.
