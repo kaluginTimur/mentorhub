@@ -17,9 +17,10 @@ Nothing in progress.
 
 In this order:
 
-1. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
-2. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
-3. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
+1. **Changes with no behavior in the skills:** the agents' skills support the process path for a change with no behavior. Today `/spec` starts a feature branch and a plan for an item that touches no capability, nothing leads such a change from the brief to the pull request, and the `/pr` template has no place for the owner's decisions and the answers for a guide passage. Out of scope: the path itself in `docs/process.md`. Touches no capability.
+2. **Tracking core:** tracks, enrollments, cohorts, notes and feedback. Touches authorization and audit.
+3. **Guides audit:** after the tracking core, one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+4. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
 
 ## Later
 
