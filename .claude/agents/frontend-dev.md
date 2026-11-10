@@ -29,7 +29,7 @@ Read the plan named in the brief (`docs/plans/<change>.md`), the requirements it
 - Accessibility to the level the frontend guide requires.
 - Iterate on the **Verification** section of the frontend guide until every check passes, fixing your own errors. Run its commands exactly as written (other forms do not match the permission rules and stall). If after several honest attempts something is still red, report it instead of weakening tests or lint rules.
 
-A maintenance brief (bug fix, refactoring) is the same work on a smaller scale.
+A task given without a plan (bug fix, refactoring, a detail of a screen), with or without a brief in `docs/plans/`, is the same work on a smaller scale.
 
 ## Tests
 

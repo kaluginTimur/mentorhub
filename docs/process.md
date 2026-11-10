@@ -23,26 +23,47 @@ Only the owner promotes ideas, makes product decisions and amends the constituti
 
 ## Choosing a path
 
-- **A bug,** where the code departs from a requirement: a test with the requirement's id and the fix. No document changes. A bug found during other work becomes a GitHub issue, not a roadmap item.
-- **A small change of behavior:** the requirement, its test and the code, in one commit, with no plan. The owner approves the changed requirement first.
-- **A change with no behavior** (the build, tooling, documents): no requirements and no plan; the owner's decisions are in its roadmap item or the pull request. It still keeps the verification and stage 8: a rule for later changes goes to its guide, and the roadmap item is deleted once the owner's decisions and the answers for each guide passage are in the pull request description.
-- **Everything else,** including anything touching more than one or two requirements, the contract or a migration: the stages below.
+Every change starts here, wherever it began and however small it is. A change is anything that would be committed: an exploration and an edit of the roadmap too. Nothing is changed on the default branch.
+
+Before anything is changed, the designer states the goal of the change (who needs what, and why) apart from any way already suggested for it, proposes an approach and any other way that reaches the goal better, with the trade-offs, and names the path that fits, with a recommendation. A roadmap item is an intention and its line a first guess, so the path follows from the goal and the approach, not from the item. The step is short. A choice that needs more (alternatives weighed at length, research, an experiment) goes to Explore, and so does one that reopens what a roadmap item is for, or splits it.
+
+What separates the paths is whether the requirements describe what changes, or should. The designer names the capabilities searched and applies the criterion in **Requirements** of `docs/development/docs.md`: a rule that meets it and is not in the requirements makes the change a change of behavior, which starts with that requirement. Whether something is such a rule or a detail is the owner's decision.
+
+- **Explore** (`explore/`), for an idea too vague to name its path, or a choice the step above cannot settle: stage 1 below.
+- **A bug** (`fix/`), where the code departs from a requirement: a test with the scenario's id, and the fix. No document changes. When no scenario describes the broken case, the case either merits one, and the change is a small change of behavior, or gets an ordinary test without an id. A bug found during other work becomes a GitHub issue, not a roadmap item, and is not fixed in that change.
+- **A small change of behavior** (`change/`): the requirement, changed or added, its test and the code, in one commit, with a brief instead of a plan. The owner approves the requirement first. When the requirement is added for what the code already does, its test passes at once, so the test engineer shows that it fails when the rule is broken.
+- **A change outside the requirements** (`chore/`): the build, tooling, documents, and details of the code and the UI that the requirements do not hold, however much work it is. No requirements and no plan: a brief `docs/plans/<change>.md` holds the goal, the approach, the owner's decisions and the handover. A visible detail gets an ordinary test when something can break it, and the owner looks at the screen. It still keeps the verification and stage 8: a rule for later changes goes to its guide, and the roadmap item is deleted. The brief is deleted last, once the owner's decisions and the answers for each guide passage are in the pull request description.
+- **Everything else** (`feature/`), including anything touching more than one or two requirements, the contract or a migration: stages 2 to 8 below.
+
+**Path gate.** The owner confirms the goal, the approach and the path in one answer. Then the change gets its branch, whose prefix names the path, and what the owner confirmed goes into the first document of the path: the plan, the brief or the exploration notes. For a small change of behavior that is a brief too, since it has a gate. A bug starts without a document, and gets a brief at the first decision of the owner or stop for the owner after the gate; the brief then records what the owner confirmed at the gate as well. In every case what the owner confirmed goes into the pull request description.
 
 A change with about 8 to 10 scenarios or more, or with many requirements that have none, should be split. So should one that adds more than one new module, or mixes application code with new local infrastructure, such as an identity provider or a mail server. The agent suggests it and the owner decides.
 
+### When the path turns out wrong
+
+Whoever finds the change on a path that does not fit stops and returns to this step, with what was found; the owner confirms the new path at the same gate. The usual signs: a change outside the requirements, or a bug fix, needs a requirement changed or added, the contract or a migration; a small change of behavior grows past one or two requirements; a change in the stages changes no requirement, or reopens what its roadmap item is for.
+
+Nothing made so far is dropped silently. The branch is renamed, and what the owner confirms goes into the first document of the new path: the brief becomes a plan or the plan a brief, and on the way to Explore what it holds moves into the exploration notes. Code that changes behavior and was written before its requirement and its test cannot stay as it is, since its test never failed. The owner picks one:
+
+- split: what is outside the requirements stays on this branch, and the behavior becomes a change of its own;
+- move the whole change: that code leaves the working tree and is kept as a draft for the developer, and the change goes on from the requirement;
+- defer: that code is removed, and the behavior becomes a roadmap item.
+
+A rule found on the way that the requirements should hold and do not, and that the change does not alter, does not change the path. It goes to the owner as a finding at the next stop: a small change of behavior of its own (the requirement and a test of what the code already does), a roadmap item, or nothing.
+
 ## Stages
 
-### 1. Explore (optional)
+### 1. Explore
 
-Turns a vague idea into items in `docs/roadmap.md`: one line of scope that names the goal, what is out of scope, the capabilities it touches, the owner's product decisions, and a split of a big idea into several items. It writes no requirements. Notes live in a temporary `docs/explorations/<topic>.md`, deleted once the items exist. A throwaway experiment in a separate branch is part of this stage, when an agent suggests one and the owner wants it; it leaves findings, not code.
+Turns a vague idea into items in `docs/roadmap.md`: one line of scope that names the goal, what is out of scope, the capabilities it touches, the owner's product decisions, and a split of a big idea into several items. It writes no requirements. Notes are kept from the start in a temporary `docs/explorations/<topic>.md`, deleted once the items exist. A throwaway experiment in a separate branch is part of this stage, when an agent suggests one and the owner wants it; it leaves findings, not code.
+
+An exploration ends with its own pull request of the roadmap. One that was started to settle the approach of a change may instead return to **Choosing a path** with its result, on the same branch.
 
 An agent that notices a brainstorm growing in an ordinary session offers to continue in this stage.
 
 ### 2. Specify
 
-Before any requirement, the designer states the item's goal apart from the way its line suggests, and proposes any other way that reaches the goal better, with the trade-offs; the owner chooses. If the choice reopens what the item is for, or splits it, the designer offers to go back to Explore.
-
-On a new branch, the designer starts the temporary plan `docs/plans/<change>.md` with the scope, then edits `docs/requirements/` directly and asks before guessing. Requirements hold no "how". The reviewer then checks the changed requirements in one round: contradictions with other requirements and the constitution, testability of every scenario, completeness against the scope (error paths, empty states, refused access, concurrent edits, what each role sees, what is audited), ambiguity, and "how" leaking in. It reports gaps and does not write requirements; a widening of scope goes to the roadmap's ideas or to the owner as a question.
+The designer continues the temporary plan `docs/plans/<change>.md`, which holds the goal and the approach from the path gate, with the scope, then edits `docs/requirements/` directly and asks before guessing. Requirements hold no "how". The reviewer then checks the changed requirements in one round: contradictions with other requirements and the constitution, testability of every scenario, completeness against the scope (error paths, empty states, refused access, concurrent edits, what each role sees, what is audited), ambiguity, and "how" leaking in. It reports gaps and does not write requirements; a widening of scope goes to the roadmap's ideas or to the owner as a question.
 
 **Requirements gate.** The owner reads the changed requirements in full, not as a diff, since details get lost in one. Nothing further starts until the owner approves: tests are written from these requirements, so a wrong rule reaches both the tests and the code.
 
@@ -78,13 +99,13 @@ The reviewer checks the whole diff, the owner decides what to fix, and there is 
 
 ### 8. Finish
 
-Delete the plan. An architectural choice with real alternatives goes to the decisions. A rule that later changes in an area must follow goes to that area's guide, in a few lines, as the **Guides** section of `docs/README.md` says; each passage added to a guide or widened comes to the owner with the answers that section asks for, and stays only if the owner agrees. Everything else about how the change is built stays in the code, with a comment where it is not obvious; when in doubt, it is a comment. The roadmap item is deleted, and its product decisions move to the requirements or the decisions. All of it goes into the same pull request as the code.
+Delete the plan. A brief stays until the pull request description holds the owner's decisions and the answers for each guide passage, and is deleted then, before the pull request is opened. An architectural choice with real alternatives goes to the decisions. A rule that later changes in an area must follow goes to that area's guide, in a few lines, as the **Guides** section of `docs/README.md` says; each passage added to a guide or widened comes to the owner with the answers that section asks for, and stays only if the owner agrees. Everything else about how the change is built stays in the code, with a comment where it is not obvious; when in doubt, it is a comment. The roadmap item is deleted, and its product decisions move to the requirements or the decisions. All of it goes into the same pull request as the code.
 
 ## Stopping for the owner
 
-The owner may take days over a review, and a session should not have to be reloaded whole to continue. So before every stop for the owner (each gate, each checkpoint, review findings) the agent running the change writes a short handover into the plan: what the owner is reviewing and where, the state of the work and its verification, open questions, and the exact next step on approval and on remarks. The plan also keeps the owner's decisions in the owner's words.
+The owner may take days over a review, and a session should not have to be reloaded whole to continue. So before every stop for the owner (each gate, each checkpoint, review findings) the agent running the change writes a short handover into the plan or the brief: what the owner is reviewing and where, the state of the work and its verification, open questions, and the exact next step on approval and on remarks. The plan or the brief also keeps the owner's decisions in the owner's words.
 
-A new session continues from the plan and what its handover names, not from the old session's history. The work itself stays on the branch or in the working tree. Requirements stay uncommitted until the red tests exist, as stage 4 explains, so a change cannot move to another machine before then.
+A new session continues from that document and what its handover names, not from the old session's history. The work itself stays on the branch or in the working tree. Requirements stay uncommitted until the red tests exist, as stage 4 explains, so a change cannot move to another machine before then.
 
 ## Tests
 

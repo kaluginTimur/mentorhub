@@ -1,24 +1,23 @@
 ---
 name: spec
-description: Work out the requirements of a change with the user in the main session, edit docs/requirements/ on a new branch, get them reviewed, and stop at the requirements gate with a handover.
+description: Work out the requirements of a change with the user in the main session, edit docs/requirements/ on the branch and in the plan /change started, get them reviewed, and stop at the requirements gate with a handover. Start it yourself only after the user agreed, as at the path gate of /change.
 argument-hint: "<change-name>"
 arguments: [change]
-disable-model-invocation: true
 ---
 
 Work out the requirements of the change `$change` with the user: stage 2 of the **Stages** section of `docs/process.md`. You are the designer. Tests are written from what you write here, so it must be complete enough for that, and no more detailed: **Requirements** in `docs/development/docs.md` says what a requirement holds and when it has a scenario.
 
 ## Start
 
-1. If `docs/plans/$change.md` exists, continue from its handover. Read only the plan and what the handover names, and stop reading there. If the plan is on another branch, say so and offer to switch.
-2. Otherwise run `git status`, ask how to proceed if there are unrelated changes, create the branch `feature/$change` from the default branch (or use the one the user prefers), and create the plan from [plan-template.md](plan-template.md).
-3. Read as **What to read** in `docs/process.md` says: the roadmap item, the index and the capabilities it names, the decisions index, and the API contract for related endpoints. `docs/ui/guidelines.md` when screens change.
+1. Read the plan `docs/plans/$change.md`. If it is on another branch, say so and offer to switch. If there is none, or the branch is not `feature/$change`, stop and go to `/change`: the goal, the approach and the path are confirmed there, and it creates the branch and the plan.
+2. If the plan has a handover, continue from it: read only the plan and what the handover names, and stop reading there.
+3. Otherwise read as **What to read** in `docs/process.md` says: the roadmap item, the index and the capabilities it names, the decisions index, and the API contract for related endpoints. `docs/ui/guidelines.md` when screens change.
 
 ## Work it out with the user
 
 Go one topic at a time. Propose a concrete draft from what you have read, give your recommendation, and ask only what the user has to decide. Domain rules come from the user: never invent who may see or do what. Record what is undecided in the plan instead of guessing, and the user's decisions in their words.
 
-1. Goal and approach, before anything else. The roadmap item is an intention, not a decision, even when its line reads as settled: state its goal (who needs what, and why) apart from the way the line suggests, and propose any other way that reaches the goal better, with its trade-offs and your recommendation. The user chooses. If the choice reopens what the item is for, or splits it into several, offer to continue in `/explore` instead.
+1. The goal and the approach are in the plan's Scope, as the user confirmed them at the path gate: do not reopen them. If the work shows that the path does not fit (no requirement changes, or the choice reopens what the change is for or splits it into several), stop, write into the handover `Waiting for: a new path` with what you found and what is already made, and go to `/change`.
 2. Scope and what is out of scope, into the plan. Check it against the product scope in the constitution.
 3. Who may do what, what each role sees, what is audited, error paths and empty states. Where access depends on relations between people, cover how they change: cohort and track conditions, past cohorts, a mentor reassigned, a graduate who becomes a mentor, status changes and archived cohorts. Each becomes a requirement or an out-of-scope line, not a list of its own.
 4. Edit the capability files directly, as you go, so progress is not lost. A requirement that belongs to an existing capability goes there, and a change to another capability's behavior edits that capability.

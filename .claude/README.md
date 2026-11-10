@@ -9,8 +9,17 @@ The main session is the designer and the coordinator. Code and tests are written
 ## Flow
 
 ```
-/explore <idea>     optional: the idea becomes items in docs/roadmap.md, no requirements
-/spec <change>      main session + you: branch feature/<change>, plan docs/plans/<change>.md, edits in docs/requirements/
+/change <request>   every change starts here, and the main session starts it itself: the goal, the approach and the path
+                    ── path gate: you confirm all three in one answer ──
+                    branch with the path's prefix, and the path's first document; then one of:
+
+explore/  /explore <topic>   notes in docs/explorations/<topic>.md; the idea becomes items in docs/roadmap.md, no requirements
+fix/      a bug: test-engineer's red test with the scenario id, the fix, reviewer, verifier ── you accept ──
+          led by /change; a brief docs/plans/<change>.md from your first decision or stop on
+change/   a small change of behavior, from its brief: the requirement ── you approve it ── then as a bug; led by /change
+chore/    /chore <change>    a change outside the requirements, from its brief docs/plans/<change>.md:
+                    the work, reviewer, verifier ── you accept ── finish as stage 8
+feature/  /spec <change>     main session + you: the plan docs/plans/<change>.md, edits in docs/requirements/
                     reviewer checks the changed requirements
                     ── requirements gate: you read them in full ──
 /feature <change>   plan and design; backend-dev: contract and migration
@@ -32,11 +41,13 @@ At any time:
 /usage-review       compare the recorded token usage of changes
 ```
 
-Before every stop for you, `/spec` and `/feature` write a handover into the plan (**Stopping for the owner** in `docs/process.md`) and record the usage, so you can answer in the same session or run `/clear` first and then the command the handover names. Do that rather than `/compact`, and when Claude Code offers to resume an old session from a summary, start fresh from the plan instead.
+The main session starts `/change` itself, and `/explore`, `/spec` and `/chore` once you confirmed the path; `/feature`, `/pr` and the rest only you start. A skill that finds its change on the wrong path stops and returns to `/change`, which proposes what happens to the work already made (**When the path turns out wrong** in `docs/process.md`).
+
+Before every stop for you, `/spec` and `/feature` write a handover into the plan (**Stopping for the owner** in `docs/process.md`) and record the usage, and `/chore` writes one into the brief, as `/change` does for a bug and a small change of behavior, so you can answer in the same session or run `/clear` first and then the command the handover names. Do that rather than `/compact`, and when Claude Code offers to resume an old session from a summary, start fresh from the plan or the brief instead.
 
 You review diffs in your IDE; nothing is committed or pushed unless you agree. Do not switch branches while agents are running: background agents write to the same working tree.
 
-Bugs, refactoring and small changes need no plan (**Choosing a path** in `docs/process.md`). Do quick fixes directly in the main session; for larger ones, ask the main session to brief `backend-dev` or `frontend-dev`. Finish with `/review` and `/verify`, and `/pr` when the change should go through a pull request.
+Nothing is committed on the default branch, so every change ends with `/pr`, an edit of the roadmap too. `/pr` runs `node scripts/check-path.mjs`, which fails when the branch's prefix names no path or the diff holds what that path does not change: a requirement on a `chore/` or `fix/` branch, the contract or a migration outside `feature/`, a file outside `docs/` on `explore/`.
 
 ## Guardrails
 
@@ -55,8 +66,8 @@ What must hold regardless of mode belongs in a hook or a deny/ask rule.
 
 | Hook | Blocks or reports |
 |---|---|
-| `guard-files.mjs` | Edits to generated code (`frontend/src/app/core/api/`, `backend/target/`) and to migrations in main |
-| `guard-bash.mjs` | What a prefix rule cannot express: `docker compose down -v`, `docker system prune --volumes`, `flyway clean`, destructive SQL in any case, `git reset --hard`, force push, `git clean -f`, discarding all changes, `git pull --rebase`, amend, deleting branches (flags in any position), mutating migrations in main |
+| `guard-files.mjs` | Edits to generated code (`frontend/src/app/core/api/`, `backend/target/`), to migrations in main, and to any committed file while on the default branch |
+| `guard-bash.mjs` | What a prefix rule cannot express: `docker compose down -v`, `docker system prune --volumes`, `flyway clean`, destructive SQL in any case, `git reset --hard`, force push, `git clean -f`, discarding all changes, `git pull --rebase`, amend, deleting branches (flags in any position), mutating migrations in main, `git commit` on the default branch, when a command runs `git` directly (not through `bash -c`, `sudo`, `env` or a subshell, and not when the same command runs `git checkout` or `git switch`: the hook cannot see the branch it commits on; `git commit` always asks you anyway) |
 | `check-frontend.mjs` | Reports `provideApiConfiguration('/')` and literal colors or fonts in components |
 
 A hook is added only for an error that is silent (build and tests miss it), irreversible, or a project policy. Local machine quirks and compiler errors are not hook material.
@@ -92,7 +103,7 @@ It prints, per agent: the model, the effort its requests ran at (subagents may d
 
 ### Recording usage
 
-Before every stop for you, `/spec` and `/feature` record the session in the repository:
+Before every stop for you, `/spec` and `/feature` record the session in the repository. Only changes through the stages are recorded: `/chore`, a bug and a small change of behavior record nothing, so `/usage-review` compares features with features.
 
 ```bash
 node .claude/scripts/agent-usage.mjs --record <change> <phase>
