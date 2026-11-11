@@ -1,5 +1,21 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+}
+
 .brand {
   font: var(--mat-sys-title-large);
+  margin-inline-end: 16px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 4px;
+
+  &:focus-visible {
+    outline: 2px solid var(--app-topbar-on-color);
+    outline-offset: 4px;
+  }
 }
 
 .spacer {
@@ -20,10 +36,72 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.brand {
-  margin-inline-end: 16px;
+// White labels on the navy bar; a clearly visible hover; uppercase semibold navigation labels.
+mat-toolbar {
+  --mat-focus-indicator-border-color: var(--app-topbar-on-color);
+  --mat-button-text-label-text-color: var(--app-topbar-on-color);
+  --mat-button-text-state-layer-color: var(--app-topbar-on-color);
+  --mat-button-text-ripple-color: color-mix(in srgb, var(--app-topbar-on-color) 12%, transparent);
+  --mat-button-text-hover-state-layer-opacity: 0.16;
+  --mat-button-text-label-text-transform: uppercase;
+  --mat-button-text-label-text-weight: 600;
+  --mat-button-text-label-text-tracking: 0.04em;
+  --mat-icon-button-icon-color: var(--app-topbar-on-color);
+  --mat-icon-button-state-layer-color: var(--app-topbar-on-color);
+  --mat-icon-button-hover-state-layer-opacity: 0.16;
+  // A 4px gap keeps the focus rings of neighbouring bar buttons apart.
+  gap: 4px;
+  --mat-icon-button-ripple-color: color-mix(in srgb, var(--app-topbar-on-color) 12%, transparent);
 }
 
-.active {
-  background: var(--mat-sys-secondary-container);
+// The amber bar under the active section; the focus ring stays around the whole link.
+.nav-link {
+  position: relative;
+
+  &.active::after {
+    content: '';
+    position: absolute;
+    inset-inline: 12px;
+    inset-block-end: 4px;
+    block-size: 3px;
+    border-radius: 2px;
+    background: var(--app-topbar-accent);
+  }
+}
+
+// The avatar is a 32px circle, wider than the 24px icon the icon button is sized for:
+// size the button around it so the circle is centred and the focus ring and state layer surround it.
+.account {
+  --mat-icon-button-state-layer-size: 40px;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// The same button size as the account button, so the three bar buttons match. The host padding is an accepted
+// exception to "only the theme and its tokens".
+.theme,
+.sections {
+  --mat-icon-button-state-layer-size: 40px;
+  padding: 8px;
+}
+
+.sections {
+  display: none;
+}
+
+@media (max-width: 599.98px) {
+  .nav-link {
+    display: none;
+  }
+  .sections {
+    display: inline-flex;
+    // The 40px circle is pulled 8px left so the icon itself sits on the 16px gutter, in line with the page content.
+    margin-inline-start: -8px;
+  }
+  // 8px after the 4px bar gap between the button and the logo.
+  .sections ~ .brand {
+    margin-inline-start: 8px;
+  }
 }

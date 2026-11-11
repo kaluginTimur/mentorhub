@@ -1,9 +1,11 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 main {
-  padding: 24px 16px;
+  flex: 1;
 }
 
 h1 {
@@ -13,6 +15,7 @@ h1 {
 
 footer {
   padding: 16px;
+  text-align: center;
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
 }

@@ -2,33 +2,70 @@
   display: block;
 }
 
-main {
-  padding: 24px 16px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
 h1 {
   font: var(--mat-sys-headline-medium);
-  margin: 0;
+  margin: 0 0 16px;
 }
 
 .filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0 16px;
+}
+
+// Under 600px the Invite button moves up beside the title: the filters dissolve into the grid of .top, so one
+// button in the DOM is placed by CSS. Tab follows the DOM (filters, then Invite), the wide order.
+@media (max-width: 599.98px) {
+  .top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  h1 {
+    margin: 0;
+  }
+
+  .filters {
+    display: contents;
+  }
+
+  .invite {
+    grid-row: 1;
+    grid-column: 2;
+    margin: 0;
+  }
+
+  .filters mat-form-field {
+    grid-column: 1 / -1;
+    inline-size: 100%;
+  }
+
+  .filters .search {
+    margin-block-start: 16px;
+    max-inline-size: none;
+  }
+}
+
+.invite {
+  margin-inline-start: auto;
+  // Level with the field box (the fields carry a hint line below them).
+  margin-block: 8px;
 }
 
 .search {
   flex: 1 1 280px;
+  max-inline-size: 480px;
+}
+
+// Between a phone and a wide window the search takes a row of its own (the margin fills what its cap leaves), so
+// the selects and Invite never leave a lone field beside Invite.
+@media (min-width: 600px) and (max-width: 959.98px) {
+  .search {
+    flex: 0 1 480px;
+    margin-inline-end: calc(100% - 480px);
+  }
 }
 
 .progress {
@@ -36,11 +73,22 @@ h1 {
 }
 
 table {
-  width: 100%;
+  min-width: 1000px;
 }
 
-a {
-  color: var(--mat-sys-primary);
+.mat-column-roles {
+  width: 220px;
+}
+
+.mat-column-status {
+  width: 140px;
+}
+
+.name-cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .secondary {

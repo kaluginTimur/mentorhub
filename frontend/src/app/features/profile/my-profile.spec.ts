@@ -44,6 +44,21 @@ describe('MyProfile', () => {
     expect(el.textContent).not.toContain('Cancel');
   });
 
+  it('shows the name and the email in the card header, and the email only once', async () => {
+    const fixture = await open();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.name')?.textContent).toBe('Anna Petrova');
+    expect(el.querySelector('.email')?.textContent).toBe('anna@example.com');
+    expect(el.textContent?.split('anna@example.com')).toHaveLength(2);
+  });
+
+  it('shows a decorative avatar with the initials next to the heading', async () => {
+    const fixture = await open();
+    const avatar = (fixture.nativeElement as HTMLElement).querySelector('app-avatar');
+    expect(avatar?.textContent).toBe('AP');
+    expect(avatar?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('saves, updates the current user so the toolbar name changes, and shows no status or roles', async () => {
     api.invoke.mockResolvedValue({
       status: 'ACTIVE',

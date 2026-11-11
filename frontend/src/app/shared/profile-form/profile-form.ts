@@ -27,7 +27,9 @@ const blankToNull = (value: string): string | null => (value.trim() === '' ? nul
   imports: [FormField, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
     <form novalidate (submit)="onSubmit($event)">
-      <p class="email"><span class="label">Email</span> {{ values().email }}</p>
+      @if (showEmail()) {
+        <p class="email"><span class="label">Email</span> {{ values().email }}</p>
+      }
       <div class="fields">
         <mat-form-field>
           <mat-label>First name</mat-label>
@@ -43,7 +45,7 @@ const blankToNull = (value: string): string | null => (value.trim() === '' ? nul
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field class="phone">
           <mat-label>Phone</mat-label>
           <input matInput type="tel" autocomplete="tel" [formField]="profileForm.phone" />
           <mat-hint>For example +7 701 123 45 67</mat-hint>
@@ -69,17 +71,26 @@ const blankToNull = (value: string): string | null => (value.trim() === '' ? nul
       margin-inline-end: 8px;
     }
     .fields {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0 16px;
     }
     mat-form-field {
-      flex: 1 1 200px;
+      min-inline-size: 0;
+    }
+    .phone {
+      grid-column: 1 / -1;
     }
     .actions {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      margin-top: 8px;
+    }
+    @media (max-width: 599.98px) {
+      .fields {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
   `,
 })
@@ -90,6 +101,8 @@ export class ProfileForm {
   /** Stores the profile and returns what the server saved. */
   readonly save = input.required<(update: ProfileUpdate) => Promise<ProfileValues>>();
   readonly cancellable = input(false);
+  /** The user page shows the email in the form; the profile page shows it in its header. */
+  readonly showEmail = input(true);
   readonly saved = output<ProfileValues>();
   readonly cancelled = output();
 

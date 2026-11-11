@@ -4,13 +4,18 @@
   <app-loading />
 } @else if (user.hasValue()) {
   @if (user.value(); as u) {
-    <main>
-      <a class="back" routerLink="/users" [queryParams]="listState.query()">Users</a>
+    <main class="page">
+      <a class="back app-link" routerLink="/users" [queryParams]="listState.query()"
+        ><mat-icon aria-hidden="true">arrow_back</mat-icon>Users</a
+      >
       <div class="title">
-        <h1 #heading tabindex="-1">{{ name(u) }}</h1>
-        <mat-chip-set role="list" aria-label="Status">
-          <mat-chip role="listitem">{{ statusLabels[u.status] }}</mat-chip>
-        </mat-chip-set>
+        <app-avatar [user]="u" [size]="56" />
+        <div class="title-text">
+          <h1 #heading tabindex="-1">{{ name(u) }}</h1>
+          <span class="title-status status-line"
+            ><app-status-dot [tone]="statusTones[u.status]" />{{ statusLabels[u.status] }}</span
+          >
+        </div>
       </div>
 
       <mat-card appearance="outlined">
@@ -183,9 +188,11 @@
       </mat-card>
     </main>
   } @else {
-    <main class="not-found">
+    <main class="page not-found">
       <h1>User not found</h1>
-      <a routerLink="/users" [queryParams]="listState.query()">Back to users</a>
+      <a class="app-link back" routerLink="/users" [queryParams]="listState.query()"
+        ><mat-icon aria-hidden="true">arrow_back</mat-icon>Back to users</a
+      >
     </main>
   }
 }

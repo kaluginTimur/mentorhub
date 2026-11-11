@@ -58,7 +58,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 ## Styling
 
 - Angular Material M3; the theme is in `frontend/src/styles.scss`.
-- Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...). No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change.
+- Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...) or the `--app-*` tokens of `frontend/src/styles.scss`. No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change.
 - Screens follow `docs/ui/guidelines.md`.
 
 ## Tests
@@ -100,7 +100,6 @@ cd frontend && ~/.nvm/nvm-exec npm run build
 - If `node_modules` is missing, run `cd frontend && ~/.nvm/nvm-exec npm ci` first.
 - Formatting failures are fixed with `cd frontend && ~/.nvm/nvm-exec npm run format`.
 - Without nvm, check `node -v` (^24.15) and run the same `npm` commands directly.
-- The production build downloads font CSS from Google Fonts, so it needs internet access. `frontend/.npmrc` gives Node a longer connect attempt per address family, without which the download times out on networks without IPv6 (WSL); it is temporary until the fonts are served from the app (#12).
 
 ## Checking an API
 

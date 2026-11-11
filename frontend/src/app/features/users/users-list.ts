@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -27,11 +28,13 @@ import { UserPage } from '../../core/api/models/user-page';
 import { USER_STATUS } from '../../core/api/models/user-status-array';
 import { UserStatus } from '../../core/api/models/user-status';
 import { UserSummary } from '../../core/api/models/user-summary';
+import { Avatar } from '../../shared/avatar/avatar.component';
+import { StatusDot, StatusTone } from '../../shared/status-dot/status-dot';
 import { isForbidden } from '../../core/problem';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { displayName } from '../../core/auth/user-name';
 import { Unavailable } from '../../shared/unavailable/unavailable';
-import { ROLE_LABELS, STATUS_LABELS } from './labels';
+import { ROLE_LABELS, STATUS_LABELS, STATUS_TONES } from './labels';
 import { UsersListState } from './users-list-state';
 
 const PAGE_SIZE = 25;
@@ -45,11 +48,14 @@ const SEARCH_LIMIT = 100;
     MatButtonModule,
     MatChipsModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
     MatTableModule,
+    StatusDot,
+    Avatar,
     Unavailable,
   ],
   templateUrl: './users-list.html',
@@ -156,6 +162,10 @@ export class UsersList {
 
   protected roleLabel(role: Role): string {
     return ROLE_LABELS[role];
+  }
+
+  protected statusTone(status: UserStatus): StatusTone {
+    return STATUS_TONES[status];
   }
 
   protected statusLabel(status: UserStatus): string {

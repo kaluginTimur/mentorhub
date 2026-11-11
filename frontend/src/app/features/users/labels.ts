@@ -1,4 +1,5 @@
 import { DisableReason } from '../../core/api/models/disable-reason';
+import { StatusTone } from '../../shared/status-dot/status-dot';
 import { Role } from '../../core/api/models/role';
 import { UserStatus } from '../../core/api/models/user-status';
 
@@ -22,4 +23,9 @@ export const REASON_LABELS: Record<DisableReason, string> = {
 export const STATUS_LABELS: Record<UserStatus, string> = {
   ACTIVE: 'Active',
   DISABLED: 'Disabled',
+};
+
+export const STATUS_TONES: Record<UserStatus, StatusTone> = {
+  ACTIVE: 'success',
+  DISABLED: 'neutral',
 };

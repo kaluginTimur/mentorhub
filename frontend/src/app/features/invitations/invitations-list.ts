@@ -15,7 +15,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
@@ -40,10 +43,11 @@ import {
   ConfirmDialogData,
   ConfirmResult,
 } from '../../shared/confirm-dialog/confirm-dialog';
+import { StatusDot, StatusTone } from '../../shared/status-dot/status-dot';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS } from '../users/labels';
 import { InviteDialog, InviteDialogData } from './invite-dialog';
-import { INVITATION_STATUS_LABELS } from './labels';
+import { INVITATION_STATUS_LABELS, INVITATION_STATUS_TONES } from './labels';
 
 const PAGE_SIZE = 25;
 const SEARCH_DELAY = 300;
@@ -56,8 +60,12 @@ const SEARCH_LIMIT = 254;
     RouterLink,
     MatButtonModule,
     MatChipsModule,
+    StatusDot,
     MatFormFieldModule,
+    MatDividerModule,
+    MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
@@ -144,6 +152,10 @@ export class InvitationsList {
     return ROLE_LABELS[role];
   }
 
+  protected statusTone(status: InvitationStatus): StatusTone {
+    return INVITATION_STATUS_TONES[status];
+  }
+
   protected statusLabel(status: InvitationStatus): string {
     return INVITATION_STATUS_LABELS[status];
   }
@@ -154,6 +166,14 @@ export class InvitationsList {
 
   /** Keeps row elements (and the focus on a row button) across reloads. */
   protected readonly trackById = (_: number, invitation: Invitation): string => invitation.id;
+
+  protected triggerId(invitation: Invitation): string {
+    return `invitation-actions-${invitation.id}`;
+  }
+
+  private triggerSelector(invitation: Invitation): string {
+    return `#${this.triggerId(invitation)}`;
+  }
 
   protected isOpen(invitation: Invitation): boolean {
     return invitation.status === 'PENDING' || invitation.status === 'EXPIRED';
@@ -217,7 +237,7 @@ export class InvitationsList {
       if (copied) {
         this.snackBar.open('Link copied', 'Dismiss', { duration: 5000, politeness: 'polite' });
       } else {
-        await this.openAndReload({ copy: link });
+        await this.openAndReload({ copy: link }, invitation);
       }
     } catch (error) {
       this.rowActionFailed(error);
@@ -255,6 +275,7 @@ export class InvitationsList {
     }
     const ref = this.dialog.open(ConfirmDialog, {
       width: '420px',
+      restoreFocus: this.triggerSelector(invitation),
       data: {
         title: `Revoke the invitation for ${invitation.email}?`,
         text: 'The link will stop working.',
@@ -284,6 +305,7 @@ export class InvitationsList {
       ConfirmDialog,
       {
         width: '420px',
+        restoreFocus: this.triggerSelector(invitation),
         data: {
           title: `Get a new link for ${invitation.email}?`,
           text: 'The previous link will stop working.',
@@ -306,7 +328,7 @@ export class InvitationsList {
       });
       // the old link is already invalid, so the list changes even if the dialog is closed at once
       this.invitations.reload();
-      await this.openAndReload({ created, emailRequested });
+      await this.openAndReload({ created, emailRequested }, invitation);
     } catch (error) {
       this.rowActionFailed(error, invitation);
     }
@@ -324,8 +346,13 @@ export class InvitationsList {
     });
   }
 
-  private async openAndReload(data: InviteDialogData): Promise<void> {
-    const ref = this.dialog.open(InviteDialog, { width: '520px', data });
+  private async openAndReload(data: InviteDialogData, invitation?: Invitation): Promise<void> {
+    // The menu item that opened the dialog is gone by the time it closes: focus goes back to the row's trigger.
+    const ref = this.dialog.open(InviteDialog, {
+      width: '520px',
+      data,
+      restoreFocus: invitation ? this.triggerSelector(invitation) : true,
+    });
     await firstValueFrom(ref.afterClosed());
     this.invitations.reload();
   }

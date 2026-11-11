@@ -7,7 +7,7 @@ import { greetingName } from '../../core/auth/user-name';
 @Component({
   selector: 'app-home',
   template: `
-    <main>
+    <main class="page">
       <h1>Welcome, {{ greeting() }}</h1>
     </main>
     <footer>

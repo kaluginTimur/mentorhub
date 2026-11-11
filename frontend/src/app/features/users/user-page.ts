@@ -17,8 +17,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
@@ -38,12 +38,14 @@ import { UserDetails } from '../../core/api/models/user-details';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { displayName } from '../../core/auth/user-name';
 import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
+import { Avatar } from '../../shared/avatar/avatar.component';
 import { ConfirmDialog } from '../../shared/confirm-dialog/confirm-dialog';
 import { Loading } from '../../shared/loading/loading';
+import { StatusDot } from '../../shared/status-dot/status-dot';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { DisableDialog, DisableDialogData } from './disable-dialog';
 import { describeEntry } from './history-text';
-import { REASON_LABELS, ROLE_LABELS, STATUS_LABELS } from './labels';
+import { REASON_LABELS, ROLE_LABELS, STATUS_LABELS, STATUS_TONES } from './labels';
 import { ProfileForm, ProfileValues } from '../../shared/profile-form/profile-form';
 import { UsersListState } from './users-list-state';
 
@@ -57,7 +59,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
-    MatChipsModule,
+    MatIconModule,
+    StatusDot,
+    Avatar,
     MatProgressBarModule,
     Loading,
     ProfileForm,
@@ -133,6 +137,7 @@ export class UserPage {
   protected readonly roleLabels = ROLE_LABELS;
   protected readonly reasonLabels = REASON_LABELS;
   protected readonly statusLabels = STATUS_LABELS;
+  protected readonly statusTones = STATUS_TONES;
 
   constructor() {
     effect(() => {

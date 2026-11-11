@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
 import { stripCallbackParams } from './core/auth/api-urls';
+import { ThemeService } from './core/theme/theme.service';
 import { DEV_TOOL } from './core/dev/dev-tool';
 import { Loading } from './shared/loading/loading';
 import { Unavailable } from './shared/unavailable/unavailable';
@@ -16,6 +17,8 @@ import { Unavailable } from './shared/unavailable/unavailable';
 export class App {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  // created at start so the saved color scheme applies before the first screen, shell or not
+  private readonly theme = inject(ThemeService);
   protected readonly devTool = inject(DEV_TOOL, { optional: true });
   private readonly initialNavigationDone = signal(false);
 

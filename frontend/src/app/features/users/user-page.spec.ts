@@ -119,7 +119,7 @@ describe('UserPage', () => {
     expect(element.textContent).toContain('ivan@example.com');
     expect(element.textContent).toContain('+77011234567');
     expect(element.textContent).toContain('12 Oct 2026');
-    expect(element.querySelector('mat-chip')?.textContent).toContain('Active');
+    expect(element.querySelector('.title-status')?.textContent).toContain('Active');
     expect(element.textContent).toContain('Roles changed: added Mentor');
     expect(element.textContent).toContain('Anna Petrova');
     expect(element.textContent).toContain('System');
@@ -137,6 +137,13 @@ describe('UserPage', () => {
     const { element } = await open(id);
     expect(element.querySelector('h1')?.textContent).toBe('User not found');
     expect(element.querySelector('a')?.getAttribute('href')).toBe('/users');
+  });
+
+  it('shows a decorative avatar before the name in the header', async () => {
+    const { element } = await open();
+    const avatar = element.querySelector('.title app-avatar');
+    expect(avatar?.textContent).toBe('IS');
+    expect(avatar?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('shows the unavailable card and retries', async () => {
@@ -244,7 +251,7 @@ describe('UserPage', () => {
       await vi.waitFor(() => expect(snack()).toContain('User disabled'));
       await settle();
       expect(element.textContent).toContain('Other — Left');
-      expect(element.querySelector('mat-chip')?.textContent).toContain('Disabled');
+      expect(element.querySelector('.title-status')?.textContent).toContain('Disabled');
       expect(buttonByText(element, 'Enable user')).toBeDefined();
       expect(element.querySelector('.history')?.textContent).toContain('Disabled: Other — Left');
     });

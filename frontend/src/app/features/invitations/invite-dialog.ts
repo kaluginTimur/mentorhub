@@ -155,7 +155,7 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     }
     fieldset {
       border: 0;
-      margin: 0;
+      margin: 16px 0 0;
       padding: 0;
       display: flex;
       flex-direction: column;

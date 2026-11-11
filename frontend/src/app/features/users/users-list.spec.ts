@@ -72,6 +72,16 @@ describe('UsersList', () => {
     expect(element.querySelectorAll('th')).toHaveLength(4);
   });
 
+  it('shows a decorative avatar with initials before each name', async () => {
+    api.invoke.mockResolvedValue(
+      page([summary('a', { firstName: 'Anna', lastName: 'Petrova' }), summary('b')]),
+    );
+    const { element } = await open();
+    const avatars = element.querySelectorAll('tr.mat-mdc-row app-avatar');
+    expect([...avatars].map((a) => a.textContent)).toEqual(['AP', 'B']);
+    expect(avatars[0].getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('restores search, filters and page from the URL', async () => {
     api.invoke.mockResolvedValue(page([summary('a')], 60));
     const { element } = await open('/users?q=ann&status=DISABLED&role=NONE&page=1');
@@ -266,18 +276,19 @@ describe('UsersList', () => {
 
   describe('Invite button', () => {
     const inviteButton = (element: HTMLElement) =>
-      [...element.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Invite');
+      element.querySelector<HTMLButtonElement>('.filters button.invite');
 
     afterEach(() => TestBed.inject(MatDialog).closeAll());
 
-    it('is shown next to the heading with USERS_INVITE and opens the invite dialog', async () => {
+    it('is shown in the filter row with USERS_INVITE and opens the invite dialog', async () => {
       TestBed.overrideProvider(CurrentUserService, {
         useValue: { hasPermission: (p: string) => p === 'USERS_INVITE' },
       });
       api.invoke.mockResolvedValue(page([summary('a')]));
       const { element } = await open();
-      expect(element.querySelector('.heading h1')?.textContent).toBe('Users');
-      inviteButton(element)?.click();
+      const button = inviteButton(element);
+      expect(button?.textContent).toContain('Invite');
+      button?.click();
       await vi.waitFor(() =>
         expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
           'Invite a person',
@@ -291,7 +302,7 @@ describe('UsersList', () => {
       });
       api.invoke.mockResolvedValue(page([summary('a')]));
       const { element } = await open();
-      expect(inviteButton(element)).toBeUndefined();
+      expect(element.querySelector('button.invite')).toBeNull();
     });
   });
 });

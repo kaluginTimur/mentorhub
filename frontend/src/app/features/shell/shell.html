@@ -1,27 +1,106 @@
 <header>
   <mat-toolbar>
-    <span class="brand">MentorHub</span>
+    @if (canReadUsers() || canInvite()) {
+      <button
+        class="sections"
+        matIconButton
+        type="button"
+        aria-label="Sections"
+        [matMenuTriggerFor]="sectionsMenu"
+      >
+        <mat-icon aria-hidden="true">menu</mat-icon>
+      </button>
+      <mat-menu #sectionsMenu="matMenu" class="bar-menu" xPosition="after" aria-label="Sections">
+        @if (canReadUsers()) {
+          <a
+            mat-menu-item
+            routerLink="/users"
+            routerLinkActive="active"
+            #usersActive="routerLinkActive"
+            ariaCurrentWhenActive="page"
+            ><mat-icon aria-hidden="true">{{ usersActive.isActive ? 'check' : '' }}</mat-icon
+            >Users</a
+          >
+        }
+        @if (canInvite()) {
+          <a
+            mat-menu-item
+            routerLink="/invitations"
+            routerLinkActive="active"
+            #invitationsActive="routerLinkActive"
+            ariaCurrentWhenActive="page"
+            ><mat-icon aria-hidden="true">{{ invitationsActive.isActive ? 'check' : '' }}</mat-icon
+            >Invitations</a
+          >
+        }
+      </mat-menu>
+    }
+
+    <a class="brand" routerLink="/">MentorHub</a>
     @if (canReadUsers()) {
-      <a matButton routerLink="/users" routerLinkActive="active" ariaCurrentWhenActive="page"
+      <a
+        class="nav-link"
+        matButton
+        routerLink="/users"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
         >Users</a
       >
     }
     @if (canInvite()) {
-      <a matButton routerLink="/invitations" routerLinkActive="active" ariaCurrentWhenActive="page"
+      <a
+        class="nav-link"
+        matButton
+        routerLink="/invitations"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
         >Invitations</a
       >
     }
     <span class="spacer"></span>
     <button
-      matButton
+      class="theme"
+      matIconButton
+      type="button"
+      [matMenuTriggerFor]="themeMenu"
+      [attr.aria-label]="'Color scheme: ' + themeLabel()"
+    >
+      <mat-icon aria-hidden="true">{{ themeIcons[theme.choice()] }}</mat-icon>
+    </button>
+    <mat-menu #themeMenu="matMenu" class="bar-menu" xPosition="before" aria-label="Color scheme">
+      @for (option of themeOptions; track option.value) {
+        <button
+          mat-menu-item
+          type="button"
+          role="menuitemradio"
+          [attr.aria-checked]="theme.choice() === option.value"
+          (click)="theme.set(option.value)"
+        >
+          <mat-icon aria-hidden="true">{{
+            theme.choice() === option.value ? 'check' : ''
+          }}</mat-icon>
+          {{ option.label }}
+        </button>
+      }
+    </mat-menu>
+
+    <button
+      class="account"
+      matIconButton
       type="button"
       [matMenuTriggerFor]="userMenu"
       [attr.aria-label]="'Account menu for ' + name()"
     >
-      {{ name() }}
-      <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
+      @if (currentUser.user(); as me) {
+        <app-avatar [user]="me" [size]="32" />
+      }
     </button>
-    <mat-menu #userMenu="matMenu" xPosition="before" [aria-label]="name() + ', ' + email()">
+    <mat-menu
+      #userMenu="matMenu"
+      class="bar-menu"
+      xPosition="before"
+      [aria-label]="name() + ', ' + email()"
+    >
       <div class="user-info">
         <div class="user-name">{{ name() }}</div>
         <div class="user-email">{{ email() }}</div>

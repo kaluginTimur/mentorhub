@@ -31,7 +31,12 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": [
+              "@fontsource-variable/montserrat/wght.css",
+              "@fontsource-variable/inter/wght.css",
+              "@fontsource/material-symbols-outlined/latin-400.css",
+              "src/styles.scss"
+            ]
           },
           "configurations": {
             "production": {
@@ -79,7 +84,10 @@
           }
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runnerConfig": "vitest.config.mts"
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",

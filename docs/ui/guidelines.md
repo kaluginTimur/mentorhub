@@ -7,6 +7,11 @@ Page patterns and conventions shared by screens. Styling rules are in `docs/deve
 - Route `/` and everything an active user with roles can open lives inside the shell (`frontend/src/app/features/shell/shell.ts`): a toolbar with "MentorHub", a link to each section the user's permissions allow, and the account menu, then the routed page. A section's link is marked as the current page on all of its routes.
 - Each page has one `h1`.
 
+## Page frame
+
+- Every page in the shell puts its content in `<main class="page">` (`frontend/src/styles.scss`): fluid width up to a maximum, centred, with side gutters. A page that needs a narrower reading width, such as a form, caps its own content.
+- No page scrolls sideways down to 360px wide: a wide table sits in a focusable, labelled `.table-scroll` region that scrolls inside itself, filter rows wrap, and on phones form columns stack and dialogs fill the screen.
+
 ## Pages outside the shell
 
 The access screens (`frontend/src/app/features/access/access-screen.ts`) and the public invitation landing page share one layout: a centered card without the account menu, an `h1` focused on open, a text and the actions. "Sign out" appears where a signed-in visitor has to leave or switch accounts.
@@ -17,8 +22,8 @@ The access screens (`frontend/src/app/features/access/access-screen.ts`) and the
 
 ## Pages and dialogs
 
-- List page (for example `/users`): `h1`, a filter row (search applied 300 ms after typing stops, selects), a Material table with column headers, a paginator without a page-size selector. While loading, a labelled progress bar shows and the previous rows stay. Empty: a message, with "Clear filters" when filters are set.
-- Detail page (for example `/users/{id}`): a back link to the list (with its last query), `h1` with a status chip, outlined cards with `h2` headings. Not found is a page with a link back; a failed load is the unavailable card.
+- List page (for example `/users`): `h1`, a filter row (search applied 300 ms after typing stops, selects), a Material table with column headers, a paginator without a page-size selector. While loading, a labelled progress bar shows and the previous rows stay. Empty: a message, with "Clear filters" when filters are set. Columns keep their widths from page to page: each column has a set width, and a long value wraps or is cut with an ellipsis instead of pushing its neighbours. Row actions sit in the last column, sized to its control, under a visually hidden header "Actions"; a row with more than one action gets a row menu.
+- Detail page (for example `/users/{id}`): a back link to the list (with its last query), for a person a header with the avatar, the `h1` and the status under it, outlined cards with `h2` headings. Not found is a page with a link back; a failed load is the unavailable card.
 - Dialogs: a title, the content, "Cancel" and the confirming action. Focus moves to the first field, is trapped, and returns to the opener. Confirmation dialogs name the object ("Enable <name>?"). Forms in dialogs show server field errors under their fields and keep the dialog open.
 - Chips are display only: a chip set with a label uses `role="list"` and its chips `role="listitem"` (the default `presentation` role must not carry a label).
 - Snackbars: "Dismiss" action; success messages are polite, conflict (409) messages are assertive.
