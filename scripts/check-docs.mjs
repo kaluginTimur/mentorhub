@@ -57,10 +57,18 @@ const topLevel = new Set(readdirSync(root).filter((name) => name !== '.git'));
 const isIgnored = (rel) =>
   [rel, rel.endsWith('/') ? rel.slice(0, -1) : `${rel}/`].some((r) => git(['check-ignore', '-q', '--no-index', r]) !== null);
 
+const hasAgentsDir = existsSync(path.join(root, '.agents')) && readdirSync(path.join(root, '.agents')).length > 0;
+
 const knowledgeFiles = git(['ls-files', '--cached', '--others', '--exclude-standard', '--', '*.md'])
   .split('\n')
   .filter(Boolean)
-  .filter((f) => /(^|\/)(AGENTS|CLAUDE|README)\.md$/.test(f) || f.startsWith('docs/') || f.startsWith('.claude/'))
+  .filter(
+    (f) =>
+      /(^|\/)(AGENTS|CLAUDE|README)\.md$/.test(f) ||
+      f.startsWith('docs/') ||
+      f.startsWith('.claude/') ||
+      (hasAgentsDir && f.startsWith('.agents/')),
+  )
   .filter((f) => existsSync(path.join(root, f)));
 
 const broken = [];
@@ -105,7 +113,10 @@ function addReference(doc, lineNo, line, raw) {
 
 for (const doc of knowledgeFiles) {
   const lines = readFileSync(path.join(root, doc), 'utf8').split('\n');
-  const isArtifact = doc.startsWith('.claude/agents/') || doc.startsWith('.claude/skills/');
+  const isArtifact =
+    doc.startsWith('.claude/agents/') ||
+    doc.startsWith('.claude/skills/') ||
+    (doc.startsWith('.agents/') && (doc.includes('/skills/') || doc.includes('/rules/')));
   const docHeadings = [];
   let fence = null;
   let section = '';
@@ -185,16 +196,23 @@ for (const { doc, lineNo, command } of commands) {
   }
 }
 
-for (const hook of readdirSync(path.join(root, '.claude/hooks')).filter((f) => f.endsWith('.mjs'))) {
-  const source = readFileSync(path.join(root, '.claude/hooks', hook), 'utf8');
-  for (const m of source.matchAll(/['"`]([\w.-]+\/[\w./-]*)['"`]/g)) {
-    const rel = m[1];
-    if (!topLevel.has(rel.split('/')[0])) continue;
-    if (!existsSync(path.join(root, rel)) && !isIgnored(rel)) {
-      broken.push(`.claude/hooks/${hook}: protected path \`${rel}\` does not exist`);
+function scanHooksDir(relDir) {
+  const dir = path.join(root, relDir);
+  if (!existsSync(dir)) return;
+  for (const hook of readdirSync(dir).filter((f) => f.endsWith('.mjs'))) {
+    const source = readFileSync(path.join(dir, hook), 'utf8');
+    for (const m of source.matchAll(/['"`]([\w.-]+\/[\w./-]*)['"`]/g)) {
+      const rel = m[1];
+      if (!topLevel.has(rel.split('/')[0])) continue;
+      if (!existsSync(path.join(root, rel)) && !isIgnored(rel)) {
+        broken.push(`${relDir}/${hook}: protected path \`${rel}\` does not exist`);
+      }
     }
   }
 }
+
+scanHooksDir('.claude/hooks');
+if (hasAgentsDir) scanHooksDir('.agents/plugins/mentorhub/hooks');
 
 const lines = (out) => (out ?? '').split('\n').filter(Boolean);
 const since = option('--since');

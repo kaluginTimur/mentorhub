@@ -74,11 +74,11 @@ node scripts/requirements.mjs trace
 `scripts/requirements.mjs trace` fails (exit code 1) on everything `validate` fails on, and on a scenario without a test and a test that cites a missing scenario. `scripts/requirements.mjs validate` alone fails on requirements and an index that are missing or break the **Requirements** format, on duplicate ids, on ids out of ascending order (gaps are allowed) and on references that do not resolve.
 
 `scripts/check-docs.mjs` fails (exit code 1) on broken references:
-- a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` or `.claude/` that does not exist and is not gitignored;
+- a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/`, `.claude/` or `.agents/` (when `.agents/` exists and is non-empty) that does not exist and is not gitignored;
 - an `@` import in an `AGENTS.md` or `CLAUDE.md` that does not resolve;
 - a section that an agent or skill refers to but no guide has, and a section any document names with its file ("the **Guides** section of `docs/README.md`") that the file lacks;
 - a Verification or Checking an API command that matches no allow rule;
-- a repository path in `.claude/hooks/` that no longer exists.
+- a repository path in `.claude/hooks/` or `.agents/plugins/mentorhub/hooks/` that no longer exists.
 
 It also lists the code and config files changed since the last checked commit (including uncommitted changes) that documents refer to, with the referring lines. These reminders do not fail the check; read the listed places and update them if the change made them wrong. To look at a specific range instead:
 

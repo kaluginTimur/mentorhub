@@ -1,0 +1,53 @@
+{
+  "mentorhub-guards": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./hooks/guard-bash.mjs",
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "edit_file|write_file|read_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./hooks/guard-files.mjs",
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "edit_file|write_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./hooks/check-frontend.mjs",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "send_message",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./hooks/guard-subagent-resume.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node ./hooks/context-budget.mjs",
+        "timeout": 10
+      }
+    ]
+  }
+}
