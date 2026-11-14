@@ -14,7 +14,7 @@ A pull request is published outside the machine: nothing is pushed or created un
 
 1. Check that the GitHub CLI is signed in (`gh auth status`). If not, ask the user to run `! gh auth login` and stop.
 2. If the current branch is the base branch, stop and go to `/change`: nothing is committed there, and the branch's prefix names the path of the change.
-3. If there are uncommitted changes, show them and ask whether to commit them. Invoking this command is not a request to commit. Commit messages follow the language rule in `docs/constitution.md`.
+3. If there are uncommitted changes, show them and ask whether to commit them. Invoking this command is not a request to commit. The change's usage record (`.claude/usage/<change>.jsonl`) is the exception: commit it without asking. Commit messages follow the language rule in `docs/constitution.md`.
 4. Collect what goes into the pull request: the commits and the diff from the base branch, including the changes under `docs/requirements/`. If this session ran `/feature`, reuse its final report instead of recomputing it. On a `feature/` branch, a plan still there should not be: it is deleted at the finish, as stage 8 of `docs/process.md` says, so ask. Its last version is in the branch's history (`git log -p -1 -- docs/plans/`), with the user's decisions and the accepted deviations. On any other branch the file in `docs/plans/` is a brief, and it should still be there: read the user's decisions and the answers for each guide passage from it. Without one on a `chore/` or `change/` branch, look in the branch's history, and ask the user if it is not there either.
 
 ## Check
@@ -26,7 +26,7 @@ A pull request is published outside the machine: nothing is pushed or created un
 
 ## Draft
 
-Write a title (imperative, under 70 characters) and a description following [template.md](template.md). Keep only what applies; be concrete.
+Write a title (imperative, under 70 characters) and a description following [template.md](template.md). Keep only what applies; be concrete. Commit messages, the title and the description are in English (C-10 in `docs/constitution.md`) and quote none of the user's messages.
 
 Show the user the title and the description, and ask whether to open it as a draft or ready for review. Apply their corrections.
 
@@ -39,4 +39,4 @@ After the user approves:
 3. `gh pr create --base <base> --title "<title>" --body "<description>"` (add `--draft` if chosen), passing the description through a quoted heredoc.
 4. Give the user the pull request URL.
    If you can subscribe to the pull request's activity, do not subscribe while it is green and only waits on reviewers: every event wakes the session and re-reads its whole context. Offer it for red CI or review work, or when the user asks.
-5. If this session ran the `review` phase of `/feature` for this pull request, record the session again as its `review` phase (`node .claude/scripts/agent-usage.mjs --record <change> review`, without a session id; it replaces this session's earlier record), so the record covers the work after the final commit. Check that the session it prints is this one, and offer to commit the record on the branch and push it.
+5. If this session ran the `review` phase of `/feature` for this pull request, record the session again as its `review` phase (`node .claude/scripts/agent-usage.mjs --record <change> review`, without a session id; it replaces this session's earlier record), so the record covers the work after the final commit. Check that the session it prints is this one, commit the record on the branch without asking, and offer to push it.

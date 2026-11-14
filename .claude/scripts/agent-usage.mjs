@@ -8,7 +8,7 @@
 //   line per session. One session can hold several phases: /clear keeps the session id in a cloud session. A record
 //   therefore covers only the API calls after the chain's latest record of another phase, and replaces an earlier record
 //   of the same phase of the chain. --until <time> (ISO 8601) ends the window earlier, to rebuild a missed record. It
-//   refuses a chain none of whose agents (in the window) is listed in the plan docs/plans/<feature>.md (or its history), one that ended
+//   refuses a chain none of whose agents (in the window) is listed in the plan docs/plans/<feature>.md (or its history) or in an earlier record of the feature, one that ended
 //   before another recorded session of the feature, or (without --until) a phase recorded again after a later phase;
 //   --force overrides.
 // Transcripts are local to the machine that ran the session and are deleted after cleanupPeriodDays (30 by default);
@@ -303,8 +303,10 @@ if (record) {
   const plan = `docs/plans/${record.feature}.md`;
   const problems = [];
   // /spec and /feature list every agent they start in the plan's Agents table. The plan is deleted before the pull request, so its history counts too.
+  // Rows added after the plan's last commit are lost with it, so the agents of the feature's earlier records count as well: /pr records the review phase again after the plan is gone.
   const planText = [existsSync(path.join(root, plan)) ? readFileSync(path.join(root, plan), 'utf8') : '', git(['log', '--format=', '-p', '--', plan]) ?? ''].join('\n');
-  if (agentIds.length && !agentIds.some((id) => planText.includes(id))) problems.push(`none of its agents is in the Agents table of ${plan}`);
+  const recordedIds = new Set(existing.map(([, r]) => r.type === 'agent' && r.id).filter(Boolean));
+  if (agentIds.length && !agentIds.some((id) => planText.includes(id) || recordedIds.has(id))) problems.push(`none of its agents is in the Agents table of ${plan} or in an earlier record of ${record.feature}`);
   const later = existing.map(([, r]) => r).filter((r) => r.type === 'size' && !ofChain(r) && r.recordedAt > chainLast);
   if (later.length) problems.push(`it ended (${chainLast}) before ${record.feature}/${later[0].phase} was recorded (${later[0].recordedAt})`);
   const samePhase = existing.map(([, r]) => r).filter((r) => r.type === 'size' && ofChain(r) && r.phase === record.phase);
