@@ -3,9 +3,15 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { oidcConfigLoader } from './app.config';
+import { ClientConfig } from './core/api/models/client-config';
 
 describe('oidcConfigLoader', () => {
-  const clientConfig = { issuer: 'http://kc/realms/m', clientId: 'web', scope: 'openid' };
+  const clientConfig: ClientConfig = {
+    issuer: 'http://kc/realms/m',
+    clientId: 'web',
+    scope: 'openid',
+    invitationEmails: false,
+  };
 
   function setup() {
     TestBed.configureTestingModule({
@@ -40,7 +46,7 @@ describe('oidcConfigLoader', () => {
     const first = firstValueFrom(loader.loadConfigs());
     TestBed.inject(HttpTestingController)
       .expectOne('/api/v1/system/client-config')
-      .flush({ ...clientConfig, invitationEmails: true });
+      .flush({ ...clientConfig, invitationEmails: true } satisfies ClientConfig);
     await first;
     expect(onConfig).toHaveBeenCalledWith(expect.objectContaining({ invitationEmails: true }));
   });

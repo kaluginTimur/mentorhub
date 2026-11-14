@@ -8,6 +8,8 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { devToolsInterceptors, devToolsProviders } from '../../../environments/dev-tools';
+import { Problem } from '../api/models/problem';
+import { UserPage } from '../api/models/user-page';
 import { DEV_TOOL } from './dev-tool';
 
 // The failure modes as a developer uses them: chosen with the switch, seen on the requests the client makes.
@@ -66,7 +68,10 @@ describe('failure modes', () => {
     backend.expectNone('/api/v1/users');
     expect(responses).toEqual([]);
     expect(errors.map((error) => error.status)).toEqual([500]);
-    expect(errors[0].error).toMatchObject({ type: 'about:blank', status: 500 });
+    expect(errors[0].error).toMatchObject({
+      type: 'about:blank',
+      status: 500,
+    } satisfies Partial<Problem>);
     backend.verify();
   });
 
@@ -98,11 +103,12 @@ describe('failure modes', () => {
     vi.advanceTimersByTime(2_900);
     backend.expectNone('/api/v1/users');
 
+    const emptyPage: UserPage = { items: [], page: 0, size: 25, totalItems: 0 };
     vi.advanceTimersByTime(100);
-    backend.expectOne('/api/v1/users').flush({ items: [] }, { status: 200, statusText: 'OK' });
+    backend.expectOne('/api/v1/users').flush(emptyPage, { status: 200, statusText: 'OK' });
 
     expect(responses.map((response) => [response.status, response.body])).toEqual([
-      [200, { items: [] }],
+      [200, emptyPage],
     ]);
     expect(errors).toEqual([]);
     backend.verify();
@@ -130,9 +136,10 @@ describe('failure modes', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('[data-testid="failure-indicator"]'),
     ).toBeNull();
+    const emptyPage: UserPage = { items: [], page: 0, size: 25, totalItems: 0 };
     get('/api/v1/users');
-    backend.expectOne('/api/v1/users').flush({ items: [] });
-    expect(responses.map((response) => response.body)).toEqual([{ items: [] }]);
+    backend.expectOne('/api/v1/users').flush(emptyPage);
+    expect(responses.map((response) => response.body)).toEqual([emptyPage]);
     expect(errors).toEqual([]);
     backend.verify();
   });

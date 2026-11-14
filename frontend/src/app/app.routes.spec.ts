@@ -3,13 +3,16 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
-import { Api } from './core/api/api';
+import { getSystemInfo } from './core/api/fn/system/get-system-info';
+import { Me } from './core/api/models/me';
+import { MeUser } from './core/api/models/me-user';
 import { AuthService } from './core/auth/auth.service';
 import { CurrentUserService } from './core/auth/current-user.service';
 import { displayName } from './core/auth/user-name';
+import { createApiStub, provideApiStub } from './core/testing/api-stub';
 
 describe('routes', () => {
-  const user = {
+  const user: MeUser = {
     id: 'u1',
     email: 'anna@example.com',
     firstName: 'Anna',
@@ -20,9 +23,12 @@ describe('routes', () => {
   };
 
   const load = vi.fn();
+  const api = createApiStub();
 
   beforeEach(() => {
-    load.mockReset().mockResolvedValue({ status: 'ACTIVE', user });
+    load.mockReset().mockResolvedValue({ status: 'ACTIVE', user } satisfies Me);
+    api.reset();
+    api.resolve(getSystemInfo, { name: 'MentorHub', version: '0.1.0' });
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -43,7 +49,7 @@ describe('routes', () => {
             hasPermission: () => false,
           },
         },
-        { provide: Api, useValue: { invoke: vi.fn().mockResolvedValue({ name: 'MentorHub' }) } },
+        provideApiStub(api),
       ],
     });
   });
@@ -70,7 +76,7 @@ describe('routes', () => {
     ).not.toBeNull();
   });
 
-  it.each([
+  it.each<[string, Me, string]>([
     ['not linked', { status: 'NOT_INVITED' }, '/access/invitation-only'],
     ['disabled', { status: 'DISABLED' }, '/access/ended'],
     ['active without roles', { status: 'ACTIVE', user: { ...user, roles: [] } }, '/access/pending'],

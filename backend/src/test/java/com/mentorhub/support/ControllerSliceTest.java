@@ -19,7 +19,7 @@ import org.springframework.core.annotation.AliasFor;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @WebMvcTest
-@Import(WebSliceSecurity.class)
+@Import({WebSliceSecurity.class, OpenApiValidationConfiguration.class})
 public @interface ControllerSliceTest {
 
     /** The controller under test. */

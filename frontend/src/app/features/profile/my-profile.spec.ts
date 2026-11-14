@@ -1,25 +1,22 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Api } from '../../core/api/api';
 import { updateMyProfile } from '../../core/api/fn/users/update-my-profile';
-import { MeUser } from '../../core/api/models/me-user';
+import { Me } from '../../core/api/models/me';
 import { CurrentUserService } from '../../core/auth/current-user.service';
+import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
 import { MyProfile } from './my-profile';
 import { meUser } from '../users/test-data';
 
 describe('MyProfile', () => {
-  const api = { invoke: vi.fn() };
-  const me = signal<{ status: string; user?: MeUser }>({ status: 'ACTIVE', user: meUser() });
+  const api = createApiStub();
+  const me = signal<Me>({ status: 'ACTIVE', user: meUser() });
   const currentUser = { me, user: () => me().user ?? null };
 
   beforeEach(() => {
-    api.invoke.mockReset();
+    api.reset();
     me.set({ status: 'ACTIVE', user: meUser({ roles: ['STUDENT'], permissions: [] }) });
     TestBed.configureTestingModule({
-      providers: [
-        { provide: Api, useValue: api },
-        { provide: CurrentUserService, useValue: currentUser },
-      ],
+      providers: [provideApiStub(api), { provide: CurrentUserService, useValue: currentUser }],
     });
   });
 
@@ -45,7 +42,7 @@ describe('MyProfile', () => {
   });
 
   it('saves, updates the current user so the toolbar name changes, and shows no status or roles', async () => {
-    api.invoke.mockResolvedValue({
+    api.resolve(updateMyProfile, {
       status: 'ACTIVE',
       user: meUser({ firstName: 'Anya', phone: '+77011234567', roles: ['STUDENT'] }),
     });
@@ -61,9 +58,15 @@ describe('MyProfile', () => {
     await fixture.whenStable();
     save(el)?.click();
     await fixture.whenStable();
-    expect(api.invoke).toHaveBeenCalledWith(updateMyProfile, {
-      body: { firstName: 'Anya', lastName: null, phone: '8 701 123 45 67' },
-    });
+    expect(api.callsFor(updateMyProfile)).toEqual([
+      {
+        body: {
+          firstName: 'Anya',
+          lastName: null,
+          phone: '8 701 123 45 67',
+        },
+      },
+    ]);
     expect(me().user?.firstName).toBe('Anya');
     expect(inputs[2].value).toBe('+77011234567');
     expect(document.querySelector('app-toast-host')?.textContent).toContain('Profile saved');

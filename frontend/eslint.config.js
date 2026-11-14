@@ -43,8 +43,45 @@ module.exports = defineConfig([
   {
     // Type-checked rules for the application code only; tests and their data stay on the rules above.
     files: ['**/*.ts'],
-    ignores: ['**/*.spec.ts', '**/test-data.ts', 'src/app/shared/ui/**'],
+    ignores: ['**/*.spec.ts', '**/test-data.ts', 'src/app/core/testing/**', 'src/app/shared/ui/**'],
     extends: [tseslint.configs.recommendedTypeChecked],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.\\.?/((.*/)?core/)?testing(/|$)',
+              message: 'Test helpers under core/testing may only be imported in tests.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ObjectExpression > Property[key.name="provide"][value.name="Api"]',
+          message:
+            'Use provideApiStub(createApiStub()) from core/testing/api-stub instead of mocking Api directly.',
+        },
+        {
+          selector:
+            'NewExpression[callee.name="HttpErrorResponse"]:has(Property[key.name="error"])',
+          message:
+            'Use problemError(...) from core/testing/problem-error instead of constructing HttpErrorResponse with an untyped error body.',
+        },
+        {
+          selector: 'TSAsExpression[typeAnnotation.type="TSNeverKeyword"]',
+          message: 'Do not cast with `as never` in tests.',
+        },
+      ],
+    },
   },
   {
     files: ['src/app/shared/ui/**/*.ts'],

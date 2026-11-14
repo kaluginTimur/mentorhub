@@ -114,6 +114,9 @@ class OperationGateTests {
     private String outcome(Operation operation, @Nullable String authorization) {
         MockMvcRequestBuilder request =
                 mvc.method(HttpMethod.valueOf(operation.method())).uri(operation.uri());
+        if (operation.hasRequestBody()) {
+            request = request.contentType(MediaType.APPLICATION_JSON);
+        }
         if (authorization != null) {
             request = request.header(HttpHeaders.AUTHORIZATION, authorization);
         }

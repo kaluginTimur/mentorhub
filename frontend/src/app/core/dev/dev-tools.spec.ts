@@ -19,6 +19,7 @@ import {
   devToolsProviders as productionProviders,
 } from '../../../environments/dev-tools.prod';
 import { App } from '../../app';
+import { Problem } from '../api/models/problem';
 import { AuthService } from '../auth/auth.service';
 
 interface DevTools {
@@ -111,7 +112,7 @@ describe('dev tools', () => {
     ]);
 
     http.get('/api/v1/me').subscribe({ error: (error: HttpErrorResponse) => errors.push(error) });
-    const problem = { type: 'about:blank', title: 'Service Unavailable', status: 503 };
+    const problem: Problem = { type: 'about:blank', title: 'Service Unavailable', status: 503 };
     backend
       .expectOne('/api/v1/me')
       .flush(problem, { status: 503, statusText: 'Service Unavailable' });
