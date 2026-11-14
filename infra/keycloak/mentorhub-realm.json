@@ -187,23 +187,6 @@
       ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000008",
-      "username": "observer@mentorhub.local",
-      "email": "observer@mentorhub.local",
-      "emailVerified": true,
-      "enabled": true,
-      "firstName": "Otto",
-      "lastName": "Observer",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "mentorhub",
-          "temporary": false
-        }
-      ]
-    },
-    {
       "id": "00000000-0000-4000-8000-000000000009",
       "username": "admin.mentor@mentorhub.local",
       "email": "admin.mentor@mentorhub.local",

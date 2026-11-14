@@ -4,7 +4,7 @@
 --
 -- Fixed ids by kind, with the number in the last group:
 --   users        00000000-0000-4000-a000-...   personas ...001 to ...00a (the persona Not invited, ...006, has no
---                                              user), other users ...101 and up
+--                                              user; ...008 is unused), other users ...101 and up
 --   identities   00000000-0000-4000-b000-...   the number of the user; the subject is 00000000-0000-4000-8000-<number>,
 --                                              the id of the Keycloak account for a persona and no account otherwise,
 --                                              so nobody signs in as the other users
@@ -35,8 +35,6 @@ with sample (id, email, first_name, last_name, phone, status, disabled_reason, d
             'OTHER', 'Contract paused until the next cohort', interval '259 days', array ['MENTOR']),
            ('00000000-0000-4000-a000-000000000007', 'coordinator@mentorhub.local', 'Cora', 'Coordinator', null,
             'ACTIVE', null, null, interval '281 days', array ['COORDINATOR']),
-           ('00000000-0000-4000-a000-000000000008', 'observer@mentorhub.local', 'Otto', 'Observer', null, 'ACTIVE',
-            null, null, interval '199 days', array ['OBSERVER']),
            ('00000000-0000-4000-a000-000000000009', 'admin.mentor@mentorhub.local', 'Alma', 'Admin-Mentor', null,
             'ACTIVE', null, null, interval '287 days', array ['ADMIN', 'MENTOR']),
            ('00000000-0000-4000-a000-00000000000a', 'mentor.coordinator@mentorhub.local', 'Milo', 'Mentor-Coordinator',
@@ -97,9 +95,9 @@ with sample (id, email, first_name, last_name, phone, status, disabled_reason, d
             null, interval '279 days', array ['MENTOR']),
            ('00000000-0000-4000-a000-000000000123', 'irene.walsh@mentorhub.local', 'Irene', 'Walsh', '+77012223344',
             'ACTIVE', null, null, interval '229 days', array ['COORDINATOR']),
-           -- An external examiner.
+           -- A guest mentor from industry.
            ('00000000-0000-4000-a000-000000000124', 'thomas.grant@example.com', 'Thomas', 'Grant', null, 'ACTIVE', null,
-            null, interval '208 days', array ['OBSERVER']),
+            null, interval '208 days', array ['MENTOR']),
            -- Waits for the next DevOps cohort without roles.
            ('00000000-0000-4000-a000-000000000126', 'kevin.doyle@example.com', 'Kevin', 'Doyle', null, 'ACTIVE', null,
             null, interval '39 days', array []::text[])),
@@ -152,7 +150,7 @@ with sample (n, email, created_by, created_ago, link_ago, accepted_ago, revoked_
            (9, 'sam.taylor@example.com', 'admin@mentorhub.local', interval '20 days', null, null, null, null,
             array ['STUDENT']),
            (10, 'mark.ellison@example.com', 'admin.mentor@mentorhub.local', interval '60 days', null, null, null, null,
-            array ['OBSERVER']),
+            array ['MENTOR']),
            -- Revoked; the email of the first was due after the revocation and was skipped.
            (11, 'tom.wright@example.com', 'admin@mentorhub.local', interval '30 days', null, null,
             'admin@mentorhub.local', interval '29 days 23 hours 58 minutes', array ['STUDENT']),
@@ -185,9 +183,7 @@ with sample (n, email, created_by, created_ago, link_ago, accepted_ago, revoked_
            (112, 'irene.walsh@mentorhub.local', 'admin.mentor@mentorhub.local', interval '230 days', null,
             interval '229 days', null, null, array ['COORDINATOR']),
            (113, 'thomas.grant@example.com', 'admin.mentor@mentorhub.local', interval '210 days', null,
-            interval '208 days', null, null, array ['OBSERVER']),
-           (114, 'observer@mentorhub.local', 'admin.mentor@mentorhub.local', interval '200 days', null,
-            interval '199 days', null, null, array ['OBSERVER']),
+            interval '208 days', null, null, array ['MENTOR']),
            (115, 'student@mentorhub.local', 'admin.mentor@mentorhub.local', interval '152 days', null,
             interval '150 days', null, null, array ['STUDENT']),
            (116, 'liam.carter@example.com', 'admin@mentorhub.local', interval '152 days', null, interval '151 days',
@@ -302,7 +298,7 @@ select ('00000000-0000-4000-e100-' || right(i.id::text, 12))::uuid,
        i.id,
        jsonb_build_object('email', i.email, 'roles', coalesce(
                (select jsonb_agg(r.role order by array_position(
-                       array ['ADMIN', 'COORDINATOR', 'MENTOR', 'STUDENT', 'OBSERVER'], r.role))
+                       array ['ADMIN', 'COORDINATOR', 'MENTOR', 'STUDENT'], r.role))
                 from invitation_roles r
                 where r.invitation_id = i.id), '[]'::jsonb))
 from invitations i;
@@ -366,7 +362,7 @@ select ('00000000-0000-4000-e200-' || right(i.id::text, 12))::uuid,
                'enabled', false,
                'rolesAdded', coalesce(
                        (select jsonb_agg(r.role order by array_position(
-                               array ['ADMIN', 'COORDINATOR', 'MENTOR', 'STUDENT', 'OBSERVER'], r.role))
+                               array ['ADMIN', 'COORDINATOR', 'MENTOR', 'STUDENT'], r.role))
                         from invitation_roles r
                         where r.invitation_id = i.id), '[]'::jsonb),
                'rolesRemoved', '[]'::jsonb)

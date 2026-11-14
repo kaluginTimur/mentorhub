@@ -36,7 +36,6 @@ Every development user has the password `mentorhub`:
 | `coordinator@mentorhub.local` | Active, COORDINATOR |
 | `mentor@mentorhub.local` | Active, MENTOR |
 | `student@mentorhub.local` | Active, STUDENT |
-| `observer@mentorhub.local` | Active, OBSERVER |
 | `admin.mentor@mentorhub.local` | Active, ADMIN and MENTOR |
 | `mentor.coordinator@mentorhub.local` | Active, MENTOR and COORDINATOR |
 | `noroles@mentorhub.local` | Active, no roles ("Your access is being set up") |
@@ -49,7 +48,7 @@ Every development user has the password `mentorhub`:
 
 ### The sample center data
 
-Besides the development users, the dev database holds a fictional training center (`backend/src/main/resources/db/sample/`; the header of each script describes it): 26 more users (students, mentors, a coordinator, an observer, users disabled for each reason), invitations in every status with invitation emails in every status, and the change history behind them. The users list and the invitations list have more than one page, and the user page of Daniel Kim has more history than one page. Sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local` to see them; the other development users see what their roles allow.
+Besides the development users, the dev database holds a fictional training center (`backend/src/main/resources/db/sample/`; the header of each script describes it): 26 more users (students, mentors, a coordinator, users disabled for each reason), invitations in every status with invitation emails in every status, and the change history behind them. The users list and the invitations list have more than one page, and the user page of Daniel Kim has more history than one page. Sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local` to see them; the other development users see what their roles allow.
 
 The sample center has a pending invitation for `stranger@mentorhub.local` with the Mentor role and a fixed link:
 
@@ -90,7 +89,7 @@ docker compose -f infra/compose.yaml up -d --force-recreate keycloak
 
 This deletes Keycloak's own data, which lives inside the container: accounts registered locally, sessions and changes made in the admin console. The development users' accounts come back from the realm file. The dev database is not touched.
 
-A Keycloak container created before an account was added to the realm file lacks that account: recreate it once after pulling such a change (the sample center added `coordinator@`, `observer@`, `admin.mentor@` and `mentor.coordinator@mentorhub.local`).
+A Keycloak container created before an account was added to the realm file lacks that account: recreate it once after pulling such a change (the sample center added `coordinator@`, `admin.mentor@` and `mentor.coordinator@mentorhub.local`).
 
 Do not use `docker compose down -v` for this: it also deletes the `postgres-data` volume, which holds the dev database.
 
