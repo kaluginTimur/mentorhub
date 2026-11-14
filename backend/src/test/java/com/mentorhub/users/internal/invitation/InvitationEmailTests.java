@@ -651,7 +651,7 @@ class InvitationEmailTests {
                         .update();
 
                 resubmission.resubmitStalePublications();
-                assertThat(resubmittedPublications()).isEqualTo(1);
+                assertThat(completionAttempts()).isEqualTo(2);
             } finally {
                 release.countDown();
             }
@@ -731,9 +731,15 @@ class InvitationEmailTests {
                 .list();
     }
 
-    /** Publications being resubmitted: the resubmission marks each one so before it delivers it again. */
+    /** Publications resubmitted: the registry increments completion attempts when resubmitting. */
     private int resubmittedPublications() {
-        return jdbc.sql("select count(*) from event_publication where status = 'RESUBMITTED'")
+        return jdbc.sql("select count(*) from event_publication where completion_attempts > 1")
+                .query(Integer.class)
+                .single();
+    }
+
+    private int completionAttempts() {
+        return jdbc.sql("select completion_attempts from event_publication")
                 .query(Integer.class)
                 .single();
     }
