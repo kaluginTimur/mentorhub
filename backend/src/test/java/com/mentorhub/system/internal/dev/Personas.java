@@ -21,7 +21,6 @@ public final class Personas {
             new Persona("Coordinator", "00000000-0000-4000-8000-000000000007", "ACTIVE", List.of("COORDINATOR")),
             new Persona("Mentor", "00000000-0000-4000-8000-000000000002", "ACTIVE", List.of("MENTOR")),
             new Persona("Student", "00000000-0000-4000-8000-000000000003", "ACTIVE", List.of("STUDENT")),
-            new Persona("Observer", "00000000-0000-4000-8000-000000000008", "ACTIVE", List.of("OBSERVER")),
             new Persona(
                     "Administrator and mentor",
                     "00000000-0000-4000-8000-000000000009",

@@ -11,7 +11,7 @@ Access to a student's data depends on relations that change over time: a mentor 
 ## Decision
 
 - **Permissions** are a Java enum in the public API of the `users` module, one value per capability that code checks.
-- **Roles** are a Java enum that maps each role to a set of permissions. The initial roles are ADMIN, COORDINATOR, MENTOR, STUDENT and OBSERVER. Adding a role or changing its permissions is a code change.
+- **Roles** are a Java enum that maps each role to a set of permissions. The initial roles are ADMIN, COORDINATOR, MENTOR and STUDENT. Adding a role or changing its permissions is a code change.
 - **Role assignments are data**: `user_roles(user_id, role)`, managed by administrators in the application. A user can have several roles or none; an active user without roles has no permissions.
 - **Roles are global, not scoped** to a track or cohort. Which students a user can access is decided by domain relations (enrollment, mentor assignment, track coordination) in resource-level checks.
 - **Authorization checks use permissions, never role names.**

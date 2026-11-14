@@ -38,7 +38,7 @@ create table roles (
     name text primary key
 );
 
-insert into roles (name) values ('ADMIN'), ('COORDINATOR'), ('MENTOR'), ('STUDENT'), ('OBSERVER');
+insert into roles (name) values ('ADMIN'), ('COORDINATOR'), ('MENTOR'), ('STUDENT');
 
 create table user_roles (
     user_id    uuid        not null references users (id) on delete restrict,

@@ -92,8 +92,8 @@ The system SHALL let a caller with `USERS_MANAGE` replace a user's roles with ex
 #### USR-6.1 The roles become exactly the requested set
 
 - GIVEN a user with the mentor and student roles
-- WHEN an administrator sets the roles mentor and observer
-- THEN the response lists the mentor and observer roles and the user holds only those
+- WHEN an administrator sets the roles mentor and coordinator
+- THEN the response lists the mentor and coordinator roles and the user holds only those
 
 #### USR-6.2 An empty set leaves an active user without roles
 
@@ -242,5 +242,5 @@ The client SHALL show a profile form with the email read-only, and a My profile 
 - Changing a user's email, and showing or unlinking a user's sign-in identities.
 - Deleting users.
 - A global audit screen and audit retention (AUD).
-- Access of coordinators, mentors and observers to user data, and automatic disabling when an enrollment ends.
+- Access of coordinators and mentors to user data, and automatic disabling when an enrollment ends.
 - Photos, consent and other personal data rules.

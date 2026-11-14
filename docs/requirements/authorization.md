@@ -16,7 +16,6 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 | Coordinator | none |
 | Mentor | none |
 | Student | none |
-| Observer | none |
 
 | Permission | Allows |
 |---|---|
@@ -134,7 +133,7 @@ The client SHALL offer actions, links and pages by the permissions of the curren
 
 ## Known limitations
 
-- The coordinator, mentor, student and observer roles grant no permission; what they may do is defined when the features that need them are built.
+- The coordinator, mentor and student roles grant no permission; what they may do is defined when the features that need them are built.
 - No operation yet gives different callers different access to one resource, so PERM-6.3 is checked only against a test operation, and no list leaves items out.
 
 ## Out of scope

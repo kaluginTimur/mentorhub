@@ -188,12 +188,16 @@ class InvitationAcceptanceServiceTests {
         @Test
         @DisplayName("INV-12.4 A reactivated user has exactly the roles of the invitation")
         void reactivatedUserHasExactlyTheInvitationsRoles() {
-            Invited[] invitedOut = new Invited[1];
-            UUID former = formerWithInvitation(invitedOut);
+            UUID former = users.create("ivan@x.test", UserStatus.DISABLED, Role.MENTOR, Role.ADMIN);
+            jdbc.sql("insert into roles (name) values ('AUDITOR') on conflict do nothing")
+                    .update();
+            users.assignStoredRole(former, "AUDITOR");
+            Invited invited = invite("ivan@x.test", Role.STUDENT);
+            signIn(AccessStatus.NOT_INVITED, null, "ivan@x.test", true);
 
-            service.accept(invitedOut[0].token());
+            service.accept(invited.token());
 
-            assertThat(users.roles(former)).containsExactly("AUDITOR", "MENTOR", "STUDENT");
+            assertThat(users.roles(former)).containsExactly("AUDITOR", "STUDENT");
         }
 
         // A disabled caller whose identity is already linked to that user.

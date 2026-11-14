@@ -146,7 +146,7 @@ class SampleCenterTests {
                 .param("issuer", Personas.LOCAL_ISSUER)
                 .param("subject", persona.subject())
                 .update();
-        String foreignRole = persona.roles().contains("STUDENT") ? "OBSERVER" : "STUDENT";
+        String foreignRole = persona.roles().contains("STUDENT") ? "MENTOR" : "STUDENT";
         jdbc.sql("insert into user_roles (user_id, role) select user_id, :role from user_identities"
                         + " where issuer = :issuer and subject = :subject")
                 .param("role", foreignRole)

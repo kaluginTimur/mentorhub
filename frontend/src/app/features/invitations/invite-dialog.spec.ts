@@ -76,7 +76,7 @@ describe('InviteDialog', () => {
     expect(root.textContent).toContain('Invite a person');
     expect(root.querySelector('label[hlmLabel]')?.textContent).toBe('Email');
     const labels = checkboxLabels(root).map((c) => c.textContent?.trim());
-    expect(labels).toEqual(['Administrator', 'Coordinator', 'Mentor', 'Student', 'Observer']);
+    expect(labels).toEqual(['Administrator', 'Coordinator', 'Mentor', 'Student']);
     expect(
       root.querySelectorAll('hlm-checkbox button[role="checkbox"][aria-checked="true"]'),
     ).toHaveLength(0);
