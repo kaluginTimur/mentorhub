@@ -1,17 +1,23 @@
 import {
   Component,
+  ElementRef,
   Injector,
   afterNextRender,
   effect,
   inject,
   signal,
   untracked,
-  ElementRef,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideLoaderCircle,
+  lucideMail,
+  lucideShieldAlert,
+  lucideTriangleAlert,
+} from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
 import { Api } from '../../core/api/api';
 import { acceptInvitation } from '../../core/api/fn/invitations/accept-invitation';
 import { previewInvitation } from '../../core/api/fn/invitations/preview-invitation';
@@ -39,9 +45,11 @@ const LANDING_PATH = '/invite';
 /** The public landing page of an invitation link. */
 @Component({
   selector: 'app-invite-page',
-  imports: [MatButtonModule, MatCardModule, MatProgressSpinnerModule, Loading, Unavailable],
+  imports: [HlmButton, HlmCardImports, NgIcon, Loading, Unavailable],
+  providers: [
+    provideIcons({ lucideLoaderCircle, lucideMail, lucideShieldAlert, lucideTriangleAlert }),
+  ],
   templateUrl: './invite-page.html',
-  styleUrl: '../access/access-screen.scss',
 })
 export class InvitePage {
   private readonly accessChannel = inject(AccessChannel);

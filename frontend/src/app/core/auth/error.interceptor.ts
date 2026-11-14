@@ -52,9 +52,9 @@ function handleForbidden(injector: Injector, error: HttpErrorResponse): void {
         return router.navigateByUrl('/unavailable', { skipLocationChange: true });
       });
   } else if (type === FORBIDDEN) {
-    // loaded on demand: a static import would pull the snack bar and its CDK code into the initial bundle
-    void import('@angular/material/snack-bar').then(({ MatSnackBar }) =>
-      injector.get(MatSnackBar).open("You don't have permission to do this.", 'Dismiss'),
+    // loaded on demand: keep toast UI code out of the initial bundle
+    void import('../../shared/toast/toast.service').then(({ ToastService }) =>
+      injector.get(ToastService).show("You don't have permission to do this."),
     );
   }
 }

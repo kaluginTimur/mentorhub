@@ -7,8 +7,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideClock, lucideLock, lucideLogOut, lucideShieldAlert } from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
 import { AccessChannel } from '../../core/auth/access-channel';
 import { AuthService } from '../../core/auth/auth.service';
 import type { AccessScreen as Access } from '../../core/auth/current-user.service';
@@ -16,40 +18,60 @@ import type { AccessScreen as Access } from '../../core/auth/current-user.servic
 interface Message {
   title: string;
   text: string;
+  icon: string;
 }
 
 const MESSAGES: Record<Exclude<Access, 'full'>, Message> = {
   'invitation-only': {
     title: 'Access by invitation only',
     text: 'MentorHub is available to students and staff of the training center by invitation. If you were invited, open your invitation link and sign in with the email it was sent to.',
+    icon: 'lucideLock',
   },
   ended: {
     title: 'Your access has ended',
     text: 'Contact the training center if you think this is a mistake.',
+    icon: 'lucideShieldAlert',
   },
   pending: {
     title: 'Your access is being set up',
     text: 'Contact an administrator.',
+    icon: 'lucideClock',
   },
 };
 
 @Component({
   selector: 'app-access-screen',
-  imports: [MatCardModule, MatButtonModule],
+  imports: [HlmCardImports, HlmButton, NgIcon],
+  providers: [provideIcons({ lucideLock, lucideShieldAlert, lucideClock, lucideLogOut })],
   template: `
-    <main>
-      <mat-card appearance="outlined">
-        <mat-card-content>
-          <h1 #title tabindex="-1">{{ message.title }}</h1>
-          <p>{{ message.text }}</p>
-        </mat-card-content>
-        <mat-card-actions align="end">
-          <button matButton="filled" type="button" (click)="signOut()">Sign out</button>
-        </mat-card-actions>
-      </mat-card>
+    <main class="flex min-h-[60vh] items-center justify-center px-4 py-12">
+      <div hlmCard class="w-full max-w-md">
+        <div hlmCardContent class="flex flex-col gap-4 pt-2">
+          <div
+            class="flex size-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
+            aria-hidden="true"
+          >
+            <ng-icon [name]="message.icon" class="size-5" />
+          </div>
+          <div class="space-y-1.5">
+            <h1
+              #title
+              tabindex="-1"
+              class="font-display text-xl font-semibold tracking-tight outline-none"
+              [textContent]="message.title"
+            ></h1>
+            <p class="text-sm text-muted-foreground">{{ message.text }}</p>
+          </div>
+        </div>
+        <div hlmCardFooter class="justify-end">
+          <button hlmBtn type="button" (click)="signOut()">
+            <ng-icon name="lucideLogOut" aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      </div>
     </main>
   `,
-  styleUrl: './access-screen.scss',
 })
 export class AccessScreen {
   private readonly auth = inject(AuthService);

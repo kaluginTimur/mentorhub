@@ -1,37 +1,40 @@
 import { Component, output } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideRefreshCw, lucideTriangleAlert } from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
 
 @Component({
   selector: 'app-unavailable',
-  imports: [MatCardModule, MatButtonModule],
+  imports: [HlmCardImports, HlmButton, NgIcon],
+  providers: [provideIcons({ lucideTriangleAlert, lucideRefreshCw })],
   template: `
-    <main>
-      <mat-card appearance="outlined" role="alert">
-        <mat-card-content>
-          <h1 tabindex="-1">MentorHub is unavailable. Try again later.</h1>
-        </mat-card-content>
-        <mat-card-actions align="end">
-          <button matButton="filled" type="button" (click)="retry.emit()">Retry</button>
-        </mat-card-actions>
-      </mat-card>
+    <main class="flex min-h-[60vh] items-center justify-center px-4 py-12">
+      <div hlmCard role="alert" class="w-full max-w-md">
+        <div hlmCardContent class="flex flex-col gap-4 pt-2">
+          <div
+            class="flex size-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive"
+            aria-hidden="true"
+          >
+            <ng-icon name="lucideTriangleAlert" class="size-5" />
+          </div>
+          <div class="space-y-1.5">
+            <h1 tabindex="-1" class="text-lg font-semibold tracking-tight outline-none">
+              MentorHub is unavailable. Try again later.
+            </h1>
+            <p class="text-sm text-muted-foreground">
+              Please check your connection and try again in a moment.
+            </p>
+          </div>
+        </div>
+        <div hlmCardFooter class="justify-end">
+          <button hlmBtn type="button" (click)="retry.emit()">
+            <ng-icon name="lucideRefreshCw" aria-hidden="true" />
+            Retry
+          </button>
+        </div>
+      </div>
     </main>
-  `,
-  styles: `
-    main {
-      display: flex;
-      justify-content: center;
-      padding: 48px 16px;
-    }
-    mat-card {
-      max-width: 480px;
-      width: 100%;
-    }
-    h1 {
-      font: var(--mat-sys-title-large);
-      margin: 16px 0 0;
-      outline: none;
-    }
   `,
 })
 export class Unavailable {

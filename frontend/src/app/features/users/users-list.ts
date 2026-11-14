@@ -9,15 +9,15 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTableModule } from '@angular/material/table';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucidePlus, lucideSearch } from '@ng-icons/lucide';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
+import { HlmSelectImports } from '@spartan-ng/helm/select';
+import { HlmTableImports } from '@spartan-ng/helm/table';
 import { Api } from '../../core/api/api';
 import { listUsers } from '../../core/api/fn/users/list-users';
 import { Role } from '../../core/api/models/role';
@@ -27,9 +27,11 @@ import { UserPage } from '../../core/api/models/user-page';
 import { USER_STATUS } from '../../core/api/models/user-status-array';
 import { UserStatus } from '../../core/api/models/user-status';
 import { UserSummary } from '../../core/api/models/user-summary';
-import { isForbidden } from '../../core/problem';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { displayName } from '../../core/auth/user-name';
+import { isForbidden } from '../../core/problem';
+import { Avatar } from '../../shared/avatar/avatar';
+import { Paginator } from '../../shared/paginator/paginator';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS, STATUS_LABELS } from './labels';
 import { UsersListState } from './users-list-state';
@@ -42,24 +44,25 @@ const SEARCH_LIMIT = 100;
   selector: 'app-users-list',
   imports: [
     RouterLink,
-    MatButtonModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatPaginatorModule,
-    MatProgressBarModule,
-    MatSelectModule,
-    MatTableModule,
+    NgIcon,
+    HlmButton,
+    HlmBadge,
+    HlmInput,
+    HlmLabel,
+    HlmSelectImports,
+    HlmTableImports,
+    Avatar,
+    Paginator,
     Unavailable,
   ],
+  providers: [provideIcons({ lucidePlus, lucideSearch })],
   templateUrl: './users-list.html',
-  styleUrl: './users-list.scss',
 })
 export class UsersList {
   private readonly api = inject(Api);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialog = inject(HlmDialogService);
   private readonly currentUser = inject(CurrentUserService);
   private readonly listState = inject(UsersListState);
   private pushedSearch: string | null = null;
@@ -120,12 +123,15 @@ export class UsersList {
   });
   protected readonly rows = computed(() => this.loaded()?.items ?? []);
 
-  protected readonly columns = ['name', 'email', 'roles', 'status'];
   protected readonly statuses = USER_STATUS;
   protected readonly roleFilters = ROLE_FILTER;
   protected readonly pageSize = PAGE_SIZE;
   protected readonly searchLimit = SEARCH_LIMIT;
   protected readonly statusLabels = STATUS_LABELS;
+  protected readonly statusFilterLabel = (value: UserStatus | ''): string =>
+    value === '' ? 'All' : STATUS_LABELS[value];
+  protected readonly roleFilterText = (value: RoleFilter | ''): string =>
+    value === '' ? 'Any role' : this.roleFilterLabel(value);
 
   constructor() {
     const destroyRef = inject(DestroyRef);
@@ -147,7 +153,7 @@ export class UsersList {
   protected async invite(): Promise<void> {
     // loaded on demand: the dialog and its form code are needed only when someone invites
     const { InviteDialog } = await import('../invitations/invite-dialog');
-    this.dialog.open(InviteDialog, { width: '520px' });
+    this.dialog.open(InviteDialog, { contentClass: 'sm:max-w-[520px]' });
   }
 
   protected name(user: UserSummary): string {
@@ -183,8 +189,8 @@ export class UsersList {
     this.go({ role: value || null, page: null });
   }
 
-  protected onPage(event: PageEvent): void {
-    this.go({ page: event.pageIndex || null });
+  protected onPage(pageIndex: number): void {
+    this.go({ page: pageIndex || null });
   }
 
   protected clearFilters(): void {

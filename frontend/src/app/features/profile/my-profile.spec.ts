@@ -36,7 +36,7 @@ describe('MyProfile', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelectorAll('h1')).toHaveLength(1);
     expect(el.querySelector('h1')?.textContent).toBe('Profile');
-    expect(el.textContent).toContain('anna@example.com');
+    expect(el.textContent?.match(/anna@example\.com/g)).toHaveLength(1);
     expect(el.querySelectorAll('input')).toHaveLength(3);
     expect(el.textContent).toContain('For example +7 701 123 45 67');
     expect(el.textContent).not.toContain('Student');
@@ -66,9 +66,7 @@ describe('MyProfile', () => {
     });
     expect(me().user?.firstName).toBe('Anya');
     expect(inputs[2].value).toBe('+77011234567');
-    expect(document.querySelector('mat-snack-bar-container')?.textContent).toContain(
-      'Profile saved',
-    );
+    expect(document.querySelector('app-toast-host')?.textContent).toContain('Profile saved');
     expect(el.textContent).not.toContain('Student');
     expect(el.textContent).not.toContain('Active');
   });

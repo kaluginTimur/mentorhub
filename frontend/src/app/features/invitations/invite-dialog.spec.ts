@@ -1,7 +1,9 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { BrnDialogRef } from '@spartan-ng/brain/dialog';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { ClientConfigService } from '../../core/client-config.service';
 import { Api } from '../../core/api/api';
 import { createInvitation } from '../../core/api/fn/invitations/create-invitation';
@@ -13,7 +15,7 @@ const problem = (status: number, body: object) =>
 
 describe('InviteDialog', () => {
   const api = { invoke: vi.fn() };
-  let ref: MatDialogRef<InviteDialog>;
+  let ref: BrnDialogRef;
 
   beforeEach(() => {
     api.invoke.mockReset();
@@ -22,10 +24,10 @@ describe('InviteDialog', () => {
     });
   });
 
-  afterEach(() => TestBed.inject(MatDialog).closeAll());
+  afterEach(() => TestBed.inject(Dialog).closeAll());
 
   async function open(data?: object) {
-    ref = TestBed.inject(MatDialog).open(InviteDialog, { data });
+    ref = TestBed.inject(HlmDialogService).open(InviteDialog, { context: data });
     await new Promise((resolve) => setTimeout(resolve));
     const root = document.querySelector('app-invite-dialog') as HTMLElement;
     return { root };
@@ -48,22 +50,29 @@ describe('InviteDialog', () => {
     await stable();
   };
 
+  const checkboxLabels = (root: HTMLElement) =>
+    [...root.querySelectorAll('label')].filter((l) => l.querySelector('hlm-checkbox'));
+
   const checkbox = (root: HTMLElement, label: string) =>
-    [...root.querySelectorAll('mat-checkbox')]
+    checkboxLabels(root)
       .find((c) => c.textContent?.trim() === label)
-      ?.querySelector('input') as HTMLInputElement;
+      ?.querySelector('button[role="checkbox"]') as HTMLButtonElement;
 
   it('shows the fields, the roles and the hint', async () => {
     const { root } = await open();
     expect(root.textContent).toContain('Invite a person');
-    expect(root.querySelector('mat-label')?.textContent).toBe('Email');
-    const labels = [...root.querySelectorAll('mat-checkbox')].map((c) => c.textContent?.trim());
+    expect(root.querySelector('label[hlmLabel]')?.textContent).toBe('Email');
+    const labels = checkboxLabels(root).map((c) => c.textContent?.trim());
     expect(labels).toEqual(['Administrator', 'Coordinator', 'Mentor', 'Student', 'Observer']);
-    expect(root.querySelectorAll('mat-checkbox input:checked')).toHaveLength(0);
+    expect(
+      root.querySelectorAll('hlm-checkbox button[role="checkbox"][aria-checked="true"]'),
+    ).toHaveLength(0);
     expect(root.textContent).toContain(
       'Without roles the person can sign in but has no access to anything.',
     );
-    const buttons = [...root.querySelectorAll('button')].map((b) => b.textContent?.trim());
+    const buttons = [...root.querySelectorAll('button:not([role="checkbox"])')].map((b) =>
+      b.textContent?.trim(),
+    );
     expect(buttons).toEqual(['Cancel', 'Create invitation']);
   });
 
@@ -76,7 +85,7 @@ describe('InviteDialog', () => {
     const { root } = await open();
     type(root, value);
     await submitForm(root);
-    expect(root.querySelector('mat-error')?.textContent).toContain(message);
+    expect(root.querySelector('.field-error')?.textContent).toContain(message);
     expect(api.invoke).not.toHaveBeenCalled();
   });
 
@@ -100,7 +109,7 @@ describe('InviteDialog', () => {
     expect(root.querySelector('button[aria-label="Copy invitation link"]')?.textContent).toContain(
       'Copy link',
     );
-    expect(root.querySelector('mat-label')?.textContent).toBe('Invitation link');
+    expect(root.querySelector('label[hlmLabel]')?.textContent).toBe('Invitation link');
     expect(root.textContent).not.toContain('once');
   });
 
@@ -136,7 +145,7 @@ describe('InviteDialog', () => {
   it('closes from the link view with Done', async () => {
     const { root } = await open({ created: created() });
     const closed = vi.fn();
-    ref.afterClosed().subscribe(closed);
+    ref.closed$.subscribe(closed);
     [...root.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Done')?.click();
     await vi.waitFor(() => expect(closed).toHaveBeenCalled());
   });
@@ -167,7 +176,7 @@ describe('InviteDialog', () => {
     expect((root.querySelector('input[type=email]') as HTMLInputElement).value).toBe(
       'ivan@example.com',
     );
-    expect(checkbox(root, 'Mentor').checked).toBe(true);
+    expect(checkbox(root, 'Mentor').getAttribute('aria-checked')).toBe('true');
   });
 
   it('INV-19.2 shows the existing-invitation conflict with a link to the list', async () => {
@@ -194,7 +203,7 @@ describe('InviteDialog', () => {
     const { root } = await open();
     type(root, 'ivan@example.com');
     await submitForm(root);
-    expect(root.querySelector('mat-error')?.textContent).toContain(
+    expect(root.querySelector('.field-error')?.textContent).toContain(
       'must be a well-formed email address',
     );
     expect(root.querySelector('.error[role=alert]')).toBeNull();
@@ -238,8 +247,8 @@ describe('InviteDialog', () => {
 
     it('shows the checkbox, checked by default, below the roles', async () => {
       const { root } = await open();
-      expect(emailBox(root).checked).toBe(true);
-      const labels = [...root.querySelectorAll('mat-checkbox')].map((c) => c.textContent?.trim());
+      expect(emailBox(root).getAttribute('aria-checked')).toBe('true');
+      const labels = checkboxLabels(root).map((c) => c.textContent?.trim());
       expect(labels.at(-1)).toBe('Send the invitation by email to this address');
     });
 
@@ -283,7 +292,7 @@ describe('InviteDialog', () => {
       expect((root.querySelector('input[type=email]') as HTMLInputElement).value).toBe(
         'ivan@example.com',
       );
-      expect(checkbox(root, 'Mentor').checked).toBe(true);
+      expect(checkbox(root, 'Mentor').getAttribute('aria-checked')).toBe('true');
       expect(root.querySelector('app-link-view')).toBeNull();
     });
   });

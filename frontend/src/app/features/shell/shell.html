@@ -1,35 +1,174 @@
-<header>
-  <mat-toolbar>
-    <span class="brand">MentorHub</span>
-    @if (canReadUsers()) {
-      <a matButton routerLink="/users" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Users</a
+<header class="sticky top-0 z-40 bg-mh-topbar text-mh-topbar-foreground shadow-sm">
+  <div class="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6">
+    @if (hasNavLinks()) {
+      <button
+        type="button"
+        class="inline-flex size-9 items-center justify-center rounded-md text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring md:hidden"
+        [attr.aria-expanded]="mobileMenuOpen()"
+        aria-controls="mobile-nav"
+        aria-label="Toggle navigation menu"
+        (click)="toggleMobileMenu()"
       >
+        <ng-icon
+          [name]="mobileMenuOpen() ? 'lucideX' : 'lucideMenu'"
+          class="size-5"
+          aria-hidden="true"
+        />
+      </button>
     }
-    @if (canInvite()) {
-      <a matButton routerLink="/invitations" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Invitations</a
+
+    <a
+      routerLink="/"
+      class="mr-2 flex items-center gap-2.5 rounded-md px-2 py-1.5 font-display text-lg font-bold tracking-tight text-mh-topbar-foreground transition-colors hover:bg-mh-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
+    >
+      <span
+        aria-hidden="true"
+        class="relative flex size-8 items-center justify-center rounded-lg bg-mh-topbar-active text-sm font-extrabold tracking-tight"
       >
-    }
-    <span class="spacer"></span>
+        M
+        <span
+          class="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-mh-highlight ring-2 ring-mh-topbar"
+        ></span>
+      </span>
+      <span>MentorHub</span>
+    </a>
+
+    <nav aria-label="Primary" class="hidden items-center gap-1 md:flex">
+      @if (canReadUsers()) {
+        <a
+          routerLink="/users"
+          routerLinkActive="bg-mh-topbar-active text-mh-topbar-foreground after:scale-x-100"
+          ariaCurrentWhenActive="page"
+          class="relative flex h-16 items-center px-3 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mh-topbar-ring after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-mh-highlight after:transition-transform"
+          >Users</a
+        >
+      }
+      @if (canInvite()) {
+        <a
+          routerLink="/invitations"
+          routerLinkActive="bg-mh-topbar-active text-mh-topbar-foreground after:scale-x-100"
+          ariaCurrentWhenActive="page"
+          class="relative flex h-16 items-center px-3 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mh-topbar-ring after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-mh-highlight after:transition-transform"
+          >Invitations</a
+        >
+      }
+    </nav>
+
+    <div class="flex-1"></div>
+
     <button
-      matButton
       type="button"
-      [matMenuTriggerFor]="userMenu"
+      [hlmDropdownMenuTrigger]="themeMenu"
+      align="end"
+      class="inline-flex size-9 items-center justify-center rounded-md text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
+      [attr.aria-label]="'Theme: ' + themeLabel()"
+    >
+      <ng-icon [name]="themeIcon()" class="size-4" aria-hidden="true" />
+    </button>
+    <ng-template #themeMenu>
+      <hlm-dropdown-menu class="w-40">
+        <hlm-dropdown-menu-label>Theme</hlm-dropdown-menu-label>
+        <hlm-dropdown-menu-group>
+          <button
+            type="button"
+            hlmDropdownMenuRadio
+            [checked]="themePreference() === 'light'"
+            [keepOpen]="false"
+            (triggered)="setTheme('light')"
+          >
+            <ng-icon name="lucideSun" aria-hidden="true" />
+            <span>Light</span>
+            <hlm-dropdown-menu-radio-indicator />
+          </button>
+          <button
+            type="button"
+            hlmDropdownMenuRadio
+            [checked]="themePreference() === 'dark'"
+            [keepOpen]="false"
+            (triggered)="setTheme('dark')"
+          >
+            <ng-icon name="lucideMoon" aria-hidden="true" />
+            <span>Dark</span>
+            <hlm-dropdown-menu-radio-indicator />
+          </button>
+          <button
+            type="button"
+            hlmDropdownMenuRadio
+            [checked]="themePreference() === 'system'"
+            [keepOpen]="false"
+            (triggered)="setTheme('system')"
+          >
+            <ng-icon name="lucideMonitor" aria-hidden="true" />
+            <span>System</span>
+            <hlm-dropdown-menu-radio-indicator />
+          </button>
+        </hlm-dropdown-menu-group>
+      </hlm-dropdown-menu>
+    </ng-template>
+
+    <button
+      type="button"
+      [hlmDropdownMenuTrigger]="userMenu"
+      align="end"
+      class="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-mh-topbar-foreground transition-colors hover:bg-mh-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
       [attr.aria-label]="'Account menu for ' + name()"
     >
-      {{ name() }}
-      <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
+      <app-avatar [user]="user()" size="sm" />
+      <span class="hidden max-w-40 truncate sm:inline">{{ name() }}</span>
+      <ng-icon name="lucideChevronDown" class="size-4 text-mh-topbar-muted" aria-hidden="true" />
     </button>
-    <mat-menu #userMenu="matMenu" xPosition="before" [aria-label]="name() + ', ' + email()">
-      <div class="user-info">
-        <div class="user-name">{{ name() }}</div>
-        <div class="user-email">{{ email() }}</div>
+    <ng-template #userMenu>
+      <hlm-dropdown-menu class="w-60">
+        <div class="flex items-center gap-3 px-2 py-2">
+          <app-avatar [user]="user()" size="md" />
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-semibold text-foreground">{{ name() }}</div>
+            <div class="truncate text-xs text-muted-foreground">{{ email() }}</div>
+          </div>
+        </div>
+        <hlm-dropdown-menu-separator />
+        <a hlmDropdownMenuItem routerLink="/profile">
+          <ng-icon name="lucideUser" aria-hidden="true" />
+          <span>Profile</span>
+        </a>
+        <button type="button" hlmDropdownMenuItem (triggered)="signOut()">
+          <ng-icon name="lucideLogOut" aria-hidden="true" />
+          <span>Sign out</span>
+        </button>
+      </hlm-dropdown-menu>
+    </ng-template>
+  </div>
+
+  @if (hasNavLinks() && mobileMenuOpen()) {
+    <nav
+      id="mobile-nav"
+      aria-label="Mobile navigation"
+      class="border-t border-mh-topbar-border px-4 py-2 md:hidden"
+    >
+      <div class="flex flex-col gap-1">
+        @if (canReadUsers()) {
+          <a
+            routerLink="/users"
+            routerLinkActive="bg-mh-topbar-active text-mh-topbar-foreground border-l-2 border-mh-highlight"
+            ariaCurrentWhenActive="page"
+            class="rounded-md px-3 py-2 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
+            (click)="closeMobileMenu()"
+            >Users</a
+          >
+        }
+        @if (canInvite()) {
+          <a
+            routerLink="/invitations"
+            routerLinkActive="bg-mh-topbar-active text-mh-topbar-foreground border-l-2 border-mh-highlight"
+            ariaCurrentWhenActive="page"
+            class="rounded-md px-3 py-2 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
+            (click)="closeMobileMenu()"
+            >Invitations</a
+          >
+        }
       </div>
-      <a mat-menu-item routerLink="/profile">Profile</a>
-      <button mat-menu-item type="button" (click)="signOut()">Sign out</button>
-    </mat-menu>
-  </mat-toolbar>
+    </nav>
+  }
 </header>
 
 <router-outlet />

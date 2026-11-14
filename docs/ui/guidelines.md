@@ -17,10 +17,10 @@ The access screens (`frontend/src/app/features/access/access-screen.ts`) and the
 
 ## Pages and dialogs
 
-- List page (for example `/users`): `h1`, a filter row (search applied 300 ms after typing stops, selects), a Material table with column headers, a paginator without a page-size selector. While loading, a labelled progress bar shows and the previous rows stay. Empty: a message, with "Clear filters" when filters are set.
-- Detail page (for example `/users/{id}`): a back link to the list (with its last query), `h1` with a status chip, outlined cards with `h2` headings. Not found is a page with a link back; a failed load is the unavailable card.
+- List page (for example `/users`): `h1`, a filter row (search applied 300 ms after typing stops, selects), a table with column headers and stable column widths across pages (responsive cards below `md`), a paginator without a page-size selector. While loading, a labelled progress bar shows and the previous rows stay. Empty: a message, with "Clear filters" when filters are set.
+- Detail page (for example `/users/{id}`): a back link to the list (with its last query), `h1` with a status chip, action and alert banner where applicable, cards with `h2` headings. Not found is a page with a link back; a failed load is the unavailable card.
 - Dialogs: a title, the content, "Cancel" and the confirming action. Focus moves to the first field, is trapped, and returns to the opener. Confirmation dialogs name the object ("Enable <name>?"). Forms in dialogs show server field errors under their fields and keep the dialog open.
 - Chips are display only: a chip set with a label uses `role="list"` and its chips `role="listitem"` (the default `presentation` role must not carry a label).
 - Snackbars: "Dismiss" action; success messages are polite, conflict (409) messages are assertive.
 - Color never carries meaning alone: a state shown in the error color also says it in words.
-- A control disabled for a reason the user should read stays focusable (`disabledInteractive`) and is linked to a visible hint with `aria-describedby`.
+- A control disabled for a reason the user should read stays focusable (`disabledInteractive` or `aria-disabled="true"`) and is linked to a visible hint with `aria-describedby`.

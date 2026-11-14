@@ -220,7 +220,7 @@ describe('InvitePage', () => {
     api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
     button(element, 'Accept invitation')?.click();
     harness.detectChanges();
-    expect(element.querySelector('mat-card')?.getAttribute('aria-busy')).toBe('true');
+    expect(element.querySelector('[hlmCard]')?.getAttribute('aria-busy')).toBe('true');
     expect(element.querySelector('[role=status]')?.textContent).toContain('Accepting');
     release(ME);
     await settle(harness);
