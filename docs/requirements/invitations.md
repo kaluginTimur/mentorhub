@@ -275,9 +275,9 @@ The system SHALL, when a user has the invitation's email, use that user and leav
 
 #### INV-12.4 A reactivated user has exactly the roles of the invitation
 
-- GIVEN a disabled user who held the mentor and administrator roles and a stored role the application does not know, and a pending invitation for their email with the observer role
+- GIVEN a disabled user who held the mentor and administrator roles and a stored role the application does not know, and a pending invitation for their email with the student role
 - WHEN an identity with the verified email accepts the invitation
-- THEN the user has the observer role, and the unknown stored role is still stored
+- THEN the user has the student role, and the unknown stored role is still stored
 
 #### INV-12.5 An identity that was linked already is not linked twice
 

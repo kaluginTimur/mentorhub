@@ -11,8 +11,7 @@ public enum Role {
     ADMIN(EnumSet.of(Permission.USERS_READ, Permission.USERS_MANAGE, Permission.USERS_INVITE)),
     COORDINATOR(EnumSet.noneOf(Permission.class)),
     MENTOR(EnumSet.noneOf(Permission.class)),
-    STUDENT(EnumSet.noneOf(Permission.class)),
-    OBSERVER(EnumSet.noneOf(Permission.class));
+    STUDENT(EnumSet.noneOf(Permission.class));
 
     private final Set<Permission> permissions;
 

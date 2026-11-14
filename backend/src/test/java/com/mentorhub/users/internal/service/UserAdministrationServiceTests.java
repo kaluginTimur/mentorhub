@@ -415,19 +415,15 @@ class UserAdministrationServiceTests {
         void storesExactlyTheRequestedRolesAndAuditsTheDifference() {
             UUID user = user("b@x.test", "B", "B", UserStatus.ACTIVE, Role.MENTOR, Role.STUDENT);
 
-            ManagedUser changed = service.setRoles(user, Set.of(Role.COORDINATOR, Role.MENTOR, Role.OBSERVER));
+            ManagedUser changed = service.setRoles(user, Set.of(Role.MENTOR, Role.COORDINATOR));
 
-            assertThat(changed.roles()).containsExactly(Role.COORDINATOR, Role.MENTOR, Role.OBSERVER);
-            assertThat(testUsers.roles(user)).containsExactly("COORDINATOR", "MENTOR", "OBSERVER");
+            assertThat(changed.roles()).containsExactly(Role.COORDINATOR, Role.MENTOR);
+            assertThat(testUsers.roles(user)).containsExactly("COORDINATOR", "MENTOR");
             assertThat(auditEntries(user))
                     .containsExactly(new Entry(
                             "USER_ROLES_CHANGED",
                             admin,
-                            Map.of(
-                                    "rolesAdded",
-                                    List.of("COORDINATOR", "OBSERVER"),
-                                    "rolesRemoved",
-                                    List.of("STUDENT"))));
+                            Map.of("rolesAdded", List.of("COORDINATOR"), "rolesRemoved", List.of("STUDENT"))));
         }
 
         @Test

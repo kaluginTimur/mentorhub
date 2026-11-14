@@ -817,7 +817,7 @@ components:
     Role:
       type: string
       description: Must equal the `Role` enum in the backend code.
-      enum: [ADMIN, COORDINATOR, MENTOR, STUDENT, OBSERVER]
+      enum: [ADMIN, COORDINATOR, MENTOR, STUDENT]
     Permission:
       type: string
       description: Must equal the `Permission` enum in the backend code.
@@ -902,7 +902,7 @@ components:
       type: string
       description: |
         A `Role`, or `NONE` for users without any role the server knows. Must equal the `Role` values plus `NONE`.
-      enum: [ADMIN, COORDINATOR, MENTOR, STUDENT, OBSERVER, NONE]
+      enum: [ADMIN, COORDINATOR, MENTOR, STUDENT, NONE]
     DisableReason:
       type: string
       description: |

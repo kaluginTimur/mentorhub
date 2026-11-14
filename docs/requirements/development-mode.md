@@ -18,7 +18,6 @@ The system SHALL create, only in development mode, a development user for each p
 | Coordinator | active | Coordinator |
 | Mentor | active | Mentor |
 | Student | active | Student |
-| Observer | active | Observer |
 | Administrator and mentor | active | Administrator, Mentor |
 | Mentor and coordinator | active | Mentor, Coordinator |
 | Without roles | active | none |
