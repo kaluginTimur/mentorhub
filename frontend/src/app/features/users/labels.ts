@@ -7,7 +7,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   COORDINATOR: 'Coordinator',
   MENTOR: 'Mentor',
   STUDENT: 'Student',
-  OBSERVER: 'Observer',
 };
 
 export const REASON_LABELS: Record<DisableReason, string> = {

@@ -352,12 +352,11 @@ describe('UserPage', () => {
       const boxes = [
         ...element.querySelectorAll('hlm-checkbox button[role="checkbox"]'),
       ] as HTMLButtonElement[];
-      expect(boxes).toHaveLength(5);
+      expect(boxes).toHaveLength(4);
       expect(boxes.map((b) => b.getAttribute('aria-checked') === 'true')).toEqual([
         false,
         false,
         true,
-        false,
         false,
       ]);
       click(boxes[2]);
@@ -523,7 +522,7 @@ describe('UserPage', () => {
     expect(element.querySelector(`#${group?.getAttribute('aria-labelledby')}`)?.textContent).toBe(
       'Roles',
     );
-    expect(group?.querySelectorAll('hlm-checkbox')).toHaveLength(5);
+    expect(group?.querySelectorAll('hlm-checkbox')).toHaveLength(4);
   });
 
   it('sends the user home when the API refuses the user with 403', async () => {
