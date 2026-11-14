@@ -66,7 +66,7 @@ describe('routes', () => {
     await harness.navigateByUrl('/');
     await harness.fixture.whenStable();
     expect(
-      (harness.fixture.nativeElement as HTMLElement).querySelector('mat-toolbar'),
+      (harness.fixture.nativeElement as HTMLElement).querySelector('header nav'),
     ).not.toBeNull();
   });
 
@@ -85,7 +85,7 @@ describe('routes', () => {
       const element = harness.fixture.nativeElement as HTMLElement;
       expect(TestBed.inject(Router).url).toBe(url);
       expect(element.querySelector('h1')).not.toBeNull();
-      expect(element.querySelector('mat-toolbar, nav, mat-menu')).toBeNull();
+      expect(element.querySelector('header, nav')).toBeNull();
     },
   );
 });

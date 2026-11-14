@@ -10,15 +10,23 @@ const LABELS: Record<FailureModeName, string> = {
 
 @Component({
   selector: 'app-failure-switch',
+  host: {
+    class: 'fixed right-2 bottom-2 z-50 flex flex-col items-end gap-1 text-xs',
+  },
   template: `
     @if (active()) {
-      <div class="indicator" role="status" data-testid="failure-indicator">
+      <div
+        class="rounded border border-destructive/50 bg-destructive/10 px-2 py-0.5 font-medium text-destructive shadow-xs"
+        role="status"
+        data-testid="failure-indicator"
+      >
         Failure mode on: {{ label() }}
       </div>
     }
     <select
       aria-label="Simulated API failures"
       data-testid="failure-switch"
+      class="rounded border border-border bg-card px-2 py-0.5 text-xs text-foreground shadow-xs"
       [value]="failureMode.mode()"
       (change)="select($event)"
     >
@@ -26,33 +34,6 @@ const LABELS: Record<FailureModeName, string> = {
         <option [value]="mode" [selected]="mode === failureMode.mode()">{{ labels[mode] }}</option>
       }
     </select>
-  `,
-  styles: `
-    :host {
-      position: fixed;
-      right: 8px;
-      bottom: 8px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
-      font: var(--mat-sys-label-small);
-    }
-    select,
-    .indicator {
-      font: inherit;
-      border-radius: var(--mat-sys-corner-small);
-      border: 1px solid var(--mat-sys-outline);
-      padding: 2px 6px;
-      background: var(--mat-sys-surface-container);
-      color: var(--mat-sys-on-surface);
-    }
-    .indicator {
-      background: var(--mat-sys-error-container);
-      color: var(--mat-sys-on-error-container);
-      border-color: var(--mat-sys-error);
-    }
   `,
 })
 export class FailureSwitch {

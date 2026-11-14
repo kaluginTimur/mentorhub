@@ -43,8 +43,32 @@ module.exports = defineConfig([
   {
     // Type-checked rules for the application code only; tests and their data stay on the rules above.
     files: ['**/*.ts'],
-    ignores: ['**/*.spec.ts', '**/test-data.ts'],
+    ignores: ['**/*.spec.ts', '**/test-data.ts', 'src/app/shared/ui/**'],
     extends: [tseslint.configs.recommendedTypeChecked],
+  },
+  {
+    files: ['src/app/shared/ui/**/*.ts'],
+    rules: {
+      '@angular-eslint/directive-selector': [
+        'error',
+        {
+          type: 'attribute',
+          prefix: 'hlm',
+          style: 'camelCase',
+        },
+      ],
+      '@angular-eslint/component-selector': [
+        'error',
+        {
+          type: 'element',
+          prefix: 'hlm',
+          style: 'kebab-case',
+        },
+      ],
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@angular-eslint/no-input-rename': 'off',
+      '@angular-eslint/prefer-service-decorator': 'off',
+    },
   },
   {
     files: ['**/*.html'],

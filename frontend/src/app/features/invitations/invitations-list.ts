@@ -11,35 +11,46 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideBan,
+  lucideCopy,
+  lucideEllipsisVertical,
+  lucideMail,
+  lucidePlus,
+  lucideRefreshCw,
+  lucideSearch,
+} from '@ng-icons/lucide';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
+import { HlmSelectImports } from '@spartan-ng/helm/select';
+import { HlmTableImports } from '@spartan-ng/helm/table';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../../core/api/api';
-import { sendInvitationEmail } from '../../core/api/fn/invitations/send-invitation-email';
 import { getInvitationLink } from '../../core/api/fn/invitations/get-invitation-link';
 import { listInvitations } from '../../core/api/fn/invitations/list-invitations';
 import { reissueInvitationLink } from '../../core/api/fn/invitations/reissue-invitation-link';
 import { revokeInvitation } from '../../core/api/fn/invitations/revoke-invitation';
+import { sendInvitationEmail } from '../../core/api/fn/invitations/send-invitation-email';
 import { Invitation } from '../../core/api/models/invitation';
 import { InvitationPage } from '../../core/api/models/invitation-page';
 import { INVITATION_STATUS } from '../../core/api/models/invitation-status-array';
 import { InvitationStatus } from '../../core/api/models/invitation-status';
 import { Role } from '../../core/api/models/role';
-import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
 import { ClientConfigService } from '../../core/client-config.service';
+import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
+import { Avatar } from '../../shared/avatar/avatar';
 import {
   ConfirmDialog,
   ConfirmDialogData,
   ConfirmResult,
 } from '../../shared/confirm-dialog/confirm-dialog';
+import { Paginator } from '../../shared/paginator/paginator';
+import { ToastService } from '../../shared/toast/toast.service';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS } from '../users/labels';
 import { InviteDialog, InviteDialogData } from './invite-dialog';
@@ -54,23 +65,35 @@ const SEARCH_LIMIT = 254;
   imports: [
     DatePipe,
     RouterLink,
-    MatButtonModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatPaginatorModule,
-    MatProgressBarModule,
-    MatSelectModule,
-    MatTableModule,
+    NgIcon,
+    HlmButton,
+    HlmBadge,
+    HlmDropdownMenuImports,
+    HlmInput,
+    HlmLabel,
+    HlmSelectImports,
+    HlmTableImports,
+    Avatar,
+    Paginator,
     Unavailable,
   ],
+  providers: [
+    provideIcons({
+      lucideBan,
+      lucideCopy,
+      lucideEllipsisVertical,
+      lucideMail,
+      lucidePlus,
+      lucideRefreshCw,
+      lucideSearch,
+    }),
+  ],
   templateUrl: './invitations-list.html',
-  styleUrl: './invitations-list.scss',
 })
 export class InvitationsList {
   private readonly api = inject(Api);
-  private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(HlmDialogService);
+  private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly emailEnabled = inject(ClientConfigService).invitationEmails;
@@ -125,11 +148,12 @@ export class InvitationsList {
   /** Invitations whose row action is running; their actions stay disabled meanwhile. */
   private readonly busyIds = signal<ReadonlySet<string>>(new Set());
 
-  protected readonly columns = ['email', 'roles', 'status', 'invited', 'actions'];
   protected readonly statuses = INVITATION_STATUS;
   protected readonly pageSize = PAGE_SIZE;
   protected readonly searchLimit = SEARCH_LIMIT;
   protected readonly statusLabels = INVITATION_STATUS_LABELS;
+  protected readonly statusFilterLabel = (value: InvitationStatus | ''): string =>
+    value === '' ? 'All' : INVITATION_STATUS_LABELS[value];
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.searchTimer));
@@ -148,12 +172,35 @@ export class InvitationsList {
     return INVITATION_STATUS_LABELS[status];
   }
 
+  protected statusBadgeClass(status: InvitationStatus): string {
+    switch (status) {
+      case 'PENDING':
+        return 'border-transparent bg-mh-warning-soft text-mh-warning-soft-foreground';
+      case 'ACCEPTED':
+        return 'border-transparent bg-mh-success-soft text-mh-success-soft-foreground';
+      case 'EXPIRED':
+        return 'text-muted-foreground';
+      case 'REVOKED':
+        return '';
+    }
+  }
+
+  protected statusDotClass(status: InvitationStatus): string {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-mh-warning';
+      case 'ACCEPTED':
+        return 'bg-mh-success';
+      case 'EXPIRED':
+        return 'bg-muted-foreground';
+      case 'REVOKED':
+        return 'bg-destructive';
+    }
+  }
+
   protected isBusy(id: string): boolean {
     return this.busyIds().has(id);
   }
-
-  /** Keeps row elements (and the focus on a row button) across reloads. */
-  protected readonly trackById = (_: number, invitation: Invitation): string => invitation.id;
 
   protected isOpen(invitation: Invitation): boolean {
     return invitation.status === 'PENDING' || invitation.status === 'EXPIRED';
@@ -172,8 +219,8 @@ export class InvitationsList {
     this.go({ status: value || null, page: null });
   }
 
-  protected onPage(event: PageEvent): void {
-    this.go({ page: event.pageIndex || null });
+  protected onPage(pageIndex: number): void {
+    this.go({ page: pageIndex || null });
   }
 
   protected clearFilters(): void {
@@ -215,7 +262,7 @@ export class InvitationsList {
         }
       }
       if (copied) {
-        this.snackBar.open('Link copied', 'Dismiss', { duration: 5000, politeness: 'polite' });
+        this.toast.show('Link copied', { duration: 5000, politeness: 'polite' });
       } else {
         await this.openAndReload({ copy: link });
       }
@@ -238,7 +285,7 @@ export class InvitationsList {
           ? { ...page, items: page.items.map((i) => (i.id === updated.id ? updated : i)) }
           : page,
       );
-      this.snackBar.open(`Email to ${invitation.email} queued`, 'Dismiss', {
+      this.toast.show(`Email to ${invitation.email} queued`, {
         duration: 5000,
         politeness: 'polite',
       });
@@ -253,20 +300,20 @@ export class InvitationsList {
     if (this.isBusy(invitation.id)) {
       return;
     }
-    const ref = this.dialog.open(ConfirmDialog, {
-      width: '420px',
-      data: {
+    const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialog, {
+      contentClass: 'sm:max-w-[420px]',
+      context: {
         title: `Revoke the invitation for ${invitation.email}?`,
         text: 'The link will stop working.',
         confirmLabel: 'Revoke',
       },
     });
-    if (!(await firstValueFrom(ref.afterClosed()))) {
+    if (!(await firstValueFrom(ref.closed$))) {
       return;
     }
     try {
       await this.api.invoke(revokeInvitation, { id: invitation.id });
-      this.snackBar.open('Invitation revoked', 'Dismiss', {
+      this.toast.show('Invitation revoked', {
         duration: 5000,
         politeness: 'polite',
       });
@@ -280,21 +327,18 @@ export class InvitationsList {
     if (this.isBusy(invitation.id)) {
       return;
     }
-    const ref = this.dialog.open<ConfirmDialog, ConfirmDialogData, true | ConfirmResult>(
-      ConfirmDialog,
-      {
-        width: '420px',
-        data: {
-          title: `Get a new link for ${invitation.email}?`,
-          text: 'The previous link will stop working.',
-          confirmLabel: 'Get a new link',
-          ...(this.emailEnabled()
-            ? { checkbox: { label: 'Send the new link by email', checked: true } }
-            : {}),
-        },
+    const ref = this.dialog.open<true | ConfirmResult, ConfirmDialogData>(ConfirmDialog, {
+      contentClass: 'sm:max-w-[420px]',
+      context: {
+        title: `Get a new link for ${invitation.email}?`,
+        text: 'The previous link will stop working.',
+        confirmLabel: 'Get a new link',
+        ...(this.emailEnabled()
+          ? { checkbox: { label: 'Send the new link by email', checked: true } }
+          : {}),
       },
-    );
-    const result = await firstValueFrom(ref.afterClosed());
+    });
+    const result = await firstValueFrom(ref.closed$);
     if (!result) {
       return;
     }
@@ -324,39 +368,37 @@ export class InvitationsList {
     });
   }
 
-  private async openAndReload(data: InviteDialogData): Promise<void> {
-    const ref = this.dialog.open(InviteDialog, { width: '520px', data });
-    await firstValueFrom(ref.afterClosed());
+  private async openAndReload(context: InviteDialogData): Promise<void> {
+    const ref = this.dialog.open<void, InviteDialogData>(InviteDialog, {
+      contentClass: 'sm:max-w-[520px]',
+      context,
+      ...(context.copy || context.created ? { autoFocus: '#invitation-link-field' } : {}),
+    });
+    await firstValueFrom(ref.closed$);
     this.invitations.reload();
   }
 
   private rowActionFailed(error: unknown, invitation?: Invitation): void {
     const problem = problemOf(error);
     if (problem?.type === PROBLEM.emailUnavailable) {
-      this.snackBar.open(
-        'Sending email is not available. Reload the page and try again.',
-        'Dismiss',
-        {
-          politeness: 'assertive',
-        },
-      );
+      this.toast.show('Sending email is not available. Reload the page and try again.', {
+        politeness: 'assertive',
+      });
     } else if (problem?.type === PROBLEM.emailQueued) {
-      this.snackBar.open(
-        `An email to ${invitation?.email ?? 'this address'} is already on its way.`,
-        'Dismiss',
-        { politeness: 'assertive' },
-      );
+      this.toast.show(`An email to ${invitation?.email ?? 'this address'} is already on its way.`, {
+        politeness: 'assertive',
+      });
       this.invitations.reload();
     } else if (problem?.type === PROBLEM.invitationClosed || problem?.status === 404) {
-      this.snackBar.open('This invitation is already closed.', 'Dismiss', { politeness: 'polite' });
+      this.toast.show('This invitation is already closed.', { politeness: 'polite' });
       this.invitations.reload();
     } else if (problem?.type === PROBLEM.invitationExpired) {
-      this.snackBar.open('This invitation has expired. Get a new link.', 'Dismiss', {
+      this.toast.show('This invitation has expired. Get a new link.', {
         politeness: 'polite',
       });
       this.invitations.reload();
     } else if (problem?.status !== 403) {
-      this.snackBar.open('Something went wrong. Try again.', 'Dismiss', { politeness: 'polite' });
+      this.toast.show('Something went wrong. Try again.', { politeness: 'polite' });
     }
   }
 

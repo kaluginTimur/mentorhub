@@ -1,186 +1,312 @@
 @if (failed()) {
   <app-unavailable (retry)="invitations.reload()" />
 } @else {
-  <main [attr.aria-busy]="invitations.isLoading()">
-    <div class="heading">
-      <h1>Invitations</h1>
-      <button matButton="filled" type="button" (click)="invite()">Invite</button>
+  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6" [attr.aria-busy]="invitations.isLoading()">
+    <div class="heading mb-6 flex items-center justify-between gap-4">
+      <h1 class="font-display text-2xl font-bold tracking-tight">Invitations</h1>
+      <button hlmBtn type="button" (click)="invite()">
+        <ng-icon name="lucidePlus" aria-hidden="true" />
+        Invite
+      </button>
     </div>
 
-    <div class="filters">
-      <mat-form-field class="search">
-        <mat-label>Search by email</mat-label>
-        <input
-          matInput
-          type="search"
-          autocomplete="off"
-          [attr.maxlength]="searchLimit"
-          [value]="searchText()"
-          (input)="onSearch($any($event.target).value)"
-        />
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Status</mat-label>
-        <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
-          <mat-option value="">All</mat-option>
-          @for (s of statuses; track s) {
-            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+    <div class="mb-2 grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_11rem] sm:gap-4 md:flex">
+      <div class="flex flex-col gap-2.5 md:min-w-64 md:flex-1">
+        <label hlmLabel for="invitations-search">Search by email</label>
+        <div class="relative">
+          <ng-icon
+            name="lucideSearch"
+            class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <input
+            hlmInput
+            id="invitations-search"
+            type="search"
+            autocomplete="off"
+            class="pl-8"
+            [attr.maxlength]="searchLimit"
+            [value]="searchText()"
+            (input)="onSearch($any($event.target).value)"
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2.5 md:w-44">
+        <label hlmLabel for="invitations-status">Status</label>
+        <hlm-select
+          [value]="status()"
+          [itemToString]="statusFilterLabel"
+          (valueChange)="setStatus($event ?? '')"
+        >
+          <hlm-select-trigger buttonId="invitations-status" class="w-full">
+            <hlm-select-value placeholder="All" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">All</hlm-select-item>
+            @for (s of statuses; track s) {
+              <hlm-select-item [value]="s">{{ statusLabels[s] }}</hlm-select-item>
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </div>
     </div>
 
-    <div class="progress">
+    <div class="mb-2 h-1">
       @if (invitations.isLoading()) {
-        <mat-progress-bar mode="indeterminate" aria-label="Loading invitations" />
+        <div
+          role="progressbar"
+          aria-label="Loading invitations"
+          class="h-1 w-full overflow-hidden rounded-full bg-primary/15"
+        >
+          <div class="animate-mh-indeterminate h-full w-1/3 rounded-full bg-primary"></div>
+        </div>
       }
     </div>
 
     @if (loaded(); as page) {
-      @if (rows().length > 0) {
-        <table mat-table [dataSource]="rows()" [trackBy]="trackById">
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>Email</th>
-            <td mat-cell *matCellDef="let invitation">{{ invitation.email }}</td>
-          </ng-container>
-          <ng-container matColumnDef="roles">
-            <th mat-header-cell *matHeaderCellDef>Roles</th>
-            <td mat-cell *matCellDef="let invitation">
-              @if (invitation.roles.length > 0) {
-                <mat-chip-set role="list" aria-label="Roles">
-                  @for (role of invitation.roles; track role) {
-                    <mat-chip role="listitem">{{ roleLabel(role) }}</mat-chip>
+      @if (rows().length > 0 || page.totalItems > 0) {
+        <div class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          @if (rows().length > 0) {
+            <div hlmTableContainer class="overflow-x-visible md:overflow-x-auto">
+              <table hlmTable class="block md:table md:table-fixed">
+                <thead hlmTHead class="hidden md:table-header-group">
+                  <tr hlmTr class="bg-muted/40 hover:bg-muted/40">
+                    <th hlmTh class="px-4">Email</th>
+                    <th hlmTh class="px-4 md:w-40 lg:w-56">Roles</th>
+                    <th hlmTh class="px-4 md:w-40 lg:w-52">Status</th>
+                    <th hlmTh class="px-4 md:w-36 lg:w-44">Invited</th>
+                    <th hlmTh class="px-4 text-end md:w-14 md:px-3">
+                      <span class="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody hlmTBody class="block md:table-row-group">
+                  @for (invitation of rows(); track invitation.id) {
+                    <tr
+                      hlmTr
+                      class="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-3 px-4 py-4 md:table-row md:p-0"
+                    >
+                      <td
+                        hlmTd
+                        class="col-start-1 row-start-1 block min-w-0 p-0 whitespace-normal md:table-cell md:px-4 md:py-3 md:break-all md:whitespace-normal"
+                      >
+                        <div class="flex min-w-0 items-center gap-3">
+                          <app-avatar [user]="{ email: invitation.email }" size="sm" />
+                          <span class="min-w-0 font-medium break-all text-foreground">{{
+                            invitation.email
+                          }}</span>
+                        </div>
+                      </td>
+                      <td
+                        hlmTd
+                        class="col-span-2 row-start-3 block p-0 whitespace-normal md:table-cell md:px-4 md:py-3 md:whitespace-normal"
+                      >
+                        @if (invitation.roles.length > 0) {
+                          <div role="list" aria-label="Roles" class="flex flex-wrap gap-1.5">
+                            @for (role of invitation.roles; track role) {
+                              <span hlmBadge variant="secondary" role="listitem">
+                                {{ roleLabel(role) }}
+                              </span>
+                            }
+                          </div>
+                        } @else {
+                          <span class="text-xs text-muted-foreground">No roles</span>
+                        }
+                      </td>
+                      <td
+                        hlmTd
+                        class="col-span-2 row-start-2 block p-0 whitespace-normal md:table-cell md:px-4 md:py-3 md:whitespace-normal"
+                      >
+                        <div class="space-y-1.5">
+                          <div>
+                            <span
+                              hlmBadge
+                              [variant]="
+                                invitation.status === 'REVOKED'
+                                  ? 'destructive'
+                                  : invitation.status === 'EXPIRED'
+                                    ? 'outline'
+                                    : 'secondary'
+                              "
+                              [class]="statusBadgeClass(invitation.status)"
+                            >
+                              <span
+                                aria-hidden="true"
+                                class="size-1.5 rounded-full"
+                                [class]="statusDotClass(invitation.status)"
+                              ></span>
+                              {{ statusLabel(invitation.status) }}
+                            </span>
+                          </div>
+                          <div class="text-xs text-muted-foreground">
+                            @switch (invitation.status) {
+                              @case ('PENDING') {
+                                Expires {{ invitation.expiresAt | date: 'd MMM y' }}
+                              }
+                              @case ('EXPIRED') {
+                                Expired {{ invitation.expiresAt | date: 'd MMM y' }}
+                              }
+                              @case ('ACCEPTED') {
+                                @if (invitation.acceptedUser; as user) {
+                                  Accepted by
+                                  <a
+                                    [routerLink]="['/users', user.id]"
+                                    class="font-medium text-mh-link hover:text-mh-link-hover hover:underline"
+                                    [textContent]="user.name"
+                                  ></a>
+                                } @else {
+                                  Accepted
+                                }
+                              }
+                              @case ('REVOKED') {
+                                @if (invitation.revokedBy; as admin) {
+                                  Revoked by {{ admin.name }}
+                                }
+                              }
+                            }
+                          </div>
+                          @if (emailEnabled() && invitation.lastEmail; as email) {
+                            <div
+                              class="text-xs"
+                              [class]="
+                                email.status === 'FAILED'
+                                  ? 'font-medium text-destructive'
+                                  : 'text-muted-foreground'
+                              "
+                            >
+                              @switch (email.status) {
+                                @case ('QUEUED') {
+                                  Sending email…
+                                }
+                                @case ('SENT') {
+                                  Email sent {{ email.finishedAt | date: 'd MMM y' }}
+                                }
+                                @case ('FAILED') {
+                                  Email failed {{ email.finishedAt | date: 'd MMM y' }}
+                                }
+                                @case ('SKIPPED') {
+                                  Email not sent
+                                }
+                              }
+                            </div>
+                          }
+                        </div>
+                      </td>
+                      <td
+                        hlmTd
+                        class="col-span-2 row-start-4 block p-0 whitespace-normal md:table-cell md:px-4 md:py-3 md:whitespace-normal"
+                      >
+                        <div
+                          class="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground md:block"
+                        >
+                          <span class="md:hidden">Invited</span>
+                          <span class="md:block md:text-sm md:text-foreground">
+                            {{ invitation.createdAt | date: 'd MMM y' }}
+                          </span>
+                          <span aria-hidden="true" class="md:hidden">&bull;</span>
+                          <span class="md:block">
+                            <span class="md:hidden">by </span>{{ invitation.createdBy.name }}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        hlmTd
+                        class="col-start-2 row-start-1 block justify-self-end p-0 text-end whitespace-nowrap md:table-cell md:px-3 md:py-3"
+                      >
+                        @if (isOpen(invitation)) {
+                          <button
+                            hlmBtn
+                            variant="ghost"
+                            size="icon-sm"
+                            type="button"
+                            [hlmDropdownMenuTrigger]="rowMenu"
+                            align="end"
+                            [attr.aria-label]="'Actions for ' + invitation.email"
+                            [attr.aria-disabled]="isBusy(invitation.id) ? 'true' : null"
+                          >
+                            <ng-icon
+                              name="lucideEllipsisVertical"
+                              class="size-4"
+                              aria-hidden="true"
+                            />
+                          </button>
+                          <ng-template #rowMenu>
+                            <hlm-dropdown-menu class="w-44">
+                              @if (invitation.status === 'PENDING') {
+                                @if (emailEnabled()) {
+                                  <button
+                                    type="button"
+                                    hlmDropdownMenuItem
+                                    [disabled]="isBusy(invitation.id)"
+                                    (triggered)="!isBusy(invitation.id) && sendEmail(invitation)"
+                                  >
+                                    <ng-icon name="lucideMail" aria-hidden="true" />
+                                    <span>Send email</span>
+                                  </button>
+                                }
+                                <button
+                                  type="button"
+                                  hlmDropdownMenuItem
+                                  [disabled]="isBusy(invitation.id)"
+                                  (triggered)="!isBusy(invitation.id) && copyLink(invitation)"
+                                >
+                                  <ng-icon name="lucideCopy" aria-hidden="true" />
+                                  <span>Copy link</span>
+                                </button>
+                              }
+                              <button
+                                type="button"
+                                hlmDropdownMenuItem
+                                [disabled]="isBusy(invitation.id)"
+                                (triggered)="!isBusy(invitation.id) && newLink(invitation)"
+                              >
+                                <ng-icon name="lucideRefreshCw" aria-hidden="true" />
+                                <span>Get a new link</span>
+                              </button>
+                              <hlm-dropdown-menu-separator />
+                              <button
+                                type="button"
+                                hlmDropdownMenuItem
+                                variant="destructive"
+                                [disabled]="isBusy(invitation.id)"
+                                (triggered)="!isBusy(invitation.id) && revoke(invitation)"
+                              >
+                                <ng-icon name="lucideBan" aria-hidden="true" />
+                                <span>Revoke</span>
+                              </button>
+                            </hlm-dropdown-menu>
+                          </ng-template>
+                        }
+                      </td>
+                    </tr>
                   }
-                </mat-chip-set>
-              } @else {
-                <span class="secondary">No roles</span>
-              }
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let invitation">
-              <div>{{ statusLabel(invitation.status) }}</div>
-              <div class="secondary">
-                @switch (invitation.status) {
-                  @case ('PENDING') {
-                    Expires {{ invitation.expiresAt | date: 'd MMM y' }}
-                  }
-                  @case ('EXPIRED') {
-                    Expired {{ invitation.expiresAt | date: 'd MMM y' }}
-                  }
-                  @case ('ACCEPTED') {
-                    @if (invitation.acceptedUser; as user) {
-                      Accepted by <a [routerLink]="['/users', user.id]">{{ user.name }}</a>
-                    } @else {
-                      Accepted
-                    }
-                  }
-                  @case ('REVOKED') {
-                    @if (invitation.revokedBy; as admin) {
-                      Revoked by {{ admin.name }}
-                    }
-                  }
-                }
-              </div>
-              @if (emailEnabled() && invitation.lastEmail; as email) {
-                <div class="secondary" [class.failed]="email.status === 'FAILED'">
-                  @switch (email.status) {
-                    @case ('QUEUED') {
-                      Sending email…
-                    }
-                    @case ('SENT') {
-                      Email sent {{ email.finishedAt | date: 'd MMM y' }}
-                    }
-                    @case ('FAILED') {
-                      Email failed {{ email.finishedAt | date: 'd MMM y' }}
-                    }
-                    @case ('SKIPPED') {
-                      Email not sent
-                    }
-                  }
-                </div>
-              }
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="invited">
-            <th mat-header-cell *matHeaderCellDef>Invited</th>
-            <td mat-cell *matCellDef="let invitation">
-              <div>{{ invitation.createdAt | date: 'd MMM y' }}</div>
-              <div class="secondary">{{ invitation.createdBy.name }}</div>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
-            <td mat-cell *matCellDef="let invitation" class="actions">
-              @if (invitation.status === 'PENDING') {
-                @if (emailEnabled()) {
-                  <button
-                    matButton
-                    type="button"
-                    disabledInteractive
-                    [disabled]="isBusy(invitation.id)"
-                    [attr.aria-label]="'Send invitation email to ' + invitation.email"
-                    (click)="sendEmail(invitation)"
-                  >
-                    Send email
-                  </button>
-                }
-                <button
-                  matButton
-                  type="button"
-                  disabledInteractive
-                  [disabled]="isBusy(invitation.id)"
-                  [attr.aria-label]="'Copy invitation link for ' + invitation.email"
-                  (click)="copyLink(invitation)"
-                >
-                  Copy link
-                </button>
-              }
-              @if (isOpen(invitation)) {
-                <button
-                  matButton
-                  type="button"
-                  disabledInteractive
-                  [disabled]="isBusy(invitation.id)"
-                  [attr.aria-label]="'Get a new link for ' + invitation.email"
-                  (click)="newLink(invitation)"
-                >
-                  Get a new link
-                </button>
-                <button
-                  matButton
-                  type="button"
-                  disabledInteractive
-                  [disabled]="isBusy(invitation.id)"
-                  [attr.aria-label]="'Revoke the invitation for ' + invitation.email"
-                  (click)="revoke(invitation)"
-                >
-                  Revoke
-                </button>
-              }
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="columns"></tr>
-          <tr mat-row *matRowDef="let row; columns: columns"></tr>
-        </table>
-      }
-      @if (page.totalItems > 0) {
-        <mat-paginator
-          [length]="page.totalItems"
-          [pageSize]="pageSize"
-          [pageIndex]="pageIndex()"
-          [hidePageSize]="true"
-          (page)="onPage($event)"
-        />
-      }
-      @if (rows().length === 0 && !invitations.isLoading()) {
-        <div class="empty">
+                </tbody>
+              </table>
+            </div>
+          } @else if (!invitations.isLoading()) {
+            <div class="px-4 py-12 text-center text-sm text-muted-foreground">
+              <p>No invitations on this page.</p>
+            </div>
+          }
           @if (page.totalItems > 0) {
-            <p>No invitations on this page.</p>
-          } @else if (hasFilters()) {
+            <app-paginator
+              [totalItems]="page.totalItems"
+              [pageSize]="pageSize"
+              [pageIndex]="pageIndex()"
+              (pageChange)="onPage($event)"
+            />
+          }
+        </div>
+      } @else if (!invitations.isLoading()) {
+        <div
+          class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground"
+        >
+          @if (hasFilters()) {
             <p>No invitations match the filters.</p>
-            <button matButton type="button" (click)="clearFilters()">Clear filters</button>
+            <button hlmBtn variant="outline" type="button" (click)="clearFilters()">
+              Clear filters
+            </button>
           } @else {
             <p>No invitations yet.</p>
           }

@@ -94,13 +94,13 @@ describe('UserPage', () => {
   };
 
   const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
-  const snack = () => document.querySelector('mat-snack-bar-container')?.textContent ?? '';
+  const snack = () => document.querySelector('app-toast-host')?.textContent ?? '';
 
   afterEach(() => {
     document.querySelector('.cdk-overlay-container')?.replaceChildren();
   });
 
-  it('shows the profile, access, roles and history', async () => {
+  it('shows the profile, roles and history', async () => {
     responses.set(getUserHistory, () =>
       historyPage([
         {
@@ -119,11 +119,11 @@ describe('UserPage', () => {
     expect(element.textContent).toContain('ivan@example.com');
     expect(element.textContent).toContain('+77011234567');
     expect(element.textContent).toContain('12 Oct 2026');
-    expect(element.querySelector('mat-chip')?.textContent).toContain('Active');
+    expect(element.querySelector('[hlmBadge]')?.textContent).toContain('Active');
     expect(element.textContent).toContain('Roles changed: added Mentor');
     expect(element.textContent).toContain('Anna Petrova');
     expect(element.textContent).toContain('System');
-    expect(element.querySelectorAll('h2').length).toBe(4);
+    expect(element.querySelectorAll('h2').length).toBe(3);
     expect(element.querySelector('.back')?.getAttribute('href')).toBe('/users');
   });
 
@@ -210,10 +210,11 @@ describe('UserPage', () => {
       await settle();
       expect(api.invoke).not.toHaveBeenCalledWith(disableUser, expect.anything());
       expect(overlay().textContent).toContain('Choose a reason');
+      expect(document.querySelectorAll('hlm-select-item')).toHaveLength(0);
 
-      click(overlay().querySelector('mat-select'));
+      click(overlay().querySelector('hlm-select-trigger button'));
       await settle();
-      const options = [...document.querySelectorAll('mat-option')];
+      const options = [...document.querySelectorAll('hlm-select-item')];
       expect(options.map((o) => o.textContent?.trim())).toEqual([
         'Graduated',
         'Expelled',
@@ -244,7 +245,7 @@ describe('UserPage', () => {
       await vi.waitFor(() => expect(snack()).toContain('User disabled'));
       await settle();
       expect(element.textContent).toContain('Other — Left');
-      expect(element.querySelector('mat-chip')?.textContent).toContain('Disabled');
+      expect(element.querySelector('[hlmBadge]')?.textContent).toContain('Disabled');
       expect(buttonByText(element, 'Enable user')).toBeDefined();
       expect(element.querySelector('.history')?.textContent).toContain('Disabled: Other — Left');
     });
@@ -256,9 +257,9 @@ describe('UserPage', () => {
         ]);
       });
       const { settle } = await openDialog();
-      click(overlay().querySelector('mat-select'));
+      click(overlay().querySelector('hlm-select-trigger button'));
       await settle();
-      click(document.querySelector('mat-option'));
+      click(document.querySelector('hlm-select-item'));
       await settle();
       click(buttonByText(overlay(), 'Disable'));
       await settle();
@@ -271,22 +272,22 @@ describe('UserPage', () => {
         throw problem(409, 'urn:mentorhub:problem:last-admin');
       });
       const { settle } = await openDialog();
-      click(overlay().querySelector('mat-select'));
+      click(overlay().querySelector('hlm-select-trigger button'));
       await settle();
-      click(document.querySelector('mat-option'));
+      click(document.querySelector('hlm-select-item'));
       await settle();
       click(buttonByText(overlay(), 'Disable'));
       await settle();
       expect(snack()).toContain('MentorHub must keep at least one active administrator.');
       expect(overlay().textContent).toContain('Disable Ivan Sidorov?');
-      expect(overlay().querySelector('mat-select')?.textContent).toContain('Graduated');
+      expect(overlay().querySelector('hlm-select-trigger')?.textContent).toContain('Graduated');
     });
 
     it('counts and limits the comment after trimming', async () => {
       const { settle } = await openDialog();
-      click(overlay().querySelector('mat-select'));
+      click(overlay().querySelector('hlm-select-trigger button'));
       await settle();
-      click(document.querySelector('mat-option'));
+      click(document.querySelector('hlm-select-item'));
       await settle();
       const textarea = overlay().querySelector('textarea') as HTMLTextAreaElement;
       textarea.value = `  ${'x'.repeat(500)}  `;
@@ -341,9 +342,17 @@ describe('UserPage', () => {
       const { element, settle } = await open();
       const save = () => buttonByText(element, 'Save') as HTMLButtonElement;
       expect(save().disabled).toBe(true);
-      const boxes = [...element.querySelectorAll('mat-checkbox input')] as HTMLInputElement[];
+      const boxes = [
+        ...element.querySelectorAll('hlm-checkbox button[role="checkbox"]'),
+      ] as HTMLButtonElement[];
       expect(boxes).toHaveLength(5);
-      expect(boxes.map((b) => b.checked)).toEqual([false, false, true, false, false]);
+      expect(boxes.map((b) => b.getAttribute('aria-checked') === 'true')).toEqual([
+        false,
+        false,
+        true,
+        false,
+        false,
+      ]);
       click(boxes[2]);
       await settle();
       expect(element.textContent).toContain(
@@ -361,13 +370,15 @@ describe('UserPage', () => {
 
     it('resets the selection', async () => {
       const { element, settle } = await open();
-      const boxes = [...element.querySelectorAll('mat-checkbox input')] as HTMLInputElement[];
+      const boxes = [
+        ...element.querySelectorAll('hlm-checkbox button[role="checkbox"]'),
+      ] as HTMLButtonElement[];
       click(boxes[0]);
       await settle();
-      expect(boxes[0].checked).toBe(true);
+      expect(boxes[0].getAttribute('aria-checked')).toBe('true');
       click(buttonByText(element, 'Reset'));
       await settle();
-      expect(boxes[0].checked).toBe(false);
+      expect(boxes[0].getAttribute('aria-checked')).toBe('false');
       expect((buttonByText(element, 'Save') as HTMLButtonElement).disabled).toBe(true);
     });
 
@@ -376,13 +387,15 @@ describe('UserPage', () => {
         throw problem(409, 'urn:mentorhub:problem:self-lockout');
       });
       const { element, settle } = await open();
-      const boxes = [...element.querySelectorAll('mat-checkbox input')] as HTMLInputElement[];
+      const boxes = [
+        ...element.querySelectorAll('hlm-checkbox button[role="checkbox"]'),
+      ] as HTMLButtonElement[];
       click(boxes[0]);
       await settle();
       click(buttonByText(element, 'Save'));
       await settle();
       expect(snack()).toContain("You can't lock yourself out.");
-      expect(boxes[0].checked).toBe(true);
+      expect(boxes[0].getAttribute('aria-checked')).toBe('true');
     });
   });
 
@@ -461,9 +474,11 @@ describe('UserPage', () => {
       const hint = element.querySelector(`#${disable.getAttribute('aria-describedby')}`);
       expect(hint?.textContent).toContain("You can't disable yourself.");
       click(disable);
-      expect(document.querySelector('mat-dialog-container')).toBeNull();
+      expect(document.querySelector('cdk-dialog-container')).toBeNull();
 
-      const admin = element.querySelector('mat-checkbox input') as HTMLInputElement;
+      const admin = element.querySelector(
+        'hlm-checkbox button[role="checkbox"]',
+      ) as HTMLButtonElement;
       expect(admin.getAttribute('aria-disabled')).toBe('true');
       const adminHint = element.querySelector(`#${admin.getAttribute('aria-describedby')}`);
       expect(adminHint?.textContent).toContain("You can't remove your own administrator role.");
@@ -481,7 +496,9 @@ describe('UserPage', () => {
       await settle();
       expect(currentUser.load).toHaveBeenCalledTimes(1);
 
-      const boxes = [...element.querySelectorAll('mat-checkbox input')] as HTMLInputElement[];
+      const boxes = [
+        ...element.querySelectorAll('hlm-checkbox button[role="checkbox"]'),
+      ] as HTMLButtonElement[];
       click(boxes[2]);
       await settle();
       click(buttonByText(element, 'Save'));
@@ -496,7 +513,7 @@ describe('UserPage', () => {
     expect(element.querySelector(`#${group?.getAttribute('aria-labelledby')}`)?.textContent).toBe(
       'Roles',
     );
-    expect(group?.querySelectorAll('mat-checkbox')).toHaveLength(5);
+    expect(group?.querySelectorAll('hlm-checkbox')).toHaveLength(5);
   });
 
   it('sends the user home when the API refuses the user with 403', async () => {
@@ -523,7 +540,7 @@ describe('UserPage', () => {
       expect(buttonByText(element, 'Disable user')).toBeUndefined();
       expect(buttonByText(element, 'Enable user')).toBeUndefined();
       expect(buttonByText(element, 'Save')).toBeUndefined();
-      expect(element.querySelector('mat-checkbox')).toBeNull();
+      expect(element.querySelector('hlm-checkbox')).toBeNull();
       expect(element.querySelector('ul')?.textContent).toContain('Mentor');
     },
   );

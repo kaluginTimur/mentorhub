@@ -1,10 +1,10 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '../../core/api/api';
 import { CurrentUserService } from '../../core/auth/current-user.service';
-import { MatDialog } from '@angular/material/dialog';
 import { UsersList } from './users-list';
 
 const page = (items: unknown[], totalItems = items.length) => ({
@@ -59,7 +59,7 @@ describe('UsersList', () => {
     const { element } = await open();
     expect(element.querySelectorAll('h1')).toHaveLength(1);
     expect(element.querySelector('h1')?.textContent).toBe('Users');
-    const rows = element.querySelectorAll('tr[mat-row], tr.mat-mdc-row');
+    const rows = element.querySelectorAll('tbody tr');
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('Anna Petrova');
     expect(rows[0].textContent).toContain('Administrator');
@@ -70,6 +70,25 @@ describe('UsersList', () => {
     expect(rows[1].textContent).toContain('No roles');
     expect(rows[1].textContent).toContain('Disabled');
     expect(element.querySelectorAll('th')).toHaveLength(4);
+  });
+
+  it('uses fixed desktop column widths across pages', async () => {
+    api.invoke.mockResolvedValue(page([summary('a')]));
+    const { element } = await open();
+    const table = element.querySelector('table');
+    expect(table?.classList.contains('md:table-fixed')).toBe(true);
+    const headers = [...element.querySelectorAll('th')];
+    expect(headers.map((h) => h.textContent?.trim())).toEqual(['Name', 'Email', 'Roles', 'Status']);
+    expect(headers[0].classList.contains('md:w-48')).toBe(true);
+    expect(headers[0].classList.contains('lg:w-64')).toBe(true);
+    expect(headers[1].className).not.toMatch(/\b(?:md:|lg:)?w-/);
+    expect(headers[2].classList.contains('md:w-52')).toBe(true);
+    expect(headers[2].classList.contains('lg:w-64')).toBe(true);
+    expect(headers[3].classList.contains('md:w-32')).toBe(true);
+    const cells = element.querySelectorAll('tbody tr td');
+    expect(cells[0].classList.contains('md:whitespace-normal')).toBe(true);
+    expect(cells[1].classList.contains('md:whitespace-normal')).toBe(true);
+    expect(cells[1].classList.contains('md:break-all')).toBe(true);
   });
 
   it('restores search, filters and page from the URL', async () => {
@@ -111,13 +130,14 @@ describe('UsersList', () => {
   ])('shows the first page when the %s filter changes', async (label, option, query) => {
     api.invoke.mockResolvedValue(page([summary('a')], 60));
     const { harness, element } = await open('/users?page=2');
-    const field = [...element.querySelectorAll('mat-form-field')].find((f) =>
-      f.textContent?.includes(label),
-    );
-    (field?.querySelector('mat-select') as HTMLElement).click();
+    expect(document.querySelectorAll('hlm-select-item')).toHaveLength(0);
+    const triggerId = [...element.querySelectorAll('label')]
+      .find((l) => l.textContent?.includes(label))
+      ?.getAttribute('for');
+    (element.querySelector(`#${triggerId}`) as HTMLElement).click();
     await harness.fixture.whenStable();
     harness.detectChanges();
-    const choice = [...document.querySelectorAll('mat-option')].find(
+    const choice = [...document.querySelectorAll('hlm-select-item')].find(
       (o) => o.textContent?.trim() === option,
     );
     (choice as HTMLElement).click();
@@ -154,16 +174,16 @@ describe('UsersList', () => {
     api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
     await TestBed.inject(Router).navigateByUrl('/users?status=ACTIVE');
     harness.detectChanges();
-    expect(element.querySelector('mat-progress-bar')?.getAttribute('aria-label')).toBe(
+    expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-label')).toBe(
       'Loading users',
     );
     expect(element.querySelector('main')?.getAttribute('aria-busy')).toBe('true');
-    expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
     release(page([summary('b'), summary('c')]));
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(element.querySelector('mat-progress-bar')).toBeNull();
-    expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(2);
+    expect(element.querySelector('[role="progressbar"]')).toBeNull();
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
   it('PLT-9.1 shows the unavailable card and retries', async () => {
@@ -176,7 +196,7 @@ describe('UsersList', () => {
     (element.querySelector('button') as HTMLButtonElement).click();
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
   });
 
   it('PLT-9.2 says the page is past the last one and lets the user move to another page', async () => {
@@ -268,7 +288,7 @@ describe('UsersList', () => {
     const inviteButton = (element: HTMLElement) =>
       [...element.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Invite');
 
-    afterEach(() => TestBed.inject(MatDialog).closeAll());
+    afterEach(() => TestBed.inject(Dialog).closeAll());
 
     it('is shown next to the heading with USERS_INVITE and opens the invite dialog', async () => {
       TestBed.overrideProvider(CurrentUserService, {
@@ -279,7 +299,7 @@ describe('UsersList', () => {
       expect(element.querySelector('.heading h1')?.textContent).toBe('Users');
       inviteButton(element)?.click();
       await vi.waitFor(() =>
-        expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+        expect(document.querySelector('cdk-dialog-container')?.textContent).toContain(
           'Invite a person',
         ),
       );

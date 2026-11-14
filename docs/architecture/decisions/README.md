@@ -12,3 +12,4 @@ Read this index and open a decision when the task touches it.
 | [0004](0004-permissions-in-code-role-assignments-in-database.md) | Permissions and roles are enums in code, role assignments are data, checks use permissions only, and relations decide access to a resource |
 | [0005](0005-audit-log.md) | Audit entries are written in the changing transaction to an append-only table and read only through per-subject views |
 | [0006](0006-asynchronous-events.md) | Asynchronous work goes through the Spring Modulith event publication registry with JDBC, for a single application instance |
+| [0007](0007-tailwind-spartan-ui-frontend.md) | Frontend uses Tailwind CSS v4, Spartan UI (`@spartan-ng/brain` + owned `@spartan-ng/helm`), `@ng-icons/lucide`, self-hosted fonts, and `ThemeService`; `@angular/material` is removed |

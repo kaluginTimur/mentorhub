@@ -28,21 +28,21 @@ if (/provideApiConfiguration\(\s*['"`]\/['"`]\s*\)/.test(text)) {
 }
 
 const isStylesheet = /\.(s?css)$/.test(rel);
-const isThemeFile = rel === 'frontend/src/styles.scss';
-if (rel.startsWith('frontend/src/app/') && !isThemeFile) {
+const isThemeFile = rel === 'frontend/src/styles/tailwind.css';
+if ((rel.startsWith('frontend/src/app/') || rel.startsWith('frontend/src/styles/')) && !isThemeFile) {
   const propertyLiteral =
     /\b(color|background(-color)?|border(-[a-z]+)*|outline(-color)?|fill|stroke|box-shadow|text-shadow|caret-color|accent-color)\s*:\s*[^;"'{}]*?(#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\()/;
   const stylesheetLiteral = /(^|[\s:,(])#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|oklch)\(/m;
   if (propertyLiteral.test(text) || (isStylesheet && stylesheetLiteral.test(text))) {
     problems.push(
-      'Literal colors in component styles. Use the Material system tokens (var(--mat-sys-primary), ' +
-        'var(--mat-sys-surface-container), ...) so a rebrand stays a theme change in src/styles.scss.',
+      'Literal colors in component styles. Use semantic theme tokens (bg-primary, text-foreground, ' +
+        'border-border, var(--primary), ...) so a rebrand stays a theme change in frontend/src/styles/tailwind.css.',
     );
   }
   if (/\bfont-family\s*:/.test(text) || /\bfont\s*:\s*[^;]*\b(serif|sans-serif|monospace|["'])/.test(text)) {
     problems.push(
-      'Literal font-family in component styles. Use typography tokens (var(--mat-sys-body-medium), ...) ' +
-        'so fonts stay defined only by the theme.',
+      'Literal font-family in component styles. Use typography tokens (font-sans, font-display, font-mono, ' +
+        'var(--font-sans), ...) so fonts stay defined only by the theme.',
     );
   }
 }

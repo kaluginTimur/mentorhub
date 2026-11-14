@@ -1,6 +1,6 @@
 # Frontend development
 
-Angular 22 (standalone, zoneless, signals), Angular Material (M3), Vitest, angular-eslint, Prettier, ng-openapi-gen. Node 24 via nvm (`frontend/.nvmrc`). Commands run from `frontend/`; paths in this document are relative to the repository root.
+Angular 22 (standalone, zoneless, signals), Tailwind CSS v4, Spartan UI, Lucide icons, Vitest, angular-eslint, Prettier, ng-openapi-gen. Node 24 via nvm (`frontend/.nvmrc`). Commands run from `frontend/`; paths in this document are relative to the repository root.
 
 ## Structure
 
@@ -57,8 +57,8 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 
 ## Styling
 
-- Angular Material M3; the theme is in `frontend/src/styles.scss`.
-- Components take colors, typography and shapes only from the system tokens (`var(--mat-sys-primary)`, `var(--mat-sys-body-medium)`, ...). No literal colors or `font-family` in components: the corporate brand will arrive later and must stay a theme change.
+- Tailwind CSS v4 and Spartan UI (owned Helm primitives in `frontend/src/app/shared/ui/`); theme tokens are in `frontend/src/styles/tailwind.css` (decision 0007).
+- Components take colors, typography and shapes only from semantic theme tokens (`bg-background`, `text-foreground`, `bg-primary`, `text-mh-link`, `font-display`, ...). No literal colors or `font-family` in components: themes and brand palette stay a token change.
 - Screens follow `docs/ui/guidelines.md`.
 
 ## Tests
@@ -73,7 +73,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 ## Pitfalls
 
 - `provideApiConfiguration('')`, never `'/'`: contract paths already start with `/api` and the generated client joins `rootUrl` and the path, so `'/'` produces `//api/...`.
-- Material and CDK code reached by a static import in `app.config.ts`, interceptors or guards lands in the initial bundle together with everything lazy routes use from it. Load rarely used pieces with `import()` (for example the snack bar in `error.interceptor.ts`) and watch the initial-size budget in the build output.
+- CDK, Spartan UI and overlay code reached by a static import in `app.config.ts`, interceptors or guards lands in the initial bundle together with everything lazy routes use from it. Load rarely used pieces with `import()` (for example `ToastService` in `frontend/src/app/core/auth/error.interceptor.ts`) and watch the initial-size budget in the build output.
 - Angular requires Node ^24.15. An older default Node fails with `EBADENGINE`, including the Angular CLI MCP server.
 - Angular conventions changed recently (standalone and `OnPush` by default, signal APIs, native control flow); older examples use the previous style. Follow [Angular conventions](#angular-conventions).
 
@@ -100,7 +100,6 @@ cd frontend && ~/.nvm/nvm-exec npm run build
 - If `node_modules` is missing, run `cd frontend && ~/.nvm/nvm-exec npm ci` first.
 - Formatting failures are fixed with `cd frontend && ~/.nvm/nvm-exec npm run format`.
 - Without nvm, check `node -v` (^24.15) and run the same `npm` commands directly.
-- The production build downloads font CSS from Google Fonts, so it needs internet access. `frontend/.npmrc` gives Node a longer connect attempt per address family, without which the download times out on networks without IPv6 (WSL); it is temporary until the fonts are served from the app (#12).
 
 ## Checking an API
 

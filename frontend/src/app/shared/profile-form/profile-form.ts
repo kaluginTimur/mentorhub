@@ -1,11 +1,11 @@
 import { Component, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, submit, validate } from '@angular/forms/signals';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
 import { ProfileUpdate } from '../../core/api/models/profile-update';
 import { PROBLEM, problemOf } from '../../core/problem';
+import { ToastService } from '../toast/toast.service';
 
 export interface ProfileValues {
   email: string;
@@ -24,71 +24,126 @@ const blankToNull = (value: string): string | null => (value.trim() === '' ? nul
 /** First name, last name and phone of a user; shared by the user page and "My profile". */
 @Component({
   selector: 'app-profile-form',
-  imports: [FormField, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [FormField, HlmInput, HlmLabel, HlmButton],
   template: `
-    <form novalidate (submit)="onSubmit($event)">
-      <p class="email"><span class="label">Email</span> {{ values().email }}</p>
-      <div class="fields">
-        <mat-form-field>
-          <mat-label>First name</mat-label>
-          <input matInput autocomplete="given-name" [formField]="profileForm.firstName" />
-          @for (error of profileForm.firstName().errors(); track error.message) {
-            <mat-error>{{ error.message }}</mat-error>
+    <form novalidate (submit)="onSubmit($event)" class="space-y-5">
+      @if (showEmail()) {
+        <div
+          class="flex flex-wrap items-baseline gap-2 rounded-lg bg-muted/50 px-3.5 py-2.5 text-sm"
+        >
+          <span class="font-medium text-muted-foreground">Email</span>
+          <span class="font-mono text-foreground">{{ values().email }}</span>
+        </div>
+      }
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="flex flex-col gap-2.5">
+          <label hlmLabel for="profile-first-name">First name</label>
+          <input
+            hlmInput
+            id="profile-first-name"
+            autocomplete="given-name"
+            [formField]="profileForm.firstName"
+            [forceInvalid]="profileForm.firstName().touched() && profileForm.firstName().invalid()"
+            [attr.aria-invalid]="
+              profileForm.firstName().touched() && profileForm.firstName().invalid() ? 'true' : null
+            "
+            [attr.aria-describedby]="
+              profileForm.firstName().touched() && profileForm.firstName().errors().length > 0
+                ? 'profile-first-name-error'
+                : null
+            "
+          />
+          @if (profileForm.firstName().touched() && profileForm.firstName().errors().length > 0) {
+            <div
+              id="profile-first-name-error"
+              class="space-y-0.5 text-xs text-destructive"
+              role="alert"
+            >
+              @for (error of profileForm.firstName().errors(); track error.message) {
+                <p>{{ error.message }}</p>
+              }
+            </div>
           }
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Last name</mat-label>
-          <input matInput autocomplete="family-name" [formField]="profileForm.lastName" />
-          @for (error of profileForm.lastName().errors(); track error.message) {
-            <mat-error>{{ error.message }}</mat-error>
+        </div>
+
+        <div class="flex flex-col gap-2.5">
+          <label hlmLabel for="profile-last-name">Last name</label>
+          <input
+            hlmInput
+            id="profile-last-name"
+            autocomplete="family-name"
+            [formField]="profileForm.lastName"
+            [forceInvalid]="profileForm.lastName().touched() && profileForm.lastName().invalid()"
+            [attr.aria-invalid]="
+              profileForm.lastName().touched() && profileForm.lastName().invalid() ? 'true' : null
+            "
+            [attr.aria-describedby]="
+              profileForm.lastName().touched() && profileForm.lastName().errors().length > 0
+                ? 'profile-last-name-error'
+                : null
+            "
+          />
+          @if (profileForm.lastName().touched() && profileForm.lastName().errors().length > 0) {
+            <div
+              id="profile-last-name-error"
+              class="space-y-0.5 text-xs text-destructive"
+              role="alert"
+            >
+              @for (error of profileForm.lastName().errors(); track error.message) {
+                <p>{{ error.message }}</p>
+              }
+            </div>
           }
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Phone</mat-label>
-          <input matInput type="tel" autocomplete="tel" [formField]="profileForm.phone" />
-          <mat-hint>For example +7 701 123 45 67</mat-hint>
-          @for (error of profileForm.phone().errors(); track error.message) {
-            <mat-error>{{ error.message }}</mat-error>
+        </div>
+
+        <div class="flex flex-col gap-2.5 sm:col-span-2">
+          <label hlmLabel for="profile-phone">Phone</label>
+          <input
+            hlmInput
+            id="profile-phone"
+            type="tel"
+            autocomplete="tel"
+            [formField]="profileForm.phone"
+            [forceInvalid]="profileForm.phone().touched() && profileForm.phone().invalid()"
+            [attr.aria-invalid]="
+              profileForm.phone().touched() && profileForm.phone().invalid() ? 'true' : null
+            "
+            [attr.aria-describedby]="
+              profileForm.phone().touched() && profileForm.phone().errors().length > 0
+                ? 'profile-phone-hint profile-phone-error'
+                : 'profile-phone-hint'
+            "
+          />
+          <p id="profile-phone-hint" class="text-xs text-muted-foreground">
+            For example +7 701 123 45 67
+          </p>
+          @if (profileForm.phone().touched() && profileForm.phone().errors().length > 0) {
+            <div id="profile-phone-error" class="space-y-0.5 text-xs text-destructive" role="alert">
+              @for (error of profileForm.phone().errors(); track error.message) {
+                <p>{{ error.message }}</p>
+              }
+            </div>
           }
-        </mat-form-field>
+        </div>
       </div>
-      <div class="actions">
+
+      <div class="flex justify-end gap-2">
         @if (cancellable()) {
-          <button matButton type="button" (click)="cancelled.emit()">Cancel</button>
+          <button hlmBtn variant="outline" type="button" (click)="cancelled.emit()">Cancel</button>
         }
-        <button matButton="filled" type="submit" [disabled]="saving()">Save</button>
+        <button hlmBtn type="submit" [disabled]="saving()">Save</button>
       </div>
     </form>
   `,
-  styles: `
-    .email {
-      margin: 0 0 16px;
-    }
-    .label {
-      color: var(--mat-sys-on-surface-variant);
-      margin-inline-end: 8px;
-    }
-    .fields {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0 16px;
-    }
-    mat-form-field {
-      flex: 1 1 200px;
-    }
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-  `,
 })
 export class ProfileForm {
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast = inject(ToastService);
 
   readonly values = input.required<ProfileValues>();
   /** Stores the profile and returns what the server saved. */
   readonly save = input.required<(update: ProfileUpdate) => Promise<ProfileValues>>();
+  readonly showEmail = input(true);
   readonly cancellable = input(false);
   readonly saved = output<ProfileValues>();
   readonly cancelled = output();
@@ -144,7 +199,7 @@ export class ProfileForm {
             }
           }
           if (problem?.status !== 403) {
-            this.snackBar.open('Could not save the profile. Try again.', 'Dismiss');
+            this.toast.show('Could not save the profile. Try again.');
           }
           return undefined;
         }

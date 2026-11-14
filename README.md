@@ -101,7 +101,7 @@ Do not use `docker compose down -v` for this: it also deletes the `postgres-data
 | `AGENTS.md` | Instructions for AI coding agents (Claude Code reads it through `CLAUDE.md`) |
 | `api/openapi.yaml` | API contract; backend interfaces and the frontend client are generated from it |
 | `backend/` | Spring Boot 4 + Spring Modulith |
-| `frontend/` | Angular 22 + Angular Material |
+| `frontend/` | Angular 22 + Tailwind CSS v4 + Spartan UI |
 | `infra/` | Docker Compose and the Keycloak realm for the local environment |
 | `docs/` | Documentation; `docs/README.md` says which document holds what |
 

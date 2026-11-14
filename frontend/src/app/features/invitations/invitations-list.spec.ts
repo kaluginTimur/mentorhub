@@ -1,9 +1,9 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { ToastService } from '../../shared/toast/toast.service';
 import { ClientConfigService } from '../../core/client-config.service';
 import { sendInvitationEmail } from '../../core/api/fn/invitations/send-invitation-email';
 import { Api } from '../../core/api/api';
@@ -43,7 +43,8 @@ describe('InvitationsList', () => {
   });
 
   afterEach(() => {
-    TestBed.inject(MatDialog).closeAll();
+    TestBed.inject(Dialog).closeAll();
+    document.querySelector('.cdk-overlay-container')?.replaceChildren();
   });
 
   async function open(url = '/invitations') {
@@ -59,10 +60,28 @@ describe('InvitationsList', () => {
       string,
       unknown
     >;
-  const rowButtons = (element: HTMLElement, row: number) =>
-    [...element.querySelectorAll('tr.mat-mdc-row')[row].querySelectorAll('button')].map((b) =>
-      b.textContent?.trim(),
-    );
+  const actionsTrigger = (element: HTMLElement, row = 0) =>
+    element.querySelectorAll('tbody tr')[row]?.querySelector<HTMLButtonElement>('button') ?? null;
+  const openActionsMenu = async (harness: RouterTestingHarness, element: HTMLElement, row = 0) => {
+    actionsTrigger(element, row)?.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    return [...document.querySelectorAll<HTMLButtonElement>('[hlmDropdownMenuItem]')];
+  };
+  const closeActionsMenu = async (harness: RouterTestingHarness) => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+  };
+  const clickAction = async (
+    harness: RouterTestingHarness,
+    element: HTMLElement,
+    label: string,
+    row = 0,
+  ) => {
+    const items = await openActionsMenu(harness, element, row);
+    items.find((b) => b.textContent?.trim() === label)?.click();
+  };
 
   const rowsOf = [
     invitation({ id: 'p', email: 'p@example.com', roles: ['MENTOR', 'STUDENT'] }),
@@ -85,7 +104,7 @@ describe('InvitationsList', () => {
 
   it('shows invitations with status lines and row actions by status', async () => {
     api.invoke.mockResolvedValue(page(rowsOf));
-    const { element } = await open();
+    const { harness, element } = await open();
     expect(element.querySelectorAll('h1')).toHaveLength(1);
     expect(element.querySelector('h1')?.textContent).toBe('Invitations');
     expect([...element.querySelectorAll('th')].map((t) => t.textContent?.trim())).toEqual([
@@ -95,7 +114,7 @@ describe('InvitationsList', () => {
       'Invited',
       'Actions',
     ]);
-    const rows = element.querySelectorAll('tr.mat-mdc-row');
+    const rows = element.querySelectorAll('tbody tr');
     expect(rows).toHaveLength(4);
     expect(rows[0].textContent).toContain('Mentor');
     expect(rows[0].textContent).toContain('Student');
@@ -109,13 +128,56 @@ describe('InvitationsList', () => {
     expect(rows[2].querySelector('a')?.getAttribute('href')).toBe('/users/u9');
     expect(rows[2].querySelector('a')?.textContent).toBe('Maria K.');
     expect(rows[3].textContent).toContain('Revoked by Boris B.');
-    expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
-    expect(rows[0].querySelector('button')?.getAttribute('aria-label')).toBe(
-      'Copy invitation link for p@example.com',
+    expect(actionsTrigger(element, 0)?.getAttribute('aria-label')).toBe(
+      'Actions for p@example.com',
     );
-    expect(rowButtons(element, 1)).toEqual(['Get a new link', 'Revoke']);
-    expect(rowButtons(element, 2)).toEqual([]);
-    expect(rowButtons(element, 3)).toEqual([]);
+    expect((await openActionsMenu(harness, element, 0)).map((b) => b.textContent?.trim())).toEqual([
+      'Copy link',
+      'Get a new link',
+      'Revoke',
+    ]);
+    await closeActionsMenu(harness);
+    expect(actionsTrigger(element, 1)?.getAttribute('aria-label')).toBe(
+      'Actions for e@example.com',
+    );
+    expect((await openActionsMenu(harness, element, 1)).map((b) => b.textContent?.trim())).toEqual([
+      'Get a new link',
+      'Revoke',
+    ]);
+    await closeActionsMenu(harness);
+    expect(actionsTrigger(element, 2)).toBeNull();
+    expect(actionsTrigger(element, 3)).toBeNull();
+  });
+
+  it('uses fixed desktop column widths and an accessible Actions header', async () => {
+    api.invoke.mockResolvedValue(page(rowsOf));
+    const { element } = await open();
+    const table = element.querySelector('table');
+    expect(table?.classList.contains('md:table-fixed')).toBe(true);
+    const headers = [...element.querySelectorAll('th')];
+    expect(headers.map((h) => h.textContent?.trim())).toEqual([
+      'Email',
+      'Roles',
+      'Status',
+      'Invited',
+      'Actions',
+    ]);
+    expect(headers[0].className).not.toMatch(/\b(?:md:|lg:)?w-/);
+    expect(headers[1].classList.contains('md:w-40')).toBe(true);
+    expect(headers[1].classList.contains('lg:w-56')).toBe(true);
+    expect(headers[2].classList.contains('md:w-40')).toBe(true);
+    expect(headers[2].classList.contains('lg:w-52')).toBe(true);
+    expect(headers[3].classList.contains('md:w-36')).toBe(true);
+    expect(headers[3].classList.contains('lg:w-44')).toBe(true);
+    expect(headers[4].classList.contains('md:w-14')).toBe(true);
+    expect(headers[4].classList.contains('md:px-3')).toBe(true);
+    expect(headers[4].querySelector('.sr-only')?.textContent?.trim()).toBe('Actions');
+    const cells = element.querySelectorAll('tbody tr:first-child td');
+    expect(cells[0].classList.contains('md:whitespace-normal')).toBe(true);
+    expect(cells[0].classList.contains('md:break-all')).toBe(true);
+    expect(cells[2].classList.contains('md:whitespace-normal')).toBe(true);
+    expect(cells[3].classList.contains('md:whitespace-normal')).toBe(true);
+    expect(cells[4].classList.contains('md:px-3')).toBe(true);
   });
 
   it('restores search, status and page from the URL', async () => {
@@ -153,11 +215,14 @@ describe('InvitationsList', () => {
   it('filters by status through the URL', async () => {
     api.invoke.mockResolvedValue(page([invitation()]));
     const { harness, element } = await open();
-    (element.querySelector('mat-select .mat-mdc-select-trigger') as HTMLElement).click();
+    expect(document.querySelectorAll('hlm-select-item')).toHaveLength(0);
+    (element.querySelector('hlm-select-trigger button') as HTMLElement).click();
     harness.detectChanges();
-    const options = [...document.querySelectorAll('mat-option')].map((o) => o.textContent?.trim());
+    const options = [...document.querySelectorAll('hlm-select-item')].map((o) =>
+      o.textContent?.trim(),
+    );
     expect(options).toEqual(['All', 'Pending', 'Expired', 'Accepted', 'Revoked']);
-    (document.querySelectorAll('mat-option')[3] as HTMLElement).click();
+    (document.querySelectorAll('hlm-select-item')[3] as HTMLElement).click();
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/invitations?status=ACCEPTED');
   });
@@ -187,16 +252,16 @@ describe('InvitationsList', () => {
     api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
     await TestBed.inject(Router).navigateByUrl('/invitations?status=PENDING');
     harness.detectChanges();
-    expect(element.querySelector('mat-progress-bar')?.getAttribute('aria-label')).toBe(
+    expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-label')).toBe(
       'Loading invitations',
     );
     expect(element.querySelector('main')?.getAttribute('aria-busy')).toBe('true');
-    expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
     release(page([invitation(), invitation({ id: 'x' })]));
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(element.querySelector('mat-progress-bar')).toBeNull();
-    expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(2);
+    expect(element.querySelector('[role="progressbar"]')).toBeNull();
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
   it('shows the unavailable card and retries', async () => {
@@ -209,7 +274,7 @@ describe('InvitationsList', () => {
     (element.querySelector('button') as HTMLButtonElement).click();
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
   });
 
   it('sends the user home when the API refuses the list with 403', async () => {
@@ -232,20 +297,15 @@ describe('InvitationsList', () => {
       harness.detectChanges();
     }
 
-    const click = (element: HTMLElement, label: string) =>
-      [...element.querySelectorAll('tr.mat-mdc-row button')]
-        .find((b) => b.textContent?.trim() === label)
-        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
     it('INV-18.1 revokes after a confirmation and reloads the list', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Revoke');
+      await clickAction(harness, element, 'Revoke');
       await vi.waitFor(() =>
-        expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+        expect(document.querySelector('cdk-dialog-container')?.textContent).toContain(
           'Revoke the invitation for p@example.com?',
         ),
       );
-      expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+      expect(document.querySelector('cdk-dialog-container')?.textContent).toContain(
         'The link will stop working.',
       );
       expect(api.invoke).not.toHaveBeenCalledWith(revokeInvitation, expect.anything());
@@ -264,7 +324,7 @@ describe('InvitationsList', () => {
 
     it('INV-18.2 does nothing when the confirmation is cancelled', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Revoke');
+      await clickAction(harness, element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Cancel')).toBeTruthy());
       overlayButton('Cancel')?.click();
       await harness.fixture.whenStable();
@@ -273,7 +333,7 @@ describe('InvitationsList', () => {
 
     it('INV-18.3 shows the closed message and reloads on 409 invitation-closed', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Revoke');
+      await clickAction(harness, element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
       api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-closed'));
       await confirm(harness, 'Revoke');
@@ -287,7 +347,7 @@ describe('InvitationsList', () => {
 
     it('shows a generic message on other errors and leaves the row', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Revoke');
+      await clickAction(harness, element, 'Revoke');
       await vi.waitFor(() => expect(overlayButton('Revoke')).toBeTruthy());
       api.invoke.mockRejectedValueOnce(problem(500, 'about:blank'));
       await confirm(harness, 'Revoke');
@@ -295,18 +355,18 @@ describe('InvitationsList', () => {
         expect(document.body.textContent).toContain('Something went wrong. Try again.'),
       );
       expect(api.invoke.mock.calls.filter(([fn]) => fn === listInvitations)).toHaveLength(1);
-      expect(element.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
+      expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
     });
 
     it('INV-18.1 issues a new link after a confirmation and shows it in the link view', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() =>
-        expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+        expect(document.querySelector('cdk-dialog-container')?.textContent).toContain(
           'Get a new link for p@example.com?',
         ),
       );
-      expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+      expect(document.querySelector('cdk-dialog-container')?.textContent).toContain(
         'The previous link will stop working.',
       );
       api.invoke.mockImplementation(async (fn) =>
@@ -356,7 +416,7 @@ describe('InvitationsList', () => {
         });
         vi.stubGlobal('ClipboardItem', FakeItem);
         vi.stubGlobal('navigator', { clipboard: { write } });
-        const { element } = await openWithOnePending();
+        const { harness, element } = await openWithOnePending();
         let release!: (v: unknown) => void;
         api.invoke.mockImplementation(
           (fn) =>
@@ -368,7 +428,7 @@ describe('InvitationsList', () => {
               }
             }),
         );
-        click(element, 'Copy link');
+        await clickAction(harness, element, 'Copy link');
         expect(write).toHaveBeenCalledTimes(1);
         expect(document.body.textContent).not.toContain('Link copied');
         release(linkResponse);
@@ -385,8 +445,8 @@ describe('InvitationsList', () => {
         const writeText = vi.fn().mockResolvedValue(undefined);
         vi.stubGlobal('ClipboardItem', FakeItem);
         vi.stubGlobal('navigator', { clipboard: { write, writeText } });
-        const { element } = await pending();
-        click(element, 'Copy link');
+        const { harness, element } = await pending();
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(linkResponse.link));
         await vi.waitFor(() => expect(document.body.textContent).toContain('Link copied'));
       });
@@ -395,8 +455,8 @@ describe('InvitationsList', () => {
         const writeText = vi.fn().mockResolvedValue(undefined);
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText } });
-        const { element } = await pending();
-        click(element, 'Copy link');
+        const { harness, element } = await pending();
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(linkResponse.link));
         await vi.waitFor(() => expect(document.body.textContent).toContain('Link copied'));
       });
@@ -404,8 +464,8 @@ describe('InvitationsList', () => {
       it('INV-17.1 opens the copy view when no clipboard write works', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', {});
-        const { element } = await pending();
-        click(element, 'Copy link');
+        const { harness, element } = await pending();
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() =>
           expect(document.querySelector('app-link-view')?.textContent).toContain(
             'Copy this link and send it to p@example.com. It expires on 25 Oct 2026.',
@@ -423,20 +483,19 @@ describe('InvitationsList', () => {
         expect(input.selectionEnd).toBe(linkResponse.link.length);
       });
 
-      it('returns focus to the Copy link button after the copy view closes', async () => {
+      it('returns focus to the row Actions button after the copy view closes', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', {});
         const { harness, element } = await pending();
-        const copy = element.querySelector('tr.mat-mdc-row button') as HTMLButtonElement;
-        copy.focus();
-        copy.click();
+        actionsTrigger(element, 0)?.focus();
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() => expect(document.querySelector('app-link-view')).toBeTruthy());
-        TestBed.inject(MatDialog).closeAll();
+        TestBed.inject(Dialog).closeAll();
         await vi.waitFor(() => expect(document.querySelector('app-link-view')).toBeNull());
         await vi.waitFor(() => {
           harness.detectChanges();
-          const current = element.querySelector('tr.mat-mdc-row button');
-          expect(current?.textContent?.trim()).toBe('Copy link');
+          const current = actionsTrigger(element, 0);
+          expect(current?.getAttribute('aria-label')).toBe('Actions for p@example.com');
           expect(document.activeElement).toBe(current);
         });
       });
@@ -444,13 +503,11 @@ describe('InvitationsList', () => {
       it('shows nothing of its own on 403 (the interceptor shows the permission message)', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
-        const { element } = await openWithOnePending();
+        const { harness, element } = await openWithOnePending();
         api.invoke.mockRejectedValueOnce(problem(403, 'urn:mentorhub:problem:forbidden'));
-        click(element, 'Copy link');
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() =>
-          expect(
-            element.querySelector('tr.mat-mdc-row button')?.getAttribute('aria-disabled'),
-          ).not.toBe('true'),
+          expect(actionsTrigger(element, 0)?.getAttribute('aria-disabled')).not.toBe('true'),
         );
         expect(document.body.textContent).not.toContain('Something went wrong');
         expect(document.body.textContent).not.toContain('already closed');
@@ -465,21 +522,23 @@ describe('InvitationsList', () => {
         api.invoke.mockImplementation(
           (fn) => new Promise((r) => (release = fn === getInvitationLink ? r : () => undefined)),
         );
-        click(element, 'Copy link');
+        await clickAction(harness, element, 'Copy link');
         harness.detectChanges();
+        const trigger = actionsTrigger(element, 0) as HTMLButtonElement;
         await vi.waitFor(() => {
           harness.detectChanges();
-          const buttons = [...element.querySelectorAll('tr.mat-mdc-row button')];
-          expect(buttons).toHaveLength(3);
-          expect(buttons.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
-          expect(buttons.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
+          expect(trigger.getAttribute('aria-disabled')).toBe('true');
+          expect(trigger.disabled).toBe(false);
         });
-        const copy = element.querySelector('tr.mat-mdc-row button') as HTMLButtonElement;
-        copy.focus();
-        expect(document.activeElement).toBe(copy);
+        trigger.focus();
+        expect(document.activeElement).toBe(trigger);
+        const items = await openActionsMenu(harness, element, 0);
+        expect(items).toHaveLength(3);
+        expect(items.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
         const calls = api.invoke.mock.calls.length;
-        copy.click();
+        items[0].click();
         expect(api.invoke.mock.calls).toHaveLength(calls);
+        await closeActionsMenu(harness);
         release(linkResponse);
       });
 
@@ -501,28 +560,26 @@ describe('InvitationsList', () => {
               }
             }),
         );
-        const copyOf = (row: number) =>
-          element.querySelectorAll('tr.mat-mdc-row')[row].querySelector('button') as HTMLElement;
-        copyOf(0).click();
-        copyOf(1).click();
+        await clickAction(harness, element, 'Copy link', 0);
+        await clickAction(harness, element, 'Copy link', 1);
         harness.detectChanges();
-        expect(copyOf(0).getAttribute('aria-disabled')).toBe('true');
-        expect(copyOf(1).getAttribute('aria-disabled')).toBe('true');
+        expect(actionsTrigger(element, 0)?.getAttribute('aria-disabled')).toBe('true');
+        expect(actionsTrigger(element, 1)?.getAttribute('aria-disabled')).toBe('true');
         releases['q'](linkResponse);
         await vi.waitFor(() => {
           harness.detectChanges();
-          expect(copyOf(1).getAttribute('aria-disabled')).not.toBe('true');
+          expect(actionsTrigger(element, 1)?.getAttribute('aria-disabled')).not.toBe('true');
         });
-        expect(copyOf(0).getAttribute('aria-disabled')).toBe('true');
+        expect(actionsTrigger(element, 0)?.getAttribute('aria-disabled')).toBe('true');
         releases['p'](linkResponse);
       });
 
       it('INV-17.3 shows the expired message and reloads on 409 invitation-expired', async () => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
-        const { element } = await openWithOnePending();
+        const { harness, element } = await openWithOnePending();
         api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-expired'));
-        click(element, 'Copy link');
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() =>
           expect(document.body.textContent).toContain(
             'This invitation has expired. Get a new link.',
@@ -539,9 +596,9 @@ describe('InvitationsList', () => {
       ])('INV-17.3 shows the closed message and reloads on %i', async (status, type) => {
         vi.stubGlobal('ClipboardItem', undefined);
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
-        const { element } = await openWithOnePending();
+        const { harness, element } = await openWithOnePending();
         api.invoke.mockRejectedValueOnce(problem(status, type));
-        click(element, 'Copy link');
+        await clickAction(harness, element, 'Copy link');
         await vi.waitFor(() =>
           expect(document.body.textContent).toContain('This invitation is already closed.'),
         );
@@ -553,7 +610,7 @@ describe('InvitationsList', () => {
 
     it('reloads the list when the link dialog closes', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
       api.invoke.mockImplementation(async (fn) =>
         fn === reissueInvitationLink
@@ -573,7 +630,7 @@ describe('InvitationsList', () => {
 
     it('INV-18.3 shows the closed message when the new link is refused with 409', async () => {
       const { harness, element } = await openWithOnePending();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
       api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:invitation-closed'));
       await confirm(harness, 'Get a new link');
@@ -590,7 +647,7 @@ describe('InvitationsList', () => {
         ) as HTMLButtonElement
       ).click();
       await vi.waitFor(() =>
-        expect(document.querySelector('mat-dialog-container')?.textContent).toContain(
+        expect(document.querySelector('cdk-dialog-container')?.textContent).toContain(
           'Invite a person',
         ),
       );
@@ -601,39 +658,35 @@ describe('InvitationsList', () => {
     const emailOn = () =>
       TestBed.overrideProvider(ClientConfigService, { useValue: { invitationEmails: () => true } });
     const pending = () => invitation({ id: 'p', email: 'p@example.com' });
-    const click = (element: HTMLElement, label: string) =>
-      [...element.querySelectorAll('tr.mat-mdc-row button')]
-        .find((b) => b.textContent?.trim() === label)
-        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     const confirmDialog = async (harness: RouterTestingHarness, label: string) => {
       await vi.waitFor(() => expect(overlayButton(label)).toBeTruthy());
       overlayButton(label)?.click();
       await harness.fixture.whenStable();
       harness.detectChanges();
     };
-    const snackSpy = () => vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+    const snackSpy = () => vi.spyOn(TestBed.inject(ToastService), 'show');
     const listCalls = () => api.invoke.mock.calls.filter(([fn]) => fn === listInvitations).length;
 
     it('shows "Send email" before "Copy link" on pending rows only', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page(rowsOf));
-      const { element } = await open();
-      expect(rowButtons(element, 0)).toEqual([
-        'Send email',
-        'Copy link',
-        'Get a new link',
-        'Revoke',
-      ]);
-      expect(rowButtons(element, 1)).toEqual(['Get a new link', 'Revoke']);
-      expect(element.querySelector('tr.mat-mdc-row button')?.getAttribute('aria-label')).toBe(
-        'Send invitation email to p@example.com',
-      );
+      const { harness, element } = await open();
+      expect(
+        (await openActionsMenu(harness, element, 0)).map((b) => b.textContent?.trim()),
+      ).toEqual(['Send email', 'Copy link', 'Get a new link', 'Revoke']);
+      await closeActionsMenu(harness);
+      expect(
+        (await openActionsMenu(harness, element, 1)).map((b) => b.textContent?.trim()),
+      ).toEqual(['Get a new link', 'Revoke']);
+      await closeActionsMenu(harness);
     });
 
     it('hides the email action when email is disabled', async () => {
       api.invoke.mockResolvedValue(page([pending()]));
-      const { element } = await open();
-      expect(rowButtons(element, 0)).toEqual(['Copy link', 'Get a new link', 'Revoke']);
+      const { harness, element } = await open();
+      expect(
+        (await openActionsMenu(harness, element, 0)).map((b) => b.textContent?.trim()),
+      ).toEqual(['Copy link', 'Get a new link', 'Revoke']);
     });
 
     const mail = (status: string, finishedAt?: string) =>
@@ -667,7 +720,7 @@ describe('InvitationsList', () => {
         ]),
       );
       const { element } = await open();
-      const rows = [...element.querySelectorAll('tr.mat-mdc-row')].map((r) => r.textContent ?? '');
+      const rows = [...element.querySelectorAll('tbody tr')].map((r) => r.textContent ?? '');
       expect(rows[0]).toContain('Sending email…');
       expect(rows[1]).toContain('Email sent 18 Oct 2026');
       expect(rows[2]).toContain('Email failed 19 Oct 2026');
@@ -682,7 +735,7 @@ describe('InvitationsList', () => {
         page([invitation({ id: '2', lastEmail: mail('SENT', '2026-10-18T09:05:00Z') })]),
       );
       const { element } = await open();
-      expect(element.querySelector('tr.mat-mdc-row')?.textContent).not.toMatch(emailWords);
+      expect(element.querySelector('tbody tr')?.textContent).not.toMatch(emailWords);
     });
 
     it('sends without a confirmation, replaces the row and confirms', async () => {
@@ -701,18 +754,17 @@ describe('InvitationsList', () => {
         }),
       );
       const snack = snackSpy();
-      click(element, 'Send email');
+      await clickAction(harness, element, 'Send email');
       await vi.waitFor(() =>
         expect(api.invoke).toHaveBeenCalledWith(sendInvitationEmail, { id: 'p' }),
       );
       await harness.fixture.whenStable();
       harness.detectChanges();
-      expect(document.querySelector('mat-dialog-container')).toBeNull();
-      expect(element.querySelector('tr.mat-mdc-row')?.textContent).toContain('Sending email…');
+      expect(document.querySelector('cdk-dialog-container')).toBeNull();
+      expect(element.querySelector('tbody tr')?.textContent).toContain('Sending email…');
       expect(document.body.textContent).toContain('Email to p@example.com queued');
       expect(snack).toHaveBeenCalledWith(
         'Email to p@example.com queued',
-        'Dismiss',
         expect.objectContaining({ politeness: 'polite' }),
       );
       expect(listCalls()).toBe(1);
@@ -721,10 +773,10 @@ describe('InvitationsList', () => {
     it('IEM-12.1 explains 409 email-queued and reloads', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
-      const { element } = await open();
+      const { harness, element } = await open();
       api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:email-queued'));
       const snack = snackSpy();
-      click(element, 'Send email');
+      await clickAction(harness, element, 'Send email');
       await vi.waitFor(() =>
         expect(document.body.textContent).toContain(
           'An email to p@example.com is already on its way.',
@@ -732,7 +784,6 @@ describe('InvitationsList', () => {
       );
       expect(snack).toHaveBeenCalledWith(
         'An email to p@example.com is already on its way.',
-        'Dismiss',
         expect.objectContaining({ politeness: 'assertive' }),
       );
       await vi.waitFor(() => expect(listCalls()).toBe(2));
@@ -741,10 +792,10 @@ describe('InvitationsList', () => {
     it('IEM-12.2 explains 409 email-unavailable', async () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
-      const { element } = await open();
+      const { harness, element } = await open();
       api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:email-unavailable'));
       const snack = snackSpy();
-      click(element, 'Send email');
+      await clickAction(harness, element, 'Send email');
       await vi.waitFor(() =>
         expect(document.body.textContent).toContain(
           'Sending email is not available. Reload the page and try again.',
@@ -752,7 +803,6 @@ describe('InvitationsList', () => {
       );
       expect(snack).toHaveBeenCalledWith(
         'Sending email is not available. Reload the page and try again.',
-        'Dismiss',
         expect.objectContaining({ politeness: 'assertive' }),
       );
     });
@@ -763,22 +813,24 @@ describe('InvitationsList', () => {
       const { harness, element } = await open();
       let resolve!: (value: unknown) => void;
       api.invoke.mockReturnValueOnce(new Promise((r) => (resolve = r)));
-      click(element, 'Send email');
+      await clickAction(harness, element, 'Send email');
       harness.detectChanges();
-      const buttons = () => [...element.querySelectorAll('tr.mat-mdc-row button')];
       await vi.waitFor(() =>
-        expect(buttons().map((b) => b.getAttribute('aria-disabled'))).toEqual([
-          'true',
-          'true',
-          'true',
-          'true',
-        ]),
+        expect(actionsTrigger(element, 0)?.getAttribute('aria-disabled')).toBe('true'),
       );
+      const items = await openActionsMenu(harness, element, 0);
+      expect(items.map((b) => b.getAttribute('aria-disabled'))).toEqual([
+        'true',
+        'true',
+        'true',
+        'true',
+      ]);
+      await closeActionsMenu(harness);
       resolve(pending());
       await harness.fixture.whenStable();
       harness.detectChanges();
       await vi.waitFor(() =>
-        expect(buttons().every((b) => b.getAttribute('aria-disabled') !== 'true')).toBe(true),
+        expect(actionsTrigger(element, 0)?.getAttribute('aria-disabled')).not.toBe('true'),
       );
     });
 
@@ -788,9 +840,9 @@ describe('InvitationsList', () => {
     ])('IEM-12.3 treats a %i like Copy link', async (status, type) => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
-      const { element } = await open();
+      const { harness, element } = await open();
       api.invoke.mockRejectedValueOnce(problem(status, type));
-      click(element, 'Send email');
+      await clickAction(harness, element, 'Send email');
       await vi.waitFor(() =>
         expect(document.body.textContent).toContain('This invitation is already closed.'),
       );
@@ -800,9 +852,9 @@ describe('InvitationsList', () => {
     it('offers no email choice in the new-link confirmation when email is disabled', async () => {
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
-      expect(document.querySelector('mat-dialog-container mat-checkbox')).toBeNull();
+      expect(document.querySelector('cdk-dialog-container hlm-checkbox')).toBeNull();
       api.invoke.mockImplementation(async (fn) =>
         fn === reissueInvitationLink ? created({ id: 'p' }) : page([pending()]),
       );
@@ -818,11 +870,15 @@ describe('InvitationsList', () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
-      const box = document.querySelector('mat-dialog-container mat-checkbox') as HTMLElement;
+      const box = [...document.querySelectorAll('cdk-dialog-container label')].find((l) =>
+        l.querySelector('hlm-checkbox'),
+      ) as HTMLElement;
       expect(box.textContent).toContain('Send the new link by email');
-      expect((box.querySelector('input') as HTMLInputElement).checked).toBe(true);
+      expect(box.querySelector('button[role="checkbox"]')?.getAttribute('aria-checked')).toBe(
+        'true',
+      );
       api.invoke.mockImplementation(async (fn) =>
         fn === reissueInvitationLink
           ? created({ id: 'p', email: 'p@example.com' })
@@ -846,9 +902,13 @@ describe('InvitationsList', () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
-      (document.querySelector('mat-dialog-container mat-checkbox input') as HTMLElement).click();
+      (
+        document.querySelector(
+          'cdk-dialog-container hlm-checkbox button[role="checkbox"]',
+        ) as HTMLElement
+      ).click();
       api.invoke.mockImplementation(async (fn) =>
         fn === reissueInvitationLink ? created({ id: 'p' }) : page([pending()]),
       );
@@ -868,7 +928,7 @@ describe('InvitationsList', () => {
       emailOn();
       api.invoke.mockResolvedValue(page([pending()]));
       const { harness, element } = await open();
-      click(element, 'Get a new link');
+      await clickAction(harness, element, 'Get a new link');
       await vi.waitFor(() => expect(overlayButton('Get a new link')).toBeTruthy());
       api.invoke.mockRejectedValueOnce(problem(409, 'urn:mentorhub:problem:email-unavailable'));
       await confirmDialog(harness, 'Get a new link');

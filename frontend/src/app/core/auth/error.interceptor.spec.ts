@@ -6,8 +6,8 @@ import {
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { ToastService } from '../../shared/toast/toast.service';
 import { AuthService } from './auth.service';
 import { CurrentUserService } from './current-user.service';
 import { errorInterceptor } from './error.interceptor';
@@ -21,7 +21,7 @@ describe('errorInterceptor', () => {
     failedUrl: null,
   };
   const router = { navigateByUrl: vi.fn(() => Promise.resolve(true)), url: '/students' };
-  const snackBar = { open: vi.fn() };
+  const toast = { show: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -32,7 +32,7 @@ describe('errorInterceptor', () => {
         { provide: AuthService, useValue: auth },
         { provide: CurrentUserService, useValue: currentUser },
         { provide: Router, useValue: router },
-        { provide: MatSnackBar, useValue: snackBar },
+        { provide: ToastService, useValue: toast },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -64,13 +64,10 @@ describe('errorInterceptor', () => {
     expect(auth.confirmSignIn).toHaveBeenCalledOnce();
   });
 
-  it('PERM-7.1 shows a snackbar on 403 forbidden and stays on the page', async () => {
+  it('PERM-7.1 shows a toast on 403 forbidden and stays on the page', async () => {
     fail('/api/v1/users', 403, 'urn:mentorhub:problem:forbidden');
     await vi.waitFor(() =>
-      expect(snackBar.open).toHaveBeenCalledWith(
-        "You don't have permission to do this.",
-        'Dismiss',
-      ),
+      expect(toast.show).toHaveBeenCalledWith("You don't have permission to do this."),
     );
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
@@ -82,7 +79,7 @@ describe('errorInterceptor', () => {
     currentUser.load.mockResolvedValue(me);
     fail('/api/v1/users', 403, type);
     await vi.waitFor(() => expect(router.navigateByUrl).toHaveBeenCalledWith(path));
-    expect(snackBar.open).not.toHaveBeenCalled();
+    expect(toast.show).not.toHaveBeenCalled();
   });
 
   it('opens the unavailable state, keeping the address, when reloading the caller fails', async () => {

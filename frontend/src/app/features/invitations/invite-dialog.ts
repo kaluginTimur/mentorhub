@@ -1,18 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { FormField, form, required, submit, validate } from '@angular/forms/signals';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { ClientConfigService } from '../../core/client-config.service';
+import { RouterLink } from '@angular/router';
+import { BrnDialogRef, injectBrnDialogContext } from '@spartan-ng/brain/dialog';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmDialogFooter, HlmDialogHeader, HlmDialogTitle } from '@spartan-ng/helm/dialog';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
 import { Api } from '../../core/api/api';
 import { createInvitation } from '../../core/api/fn/invitations/create-invitation';
-import { InvitationLink } from '../../core/api/models/invitation-link';
 import { CreatedInvitation } from '../../core/api/models/created-invitation';
+import { InvitationLink } from '../../core/api/models/invitation-link';
 import { Role } from '../../core/api/models/role';
 import { ROLE } from '../../core/api/models/role-array';
+import { ClientConfigService } from '../../core/client-config.service';
 import { PROBLEM, problemOf } from '../../core/problem';
 import { ROLE_LABELS } from '../users/labels';
 import { LinkView } from './link-view';
@@ -63,11 +64,13 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   imports: [
     RouterLink,
     FormField,
-    MatDialogModule,
-    MatButtonModule,
-    MatCheckboxModule,
-    MatFormFieldModule,
-    MatInputModule,
+    HlmDialogHeader,
+    HlmDialogTitle,
+    HlmDialogFooter,
+    HlmButton,
+    HlmCheckbox,
+    HlmInput,
+    HlmLabel,
     LinkView,
   ],
   template: `
@@ -79,119 +82,135 @@ const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         (done)="ref.close()"
       />
     } @else {
-      <h2 mat-dialog-title>Invite a person</h2>
-      <form novalidate (submit)="onSubmit($event)">
-        <mat-dialog-content>
-          <mat-form-field class="full">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" autocomplete="off" [formField]="inviteForm.email" />
-            @for (error of inviteForm.email().errors(); track error.message) {
-              <mat-error>{{ error.message }}</mat-error>
-            }
-          </mat-form-field>
+      <div class="flex flex-col gap-5">
+        <div hlmDialogHeader>
+          <h2 hlmDialogTitle class="font-display text-lg font-semibold tracking-tight">
+            Invite a person
+          </h2>
+        </div>
 
-          <fieldset aria-describedby="roles-hint">
-            <legend>Roles</legend>
-            @for (role of roles; track role) {
-              <mat-checkbox
-                [checked]="selected().includes(role)"
-                (change)="toggle(role, $event.checked)"
-              >
-                {{ labels[role] }}
-              </mat-checkbox>
+        <form novalidate (submit)="onSubmit($event)" class="space-y-4">
+          <div class="flex flex-col gap-2.5">
+            <label hlmLabel for="invite-email">Email</label>
+            <input
+              hlmInput
+              id="invite-email"
+              type="email"
+              autocomplete="off"
+              [formField]="inviteForm.email"
+              [forceInvalid]="inviteForm.email().touched() && inviteForm.email().invalid()"
+              [attr.aria-invalid]="
+                inviteForm.email().touched() && inviteForm.email().invalid() ? 'true' : null
+              "
+              [attr.aria-describedby]="
+                inviteForm.email().touched() && inviteForm.email().errors().length > 0
+                  ? 'invite-email-error'
+                  : null
+              "
+            />
+            @if (inviteForm.email().touched() && inviteForm.email().errors().length > 0) {
+              <div id="invite-email-error" class="field-error space-y-0.5 text-xs text-destructive">
+                @for (error of inviteForm.email().errors(); track error.message) {
+                  <p>{{ error.message }}</p>
+                }
+              </div>
             }
-            <p class="hint" id="roles-hint">
+          </div>
+
+          <fieldset aria-describedby="roles-hint" class="flex flex-col gap-2">
+            <legend class="mb-1 text-sm font-medium">Roles</legend>
+            @for (role of roles; track role) {
+              <label
+                hlmLabel
+                [for]="'invite-role-' + role"
+                class="flex cursor-pointer items-center gap-2.5 font-normal"
+              >
+                <hlm-checkbox
+                  [inputId]="'invite-role-' + role"
+                  [checked]="selected().includes(role)"
+                  (checkedChange)="toggle(role, $event)"
+                />
+                <span>{{ labels[role] }}</span>
+              </label>
+            }
+            <p class="mt-0.5 text-xs text-muted-foreground" id="roles-hint">
               Without roles the person can sign in but has no access to anything.
             </p>
             @if (rolesError(); as message) {
-              <p class="error" role="alert">{{ message }}</p>
+              <p class="error text-xs text-destructive" role="alert">{{ message }}</p>
             }
           </fieldset>
 
           @if (emailEnabled) {
-            <mat-checkbox
-              class="send-email"
-              [checked]="sendEmail()"
-              (change)="sendEmail.set($event.checked)"
+            <label
+              hlmLabel
+              for="invite-send-email"
+              class="flex cursor-pointer items-center gap-2.5 pt-1 font-normal"
             >
-              Send the invitation by email to this address
-            </mat-checkbox>
+              <hlm-checkbox
+                inputId="invite-send-email"
+                [checked]="sendEmail()"
+                (checkedChange)="sendEmail.set($event)"
+              />
+              <span>Send the invitation by email to this address</span>
+            </label>
           }
 
           @if (conflict(); as c) {
-            <div class="conflict" role="alert">
+            <div
+              class="conflict flex flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+              role="alert"
+            >
               @if (c.kind === 'user-active') {
                 <span>This person already has access.</span>
-                <a matButton [routerLink]="['/users', c.userId]" (click)="ref.close()">Open user</a>
+                <a
+                  hlmBtn
+                  variant="link"
+                  size="sm"
+                  class="h-auto p-0"
+                  [routerLink]="['/users', c.userId]"
+                  (click)="ref.close()"
+                >
+                  Open user
+                </a>
               } @else {
                 <span>There is already an invitation for this email.</span>
                 <a
-                  matButton
+                  hlmBtn
+                  variant="link"
+                  size="sm"
+                  class="h-auto p-0"
                   routerLink="/invitations"
                   [queryParams]="{ q: trimmedEmail() }"
                   (click)="ref.close()"
-                  >Show invitation</a
                 >
+                  Show invitation
+                </a>
               }
             </div>
           }
           @if (emailUnavailable()) {
-            <p class="error" role="alert">{{ emailUnavailableText }}</p>
+            <p class="error text-xs text-destructive" role="alert">{{ emailUnavailableText }}</p>
           }
           @if (failure()) {
-            <p class="error" role="alert">Something went wrong. Try again.</p>
+            <p class="error text-xs text-destructive" role="alert">
+              Something went wrong. Try again.
+            </p>
           }
-        </mat-dialog-content>
-        <mat-dialog-actions align="end">
-          <button matButton type="button" mat-dialog-close>Cancel</button>
-          <button matButton="filled" type="submit" [disabled]="saving()">Create invitation</button>
-        </mat-dialog-actions>
-      </form>
-    }
-  `,
-  styles: `
-    .full {
-      width: 100%;
-    }
-    fieldset {
-      border: 0;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    legend {
-      font: var(--mat-sys-title-small);
-      padding: 0 0 4px;
-    }
-    .send-email {
-      display: block;
-      margin-top: 8px;
-    }
-    .hint {
-      margin: 4px 0 0;
-      color: var(--mat-sys-on-surface-variant);
-      font: var(--mat-sys-body-small);
-    }
-    .error {
-      margin: 8px 0 0;
-      color: var(--mat-sys-error);
-      font: var(--mat-sys-body-small);
-    }
-    .conflict {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-      color: var(--mat-sys-error);
+
+          <div hlmDialogFooter>
+            <button hlmBtn variant="outline" type="button" (click)="ref.close()">Cancel</button>
+            <button hlmBtn type="submit" [disabled]="saving()">Create invitation</button>
+          </div>
+        </form>
+      </div>
     }
   `,
 })
 export class InviteDialog {
   private readonly api = inject(Api);
-  private readonly data = inject<InviteDialogData | null>(MAT_DIALOG_DATA, { optional: true });
-  protected readonly ref = inject<MatDialogRef<InviteDialog>>(MatDialogRef);
+  private readonly data = injectBrnDialogContext<InviteDialogData | null>({ optional: true });
+  protected readonly ref = inject<BrnDialogRef<void>>(BrnDialogRef);
 
   protected readonly emailEnabled = inject(ClientConfigService).invitationEmails();
   protected readonly emailUnavailableText = EMAIL_UNAVAILABLE;

@@ -4,6 +4,7 @@ import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/r
 import { AuthService } from './core/auth/auth.service';
 import { stripCallbackParams } from './core/auth/api-urls';
 import { DEV_TOOL } from './core/dev/dev-tool';
+import { ThemeService } from './core/theme/theme.service';
 import { Loading } from './shared/loading/loading';
 import { Unavailable } from './shared/unavailable/unavailable';
 
@@ -25,6 +26,7 @@ export class App {
   );
 
   constructor() {
+    inject(ThemeService);
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd || event instanceof NavigationError) {
         this.initialNavigationDone.set(true);
