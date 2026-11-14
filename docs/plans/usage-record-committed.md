@@ -15,6 +15,8 @@ Approach:
 - `agent-usage.mjs`: when it checks that a chain belongs to the change, it also counts agents already in this change's earlier records; a session never recorded for the change is still refused. `.claude/README.md` (Recording usage) follows.
 - Verification: recording `observer-role-removed` `review` again without `--force` (working copy, not committed) succeeds with the same agents and window as the forced record; a `--record` for another change is still refused.
 
+Added before the pull request: commit messages and pull request descriptions are in English and quote none of the user's messages (`/pr`: the Draft step and the template's owner's decisions, which asked for the user's words).
+
 Out: committing the plan's final version before stage 8 deletes it (rejected: an extra commit per feature that fixes the symptom, not the check).
 
 Requirements: `docs/requirements/` describe the product, not the process tooling; no requirement describes this and none should.
@@ -33,6 +35,7 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 ## Decisions
 
 - 2026-11-15: path gate confirmed: goal, approach and path `chore/`, "да, подтверждаю" (after asking whether the script could lose sight of a phase).
+- 2026-11-15: commit messages and pull request descriptions are written in English, without the user's comments (asked before opening the pull request).
 - 2026-11-15: accepted: "да, принимаю, коммить".
 - 2026-11-15: review finding 1 fixed (`/pr` step 3 commits the usage record without asking): "да, исправляй и запускай verifier".
 - 2026-11-15: the record must be committed without asking: "этот файл нужен для того, чтобы понимать и анализировать расход токенов на единицу имплементации. если это не закреплено в CLAUDE.md или скиллах - это нужно исправить".

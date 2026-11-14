@@ -26,7 +26,7 @@ A pull request is published outside the machine: nothing is pushed or created un
 
 ## Draft
 
-Write a title (imperative, under 70 characters) and a description following [template.md](template.md). Keep only what applies; be concrete.
+Write a title (imperative, under 70 characters) and a description following [template.md](template.md). Keep only what applies; be concrete. Commit messages, the title and the description are in English (C-10 in `docs/constitution.md`) and quote none of the user's messages.
 
 Show the user the title and the description, and ask whether to open it as a draft or ready for review. Apply their corrections.
 

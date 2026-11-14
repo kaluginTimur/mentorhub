@@ -16,7 +16,7 @@
 
 ## The owner's decisions
 
-<Each decision of the user about this change, in their words, from the plan or the brief, or what they confirmed at the path gate when the change had neither. "none" only when there were none.>
+<Each decision of the user about this change, from the plan or the brief, stated in English as a decision, not quoted from the user's messages, or what they confirmed at the path gate when the change had neither. "none" only when there were none.>
 
 ## Guide passages
 
