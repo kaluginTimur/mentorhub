@@ -21,5 +21,5 @@ import org.springframework.context.annotation.Import;
 @Documented
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class})
+@Import({TestcontainersConfiguration.class, TestIssuerConfiguration.class, OpenApiValidationConfiguration.class})
 public @interface EndpointTest {}

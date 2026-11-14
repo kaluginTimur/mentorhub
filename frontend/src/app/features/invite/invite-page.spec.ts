@@ -1,28 +1,43 @@
 import { Component, signal } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Api } from '../../core/api/api';
 import { acceptInvitation } from '../../core/api/fn/invitations/accept-invitation';
 import { previewInvitation } from '../../core/api/fn/invitations/preview-invitation';
+import { InvitationPreview } from '../../core/api/models/invitation-preview';
+import { Me } from '../../core/api/models/me';
 import { AccessChannel } from '../../core/auth/access-channel';
 import { AuthService } from '../../core/auth/auth.service';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { InvitationSession } from '../../core/auth/invitation-session';
+import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
+import { problemError } from '../../core/testing/problem-error';
 import { InvitePage } from './invite-page';
 
 @Component({ template: 'home' })
 class Home {}
 
-const problem = (status: number, type: string) =>
-  new HttpErrorResponse({ status, error: { type, status } });
+const problem = (status: number, type: string) => problemError({ status, type, title: 'Error' });
 
-const PREVIEW = { email: 'ivan@example.com', expiresAt: '2026-10-25T09:00:00Z' };
-const ME = { status: 'ACTIVE', user: { id: 'u1' } };
+const PREVIEW: InvitationPreview = {
+  email: 'ivan@example.com',
+  expiresAt: '2026-10-25T09:00:00Z',
+};
+const ME: Me = {
+  status: 'ACTIVE',
+  user: {
+    id: 'u1',
+    email: 'ivan@example.com',
+    firstName: 'Ivan',
+    lastName: 'Sidorov',
+    phone: null,
+    roles: ['MENTOR'],
+    permissions: [],
+  },
+};
 
 describe('InvitePage', () => {
-  const api = { invoke: vi.fn() };
+  const api = createApiStub();
   const auth = {
     isSignedIn: vi.fn(),
     accountIdentity: vi.fn(),
@@ -36,13 +51,11 @@ describe('InvitePage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    api.reset();
     auth.startupError.set(false);
     sessionStorage.clear();
-    api.invoke.mockImplementation(async (fn) => {
-      if (fn === previewInvitation) return PREVIEW;
-      if (fn === acceptInvitation) return ME;
-      throw new Error('unexpected');
-    });
+    api.resolve(previewInvitation, PREVIEW);
+    api.resolve(acceptInvitation, ME);
     auth.isSignedIn.mockResolvedValue(false);
     auth.accountIdentity.mockResolvedValue({ email: 'ivan@example.com' });
     auth.signIn.mockResolvedValue(true);
@@ -53,7 +66,7 @@ describe('InvitePage', () => {
           { path: 'invite/:token', component: InvitePage },
           { path: 'invite', component: InvitePage },
         ]),
-        { provide: Api, useValue: api },
+        provideApiStub(api),
         { provide: AuthService, useValue: auth },
         { provide: CurrentUserService, useValue: currentUser },
         { provide: AccessChannel, useValue: accessChannel },
@@ -80,8 +93,8 @@ describe('InvitePage', () => {
     [...element.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
 
   it('shows a loading state while the invitation is checked', async () => {
-    let release!: (value: unknown) => void;
-    api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    let release!: (value: InvitationPreview) => void;
+    api.handleOnce(previewInvitation, () => new Promise((resolve) => (release = resolve)));
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/invite/tok123');
     harness.detectChanges();
@@ -96,8 +109,8 @@ describe('InvitePage', () => {
     await open('/invite/tok123');
     expect(session.token()).toBe('tok123');
     expect(TestBed.inject(Router).url).toBe('/invite');
-    expect(api.invoke).toHaveBeenCalledTimes(1);
-    expect(api.invoke).toHaveBeenCalledWith(previewInvitation, { body: { token: 'tok123' } });
+    expect(api.allCalls()).toHaveLength(1);
+    expect(api.callsFor(previewInvitation)).toEqual([{ body: { token: 'tok123' } }]);
   });
 
   it('INV-20.6 sends no token to the identity provider', async () => {
@@ -112,7 +125,7 @@ describe('InvitePage', () => {
     session.setAutoAccept(true);
     const { element } = await open('/invite/tok123');
     expect(session.autoAccept()).toBe(false);
-    expect(api.invoke).not.toHaveBeenCalledWith(acceptInvitation, expect.anything());
+    expect(api.callsFor(acceptInvitation)).toHaveLength(0);
     expect(button(element, 'Accept invitation')).toBeTruthy();
   });
 
@@ -156,7 +169,7 @@ describe('InvitePage', () => {
   ])(
     'INV-20.1 shows the invalid link message on %s and forgets the token',
     async (type, status) => {
-      api.invoke.mockRejectedValue(problem(status, `urn:mentorhub:problem:${type}`));
+      api.reject(previewInvitation, problem(status, `urn:mentorhub:problem:${type}`));
       const { element } = await open();
       expect(element.querySelector('h1')?.textContent).toBe('Invitation not valid');
       expect(element.querySelector('[role=alert]')?.textContent).toContain(
@@ -171,13 +184,13 @@ describe('InvitePage', () => {
     const { element } = await open('/invite');
     expect(element.querySelector('h1')?.textContent).toBe('Invitation not valid');
     expect(element.querySelector('button')).toBeNull();
-    expect(api.invoke).not.toHaveBeenCalled();
+    expect(api.allCalls()).toHaveLength(0);
   });
 
   it('uses the token kept in session storage after the round trip', async () => {
     session.setToken('kept');
     await open('/invite');
-    expect(api.invoke).toHaveBeenCalledWith(previewInvitation, { body: { token: 'kept' } });
+    expect(api.callsFor(previewInvitation)).toEqual([{ body: { token: 'kept' } }]);
   });
 
   it('shows the account and accepts on request when already signed in', async () => {
@@ -185,10 +198,10 @@ describe('InvitePage', () => {
     auth.accountIdentity.mockResolvedValue({ email: 'me@example.com' });
     const { harness, element } = await open();
     expect(element.textContent).toContain("You're signed in as me@example.com.");
-    expect(api.invoke).not.toHaveBeenCalledWith(acceptInvitation, expect.anything());
+    expect(api.callsFor(acceptInvitation)).toHaveLength(0);
     button(element, 'Accept invitation')?.click();
     await settle(harness);
-    expect(api.invoke).toHaveBeenCalledWith(acceptInvitation, { body: { token: 'tok123' } });
+    expect(api.callsFor(acceptInvitation)).toEqual([{ body: { token: 'tok123' } }]);
     expect(currentUser.me.set).toHaveBeenCalledWith(ME);
     expect(accessChannel.notifyChanged).toHaveBeenCalledOnce();
     expect(TestBed.inject(Router).url).toBe('/');
@@ -208,7 +221,7 @@ describe('InvitePage', () => {
     session.setToken('tok123');
     session.setAutoAccept(true);
     await open('/invite');
-    expect(api.invoke).toHaveBeenCalledWith(acceptInvitation, { body: { token: 'tok123' } });
+    expect(api.callsFor(acceptInvitation)).toEqual([{ body: { token: 'tok123' } }]);
     expect(TestBed.inject(Router).url).toBe('/');
     expect(session.autoAccept()).toBe(false);
   });
@@ -216,8 +229,8 @@ describe('InvitePage', () => {
   it('shows a progress state while accepting', async () => {
     auth.isSignedIn.mockResolvedValue(true);
     const { harness, element } = await open();
-    let release!: (value: unknown) => void;
-    api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    let release!: (value: Me) => void;
+    api.handleOnce(acceptInvitation, () => new Promise((resolve) => (release = resolve)));
     button(element, 'Accept invitation')?.click();
     harness.detectChanges();
     expect(element.querySelector('[hlmCard]')?.getAttribute('aria-busy')).toBe('true');
@@ -230,7 +243,7 @@ describe('InvitePage', () => {
     async function acceptWith(error: unknown) {
       auth.isSignedIn.mockResolvedValue(true);
       const { harness, element } = await open();
-      api.invoke.mockRejectedValueOnce(error);
+      api.rejectOnce(acceptInvitation, error);
       button(element, 'Accept invitation')?.click();
       await settle(harness);
       return { harness, element };
@@ -295,13 +308,13 @@ describe('InvitePage', () => {
       );
       button(element, 'Retry')?.click();
       await settle(harness);
-      expect(api.invoke.mock.calls.filter(([fn]) => fn === acceptInvitation)).toHaveLength(2);
+      expect(api.callsFor(acceptInvitation)).toHaveLength(2);
       expect(TestBed.inject(Router).url).toBe('/');
     });
   });
 
   it('shows the unavailable card when the preview fails and retries it', async () => {
-    api.invoke.mockRejectedValueOnce(problem(500, 'about:blank'));
+    api.rejectOnce(previewInvitation, problem(500, 'about:blank'));
     const { harness, element } = await open();
     expect(element.querySelector('[role=alert]')?.textContent).toContain(
       'MentorHub is unavailable',

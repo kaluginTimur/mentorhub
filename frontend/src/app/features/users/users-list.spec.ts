@@ -1,19 +1,23 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Api } from '../../core/api/api';
+import { listUsers } from '../../core/api/fn/users/list-users';
+import { Permission } from '../../core/api/models/permission';
+import { UserPage } from '../../core/api/models/user-page';
+import { UserSummary } from '../../core/api/models/user-summary';
 import { CurrentUserService } from '../../core/auth/current-user.service';
+import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
+import { problemError } from '../../core/testing/problem-error';
 import { UsersList } from './users-list';
 
-const page = (items: unknown[], totalItems = items.length) => ({
+const page = (items: UserSummary[], totalItems = items.length): UserPage => ({
   items,
   page: 0,
   size: 25,
   totalItems,
 });
-const summary = (id: string, over: object = {}) => ({
+const summary = (id: string, over: Partial<UserSummary> = {}): UserSummary => ({
   id,
   email: `${id}@example.com`,
   firstName: null,
@@ -27,15 +31,12 @@ const click = (root: HTMLElement, text: string) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent?.trim() === text)?.click();
 
 describe('UsersList', () => {
-  const api = { invoke: vi.fn() };
+  const api = createApiStub();
 
   beforeEach(() => {
-    api.invoke.mockReset();
+    api.reset();
     TestBed.configureTestingModule({
-      providers: [
-        provideRouter([{ path: 'users', component: UsersList }]),
-        { provide: Api, useValue: api },
-      ],
+      providers: [provideRouter([{ path: 'users', component: UsersList }]), provideApiStub(api)],
     });
   });
 
@@ -47,10 +48,11 @@ describe('UsersList', () => {
     return { harness, element: harness.routeNativeElement as HTMLElement };
   }
 
-  const params = () => api.invoke.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+  const params = () => api.callsFor(listUsers).at(-1);
 
   it('shows the users with roles and status', async () => {
-    api.invoke.mockResolvedValue(
+    api.resolve(
+      listUsers,
       page([
         summary('a', { firstName: 'Anna', lastName: 'Petrova', roles: ['ADMIN', 'MENTOR'] }),
         summary('b', { status: 'DISABLED' }),
@@ -73,7 +75,7 @@ describe('UsersList', () => {
   });
 
   it('uses fixed desktop column widths across pages', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')]));
+    api.resolve(listUsers, page([summary('a')]));
     const { element } = await open();
     const table = element.querySelector('table');
     expect(table?.classList.contains('md:table-fixed')).toBe(true);
@@ -92,14 +94,14 @@ describe('UsersList', () => {
   });
 
   it('restores search, filters and page from the URL', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')], 60));
+    api.resolve(listUsers, page([summary('a')], 60));
     const { element } = await open('/users?q=ann&status=DISABLED&role=NONE&page=1');
     expect(params()).toEqual({ q: 'ann', status: 'DISABLED', role: 'NONE', page: 1, size: 25 });
     expect((element.querySelector('input') as HTMLInputElement).value).toBe('ann');
   });
 
   it('ignores invalid values in the URL', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')]));
+    api.resolve(listUsers, page([summary('a')]));
     await open('/users?status=BOGUS&role=BOGUS&page=-3');
     expect(params()).toEqual({
       q: undefined,
@@ -111,7 +113,7 @@ describe('UsersList', () => {
   });
 
   it('writes the search to the URL 300 ms after typing stops', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')]));
+    api.resolve(listUsers, page([summary('a')]));
     const { harness, element } = await open('/users?page=2');
     const input = element.querySelector('input') as HTMLInputElement;
     input.value = 'iv';
@@ -128,7 +130,7 @@ describe('UsersList', () => {
     ['Status', 'Active', { status: 'ACTIVE' }],
     ['Role', 'No roles', { role: 'NONE' }],
   ])('shows the first page when the %s filter changes', async (label, option, query) => {
-    api.invoke.mockResolvedValue(page([summary('a')], 60));
+    api.resolve(listUsers, page([summary('a')], 60));
     const { harness, element } = await open('/users?page=2');
     expect(document.querySelectorAll('hlm-select-item')).toHaveLength(0);
     const triggerId = [...element.querySelectorAll('label')]
@@ -148,14 +150,14 @@ describe('UsersList', () => {
   });
 
   it('shows the empty state without filters', async () => {
-    api.invoke.mockResolvedValue(page([]));
+    api.resolve(listUsers, page([]));
     const { element } = await open();
     expect(element.textContent).toContain('No users yet.');
     expect(element.textContent).not.toContain('Clear filters');
   });
 
   it('shows the empty state with filters and clears them', async () => {
-    api.invoke.mockResolvedValue(page([]));
+    api.resolve(listUsers, page([]));
     const { harness, element } = await open('/users?q=zzz&status=ACTIVE');
     expect(element.textContent).toContain('No users match the filters.');
     const clear = [...element.querySelectorAll('button')].find(
@@ -168,10 +170,10 @@ describe('UsersList', () => {
   });
 
   it('shows the progress bar and keeps the rows while loading', async () => {
-    api.invoke.mockResolvedValueOnce(page([summary('a')]));
+    api.resolveOnce(listUsers, page([summary('a')]));
     const { harness, element } = await open();
-    let release!: (value: unknown) => void;
-    api.invoke.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    let release!: (value: UserPage) => void;
+    api.handleOnce(listUsers, () => new Promise((resolve) => (release = resolve)));
     await TestBed.inject(Router).navigateByUrl('/users?status=ACTIVE');
     harness.detectChanges();
     expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-label')).toBe(
@@ -187,12 +189,12 @@ describe('UsersList', () => {
   });
 
   it('PLT-9.1 shows the unavailable card and retries', async () => {
-    api.invoke.mockRejectedValueOnce(new Error('down'));
+    api.rejectOnce(listUsers, new Error('down'));
     const { harness, element } = await open();
     expect(element.querySelector('[role=alert]')?.textContent).toContain(
       'MentorHub is unavailable',
     );
-    api.invoke.mockResolvedValueOnce(page([summary('a')]));
+    api.resolveOnce(listUsers, page([summary('a')]));
     (element.querySelector('button') as HTMLButtonElement).click();
     await harness.fixture.whenStable();
     harness.detectChanges();
@@ -200,7 +202,7 @@ describe('UsersList', () => {
   });
 
   it('PLT-9.2 says the page is past the last one and lets the user move to another page', async () => {
-    api.invoke.mockResolvedValue(page([], 30));
+    api.resolve(listUsers, page([], 30));
     const { harness, element } = await open('/users?page=5');
     expect(element.textContent).toContain('No users on this page.');
     (element.querySelector('button[aria-label="Previous page"]') as HTMLButtonElement).click();
@@ -211,7 +213,7 @@ describe('UsersList', () => {
   });
 
   it('keeps a trailing space while typing the search', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')]));
+    api.resolve(listUsers, page([summary('a')]));
     const { harness, element } = await open();
     const input = element.querySelector('input') as HTMLInputElement;
     input.value = 'Anna ';
@@ -224,7 +226,7 @@ describe('UsersList', () => {
   });
 
   it('keeps characters typed while the debounced navigation is applied', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')]));
+    api.resolve(listUsers, page([summary('a')]));
     const { harness, element } = await open();
     const input = element.querySelector('input') as HTMLInputElement;
     const router = TestBed.inject(Router);
@@ -250,7 +252,7 @@ describe('UsersList', () => {
   });
 
   it('syncs the input with the URL on Back', async () => {
-    api.invoke.mockResolvedValue(page([summary('a')]));
+    api.resolve(listUsers, page([summary('a')]));
     const { harness, element } = await open('/users?q=one');
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/users?q=two');
@@ -259,7 +261,7 @@ describe('UsersList', () => {
   });
 
   it('cancels a pending search when the filters are cleared', async () => {
-    api.invoke.mockResolvedValue(page([]));
+    api.resolve(listUsers, page([]));
     const { harness, element } = await open('/users?status=ACTIVE');
     const input = element.querySelector('input') as HTMLInputElement;
     vi.useFakeTimers();
@@ -276,8 +278,13 @@ describe('UsersList', () => {
   });
 
   it('PLT-9.3 sends the user home when the API refuses the list with 403', async () => {
-    api.invoke.mockRejectedValue(
-      new HttpErrorResponse({ status: 403, error: { type: 'urn:mentorhub:problem:forbidden' } }),
+    api.reject(
+      listUsers,
+      problemError({
+        type: 'urn:mentorhub:problem:forbidden',
+        title: 'Forbidden',
+        status: 403,
+      }),
     );
     const { harness } = await open();
     await harness.fixture.whenStable();
@@ -292,9 +299,9 @@ describe('UsersList', () => {
 
     it('is shown next to the heading with USERS_INVITE and opens the invite dialog', async () => {
       TestBed.overrideProvider(CurrentUserService, {
-        useValue: { hasPermission: (p: string) => p === 'USERS_INVITE' },
+        useValue: { hasPermission: (p: Permission) => p === 'USERS_INVITE' },
       });
-      api.invoke.mockResolvedValue(page([summary('a')]));
+      api.resolve(listUsers, page([summary('a')]));
       const { element } = await open();
       expect(element.querySelector('.heading h1')?.textContent).toBe('Users');
       inviteButton(element)?.click();
@@ -309,7 +316,7 @@ describe('UsersList', () => {
       TestBed.overrideProvider(CurrentUserService, {
         useValue: { hasPermission: () => false },
       });
-      api.invoke.mockResolvedValue(page([summary('a')]));
+      api.resolve(listUsers, page([summary('a')]));
       const { element } = await open();
       expect(inviteButton(element)).toBeUndefined();
     });

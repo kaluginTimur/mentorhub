@@ -8,6 +8,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { ToastService } from '../../shared/toast/toast.service';
+import { Me } from '../api/models/me';
+import { Problem } from '../api/models/problem';
 import { AuthService } from './auth.service';
 import { CurrentUserService } from './current-user.service';
 import { errorInterceptor } from './error.interceptor';
@@ -45,7 +47,10 @@ describe('errorInterceptor', () => {
     http.get(url).subscribe({ error: () => undefined });
     controller
       .expectOne(url)
-      .flush(type ? { type, title: 't', status } : null, { status, statusText: 'x' });
+      .flush(type ? ({ type, title: 't', status } satisfies Problem) : null, {
+        status,
+        statusText: 'x',
+      });
   }
 
   it('starts sign-in again on 401', () => {
@@ -72,7 +77,7 @@ describe('errorInterceptor', () => {
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
-  it.each([
+  it.each<[string, Me, string]>([
     ['urn:mentorhub:problem:access-ended', { status: 'DISABLED' }, '/access/ended'],
     ['urn:mentorhub:problem:not-invited', { status: 'NOT_INVITED' }, '/access/invitation-only'],
   ])('IDN-10.4 reloads the caller and opens the access screen on %s', async (type, me, path) => {

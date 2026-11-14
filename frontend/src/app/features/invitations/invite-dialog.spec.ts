@@ -1,26 +1,39 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BrnDialogRef } from '@spartan-ng/brain/dialog';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { ClientConfigService } from '../../core/client-config.service';
-import { Api } from '../../core/api/api';
 import { createInvitation } from '../../core/api/fn/invitations/create-invitation';
+import { InvitationConflictProblem } from '../../core/api/models/invitation-conflict-problem';
+import { ValidationProblem } from '../../core/api/models/validation-problem';
+import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
+import { problemError } from '../../core/testing/problem-error';
 import { InviteDialog } from './invite-dialog';
 import { created } from './test-data';
 
-const problem = (status: number, body: object) =>
-  new HttpErrorResponse({ status, error: { status, ...body } });
+const problem = (status: number, type: string) => problemError({ status, type, title: 'Error' });
+
+const conflictProblem = (
+  body: Pick<InvitationConflictProblem, 'type' | 'userId' | 'invitationId'>,
+) => problemError({ status: 409, title: 'Conflict', ...body });
+
+const validationProblem = (errors: ValidationProblem['errors']) =>
+  problemError({
+    status: 400,
+    title: 'Validation Failed',
+    type: 'urn:mentorhub:problem:validation-failed',
+    errors,
+  });
 
 describe('InviteDialog', () => {
-  const api = { invoke: vi.fn() };
+  const api = createApiStub();
   let ref: BrnDialogRef;
 
   beforeEach(() => {
-    api.invoke.mockReset();
+    api.reset();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: Api, useValue: api }],
+      providers: [provideRouter([]), provideApiStub(api)],
     });
   });
 
@@ -86,19 +99,19 @@ describe('InviteDialog', () => {
     type(root, value);
     await submitForm(root);
     expect(root.querySelector('.field-error')?.textContent).toContain(message);
-    expect(api.invoke).not.toHaveBeenCalled();
+    expect(api.allCalls()).toHaveLength(0);
   });
 
   it('creates the invitation with the trimmed email and the chosen roles, then shows the link', async () => {
-    api.invoke.mockResolvedValue(created({ email: 'ivan@example.com' }));
+    api.resolve(createInvitation, created({ email: 'ivan@example.com' }));
     const { root } = await open();
     type(root, '  ivan@example.com ');
     checkbox(root, 'Student').click();
     checkbox(root, 'Mentor').click();
     await submitForm(root);
-    expect(api.invoke).toHaveBeenCalledWith(createInvitation, {
-      body: { email: 'ivan@example.com', roles: ['MENTOR', 'STUDENT'] },
-    });
+    expect(api.callsFor(createInvitation)).toEqual([
+      { body: { email: 'ivan@example.com', roles: ['MENTOR', 'STUDENT'] } },
+    ]);
     expect(root.textContent).toContain('Invitation link');
     expect(root.textContent).toContain(
       'Send this link to ivan@example.com. It expires on 25 Oct 2026. You can copy it again from the invitations list while it is pending.',
@@ -151,8 +164,9 @@ describe('InviteDialog', () => {
   });
 
   it('INV-19.1 shows the active-user conflict with a link to the user', async () => {
-    api.invoke.mockRejectedValue(
-      problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
+    api.reject(
+      createInvitation,
+      conflictProblem({ type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
     );
     const { root } = await open();
     type(root, 'ivan@example.com');
@@ -166,8 +180,9 @@ describe('InviteDialog', () => {
   });
 
   it('INV-19.3 keeps the entered values after a conflict', async () => {
-    api.invoke.mockRejectedValue(
-      problem(409, { type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
+    api.reject(
+      createInvitation,
+      conflictProblem({ type: 'urn:mentorhub:problem:user-active', userId: 'u7' }),
     );
     const { root } = await open();
     type(root, 'ivan@example.com');
@@ -180,8 +195,9 @@ describe('InviteDialog', () => {
   });
 
   it('INV-19.2 shows the existing-invitation conflict with a link to the list', async () => {
-    api.invoke.mockRejectedValue(
-      problem(409, { type: 'urn:mentorhub:problem:invitation-exists', invitationId: 'i7' }),
+    api.reject(
+      createInvitation,
+      conflictProblem({ type: 'urn:mentorhub:problem:invitation-exists', invitationId: 'i7' }),
     );
     const { root } = await open();
     type(root, ' ivan@example.com ');
@@ -194,11 +210,9 @@ describe('InviteDialog', () => {
   });
 
   it('shows server field errors under their fields', async () => {
-    api.invoke.mockRejectedValue(
-      problem(400, {
-        type: 'urn:mentorhub:problem:validation-failed',
-        errors: [{ field: 'email', message: 'must be a well-formed email address' }],
-      }),
+    api.reject(
+      createInvitation,
+      validationProblem([{ field: 'email', message: 'must be a well-formed email address' }]),
     );
     const { root } = await open();
     type(root, 'ivan@example.com');
@@ -210,12 +224,7 @@ describe('InviteDialog', () => {
   });
 
   it('shows a role error under the roles', async () => {
-    api.invoke.mockRejectedValue(
-      problem(400, {
-        type: 'urn:mentorhub:problem:validation-failed',
-        errors: [{ field: 'roles', message: 'unknown role' }],
-      }),
-    );
+    api.reject(createInvitation, validationProblem([{ field: 'roles', message: 'unknown role' }]));
     const { root } = await open();
     type(root, 'ivan@example.com');
     await submitForm(root);
@@ -225,7 +234,7 @@ describe('InviteDialog', () => {
   });
 
   it('shows a generic inline alert on other errors and keeps the form', async () => {
-    api.invoke.mockRejectedValue(problem(500, { type: 'about:blank' }));
+    api.reject(createInvitation, problem(500, 'about:blank'));
     const { root } = await open();
     type(root, 'ivan@example.com');
     await submitForm(root);
@@ -253,13 +262,13 @@ describe('InviteDialog', () => {
     });
 
     it('requests the email and tells the link view so when the choice is on', async () => {
-      api.invoke.mockResolvedValue(created());
+      api.resolve(createInvitation, created());
       const { root } = await open();
       type(root, 'ivan@example.com');
       await submitForm(root);
-      expect(api.invoke).toHaveBeenCalledWith(createInvitation, {
-        body: { email: 'ivan@example.com', roles: [], sendEmail: true },
-      });
+      expect(api.callsFor(createInvitation)).toEqual([
+        { body: { email: 'ivan@example.com', roles: [], sendEmail: true } },
+      ]);
       expect(root.textContent).toContain(
         'An email with this link is on its way to ivan@example.com. It expires on 25 Oct 2026. You can also copy the link, and copy it again from the invitations list while it is pending.',
       );
@@ -267,21 +276,19 @@ describe('InviteDialog', () => {
     });
 
     it('sends sendEmail false and shows the usual text when the choice is off', async () => {
-      api.invoke.mockResolvedValue(created());
+      api.resolve(createInvitation, created());
       const { root } = await open();
       type(root, 'ivan@example.com');
       emailBox(root).click();
       await submitForm(root);
-      expect(api.invoke).toHaveBeenCalledWith(createInvitation, {
-        body: { email: 'ivan@example.com', roles: [], sendEmail: false },
-      });
+      expect(api.callsFor(createInvitation)).toEqual([
+        { body: { email: 'ivan@example.com', roles: [], sendEmail: false } },
+      ]);
       expect(root.textContent).toContain('Send this link to ivan@example.com.');
     });
 
     it('IEM-11.1 shows an inline alert on 409 email-unavailable and keeps the values', async () => {
-      api.invoke.mockRejectedValue(
-        problem(409, { type: 'urn:mentorhub:problem:email-unavailable' }),
-      );
+      api.reject(createInvitation, problem(409, 'urn:mentorhub:problem:email-unavailable'));
       const { root } = await open();
       type(root, 'ivan@example.com');
       checkbox(root, 'Mentor').click();
@@ -298,12 +305,14 @@ describe('InviteDialog', () => {
   });
 
   it('renders no email checkbox and sends no flag when email is disabled', async () => {
-    api.invoke.mockResolvedValue(created());
+    api.resolve(createInvitation, created());
     const { root } = await open();
     expect(root.textContent).not.toContain('by email');
     type(root, 'ivan@example.com');
     await submitForm(root);
-    expect(api.invoke.mock.calls[0][1]).toEqual({ body: { email: 'ivan@example.com', roles: [] } });
-    expect(Object.keys(api.invoke.mock.calls[0][1].body)).not.toContain('sendEmail');
+    expect(api.callsFor(createInvitation)[0]).toEqual({
+      body: { email: 'ivan@example.com', roles: [] },
+    });
+    expect(Object.keys(api.callsFor(createInvitation)[0].body)).not.toContain('sendEmail');
   });
 });

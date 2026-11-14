@@ -12,14 +12,13 @@ import { Component, signal } from '@angular/core';
 import { Location } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { Me } from '../api/models/me';
+import { MeUser } from '../api/models/me-user';
 import { accessGuard } from './access.guard';
 import { AuthService, SignInResult } from './auth.service';
 import { CurrentUserService } from './current-user.service';
 
 describe('accessGuard', () => {
-  const user = (
-    roles: Me['user'] extends infer U ? (U extends { roles: infer R } ? R : never) : never,
-  ) => ({
+  const user = (roles: MeUser['roles']): MeUser => ({
     id: 'u1',
     email: 'a@example.com',
     firstName: 'Anna',
@@ -92,15 +91,15 @@ describe('accessGuard', () => {
   );
 
   it('IDN-10.2 shows the screen for the new state on the next navigation', async () => {
-    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
+    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) } satisfies Me);
     expect(await run('full')).toBe(true);
-    currentUser.load.mockResolvedValue({ status: 'DISABLED' });
+    currentUser.load.mockResolvedValue({ status: 'DISABLED' } satisfies Me);
     expect(await run('full')).toBe('/access/ended');
   });
 
   it('returns to the route the visitor opened after sign-in', async () => {
     auth.ensureSignedIn.mockResolvedValue({ kind: 'signed-in', returnUrl: '/students' });
-    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) });
+    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['ADMIN']) } satisfies Me);
     expect(await run('full', '/?code=a&state=b')).toBe('/students');
   });
 
@@ -110,7 +109,7 @@ describe('accessGuard', () => {
     expect(currentUser.load).not.toHaveBeenCalled();
   });
 
-  it.each([
+  it.each<[string, Me]>([
     ['active', { status: 'ACTIVE', user: user(['MENTOR']) }],
     ['not invited', { status: 'NOT_INVITED' }],
     ['disabled', { status: 'DISABLED' }],
@@ -124,7 +123,7 @@ describe('accessGuard', () => {
 
   it('ignores a leftover invitation token when it is not a sign-in callback', async () => {
     sessionStorage.setItem('mentorhub.invitation-token', 'tok');
-    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['MENTOR']) });
+    currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['MENTOR']) } satisfies Me);
     expect(await run('full', '/')).toBe(true);
     sessionStorage.clear();
   });
@@ -187,7 +186,7 @@ describe('accessGuard', () => {
           ]),
         ],
       });
-      currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['MENTOR']) });
+      currentUser.load.mockResolvedValue({ status: 'ACTIVE', user: user(['MENTOR']) } satisfies Me);
     });
 
     it('lets a nested non-empty child inherit the access of its ancestor', async () => {

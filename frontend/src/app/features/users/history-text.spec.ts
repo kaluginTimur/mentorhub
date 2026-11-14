@@ -4,7 +4,7 @@ import { describeEntry } from './history-text';
 const base = { id: 'h1', occurredAt: '2026-10-17T10:12:00Z', actor: null };
 
 describe('describeEntry', () => {
-  it.each<[Partial<HistoryEntry>, string]>([
+  it.each<[Omit<HistoryEntry, 'id' | 'occurredAt' | 'actor'>, string]>([
     [{ action: 'USER_DISABLED', reason: 'GRADUATED' }, 'Disabled: Graduated'],
     [
       { action: 'USER_DISABLED', reason: 'OTHER', comment: 'Moved away' },
@@ -94,7 +94,7 @@ describe('describeEntry', () => {
       'Joined by invitation',
     ],
   ])('describes %j', (partial, text) => {
-    expect(describeEntry({ ...base, ...partial } as HistoryEntry)).toBe(text);
+    expect(describeEntry({ ...base, ...partial } satisfies HistoryEntry)).toBe(text);
   });
 
   it('copes with missing optional lists', () => {

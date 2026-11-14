@@ -640,11 +640,14 @@ components:
       description: |
         A parameter or a field of the request body is invalid. Problem type
         `urn:mentorhub:problem:validation-failed`, with an `errors` entry for each invalid
-        parameter or field. Nothing was changed.
+        parameter or field. A body that is not JSON or missing keeps generic `Problem`
+        with type `about:blank`. Nothing was changed.
       content:
         application/problem+json:
           schema:
-            $ref: '#/components/schemas/ValidationProblem'
+            anyOf:
+              - $ref: '#/components/schemas/ValidationProblem'
+              - $ref: '#/components/schemas/Problem'
     NotFound:
       description: |
         The resource does not exist or the caller may not access it. Problem type `urn:mentorhub:problem:not-found`.
@@ -734,6 +737,7 @@ components:
   schemas:
     SystemInfo:
       type: object
+      additionalProperties: false
       required: [name, version]
       properties:
         name:
@@ -744,6 +748,7 @@ components:
           examples: [0.0.1-SNAPSHOT]
     ClientConfig:
       type: object
+      additionalProperties: false
       required: [issuer, clientId, scope, invitationEmails]
       properties:
         issuer:
@@ -771,6 +776,7 @@ components:
       enum: [ACTIVE, DISABLED, NOT_INVITED]
     Me:
       type: object
+      additionalProperties: false
       required: [status]
       properties:
         status:
@@ -780,6 +786,7 @@ components:
           description: Present only when `status` is `ACTIVE`; absent (not `null`) otherwise.
     MeUser:
       type: object
+      additionalProperties: false
       required: [id, email, firstName, lastName, phone, roles, permissions]
       properties:
         id:
@@ -831,6 +838,7 @@ components:
         `urn:mentorhub:problem:email-queued`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
+      additionalProperties: true
       required: [type, title, status]
       properties:
         type:
@@ -851,6 +859,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Problem'
         - type: object
+          additionalProperties: true
           required: [errors]
           properties:
             errors:
@@ -864,6 +873,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Problem'
         - type: object
+          additionalProperties: true
           properties:
             userId:
               type: string
@@ -875,6 +885,7 @@ components:
               description: The open invitation for the email. Present only for `invitation-exists`.
     ValidationError:
       type: object
+      additionalProperties: false
       required: [field, message]
       properties:
         field:
@@ -905,6 +916,7 @@ components:
       enum: [GRADUATED, EXPELLED, LEFT_PROGRAM, STAFF_OFFBOARDED, SECURITY, OTHER]
     UserSummary:
       type: object
+      additionalProperties: false
       required: [id, email, firstName, lastName, status, roles]
       properties:
         id:
@@ -929,6 +941,7 @@ components:
     UserDetails:
       type: object
       description: '`UserSummary` with the profile, the disable reason and the creation time.'
+      additionalProperties: false
       required: [id, email, firstName, lastName, phone, status, roles, createdAt]
       properties:
         id:
@@ -966,6 +979,7 @@ components:
           format: date-time
     UserPage:
       type: object
+      additionalProperties: false
       required: [items, page, size, totalItems]
       properties:
         items:
@@ -986,6 +1000,7 @@ components:
           description: The number of matching items on all pages.
     DisableRequest:
       type: object
+      additionalProperties: false
       required: [reason]
       properties:
         reason:
@@ -996,6 +1011,7 @@ components:
           examples: [Finished the spring cohort]
     RolesUpdate:
       type: object
+      additionalProperties: false
       required: [roles]
       properties:
         roles:
@@ -1007,6 +1023,7 @@ components:
     ProfileUpdate:
       type: object
       description: The whole profile; every property must be sent, `null` or blank for none.
+      additionalProperties: false
       required: [firstName, lastName, phone]
       properties:
         firstName:
@@ -1043,6 +1060,7 @@ components:
         - USER_INVITATION_ACCEPTED
     HistoryActor:
       type: object
+      additionalProperties: false
       required: [id, name]
       properties:
         id:
@@ -1056,6 +1074,7 @@ components:
       type: object
       description: |
         One change to a user. Detail properties that do not apply to the action are absent (not `null`).
+      additionalProperties: false
       required: [id, occurredAt, action, actor]
       properties:
         id:
@@ -1096,6 +1115,7 @@ components:
       enum: [firstName, lastName, phone]
     ProfileChange:
       type: object
+      additionalProperties: false
       required: [field, oldValue, newValue]
       properties:
         field:
@@ -1107,6 +1127,7 @@ components:
     BootstrapChanges:
       type: object
       description: What the administrator bootstrap did.
+      additionalProperties: false
       required: [userCreated, identityLinked, enabled, adminAdded]
       properties:
         userCreated:
@@ -1120,6 +1141,7 @@ components:
     InvitationAcceptance:
       type: object
       description: What accepting an invitation did. The roles added and removed are in `rolesAdded` and `rolesRemoved`.
+      additionalProperties: false
       required: [invitationId, invitedBy, userCreated, identityLinked, enabled]
       properties:
         invitationId:
@@ -1139,6 +1161,7 @@ components:
           description: The user was disabled and has been enabled (reactivated).
     HistoryPage:
       type: object
+      additionalProperties: false
       required: [items, page, size, totalItems]
       properties:
         items:
@@ -1172,6 +1195,7 @@ components:
         An invitation. `acceptedAt` and `acceptedUser` are present only when accepted, `revokedAt` and `revokedBy` only
         when revoked, `lastEmail` only when an email was ever requested for it; absent (not `null`) otherwise. The
         link is never part of it.
+      additionalProperties: false
       required: [id, email, roles, status, createdAt, expiresAt, createdBy]
       properties:
         id:
@@ -1220,6 +1244,7 @@ components:
       description: |
         The latest email requested for an invitation. `finishedAt` is present once the status is not `QUEUED`; absent
         (not `null`) otherwise.
+      additionalProperties: false
       required: [status, requestedAt, requestedBy]
       properties:
         status:
@@ -1237,6 +1262,7 @@ components:
       description: |
         An invitation with its link. While the invitation is pending, `GET /api/v1/invitations/{id}/link` returns the
         same link again.
+      additionalProperties: false
       required: [invitation, link]
       properties:
         invitation:
@@ -1249,6 +1275,7 @@ components:
     InvitationLink:
       type: object
       description: The link of a pending invitation.
+      additionalProperties: false
       required: [link, email, expiresAt]
       properties:
         link:
@@ -1264,6 +1291,7 @@ components:
           format: date-time
     InvitationPage:
       type: object
+      additionalProperties: false
       required: [items, page, size, totalItems]
       properties:
         items:
@@ -1284,6 +1312,7 @@ components:
           description: The number of matching items on all pages.
     InvitationCreate:
       type: object
+      additionalProperties: false
       required: [email, roles]
       properties:
         email:
@@ -1302,6 +1331,7 @@ components:
           description: Also email the link to the invited address. `true` needs a configured mail server.
     InvitationLinkReissue:
       type: object
+      additionalProperties: false
       properties:
         sendEmail:
           type: boolean
@@ -1309,6 +1339,7 @@ components:
           description: Also email the new link to the invited address. `true` needs a configured mail server.
     InvitationToken:
       type: object
+      additionalProperties: false
       required: [token]
       properties:
         token:
@@ -1320,6 +1351,7 @@ components:
           maxLength: 200
     InvitationPreview:
       type: object
+      additionalProperties: false
       required: [email, expiresAt]
       properties:
         email:

@@ -2,10 +2,13 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Api } from '../../core/api/api';
+import { getSystemInfo } from '../../core/api/fn/system/get-system-info';
+import { MeUser } from '../../core/api/models/me-user';
+import { Permission } from '../../core/api/models/permission';
 import { AuthService } from '../../core/auth/auth.service';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { displayName } from '../../core/auth/user-name';
+import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
 import { ThemePreference, ThemeService } from '../../core/theme/theme.service';
 import { Home } from './home';
 import { Shell } from './shell';
@@ -15,26 +18,26 @@ class DummyPage {}
 
 describe('shell', () => {
   const auth = { signOut: vi.fn() };
-  const user = signal({
+  const user = signal<MeUser>({
     id: 'u1',
     email: 'anna@example.com',
-    firstName: 'Anna' as string | null,
-    lastName: 'Petrova' as string | null,
+    firstName: 'Anna',
+    lastName: 'Petrova',
     roles: ['MENTOR'],
-    permissions: [] as string[],
+    permissions: [],
     phone: null,
   });
   const currentUser = {
     user,
     name: () => displayName(user()),
-    hasPermission: (p: string) => user().permissions.includes(p),
+    hasPermission: (p: Permission) => user().permissions.includes(p),
   };
   const themePreference = signal<ThemePreference>('system');
   const theme = {
     preference: themePreference.asReadonly(),
     setPreference: vi.fn((pref: ThemePreference) => themePreference.set(pref)),
   };
-  const api = { invoke: vi.fn() };
+  const api = createApiStub();
 
   function accountMenuTrigger(element: HTMLElement): HTMLButtonElement | null {
     return element.querySelector('button[aria-label^="Account menu for "]');
@@ -46,6 +49,7 @@ describe('shell', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    api.reset();
     themePreference.set('system');
     user.set({
       id: 'u1',
@@ -73,7 +77,7 @@ describe('shell', () => {
         { provide: AuthService, useValue: auth },
         { provide: CurrentUserService, useValue: currentUser },
         { provide: ThemeService, useValue: theme },
-        { provide: Api, useValue: api },
+        provideApiStub(api),
       ],
     });
   });
@@ -224,7 +228,7 @@ describe('shell', () => {
   });
 
   it('greets the user and shows the version on the home page', async () => {
-    api.invoke.mockResolvedValue({ name: 'MentorHub', version: '0.1.0' });
+    api.resolve(getSystemInfo, { name: 'MentorHub', version: '0.1.0' });
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
@@ -234,7 +238,7 @@ describe('shell', () => {
   });
 
   it('hides the version when the system info cannot be loaded', async () => {
-    api.invoke.mockRejectedValue(new Error('down'));
+    api.reject(getSystemInfo, new Error('down'));
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
@@ -243,7 +247,7 @@ describe('shell', () => {
   });
 
   it('shows quick-action cards on Home gated by user permissions', async () => {
-    api.invoke.mockResolvedValue({ name: 'MentorHub', version: '0.1.0' });
+    api.resolve(getSystemInfo, { name: 'MentorHub', version: '0.1.0' });
     user.update((u) => ({ ...u, permissions: ['USERS_READ'] }));
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
