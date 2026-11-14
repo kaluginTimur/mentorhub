@@ -17,16 +17,15 @@ Nothing in progress.
 
 In this order:
 
-1. **Observer role removed:** an administrator no longer sees or assigns a role that grants nothing and stands for nobody at the center. Out of scope: any new role. Touches authorization, user administration, invitations and development mode; the role is also in the contract and the schema.
-2. **Tracks:** an administrator keeps the list of tracks and names the coordinators of each. Out of scope: enrollments. A new capability; touches authorization and audit.
-3. **Enrollments:** a coordinator enrolls a student on their track; the student sees their own enrollment, and the coordinator those of the track. The first access decided by a relation, not by a role alone. Out of scope: mentors, cohorts, the end of an enrollment. A new capability; touches authorization and audit.
-4. **Mentors of an enrollment:** a coordinator assigns mentors to a student, and a mentor sees the students they lead. Out of scope: mentors of a cohort. Touches enrollments, authorization and audit.
-5. **Cohorts:** a coordinator gathers the enrollments of one intake on a track and follows its progress as students finish one by one. Out of scope: mentors of a cohort, groups inside a cohort. A new capability; touches enrollments and audit.
-6. **Mentors of a cohort:** mentors assigned to a cohort as a whole see all its students. Touches cohorts, enrollments, authorization and audit.
-7. **End of an enrollment:** an enrollment ends with its outcome, and stays in the student's and the track's history. Out of scope: the result of the job interview, what happens to the student's access. Touches enrollments and audit.
-8. **Access lifecycle:** a student whose study has ended loses access as the product decisions below say. Out of scope: reading feedback and grades in the grace period, until those exist. Touches enrollments, authorization, user administration and audit.
-9. **Guides audit:** after the tracking core (items 2 to 8), one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
-10. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
+1. **Tracks:** an administrator keeps the list of tracks and names the coordinators of each. Out of scope: enrollments. A new capability; touches authorization and audit.
+2. **Enrollments:** a coordinator enrolls a student on their track; the student sees their own enrollment, and the coordinator those of the track. The first access decided by a relation, not by a role alone. Out of scope: mentors, cohorts, the end of an enrollment. A new capability; touches authorization and audit.
+3. **Mentors of an enrollment:** a coordinator assigns mentors to a student, and a mentor sees the students they lead. Out of scope: mentors of a cohort. Touches enrollments, authorization and audit.
+4. **Cohorts:** a coordinator gathers the enrollments of one intake on a track and follows its progress as students finish one by one. Out of scope: mentors of a cohort, groups inside a cohort. A new capability; touches enrollments and audit.
+5. **Mentors of a cohort:** mentors assigned to a cohort as a whole see all its students. Touches cohorts, enrollments, authorization and audit.
+6. **End of an enrollment:** an enrollment ends with its outcome, and stays in the student's and the track's history. Out of scope: the result of the job interview, what happens to the student's access. Touches enrollments and audit.
+7. **Access lifecycle:** a student whose study has ended loses access as the product decisions below say. Out of scope: reading feedback and grades in the grace period, until those exist. Touches enrollments, authorization, user administration and audit.
+8. **Guides audit:** after the tracking core (items 1 to 7), one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+9. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
 
 ## Later
 
