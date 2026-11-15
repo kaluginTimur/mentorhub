@@ -142,5 +142,23 @@ describe('TrackPage', () => {
       await vi.waitFor(() => expect(snack()).not.toBe(''));
       await vi.waitFor(() => expect(element.textContent).toContain('Quality Engineering'));
     });
+
+    it('TRK-10.1 explains track-archived on listing the candidates and shows the track as it is now', async () => {
+      trackChangedMeanwhile(track({ status: 'ARCHIVED' }));
+      api.reject(
+        listTrackCoordinatorCandidates,
+        problem(409, 'urn:mentorhub:problem:track-archived'),
+      );
+      const { element, settle } = await open();
+
+      const add = buttonByText(element, 'Add coordinator');
+      expect(add, 'the "Add coordinator" button').toBeDefined();
+      add?.click();
+      await settle();
+
+      await vi.waitFor(() => expect(snack()).toMatch(/archived/i));
+      await vi.waitFor(() => expect(buttonByText(element, 'Restore')).toBeDefined());
+      expect(buttonByText(element, 'Add coordinator')).toBeUndefined();
+    });
   });
 });

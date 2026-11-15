@@ -43,6 +43,15 @@
           >Users</a
         >
       }
+      @if (canReadTracks()) {
+        <a
+          routerLink="/tracks"
+          routerLinkActive="bg-mh-topbar-active text-mh-topbar-foreground after:scale-x-100"
+          ariaCurrentWhenActive="page"
+          class="relative flex h-16 items-center px-3 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mh-topbar-ring after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-mh-highlight after:transition-transform"
+          >Tracks</a
+        >
+      }
       @if (canInvite()) {
         <a
           routerLink="/invitations"
@@ -154,6 +163,16 @@
             class="rounded-md px-3 py-2 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
             (click)="closeMobileMenu()"
             >Users</a
+          >
+        }
+        @if (canReadTracks()) {
+          <a
+            routerLink="/tracks"
+            routerLinkActive="bg-mh-topbar-active text-mh-topbar-foreground border-l-2 border-mh-highlight"
+            ariaCurrentWhenActive="page"
+            class="rounded-md px-3 py-2 text-sm font-medium text-mh-topbar-muted transition-colors hover:bg-mh-topbar-hover hover:text-mh-topbar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mh-topbar-ring"
+            (click)="closeMobileMenu()"
+            >Tracks</a
           >
         }
         @if (canInvite()) {

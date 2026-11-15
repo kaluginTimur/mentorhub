@@ -1,0 +1,108 @@
+@if (failed()) {
+  <app-unavailable (retry)="tracks.reload()" />
+} @else {
+  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6" [attr.aria-busy]="tracks.isLoading()">
+    <div class="heading mb-6 flex items-center justify-between gap-4">
+      <h1 class="font-display text-2xl font-bold tracking-tight">Tracks</h1>
+      @if (canManage()) {
+        <button hlmBtn type="button" (click)="create()">
+          <ng-icon name="lucidePlus" aria-hidden="true" />
+          Create track
+        </button>
+      }
+    </div>
+
+    <div class="mb-2 flex items-end gap-4">
+      <div class="flex w-full flex-col gap-2.5 md:w-44">
+        <label hlmLabel for="tracks-status">Status</label>
+        <hlm-select
+          [value]="status()"
+          [itemToString]="filterLabel"
+          (valueChange)="setStatus($event)"
+        >
+          <hlm-select-trigger buttonId="tracks-status" class="w-full">
+            <hlm-select-value placeholder="Active" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            @for (f of filters; track f) {
+              <hlm-select-item [value]="f">{{ filterLabels[f] }}</hlm-select-item>
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </div>
+    </div>
+
+    <div class="mb-2 h-1">
+      @if (tracks.isLoading()) {
+        <div
+          role="progressbar"
+          aria-label="Loading tracks"
+          class="h-1 w-full overflow-hidden rounded-full bg-primary/15"
+        >
+          <div class="animate-mh-indeterminate h-full w-1/3 rounded-full bg-primary"></div>
+        </div>
+      }
+    </div>
+
+    @if (loaded(); as list) {
+      @if (list.items.length > 0) {
+        <ul class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          @for (track of list.items; track track.id) {
+            <li class="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-5 shadow-xs">
+              <div class="flex items-center justify-between gap-3">
+                <span
+                  class="min-w-0 font-mono text-sm leading-5 break-words text-muted-foreground"
+                  >{{ track.code }}</span
+                >
+                <app-track-status-chip [status]="track.status" />
+              </div>
+              <h2 class="text-lg leading-snug font-semibold">
+                <a
+                  [routerLink]="['/tracks', track.id]"
+                  class="break-words text-mh-link hover:text-mh-link-hover hover:underline"
+                >
+                  {{ track.name }}
+                </a>
+              </h2>
+              <div class="flex flex-col gap-2 border-t border-border pt-3">
+                <h3 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Coordinators
+                </h3>
+                @if (track.coordinators.length > 0) {
+                  <ul class="flex flex-col gap-1.5 text-sm">
+                    @for (c of track.coordinators; track c.id) {
+                      <li class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span class="break-words">{{ c.name }}</span>
+                        @if (c.disabled) {
+                          <app-assignment-mark label="Disabled" />
+                        }
+                        @if (!c.coordinatorRole) {
+                          <app-assignment-mark label="No coordinator role" />
+                        }
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <span class="text-sm text-muted-foreground">No coordinators</span>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      } @else if (!tracks.isLoading()) {
+        <div
+          class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground"
+        >
+          @if (status() === 'ALL') {
+            <p>No tracks yet.</p>
+          } @else {
+            <p>No {{ status() === 'ACTIVE' ? 'active' : 'archived' }} tracks.</p>
+            <button hlmBtn variant="outline" type="button" (click)="setStatus('ALL')">
+              Show all tracks
+            </button>
+          }
+        </div>
+      }
+    }
+  </main>
+}

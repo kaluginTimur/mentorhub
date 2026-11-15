@@ -83,7 +83,7 @@ Proposed by the coordinator and approved by the owner at the plan gate on 2026-1
 | 3. `users` public API and history mapping; the `tracks` module (checkpoint: backend green) | TRK-1–TRK-7, USR-10.3, PERM-1 | backend-dev | done |
 | 4. Sample center tracks | (screens of TRK-9, TRK-10, USR-11) | backend-dev | done |
 | 4a. Remove the 501 allowance in `support/OpenApiValidation.java` | (none) | test-engineer | done |
-| 5. Navigation, tracks page, track page, user history sentence | TRK-8, TRK-9, TRK-10, TRK-10.1, USR-11 | frontend-dev | in progress |
+| 5. Navigation, tracks page, track page, user history sentence | TRK-8, TRK-9, TRK-10, TRK-10.1, USR-11 | frontend-dev | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -101,6 +101,7 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - From task 3, for task 4: audit details as written. Subject `TRACK`, actor the administrator: `TRACK_CREATED` `{"code","name"}`; `TRACK_UPDATED` `{"changes":[{"field":"code"|"name","oldValue","newValue"}]}`, one item per changed field; `TRACK_ARCHIVED` / `TRACK_RESTORED` `{}`; `TRACK_COORDINATOR_ADDED` / `_REMOVED` `{"userId"}`. Subject `USER`: `USER_TRACK_COORDINATOR_ADDED` / `_REMOVED` `{"track":{"id","code","name"}}`.
 - From task 3, for stage 8: the backend guide's Code section gets that `tracks` uses `JdbcClient` (Design).
 - From task 4, for task 5 and manual-tester: sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local`. List: default 4 active tracks (DevOps, QA Automation, Quality Assurance, SWE); `ARCHIVED` shows FE; `ALL` shows 5. Marks: QA Quality Assurance, Laura Chen "Disabled"; DevOps, Daniel Kim "No coordinator role". SWE: two coordinators, candidates Irene Walsh and Milo Mentor-Coordinator. QA Automation: no coordinators (shares code QA). FE: archived, keeps Sarah Lopez. DevOps: 32 history entries (two pages), every kind of entry. USR-11: Irene Walsh and Laura Chen short histories; Daniel Kim paged, track shown as `DEVOPS DevOps`, `DevOps DevOps`, `DevOps DevOps Engineering`. `coordinator@mentorhub.local` sees no tracks.
+- From task 5, for the manual tester and the second test pass: TRK-8, TRK-9 and TRK-10 have no scenarios, so only TRK-10.1 and USR-11 have frontend tests; the nav link, the list with its filter, create, empty states, edit, archive and restore are checked only by hand so far. Manual steps are in frontend-dev's task 5 report (TRK-8: admin sees "Tracks", coordinator does not and is sent home from `/tracks`; TRK-9: filter, reload keeps it, create "T1 / Test", empty and 21-character code; TRK-10: DevOps marks, Show more, Edit name only, Archive then Restore, Add and Remove; TRK-10.1: two tabs, archive in one, Remove or Add in the other; FE only Restore; USR-11: Daniel Kim's history; `/tracks/abc` "Track not found"). States not in the sample data: empty lists, failed loads, 409 snackbars (except via two tabs).
 
 ## Red tests
 
@@ -136,15 +137,27 @@ Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a c
 - 2026-11-15: The `users` read API takes the role as a parameter instead of coordinator-only methods ("давай вариант 1, обобщай роль"): `findActiveUsersWithRole(Role)`, `isActiveWithRole(UUID, Role)`, and `DirectoryUser` carries `roles` instead of `coordinatorRole`; `tracks` checks `COORDINATOR` itself. The name `UserDirectory` stays.
 - 2026-11-15: Task 3 approved at the checkpoint ("одобряю, коммить").
 - 2026-11-15: Tasks 4 and 4a approved; the disabled coordinator stays a new user, Laura Chen, rather than reworking Paul Becker's history ("ладно, оставляем так, остальное одобряю").
+- 2026-11-15: After tracks merges, propose a `/change chore` for manual-tester: before testing on a running stack, compare the backend's start time with the branch's latest backend commit or build, and stop at once with "stack stale, restart it" instead of a wasted run; it still never restarts the owner's stack ("вариант 1, предложи после треков").
+- 2026-11-15: On the manual-test findings ("1, 3, 4 делаем, 2 через точку, 6 - заведи issue"): (1) TRK-10.1's GIVEN now also covers the candidates for a new coordinator (the coordinator edited it; the owner rereads it), test-engineer adds the case, frontend-dev handles that 409 like the others; (2) code and name are joined with a middle dot, "DevOps · DevOps Engineering", in titles and in the USR-11 sentence (the USR-11 test changes by the owner's decision); (3) the archive confirmation's button is red, as the disable dialog; (4) a "Tracks" quick-action card on the admin home page; (6) GitHub issue #43 for the users full-name search.
+- 2026-11-15: The owner asked for "Remove" of a coordinator as a red outline button like "Archive", for the tracks list as cards instead of a table (asked for HTML mockups to choose from), and for the marked-assignment note as a hint, warning or error rather than plain text. Mockups: canvas https://claude.ai/artifact/J3DK8xZLYoR9WLegghfcBf (source in `.screens/tracks/design/`): A grid of cards, B full-width stacked cards, C grid with an attention summary; note styles 1 plain (now), 2 amber warning, 3 red error. Cards change TRK-9's "as a table" and the list page pattern in `docs/ui/guidelines.md`.
+- 2026-11-15: List variant A (grid of cards) and note style 2 (amber warning callout); TRK-10.1's GIVEN approved ("A и 2, TRK-10.1 одобряю"). TRK-9 says "as a list", not "as cards": the kind of list is not the requirement's business (the owner: "почему бы не написать \"as list\"... какой там вид списка - таблица или карточки - это уже дело десятое"); the coordinator changed "as a table ... each row" to "as a list ... each track". The "No coordinator role" and "Disabled" chips stay red. Where cards are allowed goes to `docs/ui/guidelines.md`, pending the owner's agreement on the wording.
+- 2026-11-15: `docs/ui/guidelines.md` gains, in the list page pattern: "A short list without paging (for example `/tracks`) may show a grid of cards instead of the table: one card per item with its title as the link, the same filter row and the same loading, empty and failure states." (the owner: "согласен", after the four answers).
+- 2026-11-15: The owner read TRK-5 ("TRK-5 я прочёл"). On the re-check: fix (b) the add-coordinator title, which the close button's hover background does overlap, (c) the Archived chip, (d) the stale snackbar ("остальное всё исправить"). New: a coordinator's name on the track page links to their user page (the owner: "почему я не могу перейти в профиль координатора из списка координаторов трека?"); the coordinator proposes the link only for a viewer with `USERS_READ`. The amber callout looks out of the pattern, especially on a phone; the owner suggested an icon with a hover tooltip; options are mocked up before the batch.
+- 2026-11-15: The marked-assignment note is option B ("по хинту - вариант B"): the marks become amber chips with a warning icon, and one hint under the "Coordinators" heading, "A marked assignment grants nothing until it is fixed or removed.", shown only when a coordinator is marked; the per-row callout goes. The coordinator applies the amber marks in the list cards too, for one look. Also: the code text and the status chip on a track card are not aligned (the owner). frontend-dev's own details stay as they are (no remarks from the owner).
+- 2026-11-15: Dropdowns open with "Drop down" (fade and a 6 px slide from the trigger, no zoom), in the shared select and dropdown menu, both behind `motion-safe:` ("drop down"). The hint under "Coordinators" is plain grey text without an icon, as mockup B, and a long email is cut with an ellipsis, the full address in a tooltip ("с обоими пунктами согласен"). Also from the owner: the hint has too much space above and below it ("между подсказкой и «Coordinators» вообще хватит места ещё на две подсказки"); on a card the code and the status chip still look misaligned, raise the chip slightly.
+- 2026-11-15: On the third re-check ("1 делай, 2 и 3 оставляем"): the select slides from the top unconditionally; menus keep closing instantly; the select's first frame needs no action. The chip still looks low to the owner: their DevTools screenshot `.screens/img_5.png` (dark theme, "QA" code and "Active" chip, text boxes highlighted) shows the chip's box centre about 2 px below the code text's centre, with the bottoms of "QA" and "Active" on about the same line, so the chip reads low.
+- 2026-11-15: Restore asks for a confirmation too, as enabling a user does (USR-12) ("да, делай подтверждение на Restore"): title "Restore <code> · <name>?", text "It becomes editable again. Its coordinators are kept.", a primary (not destructive) button. TRK-10 now reads "archive it or restore an archived one after a confirmation" (the coordinator edited it; the owner rereads the line).
+
+- 2026-11-15: The owner looked at the screens on the sample center and approved task 5 ("я посмотрел экраны, можно коммитить": I looked at the screens, you can commit). Committed with the TRK-9, TRK-10 and TRK-10.1 edits, the guidelines line, the plan and the usage record.
 
 ## Handover
 
-- Waiting for: frontend-dev's report on task 5.
-- To read: this plan; Notes for later tasks.
-- Documents changed since f2632c2: `README.md` (sample center paragraph), committed with tasks 4 and 4a; this plan.
-- State: tasks 1 to 4a done and committed (see `git log`). Task 5 briefed to the frontend-dev of task 1a.
-- Pending: the owner reads the changed TRK-5 sentence and TRK-5.2 WHEN line.
-- Next: after task 5, list test changes since 3aa1010, compare `git diff --stat` with the brief; run manual-tester on the screens and personas from the task 4 note; stop for the owner. At stage 8: the 0005 line, the roadmap `/change`, the backend guide line on `tracks` using `JdbcClient` with its real reason.
+- Waiting for: the owner's go for the second test pass (tests of details, a fresh test-engineer), then the review loop and the verifier.
+- State: tasks 1–5 done and committed (task 5 in the commit after 1abae6b). Test changes since 3aa1010 are by the owner's decisions: `track-page.spec.ts` "TRK-10.1 explains track-archived on listing the candidates and shows the track as it is now", `history-text.spec.ts` expects 'QA · Quality Assurance'. frontend-dev's list of details stays as it is (no remarks from the owner).
+- For the second test pass: TRK-8, TRK-9 and TRK-10 have no scenarios and were checked only by hand (see Notes for later tasks, "From task 5"); states not in the sample data: empty lists, failed loads, 409 snackbars except via two tabs. Screens and checks of the runs are under `.screens/tracks/` (last: `20261115-2004`, `20261115-1956`).
+- To read: this plan; `docs/process.md` stage 6 and 7.
+- Documents changed since 3aa1010: `docs/requirements/tracks.md` (TRK-9 "as a list", TRK-10 restore after a confirmation, TRK-10.1 GIVEN covers the candidates); `docs/ui/guidelines.md` (cards for a short unpaged list); this plan.
+- Next: at stage 8, the 0005 line (an entry about another module's subject is written by that module on the changing module's call, not yet answered), the roadmap `/change` for the tracks a user coordinates, the backend guide line on `tracks` using `JdbcClient` with its real reason; delete `.screens/tracks/`. After merge: the manual-tester freshness chore, the schema checks chore. Issue #43 (users full-name search) is open.
 
 ## Agents
 
@@ -153,8 +166,16 @@ Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a c
 | reviewer | opus | a73d863de1142f2c9 | spec | 54k |
 | backend-dev | default | a9760ec3671a0972e | plan (task 1) | 148k |
 | backend-dev | default | a0fa00220a058cc0b | plan (task 1 rework) | 37k |
-| frontend-dev | default | ab71c1c6c92c7ce3d | plan (task 1a) | 51k |
+| frontend-dev | default | ab71c1c6c92c7ce3d | plan (task 1a), implementation (task 5 and fixes) | 193k: start a fresh one for further fixes |
+| manual-tester | default | a40532779b5fa3157 | implementation (task 5 screens) | 81k |
+| manual-tester | haiku | a2a66b3cccf3b51cc | implementation (task 5 checks) | 80k |
+| manual-tester | default | a60174a15feebc478 | implementation (task 5 re-check) | 78k |
+| manual-tester | default | a6b42d0f11316a973 | implementation (task 5 second re-check) | 63k |
+| manual-tester | default | a0b09dd804274b1d3 | implementation (task 5 third re-check) | 60k |
+| frontend-dev | default | af19b18eb34bd1b11 | implementation (task 5 fourth batch, Restore confirmation) | 78k |
+| manual-tester | haiku | a4e58b0d0551af52d | implementation (Restore confirmation) | 36k |
+| manual-tester | default | ad51f8999e5e2c4eb | implementation (task 5 fourth re-check) | 68k |
 | test-engineer | default | a6d80bc78d3ea7bfa | tests (task 2) | 167k |
 | backend-dev | default | ae4c4905297d33581 | implementation (task 3) | 161k |
-| test-engineer | default | a8aaaddae23fa07ea | implementation (task 4a) | 20k |
+| test-engineer | default | a8aaaddae23fa07ea | implementation (task 4a, test changes after manual tests) | 46k |
 | backend-dev | default | a90570c455e167010 | implementation (task 4) | 103k |

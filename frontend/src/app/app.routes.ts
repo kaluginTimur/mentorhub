@@ -38,6 +38,22 @@ export const routes: Routes = [
             ],
           },
           {
+            path: 'tracks',
+            canActivateChild: [requirePermission('TRACKS_READ')],
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./features/tracks/tracks-list').then((m) => m.TracksList),
+              },
+              {
+                path: ':id',
+                loadComponent: () =>
+                  import('./features/tracks/track-page').then((m) => m.TrackPage),
+              },
+            ],
+          },
+          {
             path: 'invitations',
             canActivateChild: [requirePermission('USERS_INVITE')],
             children: [

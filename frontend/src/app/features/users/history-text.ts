@@ -1,5 +1,6 @@
 import { HistoryEntry } from '../../core/api/models/history-entry';
 import { ProfileField } from '../../core/api/models/profile-field';
+import { trackLabel } from '../tracks/labels';
 import { REASON_LABELS, ROLE_LABELS } from './labels';
 
 const FIELD_LABELS: Record<ProfileField, string> = {
@@ -9,6 +10,9 @@ const FIELD_LABELS: Record<ProfileField, string> = {
 };
 
 const value = (v: string | null): string => (v ? v : '(empty)');
+
+const trackName = (entry: HistoryEntry): string =>
+  entry.track ? trackLabel(entry.track) : 'a track';
 
 export function describeEntry(entry: HistoryEntry): string {
   switch (entry.action) {
@@ -61,10 +65,10 @@ export function describeEntry(entry: HistoryEntry): string {
       }
       return parts.join('; ');
     }
-    // Task 5 of the tracks plan adds the sentences; until then these show no text.
     case 'USER_TRACK_COORDINATOR_ADDED':
+      return `Named a coordinator of ${trackName(entry)}`;
     case 'USER_TRACK_COORDINATOR_REMOVED':
-      return '';
+      return `Removed as a coordinator of ${trackName(entry)}`;
     default: {
       const unreachable: never = entry.action;
       return unreachable;

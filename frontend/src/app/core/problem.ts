@@ -14,6 +14,8 @@ export const PROBLEM = {
   emailUnavailable: 'urn:mentorhub:problem:email-unavailable',
   emailQueued: 'urn:mentorhub:problem:email-queued',
   userActive: 'urn:mentorhub:problem:user-active',
+  trackArchived: 'urn:mentorhub:problem:track-archived',
+  coordinatorNotEligible: 'urn:mentorhub:problem:coordinator-not-eligible',
 } as const;
 
 export interface ProblemInfo {

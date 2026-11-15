@@ -1,7 +1,13 @@
 import { Component, computed, inject, resource } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowRight, lucideMail, lucideUser, lucideUsers } from '@ng-icons/lucide';
+import {
+  lucideArrowRight,
+  lucideLayers,
+  lucideMail,
+  lucideUser,
+  lucideUsers,
+} from '@ng-icons/lucide';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { Api } from '../../core/api/api';
 import { getSystemInfo } from '../../core/api/fn/system/get-system-info';
@@ -11,7 +17,9 @@ import { greetingName } from '../../core/auth/user-name';
 @Component({
   selector: 'app-home',
   imports: [RouterLink, HlmCardImports, NgIcon],
-  providers: [provideIcons({ lucideUsers, lucideMail, lucideUser, lucideArrowRight })],
+  providers: [
+    provideIcons({ lucideUsers, lucideLayers, lucideMail, lucideUser, lucideArrowRight }),
+  ],
   template: `
     <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <section
@@ -65,6 +73,34 @@ import { greetingName } from '../../core/auth/user-name';
                     />
                   </div>
                   <p hlmCardDescription>Browse and manage mentor and student accounts.</p>
+                </div>
+              </div>
+            </a>
+          }
+
+          @if (canReadTracks()) {
+            <a
+              routerLink="/tracks"
+              hlmCard
+              class="group transition-all hover:ring-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div hlmCardHeader class="flex-row items-start gap-3">
+                <div
+                  class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
+                  aria-hidden="true"
+                >
+                  <ng-icon name="lucideLayers" class="size-5" />
+                </div>
+                <div class="min-w-0 flex-1 space-y-1">
+                  <div hlmCardTitle class="flex items-center justify-between gap-2">
+                    <span>Tracks</span>
+                    <ng-icon
+                      name="lucideArrowRight"
+                      class="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <p hlmCardDescription>Keep the tracks and name their coordinators.</p>
                 </div>
               </div>
             </a>
@@ -140,6 +176,7 @@ export class Home {
 
   protected readonly systemInfo = resource({ loader: () => this.api.invoke(getSystemInfo) });
   protected readonly canReadUsers = computed(() => this.currentUser.hasPermission('USERS_READ'));
+  protected readonly canReadTracks = computed(() => this.currentUser.hasPermission('TRACKS_READ'));
   protected readonly canInvite = computed(() => this.currentUser.hasPermission('USERS_INVITE'));
   protected readonly greeting = computed(() => {
     const user = this.currentUser.user();

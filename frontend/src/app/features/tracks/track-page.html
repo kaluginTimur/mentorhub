@@ -1,0 +1,215 @@
+@if (failed()) {
+  <app-unavailable (retry)="track.reload()" />
+} @else if (track.error() || (track.isLoading() && !track.hasValue())) {
+  <app-loading />
+} @else if (track.hasValue()) {
+  @if (track.value(); as t) {
+    <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
+      <a
+        class="back inline-flex w-fit items-center gap-1.5 text-sm font-medium text-mh-link hover:text-mh-link-hover hover:underline"
+        routerLink="/tracks"
+        [queryParams]="listState.query()"
+      >
+        <ng-icon name="lucideArrowLeft" class="size-4" aria-hidden="true" />
+        Tracks
+      </a>
+
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex min-w-0 flex-col items-start gap-1.5">
+          <h1
+            #heading
+            tabindex="-1"
+            class="max-w-full font-display text-2xl font-bold tracking-tight break-words outline-none"
+            [textContent]="t.name"
+          ></h1>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-mono text-sm leading-5 text-muted-foreground">{{ t.code }}</span>
+            <div role="list" aria-label="Status">
+              <div role="listitem">
+                <app-track-status-chip [status]="t.status" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        @if (canManage()) {
+          <div class="flex flex-wrap items-center gap-2">
+            @if (t.status === 'ACTIVE') {
+              <button hlmBtn variant="outline" type="button" (click)="edit(t)">
+                <ng-icon name="lucidePencil" aria-hidden="true" />
+                Edit
+              </button>
+              <button
+                hlmBtn
+                variant="outline"
+                type="button"
+                class="border-destructive/40 bg-card text-destructive hover:bg-destructive/10 hover:text-mh-destructive-hover-foreground dark:border-destructive/50 dark:bg-card dark:hover:bg-destructive/20"
+                (click)="archive(t)"
+              >
+                Archive
+              </button>
+            } @else {
+              <button hlmBtn type="button" (click)="restore(t)">Restore</button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (t.status === 'ARCHIVED') {
+        <div class="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
+          <span class="font-medium">Archived.</span>
+          This track is read-only until it is restored.
+        </div>
+      }
+
+      <div hlmCard>
+        <div hlmCardHeader class="items-center">
+          <h2 hlmCardTitle>Coordinators</h2>
+          @if (hasMarked()) {
+            <p hlmCardDescription>
+              A marked assignment grants nothing until it is fixed or removed.
+            </p>
+          }
+          @if (canManage() && t.status === 'ACTIVE') {
+            <button
+              hlmBtn
+              hlmCardAction
+              variant="outline"
+              size="sm"
+              type="button"
+              class="self-center"
+              (click)="addCoordinator(t)"
+            >
+              <ng-icon name="lucidePlus" aria-hidden="true" />
+              Add coordinator
+            </button>
+          }
+        </div>
+        <div hlmCardContent>
+          @if (t.coordinators.length > 0) {
+            <ul class="divide-y divide-border">
+              @for (c of t.coordinators; track c.id) {
+                <li class="flex items-start justify-between gap-x-4 gap-y-2 py-2.5">
+                  <div class="flex min-w-0 flex-1 flex-col gap-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      @if (canReadUsers()) {
+                        <a
+                          [routerLink]="['/users', c.id]"
+                          class="font-medium break-words text-mh-link hover:text-mh-link-hover hover:underline"
+                          >{{ c.name }}</a
+                        >
+                      } @else {
+                        <span class="font-medium break-words">{{ c.name }}</span>
+                      }
+                      @if (c.disabled) {
+                        <app-assignment-mark label="Disabled" />
+                      }
+                      @if (!c.coordinatorRole) {
+                        <app-assignment-mark label="No coordinator role" />
+                      }
+                    </div>
+                    <span
+                      class="block truncate font-mono text-xs text-muted-foreground"
+                      [title]="c.email"
+                      >{{ c.email }}</span
+                    >
+                  </div>
+                  @if (canManage() && t.status === 'ACTIVE') {
+                    <button
+                      hlmBtn
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      class="shrink-0 border-destructive/40 bg-card text-destructive hover:bg-destructive/10 hover:text-mh-destructive-hover-foreground dark:border-destructive/50 dark:bg-card dark:hover:bg-destructive/20"
+                      [attr.aria-label]="'Remove ' + c.name"
+                      (click)="removeCoordinator(t, c)"
+                    >
+                      Remove
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="text-xs text-muted-foreground">No coordinators</p>
+          }
+        </div>
+      </div>
+
+      <div hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>History</h2>
+        </div>
+        <div hlmCardContent class="space-y-3" [attr.aria-busy]="historyLoading()">
+          @if (historyLoading()) {
+            <div
+              role="progressbar"
+              aria-label="Loading history"
+              class="h-1 w-full overflow-hidden rounded-full bg-primary/15"
+            >
+              <div class="animate-mh-indeterminate h-full w-1/3 rounded-full bg-primary"></div>
+            </div>
+          }
+          @if (entries().length > 0) {
+            <ol class="history divide-y divide-border">
+              @for (entry of entries(); track entry.id) {
+                <li
+                  class="grid items-baseline gap-1 py-2.5 text-sm leading-5 sm:grid-cols-[11rem_12rem_1fr] sm:gap-4"
+                >
+                  <time
+                    class="font-mono text-xs leading-5 text-muted-foreground"
+                    [attr.datetime]="entry.occurredAt"
+                  >
+                    {{ entry.occurredAt | date: 'd MMM y HH:mm' }}
+                  </time>
+                  <span class="leading-5 text-muted-foreground">{{
+                    entry.actor?.name ?? 'System'
+                  }}</span>
+                  <span class="leading-5">{{ describe(entry) }}</span>
+                </li>
+              }
+            </ol>
+          } @else if (!historyLoading() && !historyFailed()) {
+            <p class="text-xs text-muted-foreground">No changes yet.</p>
+          }
+          @if (historyFailed()) {
+            <div class="flex flex-wrap items-center gap-3">
+              <p role="alert" class="text-sm text-destructive">Could not load the history.</p>
+              <button
+                hlmBtn
+                variant="outline"
+                size="sm"
+                type="button"
+                (click)="loadHistory(entries().length === 0)"
+              >
+                Retry
+              </button>
+            </div>
+          } @else if (entries().length < historyTotal()) {
+            <button
+              hlmBtn
+              variant="outline"
+              size="sm"
+              type="button"
+              [disabled]="historyLoading()"
+              (click)="loadHistory(false)"
+            >
+              Show more
+            </button>
+          }
+        </div>
+      </div>
+    </main>
+  } @else {
+    <main class="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-12 sm:px-6">
+      <h1 class="font-display text-2xl font-bold tracking-tight">Track not found</h1>
+      <a
+        routerLink="/tracks"
+        [queryParams]="listState.query()"
+        class="text-sm font-medium text-mh-link hover:text-mh-link-hover hover:underline"
+      >
+        Back to tracks
+      </a>
+    </main>
+  }
+}

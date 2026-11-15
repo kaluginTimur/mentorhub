@@ -158,15 +158,15 @@ The client SHALL offer the Tracks link only to a user with `TRACKS_READ` and tak
 
 ### TRK-9 The tracks page
 
-The client SHALL show the tracks as a table with a status filter, active by default, each row with the code, the name, the coordinators with their marks (TRK-4) and the status and linking to the track page, and SHALL offer "Create track" in a dialog to a user with `TRACKS_MANAGE`. It SHALL behave as a list page (PLT-9) apart from paging and search: the filter survives a reload, a failed load offers Retry, and a refused list takes the user home. An empty list SHALL say whether no track exists yet or none has the chosen status.
+The client SHALL show the tracks as a list with a status filter, active by default, each track with the code, the name, the coordinators with their marks (TRK-4) and the status and linking to the track page, and SHALL offer "Create track" in a dialog to a user with `TRACKS_MANAGE`. It SHALL behave as a list page (PLT-9) apart from paging and search: the filter survives a reload, a failed load offers Retry, and a refused list takes the user home. An empty list SHALL say whether no track exists yet or none has the chosen status.
 
 ### TRK-10 The track page
 
-The client SHALL show a track's code, name, status, coordinators with their marks (TRK-4) and history (TRK-7), read-only without `TRACKS_MANAGE`, with a back link to the list, and that the track is not found for an unknown or invalid id. A user with `TRACKS_MANAGE` may change the code or the name of an active track in a dialog, archive it after a confirmation, restore an archived one, and name and remove coordinators of an active one. The choice of a new coordinator offers the candidates (TRK-6).
+The client SHALL show a track's code, name, status, coordinators with their marks (TRK-4) and history (TRK-7), read-only without `TRACKS_MANAGE`, with a back link to the list, and that the track is not found for an unknown or invalid id. A user with `TRACKS_MANAGE` may change the code or the name of an active track in a dialog, archive it or restore an archived one after a confirmation, and name and remove coordinators of an active one. The choice of a new coordinator offers the candidates (TRK-6).
 
 #### TRK-10.1 A refused change is explained and the track reloaded
 
-- GIVEN the server refuses a change of the track with 409 `track-archived` or `coordinator-not-eligible`
+- GIVEN the server refuses a change of the track, or the candidates for a new coordinator, with 409 `track-archived` or `coordinator-not-eligible`
 - WHEN the client receives it
 - THEN a message explains the refusal
 - AND the track is shown as it is now
