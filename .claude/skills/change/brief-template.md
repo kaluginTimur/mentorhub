@@ -28,7 +28,7 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 
 ## Handover
 
-<!-- Overwritten before every stop for the user. A new session reads the brief and what this names, and nothing else, so keep it short and exact. -->
+<!-- Overwritten before every stop for the user, not appended to: it holds the state now. The results of earlier rounds leave it; what lasts is in Decisions, Partial work or the commits. A new session reads the brief and what this names, and nothing else, so keep it short and exact. -->
 
 - Waiting for: <what the user is doing; exactly `a new path` and what was found, when the path turned out wrong>
 - To read: <files, or the diff and its base>

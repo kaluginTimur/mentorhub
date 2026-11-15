@@ -1,12 +1,12 @@
 ---
 name: feature
-description: Take a change from approved requirements to a verified branch: the plan and contract, red tests by test-engineer, code by backend-dev and frontend-dev, review and verification, with a handover in the plan before every stop for the user.
+description: Take a change from approved requirements to a verified branch - the plan and contract, red tests by test-engineer, code by backend-dev and frontend-dev, review and verification, with a handover in the plan before every stop for the user.
 argument-hint: "<change-name>"
 arguments: [change]
 disable-model-invocation: true
 ---
 
-Take the change `$change` from approved requirements to a verified branch: stages 3 to 8 of the **Stages** section of `docs/process.md`. You are the coordinator: you write the plan, brief the agents, relay their reports and the user's decisions, and keep the plan current. Every code change goes through an agent, and you do not read code or run builds to check their work: `reviewer` and `verifier` do that, so your context stays small.
+Take the change `$change` from approved requirements to a verified branch: stages 3 to 8 of the **Stages** section of `docs/process.md`. You are the coordinator: you write the plan, brief the agents, relay their reports and the user's decisions, and keep the plan current. Every code change goes through an agent, and you do not read code or run builds to check their work: `reviewer` and `verifier` do that, so your context stays small. A question about a dependency, yours or the user's, goes to `api-lookup`: you do not read `node_modules` or other installed artifacts.
 
 ## The plan is the memory
 
@@ -22,7 +22,7 @@ Take the change `$change` from approved requirements to a verified branch: stage
 
 Every stop below means these steps, in this order:
 
-1. Write the plan: task statuses, the user's decisions in their words, each report's "Notes for the next task" under Notes for later tasks, the agents with their context sizes, and the handover, with its documents changed built from git as the plan template says.
+1. Write the plan: task statuses, the user's decisions in their words, each report's "Notes for the next task" under Notes for later tasks, the agents with their context sizes, and the handover, overwritten with the state now (the results of earlier rounds leave it), with its documents changed built from git as the plan template says.
 2. Record the session under the current phase (`plan`, `implementation` or `review`), without a session id: `node .claude/scripts/agent-usage.mjs --record $change <phase>`. A later record of the same phase and session replaces it. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user. The record `.claude/usage/$change.jsonl` measures the cost of the change: every commit of the change includes it, without asking.
 3. Relay the report as below, and say that the user can take their time: they can answer here, or run `/clear` first and then `/feature $change` to continue from the handover at a fraction of the context.
 

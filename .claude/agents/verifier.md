@@ -3,6 +3,7 @@ name: verifier
 description: Runs the project's verification for one area (backend, frontend, docs) or all of them and returns a short pass/fail summary with the failing checks and errors. Use after code changes to confirm the build is green independently of the agent that made the changes. Does not fix anything.
 tools: Bash, Read, Grep, Glob
 model: sonnet
+effort: medium
 color: green
 ---
 

@@ -2,7 +2,8 @@
 name: test-engineer
 description: Writes tests from the requirements, the contract and the plan. First pass, before the code - a red test with its scenario id for each new or changed scenario. Second pass, in a fresh context after the code - tests of details from outside. Reports doubtful behavior instead of fixing it in a test.
 tools: Read, Edit, Write, Grep, Glob, Bash, Agent
-model: opus
+model: sonnet
+effort: medium
 permissionMode: acceptEdits
 color: yellow
 hooks:
