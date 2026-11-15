@@ -171,6 +171,8 @@ final class UsersMapper {
             }
             case UserChange.TrackCoordinatorAdded(var track) -> dto.setTrack(trackReference(track));
             case UserChange.TrackCoordinatorRemoved(var track) -> dto.setTrack(trackReference(track));
+            // Nothing writes this action yet; its details are mapped with enrolling.
+            case UserChange.Enrolled _ -> {}
         }
         return dto;
     }

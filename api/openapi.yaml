@@ -21,6 +21,8 @@ tags:
     description: Invitations by link, and their acceptance
   - name: Tracks
     description: The tracks of the training center and their coordinators
+  - name: Enrollments
+    description: Who studies on which track
 paths:
   /api/v1/system/info:
     get:
@@ -68,6 +70,26 @@ paths:
                 $ref: '#/components/schemas/Me'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/v1/me/enrollments:
+    get:
+      tags: [Enrollments]
+      operationId: listMyEnrollments
+      summary: The caller's own enrollments
+      description: |
+        Every active user, whatever roles they hold; no permission is needed. Only the caller's own enrollments, none
+        of anyone else's; empty for a caller without an enrollment. Not paged: a user has at most one active enrollment
+        at a time.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyEnrollmentList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/me/profile:
     put:
       tags: [Users]
@@ -685,7 +707,8 @@ paths:
       summary: Archive a track
       description: |
         Requires `TRACKS_MANAGE`. The track becomes `ARCHIVED` and read-only, and keeps its coordinators. Archiving an
-        archived track changes nothing and responds 200.
+        archived track changes nothing and responds 200. An active track with an active enrollment is not archived:
+        409 `track-has-active-enrollments`.
       parameters:
         - $ref: '#/components/parameters/TrackId'
       responses:
@@ -703,6 +726,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackHasActiveEnrollments'
   /api/v1/tracks/{id}/restore:
     post:
       tags: [Tracks]
@@ -831,6 +856,108 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/enrollments:
+    get:
+      tags: [Enrollments]
+      operationId: listTrackEnrollments
+      summary: Page of the enrollments of a track
+      description: |
+        Requires `ENROLLMENTS_READ`. For an active and an archived track alike. Sorted by the student's name
+        (case-insensitive), then by the student's email, then by id.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEnrollmentPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Enrollments]
+      operationId: enrollStudent
+      summary: Enroll a student on an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. Only an active user with the `STUDENT` role and no active enrollment, on any track, can
+        be enrolled; a disabled user, a user without the role and an id no user has are refused alike with 409
+        `student-not-eligible`. The start date may be any date, past or future; the enrollment is `ACTIVE` from the
+        moment it is recorded. Checked in this order: the permission (403), the request (400), the track (404), the
+        relation (403 `forbidden`), then the conflicts (409) in the order the response lists them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentCreate'
+      responses:
+        '201':
+          description: The new enrollment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEnrollment'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/EnrollmentConflict'
+  /api/v1/tracks/{id}/enrollment-candidates:
+    get:
+      tags: [Enrollments]
+      operationId: listEnrollmentCandidates
+      summary: Page of the users who may be enrolled on a track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request; `USERS_READ` is not needed. The active users with the `STUDENT` role and no active
+        enrollment, sorted by name (case-insensitive), then by email, then by id. An archived track has no candidates
+        to offer until it is restored: 409 `track-archived`. Checked in this order: the permission (403), the request
+        (400), the track (404), the relation (403 `forbidden`), its status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentCandidatePage'
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
@@ -1041,6 +1168,25 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    TrackHasActiveEnrollments:
+      description: |
+        The track has an active enrollment and stays active; nothing was changed. Problem type
+        `urn:mentorhub:problem:track-has-active-enrollments`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    EnrollmentConflict:
+      description: |
+        The student was not enrolled; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:student-not-eligible`: no active user with the `STUDENT` role has the id;
+        - `urn:mentorhub:problem:student-already-enrolled`: the student has an active enrollment, on this or another
+          track.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
     SystemInfo:
       type: object
@@ -1128,7 +1274,15 @@ components:
     Permission:
       type: string
       description: Must equal the `Permission` enum in the backend code.
-      enum: [USERS_READ, USERS_MANAGE, USERS_INVITE, TRACKS_READ, TRACKS_MANAGE]
+      enum:
+        - USERS_READ
+        - USERS_MANAGE
+        - USERS_INVITE
+        - TRACKS_READ
+        - TRACKS_MANAGE
+        - ENROLLMENTS_READ
+        - ENROLLMENTS_MANAGE
+        - ENROLLMENTS_MANAGE_COORDINATED
     Problem:
       type: object
       description: |
@@ -1360,7 +1514,8 @@ components:
         - `USER_BOOTSTRAPPED_ADMIN`: details `bootstrap`; no actor;
         - `USER_INVITATION_ACCEPTED`: details `invitation`, `rolesAdded`, `rolesRemoved`; the actor is the user;
         - `USER_TRACK_COORDINATOR_ADDED`: details `track`; the user was named a coordinator of the track;
-        - `USER_TRACK_COORDINATOR_REMOVED`: details `track`; the user was removed as a coordinator of the track.
+        - `USER_TRACK_COORDINATOR_REMOVED`: details `track`; the user was removed as a coordinator of the track;
+        - `USER_ENROLLED`: details `track`, `startDate`; the user was enrolled on the track.
       enum:
         - USER_DISABLED
         - USER_ENABLED
@@ -1370,6 +1525,7 @@ components:
         - USER_INVITATION_ACCEPTED
         - USER_TRACK_COORDINATOR_ADDED
         - USER_TRACK_COORDINATOR_REMOVED
+        - USER_ENROLLED
     HistoryActor:
       type: object
       additionalProperties: false
@@ -1424,6 +1580,10 @@ components:
           $ref: '#/components/schemas/InvitationAcceptance'
         track:
           $ref: '#/components/schemas/TrackReference'
+        startDate:
+          type: string
+          format: date
+          description: The start date of the enrollment.
     ProfileField:
       type: string
       enum: [firstName, lastName, phone]
@@ -1715,7 +1875,7 @@ components:
     Track:
       type: object
       additionalProperties: false
-      required: [id, code, name, status, coordinators]
+      required: [id, code, name, status, coordinators, canEnroll]
       properties:
         id:
           type: string
@@ -1733,6 +1893,12 @@ components:
           description: Sorted by name (case-insensitive), then by email; may be empty.
           items:
             $ref: '#/components/schemas/TrackCoordinator'
+        canEnroll:
+          type: boolean
+          description: |
+            The caller may enroll students on the track: they hold `ENROLLMENTS_MANAGE`, or
+            `ENROLLMENTS_MANAGE_COORDINATED` and are a coordinator of the track. Whatever the status: an archived track
+            still refuses enrolling with 409 `track-archived`.
     TrackCoordinator:
       type: object
       description: |
@@ -1802,7 +1968,8 @@ components:
         - `TRACK_ARCHIVED`: no details;
         - `TRACK_RESTORED`: no details;
         - `TRACK_COORDINATOR_ADDED`: details `user`;
-        - `TRACK_COORDINATOR_REMOVED`: details `user`.
+        - `TRACK_COORDINATOR_REMOVED`: details `user`;
+        - `TRACK_STUDENT_ENROLLED`: details `user`, `startDate`; the user was enrolled on the track.
       enum:
         - TRACK_CREATED
         - TRACK_UPDATED
@@ -1810,6 +1977,7 @@ components:
         - TRACK_RESTORED
         - TRACK_COORDINATOR_ADDED
         - TRACK_COORDINATOR_REMOVED
+        - TRACK_STUDENT_ENROLLED
     TrackHistoryEntry:
       type: object
       description: |
@@ -1844,7 +2012,12 @@ components:
             $ref: '#/components/schemas/TrackChange'
         user:
           $ref: '#/components/schemas/HistoryActor'
-          description: The user named or removed as a coordinator, with their name as it is now.
+          description: |
+            The user named or removed as a coordinator, or the enrolled student, with their name as it is now.
+        startDate:
+          type: string
+          format: date
+          description: The start date of the enrollment.
     TrackField:
       type: string
       enum: [code, name]
@@ -1882,7 +2055,9 @@ components:
           description: The number of entries on all pages.
     TrackReference:
       type: object
-      description: A track in a user's history, with the code and the name it had at the moment of the change.
+      description: |
+        A track with its code and name: in a user's history as they were at the moment of the change, elsewhere as they
+        are now.
       additionalProperties: false
       required: [id, code, name]
       properties:
@@ -1895,3 +2070,172 @@ components:
         name:
           type: string
           examples: [Quality Assurance]
+    EnrollmentStatus:
+      type: string
+      description: |
+        - `ACTIVE`: the student studies on the track.
+      enum: [ACTIVE]
+    EnrollmentCreate:
+      type: object
+      description: The student to enroll and the start date; both must be sent.
+      additionalProperties: false
+      required: [studentId, startDate]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+          description: The user's id.
+        startDate:
+          type: string
+          format: date
+          description: Any date, past or future.
+          examples: ['2026-09-01']
+    EnrolledStudent:
+      type: object
+      description: |
+        The student of an enrollment. The enrollment stays when the user is later disabled or loses the `STUDENT`
+        role.
+      additionalProperties: false
+      required: [id, name, email, disabled, studentRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The user's id.
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Ivan Sidorov]
+        email:
+          type: string
+          examples: [ivan@example.com]
+        disabled:
+          type: boolean
+          description: The user is disabled.
+        studentRole:
+          type: boolean
+          description: The user holds the `STUDENT` role.
+    TrackEnrollment:
+      type: object
+      description: An enrollment as the enrollments of its track show it.
+      additionalProperties: false
+      required: [id, student, startDate, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        student:
+          $ref: '#/components/schemas/EnrolledStudent'
+        startDate:
+          type: string
+          format: date
+          examples: ['2026-09-01']
+        status:
+          $ref: '#/components/schemas/EnrollmentStatus'
+    TrackEnrollmentPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackEnrollment'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
+    EnrollmentCandidate:
+      type: object
+      description: An active user with the `STUDENT` role and no active enrollment.
+      additionalProperties: false
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Ivan Sidorov]
+        email:
+          type: string
+          examples: [ivan@example.com]
+    EnrollmentCandidatePage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrollmentCandidate'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
+    EnrollmentContact:
+      type: object
+      description: A coordinator of the enrollment's track who is active and holds the `COORDINATOR` role.
+      additionalProperties: false
+      required: [name, email, phone]
+      properties:
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+        phone:
+          type: [string, 'null']
+          description: E.164.
+          examples: ['+77011234567']
+    MyEnrollment:
+      type: object
+      description: One of the caller's own enrollments.
+      additionalProperties: false
+      required: [id, track, startDate, status, coordinators]
+      properties:
+        id:
+          type: string
+          format: uuid
+        track:
+          $ref: '#/components/schemas/TrackReference'
+          description: The track with its code and name as they are now.
+        startDate:
+          type: string
+          format: date
+          examples: ['2026-09-01']
+        status:
+          $ref: '#/components/schemas/EnrollmentStatus'
+        coordinators:
+          type: array
+          description: Sorted by name (case-insensitive), then by email; may be empty.
+          items:
+            $ref: '#/components/schemas/EnrollmentContact'
+    MyEnrollmentList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyEnrollment'

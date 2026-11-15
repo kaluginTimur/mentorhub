@@ -4,6 +4,7 @@ import static com.mentorhub.users.internal.security.ProblemAssertions.assertProb
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import com.mentorhub.enrollments.internal.TestEnrollments;
 import com.mentorhub.support.EndpointTest;
 import com.mentorhub.tracks.internal.TestTracks;
 import com.mentorhub.users.Permission;
@@ -15,6 +16,7 @@ import com.mentorhub.users.internal.security.TestUsers;
 import com.mentorhub.web.Problems;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,6 +42,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 class TracksEndpointTests {
 
     static final URI TRACK_ARCHIVED = URI.create("urn:mentorhub:problem:track-archived");
+    static final URI TRACK_HAS_ACTIVE_ENROLLMENTS = URI.create("urn:mentorhub:problem:track-has-active-enrollments");
     static final URI COORDINATOR_NOT_ELIGIBLE = URI.create("urn:mentorhub:problem:coordinator-not-eligible");
 
     @Autowired
@@ -67,37 +70,34 @@ class TracksEndpointTests {
     @Test
     @DisplayName("TRK-1.1 Reading tracks needs TRACKS_READ")
     void readingTracksNeedsTracksRead() {
-        UUID coordinator = users.create("coordinator@x.test", UserStatus.ACTIVE, Role.COORDINATOR);
-        users.link(coordinator, "coordinator");
+        UUID mentor = users.create("mentor@x.test", UserStatus.ACTIVE, Role.MENTOR);
+        users.link(mentor, "mentor");
         UUID track = tracks.active("QA", "Quality Assurance");
-        tracks.addCoordinator(track, coordinator);
 
         for (String uri :
                 List.of("/api/v1/tracks", "/api/v1/tracks/" + track, "/api/v1/tracks/" + track + "/history")) {
-            assertProblem(send(HttpMethod.GET, uri, "", "coordinator"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+            assertProblem(send(HttpMethod.GET, uri, "", "mentor"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
         }
     }
 
-    // No role holds TRACKS_READ without TRACKS_MANAGE, so the caller is authenticated with exactly that permission.
     @Test
     @DisplayName("TRK-1.2 Changing a track needs TRACKS_MANAGE")
     void changingATrackNeedsTracksManage() {
-        UUID reader = users.create("reader@x.test", UserStatus.ACTIVE);
         UUID coordinator = coordinator("coordinator@x.test", "Clara", "Coordinator");
+        users.link(coordinator, "coordinator");
         UUID candidate = coordinator("candidate@x.test", "Boris", "Candidate");
         UUID track = tracks.active("QA", "Quality Assurance");
         tracks.addCoordinator(track, coordinator);
-        RequestPostProcessor caller = TestAuthentications.activeUser(reader, Permission.TRACKS_READ);
         String path = "/api/v1/tracks/" + track;
 
         List<MvcTestResult> refusals = List.of(
-                send(HttpMethod.POST, "/api/v1/tracks", "{\"code\": \"QE\", \"name\": \"New\"}", caller),
-                send(HttpMethod.PUT, path, "{\"code\": \"QE\", \"name\": \"Quality Engineering\"}", caller),
-                send(HttpMethod.POST, path + "/archive", "", caller),
-                send(HttpMethod.POST, path + "/restore", "", caller),
-                send(HttpMethod.GET, path + "/coordinator-candidates", "", caller),
-                send(HttpMethod.PUT, path + "/coordinators/" + candidate, "", caller),
-                send(HttpMethod.DELETE, path + "/coordinators/" + coordinator, "", caller));
+                send(HttpMethod.POST, "/api/v1/tracks", "{\"code\": \"QE\", \"name\": \"New\"}", "coordinator"),
+                send(HttpMethod.PUT, path, "{\"code\": \"QE\", \"name\": \"Quality Engineering\"}", "coordinator"),
+                send(HttpMethod.POST, path + "/archive", "", "coordinator"),
+                send(HttpMethod.POST, path + "/restore", "", "coordinator"),
+                send(HttpMethod.GET, path + "/coordinator-candidates", "", "coordinator"),
+                send(HttpMethod.PUT, path + "/coordinators/" + candidate, "", "coordinator"),
+                send(HttpMethod.DELETE, path + "/coordinators/" + coordinator, "", "coordinator"));
 
         refusals.forEach(result -> assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN));
         MvcTestResult all = send(HttpMethod.GET, "/api/v1/tracks?status=ALL", "", "admin");
@@ -330,6 +330,21 @@ class TracksEndpointTests {
             assertThat(result).bodyJson().extractingPath("$.name").isEqualTo("Quality Assurance");
             assertThat(result).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
         }
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    @Test
+    @DisplayName("TRK-5.5 A track with an active enrollment is not archived")
+    void aTrackWithAnActiveEnrollmentIsNotArchived() {
+        UUID student = users.create("sam@x.test", UserStatus.ACTIVE, Role.STUDENT);
+        UUID track = tracks.active("QA", "Quality Assurance");
+        new TestEnrollments(jdbc).enroll(student, track, admin, LocalDate.of(2026, 9, 1));
+
+        MvcTestResult result = send(HttpMethod.POST, "/api/v1/tracks/" + track + "/archive", "", "admin");
+
+        assertProblem(result, HttpStatus.CONFLICT, TRACK_HAS_ACTIVE_ENROLLMENTS);
+        MvcTestResult after = send(HttpMethod.GET, "/api/v1/tracks/" + track, "", "admin");
+        assertThat(after).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
         assertThat(users.count("audit_log")).isZero();
     }
 

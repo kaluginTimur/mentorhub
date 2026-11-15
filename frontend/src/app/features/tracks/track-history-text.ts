@@ -17,6 +17,8 @@ export function describeTrackEntry(entry: TrackHistoryEntry): string {
       return `Named ${user} a coordinator`;
     case 'TRACK_COORDINATOR_REMOVED':
       return `Removed ${user} as a coordinator`;
+    case 'TRACK_STUDENT_ENROLLED':
+      return ''; // sentence comes with the enrollments screens
     default: {
       const unreachable: never = entry.action;
       return unreachable;

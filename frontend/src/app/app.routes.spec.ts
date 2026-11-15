@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
+import { listMyEnrollments } from './core/api/fn/enrollments/list-my-enrollments';
 import { getSystemInfo } from './core/api/fn/system/get-system-info';
 import { Me } from './core/api/models/me';
 import { MeUser } from './core/api/models/me-user';
@@ -29,6 +30,7 @@ describe('routes', () => {
     load.mockReset().mockResolvedValue({ status: 'ACTIVE', user } satisfies Me);
     api.reset();
     api.resolve(getSystemInfo, { name: 'MentorHub', version: '0.1.0' });
+    api.resolve(listMyEnrollments, { items: [] });
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -70,6 +72,13 @@ describe('routes', () => {
     await harness.navigateByUrl(url);
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/');
+  });
+
+  it('opens My enrollment to an active user without any permission', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/my-enrollment');
+    await harness.fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/my-enrollment');
   });
 
   it('shows the application menu to an active user with roles', async () => {

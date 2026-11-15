@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The tracks of the training center, such as SWE, QA and DevOps, and who coordinates each. Administrators keep the list current without a developer: they create a track, change its code or name, archive it and restore it, and name and remove its coordinators. A track is never deleted, since enrollments and history will refer to it. Being the coordinator of a track grants nothing yet; what a coordinator may do through a track comes with enrollments. Roles and permissions are described by authorization (PERM), recorded changes by audit (AUD). The API contract holds the fields, limits and response shapes.
+The tracks of the training center, such as SWE, QA and DevOps, and who coordinates each. Administrators keep the list current without a developer: they create a track, change its code or name, archive it and restore it, and name and remove its coordinators. A track is never deleted, since enrollments and history will refer to it. Coordinators read every track and change none; a coordinator of a track enrolls students on it, as enrollments (ENR) describe. Roles and permissions are described by authorization (PERM), recorded changes by audit (AUD). The API contract holds the fields, limits and response shapes.
 
 ## Requirements
 
@@ -12,13 +12,13 @@ The system SHALL require `TRACKS_READ` to read tracks, their coordinators and th
 
 #### TRK-1.1 Reading tracks needs TRACKS_READ
 
-- GIVEN an active user without `TRACKS_READ`, such as a coordinator of a track
+- GIVEN an active user without `TRACKS_READ`, such as a mentor
 - WHEN the user lists tracks, views a track or views a track's history
 - THEN each response is 403 `forbidden`
 
 #### TRK-1.2 Changing a track needs TRACKS_MANAGE
 
-- GIVEN a track and an active user with `TRACKS_READ` and without `TRACKS_MANAGE`
+- GIVEN a track and an active user with `TRACKS_READ` and without `TRACKS_MANAGE`, such as a coordinator of the track
 - WHEN the user creates a track, changes the track's code or name, archives or restores it, lists the candidates for its coordinators, or names or removes a coordinator
 - THEN each response is 403 `forbidden`
 - AND nothing is changed
@@ -75,7 +75,7 @@ The system SHALL return a track, for a caller with `TRACKS_READ`, with its code,
 
 ### TRK-5 Changing, archiving and restoring a track
 
-The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name of an active track, each independently, archive an active track and restore an archived one. An archived track is read-only until restored: every change except restoring and archiving it again is 409 `track-archived`, even one that would change nothing, and so is listing the candidates for its coordinators; it keeps its coordinators. A request is checked for validity first (400), then for an archived track, then for the eligibility of a coordinator (TRK-6). Changes of one track and its archiving take effect one after another, so no change is ever stored on an archived track. On an active track, a request that changes nothing, and archiving an archived track, answer with the track and record nothing (AUD-4). Each change is audited (AUD-7).
+The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name of an active track, each independently, archive an active track and restore an archived one. Archiving a track that has an active enrollment (ENR-2) is 409 `track-has-active-enrollments`. An archived track is read-only until restored: every change except restoring and archiving it again is 409 `track-archived`, even one that would change nothing, and so is listing the candidates for its coordinators; it keeps its coordinators. A request is checked for validity first (400), then for an archived track, then for the eligibility of a coordinator (TRK-6). Changes of one track, enrollments on it and its archiving take effect one after another, so no change is ever stored on an archived track and an archived track never has an active enrollment. On an active track, a request that changes nothing, and archiving an archived track, answer with the track and record nothing (AUD-4). Each change is audited (AUD-7).
 
 #### TRK-5.1 An archived track keeps its coordinators and is restored with them
 
@@ -105,9 +105,23 @@ The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name 
 - THEN the change is either stored before the archiving with its entry, or answered 409 `track-archived` and not stored
 - AND no response is 500
 
+#### TRK-5.5 A track with an active enrollment is not archived
+
+- GIVEN an active track with an active enrollment
+- WHEN an administrator archives it
+- THEN the response is 409 `track-has-active-enrollments`
+- AND the track is `ACTIVE` and nothing is recorded
+
+#### TRK-5.6 An enrollment at the moment of archiving never leaves a student on an archived track
+
+- GIVEN an active track without enrollments and an active user with the student role and no enrollment
+- WHEN an administrator archives the track while another enrolls the user on it, at the same moment
+- THEN either the user is enrolled and the archiving answered 409 `track-has-active-enrollments`, or the track is archived and the enrollment answered 409 `track-archived`
+- AND no response is 500
+
 ### TRK-6 Coordinators of a track
 
-The system SHALL let a caller with `TRACKS_MANAGE` name as a coordinator of an active track only an active user who holds the coordinator role, and remove any coordinator of it. A track may have any number of coordinators, and a user may coordinate any number of tracks. When a coordinator is later disabled or loses the coordinator role, the assignment stays and grants nothing (decision 0004). Naming a coordinator already named, even one no longer eligible, or removing a user who is not one or an id no user has, changes and records nothing. The caller may list the candidates for coordinators of a track with `TRACKS_MANAGE` alone: the active users with the coordinator role who are not its coordinators. Parallel requests never end in a server error. Each change is audited in the track's and the user's history (AUD-7).
+The system SHALL let a caller with `TRACKS_MANAGE` name as a coordinator of an active track only an active user who holds the coordinator role, and remove any coordinator of it. A track may have any number of coordinators, and a user may coordinate any number of tracks. When a coordinator is later disabled or loses the coordinator role, the assignment stays and grants nothing (decision 0004); what an assignment grants is described by enrollments (ENR-1). Naming a coordinator already named, even one no longer eligible, or removing a user who is not one or an id no user has, changes and records nothing. The caller may list the candidates for coordinators of a track with `TRACKS_MANAGE` alone: the active users with the coordinator role who are not its coordinators. Parallel requests never end in a server error. Each change is audited in the track's and the user's history (AUD-7).
 
 #### TRK-6.1 Only an active user with the coordinator role is named
 
@@ -162,11 +176,11 @@ The client SHALL show the tracks as a list with a status filter, active by defau
 
 ### TRK-10 The track page
 
-The client SHALL show a track's code, name, status, coordinators with their marks (TRK-4) and history (TRK-7), read-only without `TRACKS_MANAGE`, with a back link to the list, and that the track is not found for an unknown or invalid id. A user with `TRACKS_MANAGE` may change the code or the name of an active track in a dialog, archive it or restore an archived one after a confirmation, and name and remove coordinators of an active one. The choice of a new coordinator offers the candidates (TRK-6).
+The client SHALL show a track's code, name, status, coordinators with their marks (TRK-4) and history (TRK-7), read-only without `TRACKS_MANAGE`, with a back link to the list, the enrollments of the track (ENR-7), and that the track is not found for an unknown or invalid id. A user with `TRACKS_MANAGE` may change the code or the name of an active track in a dialog, archive it or restore an archived one after a confirmation, and name and remove coordinators of an active one. The choice of a new coordinator offers the candidates (TRK-6).
 
 #### TRK-10.1 A refused change is explained and the track reloaded
 
-- GIVEN the server refuses a change of the track, or the candidates for a new coordinator, with 409 `track-archived` or `coordinator-not-eligible`
+- GIVEN the server refuses a change of the track, or the candidates for a new coordinator, with 409 `track-archived`, `track-has-active-enrollments` or `coordinator-not-eligible`
 - WHEN the client receives it
 - THEN a message explains the refusal
 - AND the track is shown as it is now
@@ -176,12 +190,12 @@ The client SHALL show a track's code, name, status, coordinators with their mark
 - When two administrators change the same track at the same moment, the last save of the code or the name wins; each change is still audited.
 - A history page can hold fewer entries than its size, and its total counts entries that are left out (AUD-6).
 - A user named a coordinator at the moment another administrator disables them or removes their coordinator role may keep an assignment that is already marked (TRK-4).
-- A caller with `TRACKS_READ` sees the names and emails of coordinators without `USERS_READ`, and a caller with `USERS_READ` sees in a user's history the tracks they coordinated without `TRACKS_READ`. Only the administrator holds these permissions today; this is revisited when coordinators gain access to tracks.
+- A caller with `TRACKS_READ`, a coordinator included, sees the names and emails of coordinators and the history of every track, with the students enrolled on it (ENR-6), without `USERS_READ`, and a caller with `USERS_READ` sees in a user's history the tracks they coordinated without `TRACKS_READ`.
 
 ## Out of scope
 
-- Enrollments, cohorts and mentors of a track.
-- Anything a coordinator sees or may do through a track, including a coordinator's own view of their tracks.
+- Cohorts and mentors of a track.
+- A coordinator's own view of the tracks they coordinate.
 - Deleting a track.
 - The tracks a user coordinates, shown on the user page; the user's history shows when they were named and removed (USR-10).
 - Search in the list of tracks.

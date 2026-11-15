@@ -107,6 +107,13 @@ describe('describeEntry', () => {
     expect(added).not.toBe(removed);
   });
 
+  it('names the track of an enrollment as "<code> · <name>", as stored', () => {
+    const track = { id: 't1', code: 'QA', name: 'Quality Assurance' };
+    expect(
+      describeEntry({ ...base, action: 'USER_ENROLLED', track, startDate: '2026-09-01' }),
+    ).toContain('QA · Quality Assurance');
+  });
+
   it('copes with missing optional lists', () => {
     expect(describeEntry({ ...base, action: 'USER_ROLES_CHANGED' })).toBe('Roles changed');
     expect(describeEntry({ ...base, action: 'USER_PROFILE_UPDATED' })).toBe('Profile updated');

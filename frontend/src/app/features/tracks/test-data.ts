@@ -25,6 +25,7 @@ export function track(overrides: Partial<Track> = {}): Track {
     code: 'QA',
     name: 'Quality Assurance',
     status: 'ACTIVE',
+    canEnroll: true,
     coordinators: [coordinator()],
     ...overrides,
   };
@@ -47,7 +48,15 @@ export function trackAdmin(overrides: Partial<MeUser> = {}): MeUser {
     lastName: 'Petrova',
     phone: null,
     roles: ['ADMIN'],
-    permissions: ['USERS_READ', 'USERS_MANAGE', 'USERS_INVITE', 'TRACKS_READ', 'TRACKS_MANAGE'],
+    permissions: [
+      'USERS_READ',
+      'USERS_MANAGE',
+      'USERS_INVITE',
+      'TRACKS_READ',
+      'TRACKS_MANAGE',
+      'ENROLLMENTS_READ',
+      'ENROLLMENTS_MANAGE',
+    ],
     ...overrides,
   };
 }

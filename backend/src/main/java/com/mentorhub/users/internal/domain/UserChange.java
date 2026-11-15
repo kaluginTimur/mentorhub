@@ -2,6 +2,7 @@ package com.mentorhub.users.internal.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mentorhub.users.CoordinatedTrack;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -135,6 +136,19 @@ public sealed interface UserChange {
         @Override
         public UserAuditAction action() {
             return UserAuditAction.USER_TRACK_COORDINATOR_REMOVED;
+        }
+    }
+
+    /** The user was enrolled on the track, given with its code and name at that moment. */
+    record Enrolled(CoordinatedTrack track, LocalDate startDate) implements UserChange {
+        public Enrolled {
+            Objects.requireNonNull(track, "track");
+            Objects.requireNonNull(startDate, "startDate");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_ENROLLED;
         }
     }
 }

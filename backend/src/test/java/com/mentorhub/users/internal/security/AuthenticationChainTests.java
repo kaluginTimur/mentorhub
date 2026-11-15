@@ -208,7 +208,13 @@ class AuthenticationChainTests {
                 .extractingPath("$.permissions")
                 .asArray()
                 .containsExactlyInAnyOrder(
-                        "USERS_READ", "USERS_MANAGE", "USERS_INVITE", "TRACKS_READ", "TRACKS_MANAGE");
+                        "USERS_READ",
+                        "USERS_MANAGE",
+                        "USERS_INVITE",
+                        "TRACKS_READ",
+                        "TRACKS_MANAGE",
+                        "ENROLLMENTS_READ",
+                        "ENROLLMENTS_MANAGE");
     }
 
     private String storeUnknownRole() {

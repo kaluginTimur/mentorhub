@@ -19,6 +19,8 @@ class StoredRolesTests {
                         Permission.USERS_MANAGE,
                         Permission.USERS_INVITE,
                         Permission.TRACKS_READ,
-                        Permission.TRACKS_MANAGE);
+                        Permission.TRACKS_MANAGE,
+                        Permission.ENROLLMENTS_READ,
+                        Permission.ENROLLMENTS_MANAGE);
     }
 }

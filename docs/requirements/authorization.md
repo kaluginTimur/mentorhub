@@ -12,8 +12,8 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 
 | Role | Permissions |
 |---|---|
-| Administrator | `USERS_READ`, `USERS_MANAGE`, `USERS_INVITE`, `TRACKS_READ`, `TRACKS_MANAGE` |
-| Coordinator | none |
+| Administrator | `USERS_READ`, `USERS_MANAGE`, `USERS_INVITE`, `TRACKS_READ`, `TRACKS_MANAGE`, `ENROLLMENTS_READ`, `ENROLLMENTS_MANAGE` |
+| Coordinator | `TRACKS_READ`, `ENROLLMENTS_READ`, `ENROLLMENTS_MANAGE_COORDINATED` |
 | Mentor | none |
 | Student | none |
 
@@ -24,6 +24,9 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 | `USERS_INVITE` | Managing invitations |
 | `TRACKS_READ` | Viewing tracks, their coordinators and their history |
 | `TRACKS_MANAGE` | Creating, changing, archiving and restoring tracks, listing the candidates for their coordinators, and naming and removing their coordinators |
+| `ENROLLMENTS_READ` | Viewing the enrollments of every track |
+| `ENROLLMENTS_MANAGE` | Enrolling students on any track, and listing the candidates |
+| `ENROLLMENTS_MANAGE_COORDINATED` | The same on a track the user coordinates |
 
 The capability that owns an action says which permission it needs.
 
@@ -135,11 +138,11 @@ The client SHALL offer actions, links and pages by the permissions of the curren
 
 ## Known limitations
 
-- The coordinator, mentor and student roles grant no permission; what they may do is defined when the features that need them are built.
-- No operation yet gives different callers different access to one resource, so PERM-6.3 is checked only against a test operation, and no list leaves items out.
+- The mentor and student roles grant no permission; what they may do is defined when the features that need them are built. A student is who may be enrolled (ENR-2), and reads their own enrollment as any active user does (ENR-5).
+- No operation yet hides a single resource from some callers, so PERM-6.3 is checked only against a test operation, and no list leaves items out. Enrolling depends on a relation (ENR-1), on a track the caller can read, so its refusal is 403 (decision 0004).
 
 ## Out of scope
 
-- Access that depends on relations between people, such as a mentor's students, a student's own data or a track's coordinator. When such access is built, it is decided by the relations current at the time of the request, roles stay global, and lists leave out the items the caller may not access.
+- Access that depends on relations between people, such as a mentor's students, beyond what enrollments describe (ENR-1, ENR-5). When such access is built, it is decided by the relations current at the time of the request, roles stay global, and lists leave out the items the caller may not access.
 - Roles and their permissions edited in the application.
 - Role assignments from the identity provider or from groups of a corporate sign-in.

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mentorhub.api.model.HistoryActor;
 import com.mentorhub.api.model.TrackChange;
 import com.mentorhub.api.model.TrackHistoryEntry;
+import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.jackson.JacksonMixin;
@@ -26,4 +27,7 @@ abstract class TrackHistoryEntryJsonMixin {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract @Nullable HistoryActor getUser();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable LocalDate getStartDate();
 }
