@@ -1,6 +1,7 @@
 package com.mentorhub.users.internal.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.mentorhub.users.CoordinatedTrack;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -110,6 +111,30 @@ public sealed interface UserChange {
         @Override
         public UserAuditAction action() {
             return UserAuditAction.USER_INVITATION_ACCEPTED;
+        }
+    }
+
+    /** The user was named a coordinator of the track, given with its code and name at that moment. */
+    record TrackCoordinatorAdded(CoordinatedTrack track) implements UserChange {
+        public TrackCoordinatorAdded {
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_TRACK_COORDINATOR_ADDED;
+        }
+    }
+
+    /** The user was removed as a coordinator of the track, given with its code and name at that moment. */
+    record TrackCoordinatorRemoved(CoordinatedTrack track) implements UserChange {
+        public TrackCoordinatorRemoved {
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_TRACK_COORDINATOR_REMOVED;
         }
     }
 }

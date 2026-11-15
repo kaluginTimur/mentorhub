@@ -14,6 +14,8 @@ export interface ConfirmDialogData {
   title: string;
   text: string;
   confirmLabel: string;
+  /** Draws the confirming button in the destructive color. */
+  destructive?: boolean;
   /** An optional checkbox below the text; the dialog then closes with `{ checked }` instead of `true`. */
   checkbox?: { label: string; checked: boolean };
 }
@@ -36,7 +38,10 @@ export interface ConfirmResult {
   template: `
     <div class="flex flex-col gap-5">
       <div hlmDialogHeader>
-        <h2 hlmDialogTitle class="font-display text-lg font-semibold tracking-tight">
+        <h2
+          hlmDialogTitle
+          class="pe-10 font-display text-lg font-semibold tracking-tight break-words"
+        >
           {{ data.title }}
         </h2>
         <p hlmDialogDescription>{{ data.text }}</p>
@@ -57,7 +62,16 @@ export interface ConfirmResult {
       }
       <div hlmDialogFooter>
         <button hlmBtn variant="outline" type="button" (click)="ref.close()">Cancel</button>
-        <button hlmBtn type="button" (click)="ref.close(result())">
+        <button
+          hlmBtn
+          type="button"
+          [class]="
+            data.destructive
+              ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+              : ''
+          "
+          (click)="ref.close(result())"
+        >
           {{ data.confirmLabel }}
         </button>
       </div>

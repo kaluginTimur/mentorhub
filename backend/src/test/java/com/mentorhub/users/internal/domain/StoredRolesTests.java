@@ -14,6 +14,11 @@ class StoredRolesTests {
     @DisplayName("PERM-2.1 Permissions of several roles are combined")
     void permissionsOfSeveralRolesAreCombined() {
         assertThat(new StoredRoles().permissions(List.of(Role.MENTOR.name(), Role.ADMIN.name())))
-                .containsExactlyInAnyOrder(Permission.USERS_READ, Permission.USERS_MANAGE, Permission.USERS_INVITE);
+                .containsExactlyInAnyOrder(
+                        Permission.USERS_READ,
+                        Permission.USERS_MANAGE,
+                        Permission.USERS_INVITE,
+                        Permission.TRACKS_READ,
+                        Permission.TRACKS_MANAGE);
     }
 }

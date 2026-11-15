@@ -43,7 +43,10 @@ const COMMENT_LIMIT = 500;
   template: `
     <div class="flex flex-col gap-5">
       <div hlmDialogHeader>
-        <h2 hlmDialogTitle class="font-display text-lg font-semibold tracking-tight">
+        <h2
+          hlmDialogTitle
+          class="pe-10 font-display text-lg font-semibold tracking-tight break-words"
+        >
           Disable {{ data.name }}?
         </h2>
         <p hlmDialogDescription>They lose access on their next action.</p>

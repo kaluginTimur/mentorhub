@@ -95,7 +95,7 @@ class MeEndpointTests {
                     "lastName": "Petrova",
                     "phone": null,
                     "roles": ["ADMIN", "MENTOR"],
-                    "permissions": ["USERS_READ", "USERS_MANAGE", "USERS_INVITE"]
+                    "permissions": ["USERS_READ", "USERS_MANAGE", "USERS_INVITE", "TRACKS_READ", "TRACKS_MANAGE"]
                   }
                 }
                 """.formatted(userId));

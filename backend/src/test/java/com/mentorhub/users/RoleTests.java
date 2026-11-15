@@ -13,10 +13,19 @@ class RoleTests {
 
     // The role table of PERM-1: every role the version knows, with exactly its permissions.
     private static final Map<String, Set<Permission>> TABLE = Map.of(
-            "ADMIN", EnumSet.of(Permission.USERS_READ, Permission.USERS_MANAGE, Permission.USERS_INVITE),
-            "COORDINATOR", EnumSet.noneOf(Permission.class),
-            "MENTOR", EnumSet.noneOf(Permission.class),
-            "STUDENT", EnumSet.noneOf(Permission.class));
+            "ADMIN",
+            EnumSet.of(
+                    Permission.USERS_READ,
+                    Permission.USERS_MANAGE,
+                    Permission.USERS_INVITE,
+                    Permission.TRACKS_READ,
+                    Permission.TRACKS_MANAGE),
+            "COORDINATOR",
+            EnumSet.noneOf(Permission.class),
+            "MENTOR",
+            EnumSet.noneOf(Permission.class),
+            "STUDENT",
+            EnumSet.noneOf(Permission.class));
 
     @Test
     @DisplayName("PERM-1.1 A role holds exactly the permissions in the table")

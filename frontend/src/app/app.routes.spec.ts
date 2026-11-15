@@ -60,9 +60,14 @@ describe('routes', () => {
     expect(TestBed.inject(Router).url).toBe('/');
   });
 
-  it('leads a users address to the home page without USERS_READ', async () => {
+  it.each([
+    ['/users', 'USERS_READ'],
+    ['/tracks', 'TRACKS_READ'],
+    ['/tracks?status=ALL', 'TRACKS_READ'],
+    ['/tracks/33333333-3333-4333-8333-333333333333', 'TRACKS_READ'],
+  ])('leads %s to the home page without %s', async (url) => {
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/users');
+    await harness.navigateByUrl(url);
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/');
   });

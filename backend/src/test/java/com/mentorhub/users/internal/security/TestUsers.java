@@ -20,6 +20,8 @@ public final class TestUsers {
     public void deleteAll() {
         // The append-only trigger rejects delete but not truncate.
         jdbc.sql("truncate audit_log").update();
+        jdbc.sql("delete from track_coordinators").update();
+        jdbc.sql("delete from tracks").update();
         jdbc.sql("delete from invitation_emails").update();
         jdbc.sql("delete from invitation_roles").update();
         jdbc.sql("delete from invitations").update();
@@ -43,6 +45,14 @@ public final class TestUsers {
             assignStoredRole(id, role.name());
         }
         return id;
+    }
+
+    public void rename(UUID userId, String firstName, String lastName) {
+        jdbc.sql("update users set first_name = :firstName, last_name = :lastName where id = :id")
+                .param("firstName", firstName)
+                .param("lastName", lastName)
+                .param("id", userId)
+                .update();
     }
 
     public void assignStoredRole(UUID userId, String role) {

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The record of who changed what in MentorHub, and when. Every audited change leaves one entry, written together with the change, that nobody can alter afterwards. Entries are read only through the history of one subject (a user, later an enrollment), under that subject's own access rules. This capability owns the rules of the record and the catalog of every audited action (AUD-7); the capability that owns an action states that it is audited and cites the catalog. How a history is shown belongs to the capability that owns the subject (for users, user administration).
+The record of who changed what in MentorHub, and when. Every audited change leaves one entry, written together with the change, that nobody can alter afterwards. Entries are read only through the history of one subject (a user, a track, later an enrollment), under that subject's own access rules. This capability owns the rules of the record and the catalog of every audited action (AUD-7); the capability that owns an action states that it is audited and cites the catalog. How a history is shown belongs to the capability that owns the subject (for users, user administration; for tracks, tracks).
 
 ## Requirements
 
@@ -128,6 +128,14 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 | `INVITATION_LINK_REISSUED` | invitation | An administrator gives an open invitation a new link | the administrator | the new expiry time |
 | `INVITATION_REVOKED` | invitation | An administrator revokes an open invitation | the administrator | none |
 | `INVITATION_EMAIL_REQUESTED` | invitation | An invitation email is requested: with a new invitation, with a new link, or by sending again | the administrator | the reason: created, link reissued or resent |
+| `TRACK_CREATED` | track | An administrator creates a track | the administrator | the code and the name |
+| `TRACK_UPDATED` | track | An administrator saves a track and at least one value changes | the administrator | each changed field (code, name) with its old and new value |
+| `TRACK_ARCHIVED` | track | An administrator archives an active track | the administrator | none |
+| `TRACK_RESTORED` | track | An administrator restores an archived track | the administrator | none |
+| `TRACK_COORDINATOR_ADDED` | track | An administrator names a user who is not yet a coordinator of the track | the administrator | the user |
+| `TRACK_COORDINATOR_REMOVED` | track | An administrator removes a coordinator of the track | the administrator | the user |
+| `USER_TRACK_COORDINATOR_ADDED` | user | Written with `TRACK_COORDINATOR_ADDED`, about the named user | the administrator | the track, with its code and name at that moment |
+| `USER_TRACK_COORDINATOR_REMOVED` | user | Written with `TRACK_COORDINATOR_REMOVED`, about the removed user | the administrator | the track, with its code and name at that moment |
 
 #### AUD-7.1 The administrator bootstrap is audited without an actor
 

@@ -97,6 +97,16 @@ describe('describeEntry', () => {
     expect(describeEntry({ ...base, ...partial } satisfies HistoryEntry)).toBe(text);
   });
 
+  // USR-11: the sentence of a coordinator named or removed names the track as "<code> · <name>", as stored.
+  it('names the track of a coordinator named or removed', () => {
+    const track = { id: 't1', code: 'QA', name: 'Quality Assurance' };
+    const added = describeEntry({ ...base, action: 'USER_TRACK_COORDINATOR_ADDED', track });
+    const removed = describeEntry({ ...base, action: 'USER_TRACK_COORDINATOR_REMOVED', track });
+    expect(added).toContain('QA · Quality Assurance');
+    expect(removed).toContain('QA · Quality Assurance');
+    expect(added).not.toBe(removed);
+  });
+
   it('copes with missing optional lists', () => {
     expect(describeEntry({ ...base, action: 'USER_ROLES_CHANGED' })).toBe('Roles changed');
     expect(describeEntry({ ...base, action: 'USER_PROFILE_UPDATED' })).toBe('Profile updated');

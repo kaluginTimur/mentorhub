@@ -55,8 +55,11 @@ export class Shell {
   protected readonly name = this.currentUser.name;
   protected readonly email = computed(() => this.currentUser.user()?.email ?? '');
   protected readonly canReadUsers = computed(() => this.currentUser.hasPermission('USERS_READ'));
+  protected readonly canReadTracks = computed(() => this.currentUser.hasPermission('TRACKS_READ'));
   protected readonly canInvite = computed(() => this.currentUser.hasPermission('USERS_INVITE'));
-  protected readonly hasNavLinks = computed(() => this.canReadUsers() || this.canInvite());
+  protected readonly hasNavLinks = computed(
+    () => this.canReadUsers() || this.canReadTracks() || this.canInvite(),
+  );
   protected readonly mobileMenuOpen = signal(false);
 
   protected readonly themePreference = this.theme.preference;
