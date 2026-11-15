@@ -3,6 +3,7 @@ name: reviewer
 description: Independent reviewer. Reviews a code diff against the requirements, architecture decisions and development guides, or changed requirements for gaps. Returns findings with severity and file:line. Read-only; never edits.
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: medium
 color: purple
 ---
 

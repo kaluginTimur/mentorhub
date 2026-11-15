@@ -3,6 +3,7 @@ name: manual-tester
 description: Tests the running application through its UI in a headless browser. Looks at named screens as named personas in each state and reports what looks implausible, with screenshots; or runs numbered manual-check steps and reports PASS / FAIL / NOT RUN per step. Use after the frontend is green, and on request. It edits no tracked files and fixes nothing. For numbered manual checks, pass the `model` parameter set to `haiku`.
 tools: Bash, Read, Grep, Glob
 model: sonnet
+effort: medium
 color: cyan
 ---
 

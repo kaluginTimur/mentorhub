@@ -27,9 +27,11 @@ For every feature after the baseline, check and report yes, no or no data:
 | No cache rebuilds after review pauses | their `rebuilds` is 0, or each rebuild matches a pause the plan explains |
 | Fresh `backend-dev` above about 150k | no `backend-dev` record's `lastContext` is far above it; the plan's Agents table shows the new agents |
 | Continuing from a handover | a stop for the user followed by a long pause shows a new session, not a rebuild of the coordinator; the new session's first calls have a small context |
-| `test-engineer` model | Opus on Tracking core: its share of the total and the rework its tests caused, compared with what Sonnet would cost at the same calls |
+| `test-engineer` model | Sonnet at `medium` as a trial since tracks (Opus at `high` there: 2.10M, 19% of the Opus total; Opus at `medium` in observer-role-removed: 0.22M, 14%): its share of the total, tests that check nothing, red tests that fail on compilation and wrong tests reported by developers, compared with both. Model and effort changed together |
 | Cheap re-reviews | re-review `reviewer` records run on Sonnet and are much smaller than full reviews |
 | One fix round per review | the plan shows one fix round after each review |
+| Coordinator context reminder | the coordinator's sessions (`main` records) have average and last context below about 200k; a session far above it is a finding to ask the user about, since whether the reminder showed is not in the records |
+| Pinned effort | every record of an agent defined in `.claude/agents/` has `effort: medium`, whatever the session's effort |
 | API checks delegated to `api-lookup` | `backend-dev` and `frontend-dev` records have `inspections` 0, and there are `api-lookup` records with their `spawnedBy`; the reports' "API lookups" sections in the plan or the transcripts name what was asked. Records made before `inspections` existed (all of identity-foundation, user-administration and invitations) lack it |
 
 A technique that did not take effect is the first finding: fix the mechanism before judging its effect.
