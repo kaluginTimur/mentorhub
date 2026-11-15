@@ -95,6 +95,9 @@ with sample (id, email, first_name, last_name, phone, status, disabled_reason, d
             null, interval '279 days', array ['MENTOR']),
            ('00000000-0000-4000-a000-000000000123', 'irene.walsh@mentorhub.local', 'Irene', 'Walsh', '+77012223344',
             'ACTIVE', null, null, interval '229 days', array ['COORDINATOR']),
+           -- Coordinated the QA track until she left; tracks.sql keeps her assignment, marked.
+           ('00000000-0000-4000-a000-000000000127', 'laura.chen@mentorhub.local', 'Laura', 'Chen', null, 'DISABLED',
+            'STAFF_OFFBOARDED', 'Left at the end of her contract', interval '235 days', array ['COORDINATOR']),
            -- A guest mentor from industry.
            ('00000000-0000-4000-a000-000000000124', 'thomas.grant@example.com', 'Thomas', 'Grant', null, 'ACTIVE', null,
             null, interval '208 days', array ['MENTOR']),
@@ -226,7 +229,9 @@ with sample (n, email, created_by, created_ago, link_ago, accepted_ago, revoked_
            (134, 'helen.park@example.com', 'admin.mentor@mentorhub.local', interval '30 days', null,
             interval '28 days', null, null, array ['MENTOR']),
            (135, 'noroles@mentorhub.local', 'admin@mentorhub.local', interval '5 days', null, interval '4 days', null,
-            null, array []::text[])),
+            null, array []::text[]),
+           (136, 'laura.chen@mentorhub.local', 'admin@mentorhub.local', interval '236 days', null,
+            interval '235 days', null, null, array ['COORDINATOR'])),
      inserted as (
          insert into invitations (id, email, created_at, created_by, expires_at, accepted_at, accepted_user_id,
                                   revoked_at, revoked_by, token)
@@ -449,7 +454,9 @@ from (values (1, interval '300 days', null, 'USER_BOOTSTRAPPED_ADMIN', 'admin@me
               '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77013334455"}]}'),
              (24, interval '200 days', 'admin.mentor@mentorhub.local', 'USER_PROFILE_UPDATED',
               'irene.walsh@mentorhub.local',
-              '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77012223344"}]}'))
+              '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77012223344"}]}'),
+             (25, interval '12 days', 'admin@mentorhub.local', 'USER_DISABLED', 'laura.chen@mentorhub.local',
+              '{"reason": "STAFF_OFFBOARDED", "comment": "Left at the end of her contract"}'))
          as s (n, ago, actor, action, subject, details)
          join users subject on subject.email = s.subject
          left join users actor on actor.email = s.actor;

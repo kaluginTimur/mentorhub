@@ -48,7 +48,7 @@ Every development user has the password `mentorhub`:
 
 ### The sample center data
 
-Besides the development users, the dev database holds a fictional training center (`backend/src/main/resources/db/sample/`; the header of each script describes it): 26 more users (students, mentors, a coordinator, users disabled for each reason), invitations in every status with invitation emails in every status, and the change history behind them. The users list and the invitations list have more than one page, and the user page of Daniel Kim has more history than one page. Sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local` to see them; the other development users see what their roles allow.
+Besides the development users, the dev database holds a fictional training center (`backend/src/main/resources/db/sample/`; the header of each script describes it): 27 more users (students, mentors, coordinators, users disabled for each reason), invitations in every status with invitation emails in every status, tracks with their coordinators, and the change history behind them. The users list and the invitations list have more than one page, and the user page of Daniel Kim and the DevOps track page have more history than one page. Sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local` to see them; the other development users see what their roles allow.
 
 The sample center has a pending invitation for `stranger@mentorhub.local` with the Mentor role and a fixed link:
 

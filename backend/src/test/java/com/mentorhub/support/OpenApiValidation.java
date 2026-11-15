@@ -69,8 +69,7 @@ public final class OpenApiValidation {
             SimpleResponse response = buildSimpleResponse(result.getResponse());
             ValidationReport report = VALIDATOR.validateResponse(path, method, response);
             if (report.hasErrors()) {
-                if (isAcceptableUnmappedNotFound(result.getResponse().getStatus(), report)
-                        || isStubNotImplemented(result.getResponse().getStatus())) {
+                if (isAcceptableUnmappedNotFound(result.getResponse().getStatus(), report)) {
                     return;
                 }
                 String formatted = SimpleValidationReportFormat.getInstance().apply(report);
@@ -114,8 +113,7 @@ public final class OpenApiValidation {
             SimpleResponse simpleResponse = buildSimpleResponse(result.getResponse());
             ValidationReport report = VALIDATOR.validate(simpleRequest, simpleResponse);
             if (report.hasErrors()) {
-                if (isAcceptableUnmappedNotFound(result.getResponse().getStatus(), report)
-                        || isStubNotImplemented(result.getResponse().getStatus())) {
+                if (isAcceptableUnmappedNotFound(result.getResponse().getStatus(), report)) {
                     return;
                 }
                 String formatted = SimpleValidationReportFormat.getInstance().apply(report);
@@ -123,14 +121,6 @@ public final class OpenApiValidation {
                         + path + ":\n" + formatted);
             }
         };
-    }
-
-    /**
-     * A 501 comes from a stub the contract step leaves until an operation is implemented (see the backend guide); the
-     * test's own assertion on the status reports it, so a red test fails on what its scenario expects.
-     */
-    private static boolean isStubNotImplemented(int status) {
-        return status == 501;
     }
 
     private static boolean isAcceptableUnmappedNotFound(int status, ValidationReport report) {
