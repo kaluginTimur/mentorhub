@@ -1,5 +1,6 @@
 package com.mentorhub.tracks.internal.service;
 
+    import com.mentorhub.tracks.ActiveEnrollments;
 import com.mentorhub.tracks.internal.TrackProblems;
 import com.mentorhub.tracks.internal.domain.TrackChange;
 import com.mentorhub.tracks.internal.domain.TrackField;
@@ -9,10 +10,12 @@ import com.mentorhub.tracks.internal.persistence.TrackAuditTrail;
 import com.mentorhub.tracks.internal.persistence.TrackChangePage;
 import com.mentorhub.tracks.internal.persistence.TrackCoordinator;
 import com.mentorhub.tracks.internal.persistence.TrackRepository;
-import com.mentorhub.users.CoordinatedTrack;
 import com.mentorhub.users.CoordinatorHistory;
+import com.mentorhub.users.CurrentUser;
 import com.mentorhub.users.CurrentUserProvider;
 import com.mentorhub.users.DirectoryUser;
+import com.mentorhub.users.HistoryTrack;
+import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.UserDirectory;
 import com.mentorhub.web.ConflictException;
@@ -40,8 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
  * them, so the only resource-level rule is that an unknown id is {@link NotFoundException}.
  *
  * <p>Every change locks the track's row first ({@link TrackRepository#lock}), then checks the status, then the
- * eligibility of a coordinator not yet named, then writes; so changes of one track and its archiving run one after another (TRK-5.4).
- * The track's row is the only lock taken.
+ * eligibility of a coordinator not yet named, then writes; so changes of one track, enrollments on it and its archiving
+ * run one after another (TRK-5.4, TRK-5.6). The track's row is the only lock taken.
  */
 @Service
 public class TrackService {
@@ -54,18 +57,21 @@ public class TrackService {
     private final TrackAuditTrail auditTrail;
     private final UserDirectory userDirectory;
     private final CoordinatorHistory coordinatorHistory;
+    private final ActiveEnrollments activeEnrollments;
 
     TrackService(
             CurrentUserProvider currentUser,
             TrackRepository tracks,
             TrackAuditTrail auditTrail,
             UserDirectory userDirectory,
-            CoordinatorHistory coordinatorHistory) {
+            CoordinatorHistory coordinatorHistory,
+            ActiveEnrollments activeEnrollments) {
         this.currentUser = currentUser;
         this.tracks = tracks;
         this.auditTrail = auditTrail;
         this.userDirectory = userDirectory;
         this.coordinatorHistory = coordinatorHistory;
+        this.activeEnrollments = activeEnrollments;
     }
 
     /** @param status {@code null} for every track */
@@ -89,7 +95,7 @@ public class TrackService {
         TrackValues values = validate(code, name);
         StoredTrack track = tracks.insert(values.code(), values.name());
         auditTrail.record(actor(), track.id(), new TrackChange.Created(track.code(), track.name()));
-        return new TrackDetails(track.id(), track.code(), track.name(), track.status(), List.of());
+        return details(track);
     }
 
     /**
@@ -117,7 +123,11 @@ public class TrackService {
         return details(new StoredTrack(trackId, values.code(), values.name(), track.status()));
     }
 
-    /** Archiving an archived track changes and records nothing. */
+    /**
+     * Archiving an archived track changes and records nothing.
+     *
+     * @throws ConflictException {@link TrackProblems#TRACK_HAS_ACTIVE_ENROLLMENTS}
+     */
     @Transactional
     public TrackDetails archive(UUID trackId) {
         return changeStatus(trackId, TrackStatus.ARCHIVED, new TrackChange.Archived());
@@ -130,8 +140,8 @@ public class TrackService {
     }
 
     /**
-     * Newest first; entries with an action the code does not know are left out. The named or removed user is shown
-     * with their current name.
+     * Newest first; entries with an action the code does not know are left out. The named or removed user, and the
+     * enrolled student, are shown with their current name.
      */
     @Transactional(readOnly = true)
     public TrackHistory history(UUID trackId, int page, int size) {
@@ -140,7 +150,7 @@ public class TrackService {
         }
         TrackChangePage changes = auditTrail.find(trackId, page, size);
         Map<UUID, NamedUser> names = names(changes.items().stream()
-                .flatMap(change -> Stream.of(change.actorUserId(), coordinator(change.change())))
+                .flatMap(change -> Stream.of(change.actorUserId(), namedUser(change.change())))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet()));
         List<TrackHistoryItem> items = changes.items().stream()
@@ -149,7 +159,7 @@ public class TrackService {
                         change.occurredAt(),
                         actorName(change.actorUserId(), names),
                         change.change(),
-                        userName(coordinator(change.change()), names)))
+                        userName(namedUser(change.change()), names)))
                 .toList();
         return new TrackHistory(items, page, size, changes.totalItems());
     }
@@ -191,7 +201,7 @@ public class TrackService {
         if (tracks.addCoordinatorIfAbsent(trackId, userId) > 0) {
             UUID actor = actor();
             auditTrail.record(actor, trackId, new TrackChange.CoordinatorAdded(userId));
-            coordinatorHistory.recordAdded(actor, userId, coordinatedTrack(track));
+            coordinatorHistory.recordAdded(actor, userId, historyTrack(track));
         }
         return details(track);
     }
@@ -208,7 +218,7 @@ public class TrackService {
         if (tracks.removeCoordinator(trackId, userId) > 0) {
             UUID actor = actor();
             auditTrail.record(actor, trackId, new TrackChange.CoordinatorRemoved(userId));
-            coordinatorHistory.recordRemoved(actor, userId, coordinatedTrack(track));
+            coordinatorHistory.recordRemoved(actor, userId, historyTrack(track));
         }
         return details(track);
     }
@@ -217,6 +227,11 @@ public class TrackService {
         StoredTrack track = tracks.lock(trackId).orElseThrow(NotFoundException::new);
         if (track.status() == status) {
             return details(track);
+        }
+        if (status == TrackStatus.ARCHIVED && activeEnrollments.existOnTrack(trackId)) {
+            throw new ConflictException(
+                    TrackProblems.TRACK_HAS_ACTIVE_ENROLLMENTS,
+                    "The track has active enrollments; it can be archived once they end.");
         }
         tracks.updateStatus(trackId, status);
         auditTrail.record(actor(), trackId, change);
@@ -236,6 +251,7 @@ public class TrackService {
     }
 
     private List<TrackDetails> withCoordinators(List<StoredTrack> stored) {
+        CurrentUser caller = currentUser.currentUser();
         Map<UUID, Set<UUID>> coordinatorIds =
                 coordinatorIds(stored.stream().map(StoredTrack::id).toList());
         List<DirectoryUser> users = userDirectory.findUsers(
@@ -250,7 +266,8 @@ public class TrackService {
                             track.status(),
                             users.stream()
                                     .filter(user -> ids.contains(user.id()))
-                                    .toList());
+                                    .toList(),
+                            canEnroll(caller, ids));
                 })
                 .toList();
     }
@@ -273,10 +290,17 @@ public class TrackService {
         return currentUser.currentUser().id();
     }
 
-    private static @Nullable UUID coordinator(TrackChange change) {
+    /** ENR-1: by the permission and the relation alone, whatever the status. */
+    private static boolean canEnroll(CurrentUser caller, Set<UUID> coordinatorIds) {
+        return caller.has(Permission.ENROLLMENTS_MANAGE)
+                || (caller.has(Permission.ENROLLMENTS_MANAGE_COORDINATED) && coordinatorIds.contains(caller.id()));
+    }
+
+    private static @Nullable UUID namedUser(TrackChange change) {
         return switch (change) {
             case TrackChange.CoordinatorAdded(var userId) -> userId;
             case TrackChange.CoordinatorRemoved(var userId) -> userId;
+            case TrackChange.StudentEnrolled(var userId, var _) -> userId;
             default -> null;
         };
     }
@@ -297,8 +321,8 @@ public class TrackService {
         return userId == null ? null : names.get(userId);
     }
 
-    private static CoordinatedTrack coordinatedTrack(StoredTrack track) {
-        return new CoordinatedTrack(track.id(), track.code(), track.name());
+    private static HistoryTrack historyTrack(StoredTrack track) {
+        return new HistoryTrack(track.id(), track.code(), track.name());
     }
 
     private static ConflictException trackArchived() {

@@ -96,9 +96,9 @@ Proposed by the coordinator and approved by the owner at the plan gate on 2026-1
 | 1. Contract, schema in `V1__schema.sql`, the three permissions and the coordinator's `TRACKS_READ`, `EnrollmentsController` stub (501), build green | all (shape) | backend-dev | done |
 | 1a. Frontend compiles with the new contract: the new history actions skipped as unknown, `canEnroll` in the tracks test data | (none) | frontend-dev | done |
 | 2. Red tests, backend and frontend; the existing tests of the changed TRK-1.1, TRK-1.2, TRK-10.1 and PERM-1.1 follow the requirements | ENR-1.1 to ENR-7.1, TRK-1.1, TRK-1.2, TRK-5.5, TRK-5.6, TRK-10.1, PERM-1.1 | test-engineer | done |
-| 3. The `users` and `tracks` public API and history mapping, the archiving check, the `enrollments` module (checkpoint: backend green) | ENR-1 to ENR-6, TRK-5, PERM-1 | backend-dev | pending |
-| 4. Sample center enrollments | (screens of ENR-7, ENR-8) | backend-dev | pending |
-| 5. Enrollments on the track page, the enroll dialog, My enrollment and its link, the history sentences | ENR-7, ENR-7.1, ENR-8, TRK-10, TRK-10.1 | frontend-dev | pending |
+| 3. The `users` and `tracks` public API and history mapping, the archiving check, the `enrollments` module (checkpoint: backend green) | ENR-1 to ENR-6, TRK-5, PERM-1 | backend-dev | done |
+| 4. Sample center enrollments | (screens of ENR-7, ENR-8) | backend-dev | in progress |
+| 5. Enrollments on the track page, the enroll dialog, My enrollment and its link, the history sentences | ENR-7, ENR-7.1, ENR-8, TRK-10, TRK-10.1 | frontend-dev | in progress |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -110,16 +110,16 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 
 <!-- From the developers' reports ("Notes for the next task"): what a fresh agent must know and cannot see in the plan or the diff. One line each, with the task it comes from. -->
 - From the spec: the client needs to know whether the current user has an enrollment, to show the My enrollment link (ENR-8); how the contract tells it is designed at the plan stage.
-- From task 1: to replace in task 3: every method of `EnrollmentsController` (501); the temporary `ENROLLMENTS_MANAGE` on `enrollStudent` and `listEnrollmentCandidates`, until `@RequirePermission` takes either of two permissions; `canEnroll = false` in `TracksMapper.track`; the empty `StudentEnrolled` case in `TracksMapper` and the empty `Enrolled` case in `UsersMapper`; `TrackService.coordinator()`, which must also return the student of `StudentEnrolled` so that the name is resolved.
-- From task 1: a new optional property of a history entry must be `NON_NULL` in its `*JsonMixin`, or every existing history response fails contract validation.
-- From task 1: `UserChange.Enrolled` reuses the public `CoordinatedTrack` as its track type; task 3 may give it a neutral name.
-- From task 2, for task 3: ENR-1.2 and ENR-1.3 expect 403 from the relation check; today the stub's temporary `ENROLLMENTS_MANAGE` gives that 403, and only their control calls fail. Ten backend tests and the two concurrency tests fail on the response validator (501 is not in the contract), before their own assertions.
+- From task 3, for task 4: an `enrollments` row has `status` defaulting to `ACTIVE` and a required `enrolled_by`. Each enrollment needs both audit entries, with the details as the code writes them: `TRACK_STUDENT_ENROLLED`, subject `TRACK`: `{"userId": "<uuid>", "startDate": "YYYY-MM-DD"}`; `USER_ENROLLED`, subject `USER`: `{"track": {"id", "code", "name"}, "startDate": "YYYY-MM-DD"}`.
+- From tasks 1 and 3: a new optional property of a history entry must be `NON_NULL` in its `*JsonMixin`, or every existing history response fails contract validation.
+- From task 3: `@RequirePermission` takes several permissions as any-of; a relation is checked in the service with `AccessDeniedException` (403). `CoordinatedTrack` is renamed `HistoryTrack` (the rename is staged by `git mv`). The new pages of `users` sort in SQL by name, email, id.
+- From task 3, for stage 8: the developer proposes widening one line of the backend guide's Security section: "`@RequirePermission` takes several permissions as any-of; a permission that needs a relation is checked in the service, with `AccessDeniedException` (403)." Its four answers: (1) mentors or cohorts, any operation open to a "manage all" or a "manage related" permission; (2) a second annotation on one method, or the relation checked as a 404; (3) the annotation's Javadoc says it, but the guide line still shows a single permission; (4) yes, task 1 left a temporary `ENROLLMENTS_MANAGE` because of it. The owner agreed on 2026-11-16; the guide is edited at stage 8.
 - From task 2, for task 5: the frontend tests assume, beyond the plan: the start date is a text-settable input labelled "Start date" and the search field is labelled "Student"; a candidate is an element with `role=option`, an `li` or a `button` holding the name; `enrollmentsPage` is a zero-based index; the "My enrollment" link is in the navigation or the account menu; the snackbar of `track-archived` matches `/archived/i` and that of `track-has-active-enrollments` `/enrol/i`; "today" in the dialog is the local date. A different but reasonable control is agreed with `test-engineer`, not bent in the code. `trackAdmin` in the tracks test data holds `ENROLLMENTS_READ` and `ENROLLMENTS_MANAGE`.
-- From task 2, for the second pass: the order of the checks (400 before 404) and the paging of the enrollments and the candidates are not tested yet.
+- From tasks 2 and 3, for the second pass: the order of the checks (400 before 404, the length of `q` included) and the paging of the enrollments and the candidates are not tested yet.
 
 ## Red tests
 
-Commit: <the commit holding the requirements, the contract, this plan and the red tests>
+Commit: 8315941
 
 ## Decisions
 
@@ -140,27 +140,20 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 - 2026-11-16: the schema of enrollments goes into `V1__schema.sql`: "всё идёт в v1".
 - 2026-11-16: the owner appended the schema of enrollments to `V1__schema.sql` themselves, after a hook refused the agent's edit, and read the changed requirements: "я добавил sql в v1. схему посмотрел, требования тоже. можем продолжать".
 - 2026-11-16: at the plan gate, to the plan, the contract and the schema: "план одобряю".
+- 2026-11-16: to committing the requirements, the decision, the contract, the schema, the stubs, the plan, the red tests and the usage record together: "коммить".
+- 2026-11-16: at the checkpoint of task 3, to the backend, the developer's details, the guide line about any-of permissions, and the commit: "бэкенд одобряю, со строкой в гайде согласен, коммить".
 
 ## Handover
 
 <!-- Overwritten before every stop for the user, not appended to: it holds the state now. The results of earlier rounds leave it; what lasts is in Decisions, the notes or the commits. A new session reads the plan and what this names, and nothing else, so keep it short and exact. -->
 
-- Waiting for: the user's word on the red-test commit (the requirements, the decision, the contract, the schema, the stubs, the plan, the tests and the usage record together).
-- To read: nothing new is required; the tests are in `backend/src/test/java/com/mentorhub/enrollments/` and `frontend/src/app/features/enrollments/*.spec.ts`
-- Documents changed (uncommitted; nothing new since the requirements gate, `node scripts/requirements.mjs validate` passes):
-  - `docs/requirements/enrollments.md`: added, the capability ENR (ENR-1 to ENR-8, 17 scenarios)
-  - `docs/requirements/tracks.md`: changed: the purpose; the examples of TRK-1.1 and TRK-1.2; TRK-5 refuses archiving a track with an active enrollment, new TRK-5.5 and TRK-5.6; TRK-6, TRK-10 and TRK-10.1 cite enrollments; limitations and out of scope
-  - `docs/requirements/authorization.md`: changed: PERM-1 gives the coordinator `TRACKS_READ`, `ENROLLMENTS_READ`, `ENROLLMENTS_MANAGE_COORDINATED`, the administrator `ENROLLMENTS_READ`, `ENROLLMENTS_MANAGE`; limitations and out of scope
-  - `docs/requirements/audit.md`: changed: `TRACK_STUDENT_ENROLLED` and `USER_ENROLLED` in AUD-7; the purpose and out of scope
-  - `docs/requirements/README.md`: changed: the row of Enrollments
-  - `api/openapi.yaml`: changed, new since the last stop: the tag `Enrollments` with `listMyEnrollments`, `listTrackEnrollments`, `enrollStudent`, `listEnrollmentCandidates` and their schemas; `Track.canEnroll`; 409 `track-has-active-enrollments` on `archiveTrack`; three permissions; `TRACK_STUDENT_ENROLLED` and `USER_ENROLLED` with `startDate` in the histories
-  - `docs/requirements/enrollments.md`: new since the last stop: the check order in ENR-1, ENR-1.2, ENR-1.4, ENR-2
-  - `backend/src/main/resources/db/migration/V1__schema.sql`: changed, new since the last stop: the table `enrollments` with the unique index of one active enrollment per student and the index on the track, appended by the owner
-  - `docs/architecture/decisions/0004-permissions-in-code-role-assignments-in-database.md`: changed: 403 for an action a relation does not allow on a resource the caller may read; coordinators and administrators read the students of every track by a permission
-- State: tasks 1, 1a and 2 are done. Every new or changed scenario has a test; `node scripts/requirements.mjs trace` passes (245 of 245, 4 manual). Red as the test engineer reports: backend 26 fail, all new; frontend 22 fail, 340 pass. The five tests broken by PERM-1 pass again, with only the permission lists changed. Nothing is committed.
+- Waiting for: the reports of `backend-dev` (task 4) and `frontend-dev` (task 5), running in the session of 2026-11-16. A new session starts fresh agents for whichever task is not done, from `git status` and this plan.
+- To read: nothing yet
+- Documents changed: none since the commit 8315941.
+- State: the backend of task 3 is committed. Tasks 4 and 5 are in progress.
 - Open questions: none
-- On approval: `/feature enrollments`: commit, write the commit into Red tests, then brief `backend-dev` with task 3 (a fresh agent; the checkpoint is the green backend)
-- On remarks: `/feature enrollments`, relay to `test-engineer` (a fresh one in a new session)
+- On approval: `/feature enrollments`
+- On remarks: `/feature enrollments`
 
 ## Agents
 
@@ -172,3 +165,4 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 | backend-dev | from its definition | a512e079e4dfb722a | plan, task 1 | 120k |
 | frontend-dev | from its definition | af7c3b59a46a2885d | plan, task 1a | 48k |
 | test-engineer | from its definition | ab592dbb0dfe5bb8f | plan, task 2 (first pass) | 204k |
+| backend-dev | from its definition | a869a76c011aee026 | implementation, task 3 | 177k |

@@ -1,7 +1,7 @@
 package com.mentorhub.users.internal.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.mentorhub.users.CoordinatedTrack;
+import com.mentorhub.users.HistoryTrack;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -116,7 +116,7 @@ public sealed interface UserChange {
     }
 
     /** The user was named a coordinator of the track, given with its code and name at that moment. */
-    record TrackCoordinatorAdded(CoordinatedTrack track) implements UserChange {
+    record TrackCoordinatorAdded(HistoryTrack track) implements UserChange {
         public TrackCoordinatorAdded {
             Objects.requireNonNull(track, "track");
         }
@@ -128,7 +128,7 @@ public sealed interface UserChange {
     }
 
     /** The user was removed as a coordinator of the track, given with its code and name at that moment. */
-    record TrackCoordinatorRemoved(CoordinatedTrack track) implements UserChange {
+    record TrackCoordinatorRemoved(HistoryTrack track) implements UserChange {
         public TrackCoordinatorRemoved {
             Objects.requireNonNull(track, "track");
         }
@@ -140,7 +140,7 @@ public sealed interface UserChange {
     }
 
     /** The user was enrolled on the track, given with its code and name at that moment. */
-    record Enrolled(CoordinatedTrack track, LocalDate startDate) implements UserChange {
+    record Enrolled(HistoryTrack track, LocalDate startDate) implements UserChange {
         public Enrolled {
             Objects.requireNonNull(track, "track");
             Objects.requireNonNull(startDate, "startDate");

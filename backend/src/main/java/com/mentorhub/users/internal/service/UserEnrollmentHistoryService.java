@@ -1,0 +1,27 @@
+package com.mentorhub.users.internal.service;
+
+import com.mentorhub.users.HistoryTrack;
+import com.mentorhub.users.UserEnrollmentHistory;
+import com.mentorhub.users.internal.domain.UserChange;
+import com.mentorhub.users.internal.persistence.UserAuditTrail;
+import java.time.LocalDate;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+class UserEnrollmentHistoryService implements UserEnrollmentHistory {
+
+    private final UserAuditTrail auditTrail;
+
+    UserEnrollmentHistoryService(UserAuditTrail auditTrail) {
+        this.auditTrail = auditTrail;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordEnrolled(UUID actorUserId, UUID userId, HistoryTrack track, LocalDate startDate) {
+        auditTrail.record(actorUserId, userId, new UserChange.Enrolled(track, startDate));
+    }
+}

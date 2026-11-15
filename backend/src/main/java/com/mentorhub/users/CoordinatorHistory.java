@@ -14,7 +14,7 @@ public interface CoordinatorHistory {
      * @param actorUserId {@code users.id} of who made the change
      * @throws org.springframework.transaction.IllegalTransactionStateException without an active transaction
      */
-    void recordAdded(UUID actorUserId, UUID userId, CoordinatedTrack track);
+    void recordAdded(UUID actorUserId, UUID userId, HistoryTrack track);
 
     /**
      * Records that the user was removed as a coordinator of the track, in the caller's transaction.
@@ -22,5 +22,5 @@ public interface CoordinatorHistory {
      * @param actorUserId {@code users.id} of who made the change
      * @throws org.springframework.transaction.IllegalTransactionStateException without an active transaction
      */
-    void recordRemoved(UUID actorUserId, UUID userId, CoordinatedTrack track);
+    void recordRemoved(UUID actorUserId, UUID userId, HistoryTrack track);
 }
