@@ -158,7 +158,7 @@ The client SHALL offer the Tracks link only to a user with `TRACKS_READ` and tak
 
 ### TRK-9 The tracks page
 
-The client SHALL show the tracks as a list with a status filter, active by default, each track with the code, the name, the coordinators with their marks (TRK-4) and the status and linking to the track page, and SHALL offer "Create track" in a dialog to a user with `TRACKS_MANAGE`. It SHALL behave as a list page (PLT-9) apart from paging and search: the filter survives a reload, a failed load offers Retry, and a refused list takes the user home. An empty list SHALL say whether no track exists yet or none has the chosen status.
+The client SHALL show the tracks as a list with a status filter, active by default, each track with the code, the name, the coordinators with their marks (TRK-4) and the status and linking to the track page, and SHALL offer "Create track" in a dialog to a user with `TRACKS_MANAGE`. It SHALL behave as a list page (PLT-9) apart from paging and search: the filter survives a reload, a failed load offers Retry, and a refused list takes the user home. An empty list SHALL say that no track has the chosen status or, when all statuses are chosen, that no track exists yet.
 
 ### TRK-10 The track page
 

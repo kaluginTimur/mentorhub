@@ -70,6 +70,7 @@ describe('shell', () => {
               { path: '', component: DummyPage },
               { path: 'users', component: DummyPage },
               { path: 'invitations', component: DummyPage },
+              { path: 'tracks', component: DummyPage },
               { path: 'profile', component: DummyPage },
             ],
           },
@@ -125,33 +126,21 @@ describe('shell', () => {
     expect(brand?.getAttribute('href')).toBe('/');
   });
 
-  it('shows the Users link only with USERS_READ', async () => {
+  it.each<[string, string, Permission[], Permission[]]>([
+    ['Users', '/users', ['USERS_READ'], []],
+    ['Invitations', '/invitations', ['USERS_READ', 'USERS_INVITE'], ['USERS_READ']],
+    ['Tracks', '/tracks', ['TRACKS_READ'], ['USERS_READ', 'USERS_INVITE', 'USERS_MANAGE']],
+  ])('shows the %s link only with its permission', async (text, href, granted, withheld) => {
     const link = (element: HTMLElement) =>
       [...element.querySelectorAll('nav[aria-label="Primary"] a')].find(
-        (a) => a.textContent?.trim() === 'Users',
+        (a) => a.textContent?.trim() === text,
       );
-    user.update((u) => ({ ...u, permissions: ['USERS_READ'] }));
+    user.update((u) => ({ ...u, permissions: granted }));
     let fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
-    expect(link(fixture.nativeElement as HTMLElement)?.getAttribute('href')).toBe('/users');
+    expect(link(fixture.nativeElement as HTMLElement)?.getAttribute('href')).toBe(href);
 
-    user.update((u) => ({ ...u, permissions: [] }));
-    fixture = TestBed.createComponent(Shell);
-    await fixture.whenStable();
-    expect(link(fixture.nativeElement as HTMLElement)).toBeUndefined();
-  });
-
-  it('shows the Invitations link only with USERS_INVITE', async () => {
-    const link = (element: HTMLElement) =>
-      [...element.querySelectorAll('nav[aria-label="Primary"] a')].find(
-        (a) => a.textContent?.trim() === 'Invitations',
-      );
-    user.update((u) => ({ ...u, permissions: ['USERS_READ', 'USERS_INVITE'] }));
-    let fixture = TestBed.createComponent(Shell);
-    await fixture.whenStable();
-    expect(link(fixture.nativeElement as HTMLElement)?.getAttribute('href')).toBe('/invitations');
-
-    user.update((u) => ({ ...u, permissions: ['USERS_READ'] }));
+    user.update((u) => ({ ...u, permissions: withheld }));
     fixture = TestBed.createComponent(Shell);
     await fixture.whenStable();
     expect(link(fixture.nativeElement as HTMLElement)).toBeUndefined();
@@ -265,5 +254,15 @@ describe('shell', () => {
       a.getAttribute('href'),
     );
     expect(hrefs).toEqual(['/users', '/invitations', '/profile']);
+
+    user.update((u) => ({ ...u, permissions: ['TRACKS_READ'] }));
+    const tracksFixture = TestBed.createComponent(Home);
+    await tracksFixture.whenStable();
+    element = tracksFixture.nativeElement as HTMLElement;
+    hrefs = [...element.querySelectorAll('section[aria-label="Quick actions"] a')].map((a) =>
+      a.getAttribute('href'),
+    );
+    expect(hrefs).toContain('/tracks');
+    expect(hrefs).not.toContain('/users');
   });
 });

@@ -103,6 +103,8 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - From task 4, for task 5 and manual-tester: sign in as `admin@mentorhub.local` or `admin.mentor@mentorhub.local`. List: default 4 active tracks (DevOps, QA Automation, Quality Assurance, SWE); `ARCHIVED` shows FE; `ALL` shows 5. Marks: QA Quality Assurance, Laura Chen "Disabled"; DevOps, Daniel Kim "No coordinator role". SWE: two coordinators, candidates Irene Walsh and Milo Mentor-Coordinator. QA Automation: no coordinators (shares code QA). FE: archived, keeps Sarah Lopez. DevOps: 32 history entries (two pages), every kind of entry. USR-11: Irene Walsh and Laura Chen short histories; Daniel Kim paged, track shown as `DEVOPS DevOps`, `DevOps DevOps`, `DevOps DevOps Engineering`. `coordinator@mentorhub.local` sees no tracks.
 - From task 5, for the manual tester and the second test pass: TRK-8, TRK-9 and TRK-10 have no scenarios, so only TRK-10.1 and USR-11 have frontend tests; the nav link, the list with its filter, create, empty states, edit, archive and restore are checked only by hand so far. Manual steps are in frontend-dev's task 5 report (TRK-8: admin sees "Tracks", coordinator does not and is sent home from `/tracks`; TRK-9: filter, reload keeps it, create "T1 / Test", empty and 21-character code; TRK-10: DevOps marks, Show more, Edit name only, Archive then Restore, Add and Remove; TRK-10.1: two tabs, archive in one, Remove or Add in the other; FE only Restore; USR-11: Daniel Kim's history; `/tracks/abc` "Track not found"). States not in the sample data: empty lists, failed loads, 409 snackbars (except via two tabs).
 
+- From the second test pass, for later tasks: frontend tests run through the Angular builder, `npm test -- --watch=false --include <path>` (plain `npx vitest` cannot resolve `@spartan-ng/helm/*`); `RouterTestingHarness` allows one harness per test, so cases that differ only by permissions are `it.each`; the create-track test accepts either outcome after saving (a move to `/tracks/<id>` or the new track in the list), as neither the requirements nor the plan say which.
+
 ## Red tests
 
 Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a code, red tests, plan, usage record.
@@ -150,13 +152,15 @@ Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a c
 
 - 2026-11-15: The owner looked at the screens on the sample center and approved task 5 ("я посмотрел экраны, можно коммитить": I looked at the screens, you can commit). Committed with the TRK-9, TRK-10 and TRK-10.1 edits, the guidelines line, the plan and the usage record.
 
+- 2026-11-15: TRK-9's empty state: the current behavior is accepted, and TRK-9 now says the empty-list message refers to the chosen status ("согласен, правь TRK-9 и коммить": agreed, edit TRK-9 and commit). New sentence: "An empty list SHALL say that no track has the chosen status or, when all statuses are chosen, that no track exists yet." The owner rereads it. The second test pass is committed.
+
 ## Handover
 
-- Waiting for: the owner's go for the second test pass (tests of details, a fresh test-engineer), then the review loop and the verifier.
-- State: tasks 1–5 done and committed (task 5 in the commit after 1abae6b). Test changes since 3aa1010 are by the owner's decisions: `track-page.spec.ts` "TRK-10.1 explains track-archived on listing the candidates and shows the track as it is now", `history-text.spec.ts` expects 'QA · Quality Assurance'. frontend-dev's list of details stays as it is (no remarks from the owner).
-- For the second test pass: TRK-8, TRK-9 and TRK-10 have no scenarios and were checked only by hand (see Notes for later tasks, "From task 5"); states not in the sample data: empty lists, failed loads, 409 snackbars except via two tabs. Screens and checks of the runs are under `.screens/tracks/` (last: `20261115-2004`, `20261115-1956`).
-- To read: this plan; `docs/process.md` stage 6 and 7.
-- Documents changed since 3aa1010: `docs/requirements/tracks.md` (TRK-9 "as a list", TRK-10 restore after a confirmation, TRK-10.1 GIVEN covers the candidates); `docs/ui/guidelines.md` (cards for a short unpaged list); this plan.
+- Waiting for: the review loop: `reviewer` on the branch against `main` with this plan, then `verifier` scope `all`. The owner rereads TRK-9's last sentence (Decisions, last entry).
+- Second test pass done (a fresh test-engineer) and committed: no real bug found, 61 new or extended cases, all pass; backend verify and frontend format:check, lint, 340 tests, build green. No test with a scenario id changed. By stage 6 of `docs/process.md`, a pass that finds no real bug counts toward removing the pass.
+- State: tasks 1–5 done and committed (task 5 in e24faa5, the second pass in the commit after it).
+- To read: this plan; `docs/process.md` stage 7.
+- Documents changed since 3aa1010: `docs/requirements/tracks.md` (TRK-9 "as a list" and the empty-list sentence, TRK-10 restore after a confirmation, TRK-10.1 GIVEN covers the candidates); `docs/ui/guidelines.md` (cards for a short unpaged list); this plan.
 - Next: at stage 8, the 0005 line (an entry about another module's subject is written by that module on the changing module's call, not yet answered), the roadmap `/change` for the tracks a user coordinates, the backend guide line on `tracks` using `JdbcClient` with its real reason; delete `.screens/tracks/`. After merge: the manual-tester freshness chore, the schema checks chore. Issue #43 (users full-name search) is open.
 
 ## Agents
@@ -179,3 +183,4 @@ Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a c
 | backend-dev | default | ae4c4905297d33581 | implementation (task 3) | 161k |
 | test-engineer | default | a8aaaddae23fa07ea | implementation (task 4a, test changes after manual tests) | 46k |
 | backend-dev | default | a90570c455e167010 | implementation (task 4) | 103k |
+| test-engineer | default | ac9fec355bae6fea7 | implementation (second test pass) | 172k |

@@ -542,6 +542,396 @@ class TracksEndpointTests {
         assertThat(history).bodyJson().extractingPath("$.items[0].track.name").isEqualTo("Quality Assurance");
     }
 
+    @Test
+    void codeAndNameAreAcceptedUpToTheirLimitsAfterTrimming() {
+        String code = "C".repeat(20);
+        String name = "N".repeat(100);
+        UUID track = tracks.active("QA", "Quality Assurance");
+        String path = "/api/v1/tracks/" + track;
+
+        MvcTestResult created = send(
+                HttpMethod.POST,
+                "/api/v1/tracks",
+                "{\"code\": \"  %s  \", \"name\": \"  %s  \"}".formatted(code, name),
+                "admin");
+        MvcTestResult updated =
+                send(HttpMethod.PUT, path, "{\"code\": \"%s\", \"name\": \"%s\"}".formatted(code, name), "admin");
+
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        assertThat(created).bodyJson().extractingPath("$.code").isEqualTo(code);
+        assertThat(created).bodyJson().extractingPath("$.name").isEqualTo(name);
+        assertThat(updated).hasStatusOk();
+        assertThat(updated).bodyJson().extractingPath("$.code").isEqualTo(code);
+        assertThat(updated).bodyJson().extractingPath("$.name").isEqualTo(name);
+    }
+
+    @Test
+    void codeOrNameOverTheLimitIsRejectedAndNothingIsStored() {
+        UUID track = tracks.active("QA", "Quality Assurance");
+        String path = "/api/v1/tracks/" + track;
+        String longCode = "C".repeat(21);
+        String longName = "N".repeat(101);
+
+        assertValidationProblem(
+                send(
+                        HttpMethod.POST,
+                        "/api/v1/tracks",
+                        "{\"code\": \"%s\", \"name\": \"Quality\"}".formatted(longCode),
+                        "admin"),
+                "code");
+        assertValidationProblem(
+                send(
+                        HttpMethod.POST,
+                        "/api/v1/tracks",
+                        "{\"code\": \"QE\", \"name\": \"%s\"}".formatted(longName),
+                        "admin"),
+                "name");
+        assertValidationProblem(
+                send(HttpMethod.PUT, path, "{\"code\": \"%s\", \"name\": \"Quality\"}".formatted(longCode), "admin"),
+                "code");
+        assertValidationProblem(
+                send(HttpMethod.PUT, path, "{\"code\": \"QA\", \"name\": \"%s\"}".formatted(longName), "admin"),
+                "name");
+
+        MvcTestResult all = send(HttpMethod.GET, "/api/v1/tracks?status=ALL", "", "admin");
+        assertThat(all).bodyJson().extractingPath("$.items[*].id").asArray().containsExactly(track.toString());
+        assertThat(all).bodyJson().extractingPath("$.items[0].name").isEqualTo("Quality Assurance");
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    // The client counts characters as code points; a code of 20 such characters must not be refused by the server.
+    @Test
+    void limitsCountCharactersNotUtf16Units() {
+        String code = "𝔸".repeat(20);
+
+        MvcTestResult created = send(
+                HttpMethod.POST, "/api/v1/tracks", "{\"code\": \"%s\", \"name\": \"Math\"}".formatted(code), "admin");
+
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        assertThat(created).bodyJson().extractingPath("$.code").isEqualTo(code);
+    }
+
+    @Test
+    void aMissingCodeOrNameIsRejected() {
+        assertValidationProblem(send(HttpMethod.POST, "/api/v1/tracks", "{\"name\": \"Quality\"}", "admin"), "code");
+        assertValidationProblem(send(HttpMethod.POST, "/api/v1/tracks", "{\"code\": \"QA\"}", "admin"), "name");
+        MvcTestResult all = send(HttpMethod.GET, "/api/v1/tracks?status=ALL", "", "admin");
+        assertThat(all).bodyJson().extractingPath("$.items").asArray().isEmpty();
+    }
+
+    @Test
+    void historyKeepsTheTrimmedValuesAndOnlyTheFieldsThatChanged() {
+        MvcTestResult created = send(
+                HttpMethod.POST, "/api/v1/tracks", "{\"code\": \" QA \", \"name\": \" Quality Assurance \"}", "admin");
+        String path = "/api/v1/tracks/" + jsonString(created, "$.id");
+
+        // Surrounding spaces of an unchanged value are not a change.
+        MvcTestResult unchanged =
+                send(HttpMethod.PUT, path, "{\"code\": \" QA\", \"name\": \"Quality Assurance  \"}", "admin");
+        MvcTestResult codeOnly =
+                send(HttpMethod.PUT, path, "{\"code\": \" QE \", \"name\": \"Quality Assurance\"}", "admin");
+        MvcTestResult both =
+                send(HttpMethod.PUT, path, "{\"code\": \"QX\", \"name\": \"Quality Experience\"}", "admin");
+
+        assertThat(unchanged).hasStatusOk();
+        assertThat(codeOnly).hasStatusOk();
+        assertThat(codeOnly).bodyJson().extractingPath("$.code").isEqualTo("QE");
+        assertThat(codeOnly).bodyJson().extractingPath("$.name").isEqualTo("Quality Assurance");
+        assertThat(both).hasStatusOk();
+        MvcTestResult history = send(HttpMethod.GET, path + "/history", "", "admin");
+        assertThat(history)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly("TRACK_UPDATED", "TRACK_UPDATED", "TRACK_CREATED");
+        assertThat(history)
+                .bodyJson()
+                .extractingPath("$.items[0].changes")
+                .asArray()
+                .containsExactlyInAnyOrder(
+                        Map.of("field", "code", "oldValue", "QE", "newValue", "QX"),
+                        Map.of("field", "name", "oldValue", "Quality Assurance", "newValue", "Quality Experience"));
+        assertThat(history)
+                .bodyJson()
+                .extractingPath("$.items[1].changes")
+                .isEqualTo(List.of(Map.of("field", "code", "oldValue", "QA", "newValue", "QE")));
+        assertThat(history).bodyJson().extractingPath("$.items[2].code").isEqualTo("QA");
+        assertThat(history).bodyJson().extractingPath("$.items[2].name").isEqualTo("Quality Assurance");
+    }
+
+    @Test
+    void archivingAnArchivedTrackAnswersWithItAndRecordsNothing() {
+        UUID coordinator = coordinator("clara@x.test", "Clara", "Coordinator");
+        UUID track = tracks.archived("QA", "Quality Assurance");
+        tracks.addCoordinator(track, coordinator);
+
+        MvcTestResult result = send(HttpMethod.POST, "/api/v1/tracks/" + track + "/archive", "", "admin");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.status").isEqualTo("ARCHIVED");
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.coordinators[*].id")
+                .asArray()
+                .containsExactly(coordinator.toString());
+        assertThat(users.count("audit_log")).isZero();
+    }
+
+    @Test
+    void validityIsCheckedBeforeTheTrackAndTheTrackBeforeTheUser() {
+        UUID archived = tracks.archived("QA", "Quality Assurance");
+        UUID mentor = users.create("mentor@x.test", UserStatus.ACTIVE, Role.MENTOR);
+        String unknown = "/api/v1/tracks/" + UUID.randomUUID();
+
+        assertValidationProblem(send(HttpMethod.PUT, unknown, "{\"code\": \"\", \"name\": \"Q\"}", "admin"), "code");
+        assertValidationProblem(
+                send(HttpMethod.PUT, "/api/v1/tracks/" + archived, "{\"code\": \"QA\", \"name\": \"\"}", "admin"),
+                "name");
+        assertProblem(
+                send(HttpMethod.PUT, "/api/v1/tracks/" + archived + "/coordinators/" + mentor, "", "admin"),
+                HttpStatus.CONFLICT,
+                TRACK_ARCHIVED);
+        assertProblem(
+                send(HttpMethod.PUT, unknown + "/coordinators/" + mentor, "", "admin"),
+                HttpStatus.NOT_FOUND,
+                Problems.NOT_FOUND);
+        assertProblem(
+                send(HttpMethod.GET, unknown + "/coordinator-candidates", "", "admin"),
+                HttpStatus.NOT_FOUND,
+                Problems.NOT_FOUND);
+    }
+
+    @Test
+    void anUnknownStatusFilterIsRejected() {
+        assertValidationProblem(send(HttpMethod.GET, "/api/v1/tracks?status=archived", "", "admin"), "status");
+        assertValidationProblem(send(HttpMethod.GET, "/api/v1/tracks?status=DELETED", "", "admin"), "status");
+    }
+
+    @Test
+    void listIsOrderedByCodeThenByNameIgnoringCase() {
+        UUID bx = tracks.active("b", "x");
+        UUID upperAz = tracks.active("A", "z");
+        UUID lowerAy = tracks.active("a", "Y");
+        UUID ca = tracks.active("C", "a");
+
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/tracks", "", "admin");
+
+        assertThat(list)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactly(lowerAy.toString(), upperAz.toString(), bx.toString(), ca.toString());
+    }
+
+    @Test
+    void coordinatorsAreOrderedByNameIgnoringCaseThenByEmail() {
+        UUID bob = coordinator("bob@x.test", "bob", "Zed");
+        UUID aliceZ = coordinator("z-alice@x.test", "Alice", "Young");
+        UUID aliceA = coordinator("a-alice@x.test", "Alice", "Young");
+        UUID carl = coordinator("carl@x.test", "Carl", "Abel");
+        UUID track = tracks.active("QA", "Quality Assurance");
+        for (UUID user : List.of(carl, bob, aliceZ, aliceA)) {
+            tracks.addCoordinator(track, user);
+        }
+        UUID empty = tracks.active("QE", "Quality Engineering");
+
+        MvcTestResult one = send(HttpMethod.GET, "/api/v1/tracks/" + track, "", "admin");
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/tracks", "", "admin");
+        MvcTestResult candidates =
+                send(HttpMethod.GET, "/api/v1/tracks/" + empty + "/coordinator-candidates", "", "admin");
+
+        List<String> expected = List.of(aliceA.toString(), aliceZ.toString(), bob.toString(), carl.toString());
+        assertThat(one)
+                .bodyJson()
+                .extractingPath("$.coordinators[*].id")
+                .asArray()
+                .containsExactlyElementsOf(expected);
+        assertThat(list)
+                .bodyJson()
+                .extractingPath("$.items[0].coordinators[*].id")
+                .asArray()
+                .containsExactlyElementsOf(expected);
+        // A coordinator of another track is still a candidate: a user may coordinate several tracks.
+        assertThat(candidates)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactlyElementsOf(expected);
+    }
+
+    @Test
+    void aCoordinatorWithoutANameIsShownByEmail() {
+        UUID nameless = users.create("nameless@x.test", UserStatus.ACTIVE, Role.COORDINATOR);
+        jdbc.sql("update users set first_name = null, last_name = null where id = :id")
+                .param("id", nameless)
+                .update();
+        UUID track = tracks.active("QA", "Quality Assurance");
+        UUID other = tracks.active("QE", "Quality Engineering");
+        tracks.addCoordinator(track, nameless);
+
+        MvcTestResult one = send(HttpMethod.GET, "/api/v1/tracks/" + track, "", "admin");
+        MvcTestResult candidates =
+                send(HttpMethod.GET, "/api/v1/tracks/" + other + "/coordinator-candidates", "", "admin");
+
+        assertThat(one).bodyJson().extractingPath("$.coordinators[0].name").isEqualTo("nameless@x.test");
+        assertThat(one).bodyJson().extractingPath("$.coordinators[0].email").isEqualTo("nameless@x.test");
+        assertThat(candidates).bodyJson().extractingPath("$.items[0].name").isEqualTo("nameless@x.test");
+    }
+
+    @Test
+    void removingACoordinatorFromOneTrackKeepsTheirOtherTracks() {
+        UUID coordinator = coordinator("clara@x.test", "Clara", "Coordinator");
+        UUID first = tracks.active("QA", "Quality Assurance");
+        UUID second = tracks.active("SWE", "Software Engineering");
+
+        assertThat(send(HttpMethod.PUT, "/api/v1/tracks/" + first + "/coordinators/" + coordinator, "", "admin"))
+                .hasStatusOk();
+        assertThat(send(HttpMethod.PUT, "/api/v1/tracks/" + second + "/coordinators/" + coordinator, "", "admin"))
+                .hasStatusOk();
+        MvcTestResult removed =
+                send(HttpMethod.DELETE, "/api/v1/tracks/" + first + "/coordinators/" + coordinator, "", "admin");
+
+        assertThat(removed)
+                .bodyJson()
+                .extractingPath("$.coordinators")
+                .asArray()
+                .isEmpty();
+        MvcTestResult kept = send(HttpMethod.GET, "/api/v1/tracks/" + second, "", "admin");
+        assertThat(kept)
+                .bodyJson()
+                .extractingPath("$.coordinators[*].id")
+                .asArray()
+                .containsExactly(coordinator.toString());
+        MvcTestResult history = send(HttpMethod.GET, "/api/v1/users/" + coordinator + "/history", "", "admin");
+        assertThat(history)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly(
+                        "USER_TRACK_COORDINATOR_REMOVED",
+                        "USER_TRACK_COORDINATOR_ADDED",
+                        "USER_TRACK_COORDINATOR_ADDED");
+        assertThat(history)
+                .bodyJson()
+                .extractingPath("$.items[*].track.id")
+                .asArray()
+                .containsExactly(first.toString(), second.toString(), first.toString());
+    }
+
+    @Test
+    void anAssignmentStaysWhenTheCoordinatorIsDisabledOrLosesTheRole() {
+        UUID disabled = coordinator("boris@x.test", "Boris", "Disabled");
+        UUID demoted = coordinator("clara@x.test", "Clara", "Mentor");
+        UUID track = tracks.active("QA", "Quality Assurance");
+        String path = "/api/v1/tracks/" + track + "/coordinators/";
+        assertThat(send(HttpMethod.PUT, path + disabled, "", "admin")).hasStatusOk();
+        assertThat(send(HttpMethod.PUT, path + demoted, "", "admin")).hasStatusOk();
+
+        assertThat(send(
+                        HttpMethod.POST,
+                        "/api/v1/users/" + disabled + "/disable",
+                        "{\"reason\": \"GRADUATED\"}",
+                        "admin"))
+                .hasStatusOk();
+        assertThat(send(HttpMethod.PUT, "/api/v1/users/" + demoted + "/roles", "{\"roles\": [\"MENTOR\"]}", "admin"))
+                .hasStatusOk();
+
+        MvcTestResult after = send(HttpMethod.GET, "/api/v1/tracks/" + track, "", "admin");
+        assertThat(after)
+                .bodyJson()
+                .extractingPath("$.coordinators[*].id")
+                .asArray()
+                .containsExactly(disabled.toString(), demoted.toString());
+        assertThat(after)
+                .bodyJson()
+                .extractingPath("$.coordinators[*].disabled")
+                .asArray()
+                .containsExactly(true, false);
+        assertThat(after)
+                .bodyJson()
+                .extractingPath("$.coordinators[*].coordinatorRole")
+                .asArray()
+                .containsExactly(true, false);
+    }
+
+    @Test
+    void historyIsPagedNewestFirst() {
+        UUID track = tracks.active("QA", "Name 0");
+        String path = "/api/v1/tracks/" + track;
+        for (int i = 1; i <= 4; i++) {
+            assertThat(send(HttpMethod.PUT, path, "{\"code\": \"QA\", \"name\": \"Name %d\"}".formatted(i), "admin"))
+                    .hasStatusOk();
+        }
+
+        MvcTestResult page = send(HttpMethod.GET, path + "/history?page=1&size=2", "", "admin");
+        MvcTestResult past = send(HttpMethod.GET, path + "/history?page=5&size=2", "", "admin");
+
+        assertThat(page).hasStatusOk();
+        assertThat(page).bodyJson().extractingPath("$.page").isEqualTo(1);
+        assertThat(page).bodyJson().extractingPath("$.size").isEqualTo(2);
+        assertThat(page).bodyJson().extractingPath("$.totalItems").isEqualTo(4);
+        assertThat(page)
+                .bodyJson()
+                .extractingPath("$.items[*].changes[0].newValue")
+                .asArray()
+                .containsExactly("Name 2", "Name 1");
+        assertThat(past).hasStatusOk();
+        assertThat(past).bodyJson().extractingPath("$.items").asArray().isEmpty();
+        assertThat(past).bodyJson().extractingPath("$.totalItems").isEqualTo(4);
+    }
+
+    @Test
+    void historyRejectsAPageOrSizeOutOfRange() {
+        String path = "/api/v1/tracks/" + tracks.active("QA", "Quality Assurance") + "/history";
+
+        assertValidationProblem(send(HttpMethod.GET, path + "?size=0", "", "admin"), "size");
+        assertValidationProblem(send(HttpMethod.GET, path + "?size=101", "", "admin"), "size");
+        assertValidationProblem(send(HttpMethod.GET, path + "?page=-1", "", "admin"), "page");
+    }
+
+    @Test
+    void historyHoldsOnlyTheEntriesAboutItsTrackAndIsReadWhenArchived() {
+        UUID coordinator = coordinator("clara@x.test", "Clara", "Coordinator");
+        UUID first = tracks.active("QA", "Quality Assurance");
+        UUID second = tracks.active("SWE", "Software Engineering");
+        assertThat(send(HttpMethod.PUT, "/api/v1/tracks/" + first + "/coordinators/" + coordinator, "", "admin"))
+                .hasStatusOk();
+        assertThat(send(HttpMethod.PUT, "/api/v1/tracks/" + second + "/coordinators/" + coordinator, "", "admin"))
+                .hasStatusOk();
+        assertThat(send(HttpMethod.POST, "/api/v1/tracks/" + second + "/archive", "", "admin"))
+                .hasStatusOk();
+
+        MvcTestResult firstHistory = send(HttpMethod.GET, "/api/v1/tracks/" + first + "/history", "", "admin");
+        MvcTestResult secondHistory = send(HttpMethod.GET, "/api/v1/tracks/" + second + "/history", "", "admin");
+
+        assertThat(firstHistory).bodyJson().extractingPath("$.totalItems").isEqualTo(1);
+        assertThat(firstHistory)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly("TRACK_COORDINATOR_ADDED");
+        assertThat(secondHistory).hasStatusOk();
+        assertThat(secondHistory)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly("TRACK_ARCHIVED", "TRACK_COORDINATOR_ADDED");
+    }
+
+    @Test
+    void historyNamesTheCoordinatorAsTheyAreNow() {
+        UUID coordinator = coordinator("clara@x.test", "Clara", "Coordinator");
+        UUID track = tracks.active("QA", "Quality Assurance");
+        assertThat(send(HttpMethod.PUT, "/api/v1/tracks/" + track + "/coordinators/" + coordinator, "", "admin"))
+                .hasStatusOk();
+        users.rename(coordinator, "Clara", "Married");
+
+        MvcTestResult history = send(HttpMethod.GET, "/api/v1/tracks/" + track + "/history", "", "admin");
+
+        assertThat(history).bodyJson().extractingPath("$.items[0].user.id").isEqualTo(coordinator.toString());
+        assertThat(history).bodyJson().extractingPath("$.items[0].user.name").isEqualTo("Clara Married");
+    }
+
     private UUID coordinator(String email, String firstName, String lastName) {
         UUID id = users.create(email, UserStatus.ACTIVE, Role.COORDINATOR);
         users.rename(id, firstName, lastName);
