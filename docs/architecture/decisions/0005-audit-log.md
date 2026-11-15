@@ -13,6 +13,7 @@ Audited changes need a record: disabling and enabling users, role changes, profi
 
 - **A dedicated module** `com.mentorhub.audit` owns the `audit_log` table. Its public API is `AuditLog.record(AuditEntry)` and a query by subject. It depends on no other module.
 - **Synchronous, in the changing transaction.** `record` joins the caller's transaction (`Propagation.MANDATORY`) and fails without one. A change and its entry commit or roll back together. Entries are not written from application events.
+- **The subject's module writes the entry.** When a change in one module shows in the history of another module's subject (naming a coordinator of a track shows in the user's history), the subject's module writes that entry through its public API, called by the changing module in the same transaction. The action belongs to the subject's module, which also maps it in its view.
 - **Entry shape:** time, actor (`users.id`, or none for a change made by the system), action, subject (type and id), and details as JSON.
   - The action and the subject type are strings owned by the module that writes them (for example `USER_DISABLED`, subject type `USER`). `audit` does not enumerate them, so a new action needs no change in `audit`.
   - The details are what a reader needs to understand the change (a reason, added and removed roles, old and new values of changed fields). Content that has its own visibility rules (a note's body) is not copied into the details; the entry references the subject instead.
@@ -30,6 +31,7 @@ Audited changes need a record: disabling and enabling users, role changes, profi
 ## Rejected alternatives
 
 - **Entries from application events** (`@ApplicationModuleListener` with the Modulith event publication registry). Decouples writers further, but an entry can be delayed or, after a failed listener, lost or replayed; the guarantee would rest on the registry's retries. Events stay the tool for reactions between modules.
+- **The changing module writes entries about another module's subject** (for example `tracks` writing a `USER` entry). Saves a call, but the subject's module would show actions it does not own, with details whose shape another module decides.
 - **Database triggers or change data capture** on domain tables. Captures every row change, but not the actor or the intent ("disabled because graduated"), and ties the log to the table layout.
 - **Hibernate Envers or a similar entity history.** The existing persistence code uses JdbcClient, not JPA entities, and Envers records row versions, not actions with reasons.
 - **One typed table per module.** Strong typing, but every module would reimplement storage, ordering and paging, and a later cross-module view (for administrators) would need a union over all of them.
