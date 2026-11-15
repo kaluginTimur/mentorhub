@@ -40,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
  * them, so the only resource-level rule is that an unknown id is {@link NotFoundException}.
  *
  * <p>Every change locks the track's row first ({@link TrackRepository#lock}), then checks the status, then the
- * eligibility of a coordinator, then writes; so changes of one track and its archiving run one after another (TRK-5.4).
+ * eligibility of a coordinator not yet named, then writes; so changes of one track and its archiving run one after another (TRK-5.4).
  * The track's row is the only lock taken.
  */
 @Service
@@ -172,13 +172,17 @@ public class TrackService {
     }
 
     /**
-     * Names the user a coordinator of the track; naming a coordinator again changes and records nothing.
+     * Names the user a coordinator of the track; naming a coordinator again changes and records nothing, even one no
+     * longer eligible (TRK-6.3), so eligibility is checked only for a user not yet named.
      *
      * @throws ConflictException {@link TrackProblems#TRACK_ARCHIVED} or {@link TrackProblems#COORDINATOR_NOT_ELIGIBLE}
      */
     @Transactional
     public TrackDetails addCoordinator(UUID trackId, UUID userId) {
         StoredTrack track = lockActive(trackId);
+        if (tracks.isCoordinator(trackId, userId)) {
+            return details(track);
+        }
         if (!userDirectory.isActiveWithRole(userId, Role.COORDINATOR)) {
             throw new ConflictException(
                     TrackProblems.COORDINATOR_NOT_ELIGIBLE,

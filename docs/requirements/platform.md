@@ -192,7 +192,7 @@ The client SHALL show a full-page message that MentorHub is unavailable, with a 
 
 ### PLT-9 List pages
 
-Every screen that shows a paged list (PLT-3) with a search or filters SHALL behave alike, and the capability that owns the list names only its own filters and order. The search, filters and page SHALL survive a reload, a change of the search or a filter SHALL show the first page, and an empty list SHALL say whether nothing exists yet or nothing matches.
+Every screen that shows a list with a search or filters, paged (PLT-3) or not, SHALL behave alike, and the capability that owns the list names only its own filters and order. The search, the filters and the page of a paged list SHALL survive a reload, a change of the search or a filter SHALL show the first page, and an empty list SHALL say whether nothing exists yet or nothing matches.
 
 #### PLT-9.1 A failed load offers Retry
 

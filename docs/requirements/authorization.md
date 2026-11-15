@@ -23,7 +23,7 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 | `USERS_MANAGE` | Changing another user's profile and roles, disabling and enabling users |
 | `USERS_INVITE` | Managing invitations |
 | `TRACKS_READ` | Viewing tracks, their coordinators and their history |
-| `TRACKS_MANAGE` | Creating, changing, archiving and restoring tracks, and naming and removing their coordinators |
+| `TRACKS_MANAGE` | Creating, changing, archiving and restoring tracks, listing the candidates for their coordinators, and naming and removing their coordinators |
 
 The capability that owns an action says which permission it needs.
 

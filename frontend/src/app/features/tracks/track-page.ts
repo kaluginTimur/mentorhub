@@ -30,17 +30,17 @@ import { restoreTrack } from '../../core/api/fn/tracks/restore-track';
 import { updateTrack } from '../../core/api/fn/tracks/update-track';
 import { Track } from '../../core/api/models/track';
 import { TrackCoordinator } from '../../core/api/models/track-coordinator';
-import { TrackCreate } from '../../core/api/models/track-create';
 import { TrackHistoryEntry } from '../../core/api/models/track-history-entry';
+import { TrackUpdate } from '../../core/api/models/track-update';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { PROBLEM, isForbidden, problemOf } from '../../core/problem';
 import { ConfirmDialog, ConfirmDialogData } from '../../shared/confirm-dialog/confirm-dialog';
 import { Loading } from '../../shared/loading/loading';
 import { ToastOptions, ToastService } from '../../shared/toast/toast.service';
+import { trackLabel } from '../../shared/track-label/track-label';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { AddCoordinatorDialog, AddCoordinatorDialogData } from './add-coordinator-dialog';
 import { AssignmentMark } from './assignment-mark';
-import { trackLabel } from './labels';
 import { TrackStatusChip } from './track-status-chip';
 import { describeTrackEntry } from './track-history-text';
 import { TrackDialog, TrackDialogData } from './track-dialog';
@@ -168,7 +168,7 @@ export class TrackPage {
       title: 'Edit track',
       confirmLabel: 'Save',
       initial: { code: track.code, name: track.name },
-      save: async (body: TrackCreate) => {
+      save: async (body: TrackUpdate) => {
         try {
           const updated = await this.api.invoke(updateTrack, { id: track.id, body });
           this.applied(updated, 'Track saved');

@@ -7,6 +7,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { Track } from '../../core/api/models/track';
 import { TrackCreate } from '../../core/api/models/track-create';
+import { TrackUpdate } from '../../core/api/models/track-update';
 import { PROBLEM, problemOf } from '../../core/problem';
 import { ToastService } from '../../shared/toast/toast.service';
 import { TRACK_CODE_LIMIT, TRACK_NAME_LIMIT } from './labels';
@@ -16,7 +17,7 @@ export interface TrackDialogData {
   confirmLabel: string;
   initial: TrackCreate;
   /** Sends the request; resolves with the saved track, or null when the change was refused and explained. */
-  save: (body: TrackCreate) => Promise<Track | null>;
+  save: (body: TrackCreate | TrackUpdate) => Promise<Track | null>;
 }
 
 const textError = (value: string, limit: number, required: string) => {

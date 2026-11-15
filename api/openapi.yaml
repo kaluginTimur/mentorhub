@@ -791,7 +791,8 @@ paths:
       description: |
         Requires `TRACKS_MANAGE`. Only an active user with the `COORDINATOR` role can be named; a disabled user, a
         user without the role and an id no user has are refused alike with 409 `coordinator-not-eligible`. Naming a
-        coordinator of the track again changes nothing and responds 200. The operation has no request body.
+        coordinator of the track again changes nothing and responds 200, even when they are no longer eligible
+        (disabled or without the role). The operation has no request body.
       parameters:
         - $ref: '#/components/parameters/TrackId'
         - $ref: '#/components/parameters/CoordinatorUserId'
@@ -1034,7 +1035,8 @@ components:
       description: |
         The user was not named; nothing was changed. Problem type is one of, checked in this order:
         - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
-        - `urn:mentorhub:problem:coordinator-not-eligible`: no active user with the `COORDINATOR` role has the id.
+        - `urn:mentorhub:problem:coordinator-not-eligible`: the id is not a coordinator of the track and no active user
+          with the `COORDINATOR` role has it.
       content:
         application/problem+json:
           schema:

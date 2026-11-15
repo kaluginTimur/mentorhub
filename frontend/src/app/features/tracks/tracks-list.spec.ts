@@ -183,7 +183,7 @@ describe('TracksList', () => {
     expect(element().textContent).not.toMatch(/no tracks yet/i);
   });
 
-  it('says MentorHub is unavailable when the list fails, and Retry loads it again', async () => {
+  it('PLT-9.1 says MentorHub is unavailable when the list fails, and Retry loads it again', async () => {
     api.rejectOnce(listTracks, new Error('down'));
     const { element, settle } = await open();
     expect(element().querySelector('[role=alert]')?.textContent).toContain(
@@ -195,7 +195,7 @@ describe('TracksList', () => {
     expect(trackLink(element(), TRACK_ID)).not.toBeNull();
   });
 
-  it('takes the user home when the API refuses the list', async () => {
+  it('PLT-9.3 takes the user home when the API refuses the list with 403', async () => {
     api.reject(
       listTracks,
       problemError({ type: 'urn:mentorhub:problem:forbidden', title: 'Forbidden', status: 403 }),

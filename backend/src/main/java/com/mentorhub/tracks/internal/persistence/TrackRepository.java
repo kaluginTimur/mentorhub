@@ -90,6 +90,15 @@ public class TrackRepository {
                 .list();
     }
 
+    public boolean isCoordinator(UUID trackId, UUID userId) {
+        return jdbc.sql(
+                        "select exists (select 1 from track_coordinators where track_id = :trackId and user_id = :userId)")
+                .param("trackId", trackId)
+                .param("userId", userId)
+                .query(Boolean.class)
+                .single();
+    }
+
     /** Returns the number of inserted rows: 0 when the user is already a coordinator of the track. */
     public int addCoordinatorIfAbsent(UUID trackId, UUID userId) {
         return jdbc.sql("""

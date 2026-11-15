@@ -245,6 +245,7 @@ class TracksEndpointTests {
                 send(HttpMethod.PUT, path, "{\"code\": \"QA\", \"name\": \"Quality Assurance\"}", "admin"),
                 send(HttpMethod.POST, path + "/archive", "", "admin"),
                 send(HttpMethod.POST, path + "/restore", "", "admin"),
+                send(HttpMethod.GET, path + "/coordinator-candidates", "", "admin"),
                 send(HttpMethod.PUT, path + "/coordinators/" + candidate, "", "admin"),
                 send(HttpMethod.DELETE, path + "/coordinators/" + candidate, "", "admin"));
 
@@ -374,13 +375,18 @@ class TracksEndpointTests {
     @DisplayName("TRK-6.3 A repeated naming or removal records nothing")
     void repeatedNamingOrRemovalRecordsNothing() {
         UUID coordinator = coordinator("clara@x.test", "Clara", "Coordinator");
+        // Named while eligible and disabled since: the assignment is set up directly in the database.
+        UUID disabled = users.create("dina@x.test", UserStatus.DISABLED, Role.COORDINATOR);
+        users.rename(disabled, "Dina", "Disabled");
         UUID other = coordinator("boris@x.test", "Boris", "Other");
         UUID track = tracks.active("QA", "Quality Assurance");
         tracks.addCoordinator(track, coordinator);
+        tracks.addCoordinator(track, disabled);
         String path = "/api/v1/tracks/" + track + "/coordinators/";
 
         List<MvcTestResult> results = List.of(
                 send(HttpMethod.PUT, path + coordinator, "", "admin"),
+                send(HttpMethod.PUT, path + disabled, "", "admin"),
                 send(HttpMethod.DELETE, path + other, "", "admin"),
                 send(HttpMethod.DELETE, path + UUID.randomUUID(), "", "admin"));
 
@@ -391,7 +397,12 @@ class TracksEndpointTests {
                     .bodyJson()
                     .extractingPath("$.coordinators[*].id")
                     .asArray()
-                    .containsExactly(coordinator.toString());
+                    .containsExactly(coordinator.toString(), disabled.toString());
+            assertThat(result)
+                    .bodyJson()
+                    .extractingPath("$.coordinators[*].disabled")
+                    .asArray()
+                    .containsExactly(false, true);
         }
         assertThat(users.count("audit_log")).isZero();
     }

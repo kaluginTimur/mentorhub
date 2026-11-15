@@ -70,7 +70,7 @@ The system SHALL return a track, for a caller with `TRACKS_READ`, with its code,
 #### TRK-4.2 An unknown track is not found
 
 - GIVEN an id that no track has
-- WHEN an administrator views it, reads its history, changes its code or name, archives or restores it, or names or removes a coordinator of it
+- WHEN an administrator views it, reads its history, changes its code or name, archives or restores it, lists the candidates for its coordinators, or names or removes a coordinator of it
 - THEN the response is 404 `not-found`
 
 ### TRK-5 Changing, archiving and restoring a track
@@ -107,7 +107,7 @@ The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name 
 
 ### TRK-6 Coordinators of a track
 
-The system SHALL let a caller with `TRACKS_MANAGE` name as a coordinator of an active track only an active user who holds the coordinator role, and remove any coordinator of it. A track may have any number of coordinators, and a user may coordinate any number of tracks. When a coordinator is later disabled or loses the coordinator role, the assignment stays and grants nothing (decision 0004). Naming a coordinator already named, or removing a user who is not one or an id no user has, changes and records nothing. The caller may list the candidates for coordinators of a track with `TRACKS_MANAGE` alone: the active users with the coordinator role who are not its coordinators. Parallel requests never end in a server error. Each change is audited in the track's and the user's history (AUD-7).
+The system SHALL let a caller with `TRACKS_MANAGE` name as a coordinator of an active track only an active user who holds the coordinator role, and remove any coordinator of it. A track may have any number of coordinators, and a user may coordinate any number of tracks. When a coordinator is later disabled or loses the coordinator role, the assignment stays and grants nothing (decision 0004). Naming a coordinator already named, even one no longer eligible, or removing a user who is not one or an id no user has, changes and records nothing. The caller may list the candidates for coordinators of a track with `TRACKS_MANAGE` alone: the active users with the coordinator role who are not its coordinators. Parallel requests never end in a server error. Each change is audited in the track's and the user's history (AUD-7).
 
 #### TRK-6.1 Only an active user with the coordinator role is named
 
@@ -124,8 +124,8 @@ The system SHALL let a caller with `TRACKS_MANAGE` name as a coordinator of an a
 
 #### TRK-6.3 A repeated naming or removal records nothing
 
-- GIVEN an active track with a coordinator
-- WHEN an administrator names the same user again, removes a user who is not a coordinator of the track, and removes an id that no user has
+- GIVEN an active track with a coordinator and a coordinator who has since been disabled
+- WHEN an administrator names each of them again, removes a user who is not a coordinator of the track, and removes an id that no user has
 - THEN each response is 200 with the track, unchanged
 - AND nothing is recorded
 
@@ -158,7 +158,7 @@ The client SHALL offer the Tracks link only to a user with `TRACKS_READ` and tak
 
 ### TRK-9 The tracks page
 
-The client SHALL show the tracks as a list with a status filter, active by default, each track with the code, the name, the coordinators with their marks (TRK-4) and the status and linking to the track page, and SHALL offer "Create track" in a dialog to a user with `TRACKS_MANAGE`. It SHALL behave as a list page (PLT-9) apart from paging and search: the filter survives a reload, a failed load offers Retry, and a refused list takes the user home. An empty list SHALL say that no track has the chosen status or, when all statuses are chosen, that no track exists yet.
+The client SHALL show the tracks as a list with a status filter, active by default, each track with the code, the name, the coordinators with their marks (TRK-4) and the status and linking to the track page, and SHALL offer "Create track" in a dialog to a user with `TRACKS_MANAGE`. It is a list page (PLT-9) without paging or search. An empty list SHALL say that no track has the chosen status or, when all statuses are chosen, that no track exists yet.
 
 ### TRK-10 The track page
 

@@ -154,14 +154,24 @@ Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a c
 
 - 2026-11-15: TRK-9's empty state: the current behavior is accepted, and TRK-9 now says the empty-list message refers to the chosen status ("согласен, правь TRK-9 и коммить": agreed, edit TRK-9 and commit). New sentence: "An empty list SHALL say that no track has the chosen status or, when all statuses are chosen, that no track exists yet." The owner rereads it. The second test pass is committed.
 
+- 2026-11-15: On the review findings ("принимаю все рекомендации": I accept all the recommendations): (1) naming again a coordinator already named, even one no longer eligible, answers 200 and records nothing; (2) TRK-4.2 and PERM-1 name listing the candidates; (3) PLT-9 covers unpaged list pages too, TRK-9 drops the retelling; (4) contract enum checks for tracks; (5) `trackLabel` to `shared/`; (6) `TrackUpdate` in the edit flow; (7a) the TRK-5.4 tests rewritten if they pass without the lock; (7b) the coordinator writes the four answers for the guidelines cards line at stage 8. The coordinator edited TRK-6, TRK-6.3 (GIVEN gains a coordinator since disabled, WHEN "names each of them again"), TRK-4.2, PERM-1, PLT-9 and TRK-9; the owner rereads them.
+
+- 2026-11-15: On the re-review's minor (1) the owner asked to fix it ("почему бы не пофиксить lockWaiters()?"): the TRK-5.4 helper counts only the sessions queued behind the holder; the change of a test with an id is the owner's word.
+
+- 2026-11-15: The re-review's minor (2), long lines, stays as it is ("оставляем, запускай verifier").
+
 ## Handover
 
-- Waiting for: the review loop: `reviewer` on the branch against `main` with this plan, then `verifier` scope `all`. The owner rereads TRK-9's last sentence (Decisions, last entry).
-- Second test pass done (a fresh test-engineer) and committed: no real bug found, 61 new or extended cases, all pass; backend verify and frontend format:check, lint, 340 tests, build green. No test with a scenario id changed. By stage 6 of `docs/process.md`, a pass that finds no real bug counts toward removing the pass.
-- State: tasks 1–5 done and committed (task 5 in e24faa5, the second pass in the commit after it).
+- Waiting for: stage 8 (below, Next), in progress. The owner accepted the verification and the review round is committed ("да, коммить и переходи к этапу 8").
+- Verification (`verifier`, scope `all`, 585b8e0 plus the uncommitted review round): backend verify, frontend format:check, lint, build, check-docs, requirements tests and trace (226 of 226, 4 manual) PASS. Frontend tests failed twice in `verifier` (9 and 6 of 340, unrelated specs, mostly timeouts, swap full); the owner then ran the frontend tests themselves: "я прогнал тесты, все 340 PASSED" (all 340 passed). Cause of the earlier failures: memory pressure suspected, not investigated.
+- Re-review (reviewer on sonnet, `git diff 585b8e0`): NON-BLOCKING, all seven previous findings fixed; the "already named" check is race-safe; widened PLT-9 changes nothing for the users and invitations pages. Minor (1) fixed by test-engineer: `lockWaiters()` replaced by `waitersBehind(holderPid)`, a recursive query over `pg_stat_activity` in the current database through `pg_blocking_pids`, the holder records `pg_backend_pid()`; ids, names and assertions unchanged; TRK-5.4 green 3 of 3 on the real code (0.68 s and 0.06 s), both fail with the lock removed; main code restored byte-identical; backend verify PASS. The two tests need 4 connections at once (Hikari default 10).
+- Fix round done. backend-dev (findings 1 and 4, verify PASS, `TracksEndpointTests` 35, `TracksConcurrencyTests` 7, new `ContractEnumsTests` 3): `TrackService.addCoordinator` returns the track unchanged, recording nothing, for a user already named, after the lock and the status check and before eligibility; `TrackRepository.isCoordinator`; `api/openapi.yaml` descriptions of `addTrackCoordinator` and the `coordinator-not-eligible` 409 ("the id is not a coordinator of the track and no active user with the `COORDINATOR` role has it"), no shape change; new `backend/.../tracks/internal/domain/ContractEnumsTests.java` (three checks). frontend-dev (findings 5 and 6, format, lint, 340 tests first run, build PASS): `trackLabel` moved to `shared/track-label/track-label.ts`; the dialog's save takes `TrackCreate | TrackUpdate`, `edit` uses `TrackUpdate`. No test changed by the developers; tests changed since 585b8e0 are test-engineer's by the owner's decisions.
+- Test part done by test-engineer: TRK-6.3 extended (now green); TRK-4.2 gains the candidates of an unknown track; PLT-9.1 and PLT-9.3 cited in `tracks-list.spec.ts`; the TRK-5.4 tests passed with the lock removed and were rewritten with a helper holding the row lock and waiting for lock waiters in `pg_stat_activity`; they fail without the lock. Frontend timeouts seen by test-engineer with swap full did not recur for frontend-dev: an environment suspicion, not confirmed.
+- Second test pass done and committed (585b8e0): no real bug found. By stage 6 of `docs/process.md`, this counts toward removing the pass.
+- State: tasks 1–5 and the second pass committed (585b8e0); the requirement edits, the test changes and the fix round uncommitted.
 - To read: this plan; `docs/process.md` stage 7.
 - Documents changed since 3aa1010: `docs/requirements/tracks.md` (TRK-9 "as a list" and the empty-list sentence, TRK-10 restore after a confirmation, TRK-10.1 GIVEN covers the candidates); `docs/ui/guidelines.md` (cards for a short unpaged list); this plan.
-- Next: at stage 8, the 0005 line (an entry about another module's subject is written by that module on the changing module's call, not yet answered), the roadmap `/change` for the tracks a user coordinates, the backend guide line on `tracks` using `JdbcClient` with its real reason; delete `.screens/tracks/`. After merge: the manual-tester freshness chore, the schema checks chore. Issue #43 (users full-name search) is open.
+- Next: one fix round for the accepted findings, a sonnet re-review if substantial, `verifier` scope `all`. At stage 8: the 0005 line, the roadmap `/change` for the tracks a user coordinates, the backend guide line on `tracks` using `JdbcClient` with its real reason (`backend.md:62`, decision 0006 line 5 also say "`users` and `audit` use `JdbcClient`"); delete `.screens/tracks/`. After merge: the manual-tester freshness chore, the schema checks chore. Issue #43 is open.
 
 ## Agents
 
@@ -184,3 +194,9 @@ Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a c
 | test-engineer | default | a8aaaddae23fa07ea | implementation (task 4a, test changes after manual tests) | 46k |
 | backend-dev | default | a90570c455e167010 | implementation (task 4) | 103k |
 | test-engineer | default | ac9fec355bae6fea7 | implementation (second test pass) | 172k |
+| reviewer | default | a68d02650eae58d2d | review | 202k |
+| test-engineer | default | abba0993f18895cfd | review (tests for findings 1, 2, 3, 7a; lockWaiters) | 98k |
+| backend-dev | default | ab4244f789e8de985 | review (findings 1, 4) | 57k |
+| frontend-dev | default | a6d64e6b22f087e6c | review (findings 5, 6) | 50k |
+| reviewer | sonnet | af93510afb8933951 | review (re-review) | 43k |
+| verifier | default | a8a6884462f5b28b6 | review (verify all) | 21k |

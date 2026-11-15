@@ -1,6 +1,6 @@
 import { HistoryEntry } from '../../core/api/models/history-entry';
 import { ProfileField } from '../../core/api/models/profile-field';
-import { trackLabel } from '../tracks/labels';
+import { trackLabel } from '../../shared/track-label/track-label';
 import { REASON_LABELS, ROLE_LABELS } from './labels';
 
 const FIELD_LABELS: Record<ProfileField, string> = {
