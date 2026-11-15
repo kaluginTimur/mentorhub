@@ -35,6 +35,11 @@ public class UserRepository {
     private static final List<String> KNOWN_ROLES =
             Arrays.stream(Role.values()).map(Role::name).toList();
 
+    private static final String SUMMARY_SELECT = """
+            select u.id, u.email, u.first_name, u.last_name, u.status
+            from users u
+            """;
+
     // One row per stored role of the user; folded into a UserAccess.
     private record AccessRow(
             UUID userId, String status, @Nullable String role) {}
@@ -166,34 +171,9 @@ public class UserRepository {
                         limit :limit offset :offset
                         """)
                 .params(params)
-                .query((rs, rowNum) -> new StoredUserSummary(
-                        rs.getObject("id", UUID.class),
-                        rs.getString("email"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name"),
-                        UserStatus.valueOf(rs.getString("status")),
-                        List.of()))
+                .query(UserRepository::summaryWithoutRoles)
                 .list();
-        if (users.isEmpty()) {
-            return users;
-        }
-        Map<UUID, List<String>> roles = jdbc
-                .sql("select user_id, role from user_roles where user_id in (:ids) order by role")
-                .param("ids", users.stream().map(StoredUserSummary::id).toList())
-                .query((rs, rowNum) -> new UserRoleRow(rs.getObject("user_id", UUID.class), rs.getString("role")))
-                .list()
-                .stream()
-                .collect(Collectors.groupingBy(
-                        UserRoleRow::userId, Collectors.mapping(UserRoleRow::role, Collectors.toList())));
-        return users.stream()
-                .map(user -> new StoredUserSummary(
-                        user.id(),
-                        user.email(),
-                        user.firstName(),
-                        user.lastName(),
-                        user.status(),
-                        roles.getOrDefault(user.id(), List.of())))
-                .toList();
+        return withRoleNames(users);
     }
 
     public long count(UserSearch search) {
@@ -219,6 +199,42 @@ public class UserRepository {
                 .list()
                 .stream()
                 .collect(Collectors.toMap(UserName::id, Function.identity()));
+    }
+
+    /** The users with the given ids, in any status; ids no user has are left out. */
+    public List<StoredUserSummary> findSummaries(Collection<UUID> userIds) {
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+        return withRoleNames(jdbc.sql(SUMMARY_SELECT + "where u.id in (:ids)")
+                .param("ids", List.copyOf(userIds))
+                .query(UserRepository::summaryWithoutRoles)
+                .list());
+    }
+
+    /** The active users who hold the role. */
+    public List<StoredUserSummary> findActiveUsersWithRole(Role role) {
+        return withRoleNames(jdbc.sql(SUMMARY_SELECT + """
+                        where u.status = 'ACTIVE'
+                          and exists (select 1 from user_roles ur where ur.user_id = u.id and ur.role = :role)
+                        """)
+                .param("role", role.name())
+                .query(UserRepository::summaryWithoutRoles)
+                .list());
+    }
+
+    public boolean isActiveWithRole(UUID userId, Role role) {
+        return jdbc.sql("""
+                        select exists (
+                            select 1 from user_roles ur
+                            join users u on u.id = ur.user_id
+                            where u.id = :id and ur.role = :role and u.status = 'ACTIVE'
+                        )
+                        """)
+                .param("id", userId)
+                .param("role", role.name())
+                .query(Boolean.class)
+                .single();
     }
 
     public Optional<LinkedUser> findLinkedUser(String issuer, String subject) {
@@ -375,6 +391,40 @@ public class UserRepository {
                 .query(String.class)
                 .list();
         return names;
+    }
+
+    private static StoredUserSummary summaryWithoutRoles(ResultSet rs, int rowNum) throws SQLException {
+        return new StoredUserSummary(
+                rs.getObject("id", UUID.class),
+                rs.getString("email"),
+                rs.getString("first_name"),
+                rs.getString("last_name"),
+                UserStatus.valueOf(rs.getString("status")),
+                List.of());
+    }
+
+    /** The users with the names of their stored roles, in the given order. */
+    private List<StoredUserSummary> withRoleNames(List<StoredUserSummary> users) {
+        if (users.isEmpty()) {
+            return users;
+        }
+        Map<UUID, List<String>> roles = jdbc
+                .sql("select user_id, role from user_roles where user_id in (:ids) order by role")
+                .param("ids", users.stream().map(StoredUserSummary::id).toList())
+                .query((rs, rowNum) -> new UserRoleRow(rs.getObject("user_id", UUID.class), rs.getString("role")))
+                .list()
+                .stream()
+                .collect(Collectors.groupingBy(
+                        UserRoleRow::userId, Collectors.mapping(UserRoleRow::role, Collectors.toList())));
+        return users.stream()
+                .map(user -> new StoredUserSummary(
+                        user.id(),
+                        user.email(),
+                        user.firstName(),
+                        user.lastName(),
+                        user.status(),
+                        roles.getOrDefault(user.id(), List.of())))
+                .toList();
     }
 
     private static StoredUser storedUser(ResultSet rs, List<String> roleNames) throws SQLException {

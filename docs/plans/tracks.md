@@ -80,7 +80,7 @@ Proposed by the coordinator and approved by the owner at the plan gate on 2026-1
 | 1. Contract, schema in `V1__schema.sql`, the two permissions, `TracksController` stub (501), build green; rework: split `TrackInput` into `TrackCreate` and `TrackUpdate` | all (shape) | backend-dev | done |
 | 1a. Frontend compiles: `history-text.ts` skips the two new user history actions as unknown, no text | (none) | frontend-dev | done |
 | 2. Red tests: backend and frontend | TRK-1.1–TRK-10.1, USR-10.3, PERM-1 | test-engineer | done |
-| 3. `users` public API and history mapping; the `tracks` module (checkpoint: backend green) | TRK-1–TRK-7, USR-10.3, PERM-1 | backend-dev | pending |
+| 3. `users` public API and history mapping; the `tracks` module (checkpoint: backend green) | TRK-1–TRK-7, USR-10.3, PERM-1 | backend-dev | done |
 | 4. Sample center tracks | (screens of TRK-9, TRK-10, USR-11) | backend-dev | pending |
 | 5. Navigation, tracks page, track page, user history sentence | TRK-8, TRK-9, TRK-10, TRK-10.1, USR-11 | frontend-dev | pending |
 
@@ -97,10 +97,12 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - From task 1a, for task 5: `features/users/history-text.ts` has explicit cases for `USER_TRACK_COORDINATOR_ADDED` / `_REMOVED` returning `''` (comment points at task 5); the row shows with date and actor and an empty sentence. Task 5 replaces them with the USR-11 sentence. Generation writes `models/track-create.ts` and `models/track-update.ts`.
 - From task 2, for task 3: the tests are endpoint tests in `backend/src/test/java/com/mentorhub/tracks/internal/web/` (`TracksEndpointTests`, `TracksConcurrencyTests`), data set up by `tracks/internal/TestTracks.java`; `TestUsers.deleteAll` clears `track_coordinators` and `tracks`. `support/OpenApiValidation.java` lets a 501 through so the red tests reach their own assertions; the owner agreed that test-engineer removes that allowance once the backend is green.
 - From task 2, for task 5: TRK-10.1 expects a 409 explained in a snackbar (track-archived mentioning "archived"), "Remove" with no confirmation, and a candidate picked in the add-coordinator dialog by a helper that accepts a native select, a Spartan select or a clickable option, then "Add" if present. `features/tracks/track-page.ts` exists as an empty component; test data in `features/tracks/test-data.ts`.
+- From task 3, for task 4: audit details as written. Subject `TRACK`, actor the administrator: `TRACK_CREATED` `{"code","name"}`; `TRACK_UPDATED` `{"changes":[{"field":"code"|"name","oldValue","newValue"}]}`, one item per changed field; `TRACK_ARCHIVED` / `TRACK_RESTORED` `{}`; `TRACK_COORDINATOR_ADDED` / `_REMOVED` `{"userId"}`. Subject `USER`: `USER_TRACK_COORDINATOR_ADDED` / `_REMOVED` `{"track":{"id","code","name"}}`.
+- From task 3, for stage 8: the backend guide's Code section gets that `tracks` uses `JdbcClient` (Design).
 
 ## Red tests
 
-Commit:
+Commit: 3aa1010 (2026-11-15), requirements, contract, migration, task 1 and 1a code, red tests, plan, usage record.
 
 ## Decisions
 
@@ -129,15 +131,17 @@ Commit:
 - 2026-11-15: Until task 5, the frontend skips `USER_TRACK_COORDINATOR_ADDED` / `_REMOVED` as unknown actions, with no text, so the build compiles before the red tests ("3 согласен").
 - 2026-11-15: Until task 5 a coordinator entry in the user's history shows as a row with an empty sentence ("оставляем пустую строку").
 - 2026-11-15: On task 2 ("1 оставляем, 2 согласен, 3 дописывай, коммить"): TRK-1.1 stays as it is, green before the code; test-engineer removes the 501 allowance in `OpenApiValidation` once the backend is green; What the tests rely on gains the add-coordinator select "Coordinator" with "Add", the snackbar for a 409, and "Remove" without confirmation; the red tests are committed.
+- 2026-11-15: The `users` read API takes the role as a parameter instead of coordinator-only methods ("давай вариант 1, обобщай роль"): `findActiveUsersWithRole(Role)`, `isActiveWithRole(UUID, Role)`, and `DirectoryUser` carries `roles` instead of `coordinatorRole`; `tracks` checks `COORDINATOR` itself. The name `UserDirectory` stays.
+- 2026-11-15: Task 3 approved at the checkpoint ("одобряю, коммить").
 
 ## Handover
 
-- Waiting for: backend-dev's report on task 3 (checkpoint: backend green).
+- Waiting for: the owner's go for the next step: test-engineer removes the 501 allowance in `OpenApiValidation`, then task 4 (backend-dev, sample center).
 - To read: this plan; Notes for later tasks.
-- Documents changed since the red commit: this plan (Red tests, Handover).
-- State: tasks 1, 1a and 2 done and committed (Red tests). Backend: 32 red track tests and `ContractEnumsTests`; frontend: 3 red tests.
+- Documents changed since the red commit: this plan only.
+- State: tasks 1, 1a, 2 and 3 done; task 3 committed after 3aa1010 (see `git log`). Backend verification PASS.
 - Pending: the owner reads the changed TRK-5 sentence and TRK-5.2 WHEN line.
-- Next: after task 3, list test changes since the red commit, compare `git diff --stat` with the brief, stop for the owner (checkpoint); then test-engineer removes the 501 allowance; then task 4. At stage 8: the 0005 line and the roadmap `/change` (Decisions).
+- Next: the 501 allowance (test-engineer, fresh: the task 2 agent was at 167k), task 4 (backend-dev, fresh: the task 3 agent is at 161k), then task 5 (frontend-dev). At stage 8: the 0005 line, the roadmap `/change`, the backend guide line on `tracks` using `JdbcClient` with its real reason (Decisions, Notes).
 
 ## Agents
 
@@ -148,3 +152,4 @@ Commit:
 | backend-dev | default | a0fa00220a058cc0b | plan (task 1 rework) | 37k |
 | frontend-dev | default | ab71c1c6c92c7ce3d | plan (task 1a) | 51k |
 | test-engineer | default | a6d80bc78d3ea7bfa | tests (task 2) | 167k |
+| backend-dev | default | ae4c4905297d33581 | implementation (task 3) | 161k |

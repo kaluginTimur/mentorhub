@@ -15,10 +15,12 @@ import com.mentorhub.api.model.ProfileChange;
 import com.mentorhub.api.model.ProfileField;
 import com.mentorhub.api.model.Role;
 import com.mentorhub.api.model.RoleFilter;
+import com.mentorhub.api.model.TrackReference;
 import com.mentorhub.api.model.UserDetails;
 import com.mentorhub.api.model.UserPage;
 import com.mentorhub.api.model.UserStatus;
 import com.mentorhub.api.model.UserSummary;
+import com.mentorhub.users.CoordinatedTrack;
 import com.mentorhub.users.internal.domain.UserChange;
 import com.mentorhub.users.internal.service.ManagedUser;
 import com.mentorhub.users.internal.service.MeDetails;
@@ -167,8 +169,14 @@ final class UsersMapper {
                 dto.setRolesAdded(roleNames(accepted.rolesAdded()));
                 dto.setRolesRemoved(roleNames(accepted.rolesRemoved()));
             }
+            case UserChange.TrackCoordinatorAdded(var track) -> dto.setTrack(trackReference(track));
+            case UserChange.TrackCoordinatorRemoved(var track) -> dto.setTrack(trackReference(track));
         }
         return dto;
+    }
+
+    private static TrackReference trackReference(CoordinatedTrack track) {
+        return new TrackReference(track.id(), track.code(), track.name());
     }
 
     private static @Nullable HistoryActor historyActor(
