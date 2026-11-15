@@ -191,9 +191,15 @@ The system SHALL return, for a caller with `USERS_READ`, the audit entries about
 - WHEN an administrator reads the history of the user
 - THEN the entry is shown with no inviter
 
+#### USR-10.3 Naming a coordinator of a track shows in the user's history
+
+- GIVEN a user who was named a coordinator of a track, after which the track's code and name were changed
+- WHEN an administrator reads the history of the user
+- THEN it has an entry with the administrator as the actor and the track with the code and the name it had when the user was named
+
 ### USR-11 The history on the user page
 
-The client SHALL show the history of the user (USR-10) on the user page, newest first, each entry with the actor (System when none) and a sentence telling the change, naming the inviter of an accepted invitation.
+The client SHALL show the history of the user (USR-10) on the user page, newest first, each entry with the actor (System when none) and a sentence telling the change, naming the inviter of an accepted invitation and the track of a coordinator named or removed.
 
 ### USR-12 Navigation to users and to one's profile
 

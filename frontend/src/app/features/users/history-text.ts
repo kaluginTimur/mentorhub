@@ -61,6 +61,10 @@ export function describeEntry(entry: HistoryEntry): string {
       }
       return parts.join('; ');
     }
+    // Task 5 of the tracks plan adds the sentences; until then these show no text.
+    case 'USER_TRACK_COORDINATOR_ADDED':
+    case 'USER_TRACK_COORDINATOR_REMOVED':
+      return '';
     default: {
       const unreachable: never = entry.action;
       return unreachable;

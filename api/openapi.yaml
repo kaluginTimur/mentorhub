@@ -19,6 +19,8 @@ tags:
     description: Users and the current caller
   - name: Invitations
     description: Invitations by link, and their acceptance
+  - name: Tracks
+    description: The tracks of the training center and their coordinators
 paths:
   /api/v1/system/info:
     get:
@@ -566,6 +568,278 @@ paths:
           $ref: '#/components/responses/InvitationInvalid'
         '409':
           $ref: '#/components/responses/InvitationAcceptConflict'
+  /api/v1/tracks:
+    get:
+      tags: [Tracks]
+      operationId: listTracks
+      summary: All tracks of a status
+      description: |
+        Requires `TRACKS_READ`. Not paged. Sorted by code, then by name (case-insensitive); the order of tracks with
+        the same code and name is not defined.
+      parameters:
+        - name: status
+          in: query
+          description: The status of the listed tracks, or `ALL` for every track.
+          schema:
+            $ref: '#/components/schemas/TrackStatusFilter'
+            default: ACTIVE
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackList'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Tracks]
+      operationId: createTrack
+      summary: Create a track
+      description: |
+        Requires `TRACKS_MANAGE`. The track is created `ACTIVE`, without coordinators. Neither the code nor the name
+        has to be unique.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackCreate'
+      responses:
+        '201':
+          description: The new track
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/tracks/{id}:
+    get:
+      tags: [Tracks]
+      operationId: getTrack
+      summary: One track
+      description: Requires `TRACKS_READ`. An active or an archived track.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Tracks]
+      operationId: updateTrack
+      summary: Replace the code and the name of an active track
+      description: |
+        Requires `TRACKS_MANAGE`. The code and the name are set independently: a value sent unchanged stays as it is.
+        Saving both unchanged changes nothing and responds 200. Checked in this order: the request (400), the track
+        (404), its status (409 `track-archived`, even when nothing would change).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackUpdate'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/archive:
+    post:
+      tags: [Tracks]
+      operationId: archiveTrack
+      summary: Archive a track
+      description: |
+        Requires `TRACKS_MANAGE`. The track becomes `ARCHIVED` and read-only, and keeps its coordinators. Archiving an
+        archived track changes nothing and responds 200.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tracks/{id}/restore:
+    post:
+      tags: [Tracks]
+      operationId: restoreTrack
+      summary: Restore an archived track
+      description: |
+        Requires `TRACKS_MANAGE`. The track becomes `ACTIVE` with the coordinators it had. Restoring an active track
+        changes nothing and responds 200.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tracks/{id}/history:
+    get:
+      tags: [Tracks]
+      operationId: getTrackHistory
+      summary: The history of changes to a track, newest first
+      description: |
+        Requires `TRACKS_READ`. For an active and an archived track alike. Entries whose action the server does not
+        know are left out.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackHistoryPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tracks/{id}/coordinator-candidates:
+    get:
+      tags: [Tracks]
+      operationId: listTrackCoordinatorCandidates
+      summary: The users who may be named coordinators of a track
+      description: |
+        Requires `TRACKS_MANAGE`; `USERS_READ` is not needed. The active users with the `COORDINATOR` role who are not
+        coordinators of the track, sorted by name (case-insensitive), then by email. Not paged. An archived track
+        has no candidates to offer until it is restored: 409 `track-archived`.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoordinatorCandidateList'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/coordinators/{userId}:
+    put:
+      tags: [Tracks]
+      operationId: addTrackCoordinator
+      summary: Name a user a coordinator of an active track
+      description: |
+        Requires `TRACKS_MANAGE`. Only an active user with the `COORDINATOR` role can be named; a disabled user, a
+        user without the role and an id no user has are refused alike with 409 `coordinator-not-eligible`. Naming a
+        coordinator of the track again changes nothing and responds 200. The operation has no request body.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CoordinatorUserId'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackCoordinatorConflict'
+    delete:
+      tags: [Tracks]
+      operationId: removeTrackCoordinator
+      summary: Remove a coordinator of an active track
+      description: |
+        Requires `TRACKS_MANAGE`. Any coordinator can be removed, also one who is disabled or no longer has the
+        `COORDINATOR` role. Removing a user who is not a coordinator of the track, or an id no user has, changes
+        nothing and responds 200; on an archived track it is 409 `track-archived` like any change.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CoordinatorUserId'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
 components:
   securitySchemes:
     bearerAuth:
@@ -583,6 +857,20 @@ components:
         format: uuid
     InvitationId:
       name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TrackId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CoordinatorUserId:
+      name: userId
       in: path
       required: true
       schema:
@@ -734,6 +1022,23 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    TrackArchived:
+      description: |
+        The track is archived and read-only until restored; nothing was changed. Problem type
+        `urn:mentorhub:problem:track-archived`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TrackCoordinatorConflict:
+      description: |
+        The user was not named; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:coordinator-not-eligible`: no active user with the `COORDINATOR` role has the id.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
     SystemInfo:
       type: object
@@ -821,7 +1126,7 @@ components:
     Permission:
       type: string
       description: Must equal the `Permission` enum in the backend code.
-      enum: [USERS_READ, USERS_MANAGE, USERS_INVITE]
+      enum: [USERS_READ, USERS_MANAGE, USERS_INVITE, TRACKS_READ, TRACKS_MANAGE]
     Problem:
       type: object
       description: |
@@ -835,7 +1140,8 @@ components:
         (schema `InvitationConflictProblem`), `urn:mentorhub:problem:invitation-closed`,
         `urn:mentorhub:problem:invitation-expired`, `urn:mentorhub:problem:invitation-email-mismatch`,
         `urn:mentorhub:problem:identity-linked-elsewhere`, `urn:mentorhub:problem:email-unavailable`,
-        `urn:mentorhub:problem:email-queued`.
+        `urn:mentorhub:problem:email-queued`, `urn:mentorhub:problem:track-archived`,
+        `urn:mentorhub:problem:coordinator-not-eligible`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       additionalProperties: true
@@ -1050,7 +1356,9 @@ components:
         - `USER_ROLES_CHANGED`: details `rolesAdded`, `rolesRemoved`;
         - `USER_PROFILE_UPDATED`: details `changes`;
         - `USER_BOOTSTRAPPED_ADMIN`: details `bootstrap`; no actor;
-        - `USER_INVITATION_ACCEPTED`: details `invitation`, `rolesAdded`, `rolesRemoved`; the actor is the user.
+        - `USER_INVITATION_ACCEPTED`: details `invitation`, `rolesAdded`, `rolesRemoved`; the actor is the user;
+        - `USER_TRACK_COORDINATOR_ADDED`: details `track`; the user was named a coordinator of the track;
+        - `USER_TRACK_COORDINATOR_REMOVED`: details `track`; the user was removed as a coordinator of the track.
       enum:
         - USER_DISABLED
         - USER_ENABLED
@@ -1058,6 +1366,8 @@ components:
         - USER_PROFILE_UPDATED
         - USER_BOOTSTRAPPED_ADMIN
         - USER_INVITATION_ACCEPTED
+        - USER_TRACK_COORDINATOR_ADDED
+        - USER_TRACK_COORDINATOR_REMOVED
     HistoryActor:
       type: object
       additionalProperties: false
@@ -1110,6 +1420,8 @@ components:
           $ref: '#/components/schemas/BootstrapChanges'
         invitation:
           $ref: '#/components/schemas/InvitationAcceptance'
+        track:
+          $ref: '#/components/schemas/TrackReference'
     ProfileField:
       type: string
       enum: [firstName, lastName, phone]
@@ -1360,3 +1672,224 @@ components:
         expiresAt:
           type: string
           format: date-time
+    TrackStatus:
+      type: string
+      description: |
+        - `ACTIVE`: can be changed;
+        - `ARCHIVED`: read-only until restored; keeps its coordinators.
+      enum: [ACTIVE, ARCHIVED]
+    TrackStatusFilter:
+      type: string
+      description: A `TrackStatus`, or `ALL` for every track. Must equal the `TrackStatus` values plus `ALL`.
+      enum: [ACTIVE, ARCHIVED, ALL]
+    TrackCreate:
+      type: object
+      description: The code and the name of a new track; both must be sent.
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          description: Trimmed; 1 to 20 characters after trimming.
+          examples: [QA]
+        name:
+          type: string
+          description: Trimmed; 1 to 100 characters after trimming.
+          examples: [Quality Assurance]
+    TrackUpdate:
+      type: object
+      description: The code and the name of a track, replacing both; both must be sent.
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          description: Trimmed; 1 to 20 characters after trimming.
+          examples: [QA]
+        name:
+          type: string
+          description: Trimmed; 1 to 100 characters after trimming.
+          examples: [Quality Assurance]
+    Track:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, status, coordinators]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          examples: [QA]
+        name:
+          type: string
+          examples: [Quality Assurance]
+        status:
+          $ref: '#/components/schemas/TrackStatus'
+        coordinators:
+          type: array
+          description: Sorted by name (case-insensitive), then by email; may be empty.
+          items:
+            $ref: '#/components/schemas/TrackCoordinator'
+    TrackCoordinator:
+      type: object
+      description: |
+        A coordinator of a track. The assignment grants nothing while the user is disabled or does not hold the
+        `COORDINATOR` role; it stays until it is removed.
+      additionalProperties: false
+      required: [id, name, email, disabled, coordinatorRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The user's id.
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+        disabled:
+          type: boolean
+          description: The user is disabled.
+        coordinatorRole:
+          type: boolean
+          description: The user holds the `COORDINATOR` role.
+    TrackList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Track'
+    CoordinatorCandidate:
+      type: object
+      description: An active user with the `COORDINATOR` role.
+      additionalProperties: false
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+    CoordinatorCandidateList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoordinatorCandidate'
+    TrackHistoryAction:
+      type: string
+      description: |
+        The actions a track's history shows. A feature that writes a new action about a track extends this enum
+        in the same change.
+        - `TRACK_CREATED`: details `code`, `name`;
+        - `TRACK_UPDATED`: details `changes`, one per changed field;
+        - `TRACK_ARCHIVED`: no details;
+        - `TRACK_RESTORED`: no details;
+        - `TRACK_COORDINATOR_ADDED`: details `user`;
+        - `TRACK_COORDINATOR_REMOVED`: details `user`.
+      enum:
+        - TRACK_CREATED
+        - TRACK_UPDATED
+        - TRACK_ARCHIVED
+        - TRACK_RESTORED
+        - TRACK_COORDINATOR_ADDED
+        - TRACK_COORDINATOR_REMOVED
+    TrackHistoryEntry:
+      type: object
+      description: |
+        One change to a track. Detail properties that do not apply to the action are absent (not `null`).
+      additionalProperties: false
+      required: [id, occurredAt, action, actor]
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        action:
+          $ref: '#/components/schemas/TrackHistoryAction'
+        actor:
+          description: Who made the change; `null` for a change made by the system.
+          oneOf:
+            - $ref: '#/components/schemas/HistoryActor'
+            - type: 'null'
+        code:
+          type: string
+          description: The code the track was created with.
+          examples: [QA]
+        name:
+          type: string
+          description: The name the track was created with.
+          examples: [Quality Assurance]
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackChange'
+        user:
+          $ref: '#/components/schemas/HistoryActor'
+          description: The user named or removed as a coordinator, with their name as it is now.
+    TrackField:
+      type: string
+      enum: [code, name]
+    TrackChange:
+      type: object
+      additionalProperties: false
+      required: [field, oldValue, newValue]
+      properties:
+        field:
+          $ref: '#/components/schemas/TrackField'
+        oldValue:
+          type: string
+        newValue:
+          type: string
+    TrackHistoryPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackHistoryEntry'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of entries on all pages.
+    TrackReference:
+      type: object
+      description: A track in a user's history, with the code and the name it had at the moment of the change.
+      additionalProperties: false
+      required: [id, code, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          examples: [QA]
+        name:
+          type: string
+          examples: [Quality Assurance]

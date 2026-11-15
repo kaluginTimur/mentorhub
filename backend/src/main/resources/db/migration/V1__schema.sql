@@ -133,3 +133,22 @@ create index invitation_emails_latest_idx on invitation_emails (invitation_id, r
 
 -- At most one queued email per invitation; decides races between parallel requests.
 create unique index invitation_emails_queued_uq on invitation_emails (invitation_id) where status = 'QUEUED';
+
+-- Tracks are never deleted: enrollments and history refer to them. Neither the code nor the name is unique.
+-- status must equal the TrackStatus enum in code.
+create table tracks (
+    id         uuid        primary key default gen_random_uuid(),
+    code       text        not null,
+    name       text        not null,
+    status     text        not null default 'ACTIVE' check (status in ('ACTIVE', 'ARCHIVED')),
+    created_at timestamptz not null default now()
+);
+
+-- Who coordinates which track. Only an active user with the COORDINATOR role is named, which the service checks;
+-- the row stays when the user is later disabled or loses the role. The primary key decides parallel namings.
+create table track_coordinators (
+    track_id   uuid        not null references tracks (id) on delete restrict,
+    user_id    uuid        not null references users (id) on delete restrict,
+    created_at timestamptz not null default now(),
+    primary key (track_id, user_id)
+);

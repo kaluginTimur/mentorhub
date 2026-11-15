@@ -12,7 +12,7 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 
 | Role | Permissions |
 |---|---|
-| Administrator | `USERS_READ`, `USERS_MANAGE`, `USERS_INVITE` |
+| Administrator | `USERS_READ`, `USERS_MANAGE`, `USERS_INVITE`, `TRACKS_READ`, `TRACKS_MANAGE` |
 | Coordinator | none |
 | Mentor | none |
 | Student | none |
@@ -22,6 +22,8 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 | `USERS_READ` | Viewing users and their history |
 | `USERS_MANAGE` | Changing another user's profile and roles, disabling and enabling users |
 | `USERS_INVITE` | Managing invitations |
+| `TRACKS_READ` | Viewing tracks, their coordinators and their history |
+| `TRACKS_MANAGE` | Creating, changing, archiving and restoring tracks, and naming and removing their coordinators |
 
 The capability that owns an action says which permission it needs.
 

@@ -4,5 +4,7 @@ package com.mentorhub.users;
 public enum Permission {
     USERS_READ,
     USERS_MANAGE,
-    USERS_INVITE
+    USERS_INVITE,
+    TRACKS_READ,
+    TRACKS_MANAGE
 }

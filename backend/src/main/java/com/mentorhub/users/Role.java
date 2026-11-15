@@ -8,7 +8,12 @@ import java.util.Set;
  * the API contract. Authorization checks use permissions, never roles.
  */
 public enum Role {
-    ADMIN(EnumSet.of(Permission.USERS_READ, Permission.USERS_MANAGE, Permission.USERS_INVITE)),
+    ADMIN(EnumSet.of(
+            Permission.USERS_READ,
+            Permission.USERS_MANAGE,
+            Permission.USERS_INVITE,
+            Permission.TRACKS_READ,
+            Permission.TRACKS_MANAGE)),
     COORDINATOR(EnumSet.noneOf(Permission.class)),
     MENTOR(EnumSet.noneOf(Permission.class)),
     STUDENT(EnumSet.noneOf(Permission.class));
