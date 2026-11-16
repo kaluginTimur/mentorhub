@@ -32,7 +32,8 @@ class SampleCenter {
      * so the database holds exactly the rows the scripts list. They are never Flyway migrations: {@code db/sample} is
      * not on {@code spring.flyway.locations}.
      */
-    private static final List<String> SAMPLE_DATA = List.of("db/sample/users.sql", "db/sample/tracks.sql");
+    private static final List<String> SAMPLE_DATA =
+            List.of("db/sample/users.sql", "db/sample/tracks.sql", "db/sample/enrollments.sql");
 
     /**
      * Modulith creates the event publication table itself, not Flyway, and the clean drops it. Whether Modulith's

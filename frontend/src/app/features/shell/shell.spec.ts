@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { listMyEnrollments } from '../../core/api/fn/enrollments/list-my-enrollments';
 import { getSystemInfo } from '../../core/api/fn/system/get-system-info';
 import { MeUser } from '../../core/api/models/me-user';
 import { Permission } from '../../core/api/models/permission';
@@ -10,6 +11,7 @@ import { CurrentUserService } from '../../core/auth/current-user.service';
 import { displayName } from '../../core/auth/user-name';
 import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
 import { ThemePreference, ThemeService } from '../../core/theme/theme.service';
+import { myEnrollment } from '../enrollments/test-data';
 import { Home } from './home';
 import { Shell } from './shell';
 
@@ -51,6 +53,7 @@ describe('shell', () => {
     vi.clearAllMocks();
     api.reset();
     themePreference.set('system');
+    api.resolve(listMyEnrollments, { items: [] });
     user.set({
       id: 'u1',
       email: 'anna@example.com',
@@ -72,6 +75,7 @@ describe('shell', () => {
               { path: 'invitations', component: DummyPage },
               { path: 'tracks', component: DummyPage },
               { path: 'profile', component: DummyPage },
+              { path: 'my-enrollment', component: DummyPage },
             ],
           },
         ]),
@@ -202,6 +206,40 @@ describe('shell', () => {
 
     expect(theme.setPreference).toHaveBeenCalledWith('dark');
     expect(trigger?.getAttribute('aria-label')).toBe('Theme: Dark');
+  });
+
+  // ENR-8: the link is offered only to a user who has an enrollment. The plan fixes its text, not its place, so it is
+  // looked for in the navigation and in the account menu.
+  async function myEnrollmentLink(element: HTMLElement): Promise<Element | undefined> {
+    const find = (root: ParentNode) =>
+      [...root.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'My enrollment');
+    const inPage = find(element);
+    if (inPage) {
+      return inPage;
+    }
+    accountMenuTrigger(element)?.click();
+    await vi.waitFor(() => expect(document.querySelector('[hlmDropdownMenuItem]')).not.toBeNull());
+    return find(document);
+  }
+
+  it('shows the My enrollment link to a user who has an enrollment', async () => {
+    api.resolve(listMyEnrollments, { items: [myEnrollment()] });
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+
+    await vi.waitFor(async () => {
+      const link = await myEnrollmentLink(fixture.nativeElement as HTMLElement);
+      expect(link?.getAttribute('href')).toBe('/my-enrollment');
+    });
+  });
+
+  it('does not show the My enrollment link to a user without an enrollment', async () => {
+    api.resolve(listMyEnrollments, { items: [] });
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+
+    expect(await myEnrollmentLink(fixture.nativeElement as HTMLElement)).toBeUndefined();
+    expect(api.callsFor(listMyEnrollments)).not.toHaveLength(0);
   });
 
   it('has Profile above Sign out in the account menu', async () => {

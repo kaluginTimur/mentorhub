@@ -9,8 +9,8 @@ import org.jspecify.annotations.Nullable;
  * One entry of a track's history.
  *
  * @param actor {@code null} for a change made by the system
- * @param user for a coordinator change, the user named or removed; {@code null} for other changes or when that user
- *     cannot be resolved
+ * @param user for a coordinator change, the user named or removed, and for an enrollment the student; {@code null} for
+ *     other changes or when that user cannot be resolved
  */
 public record TrackHistoryItem(
         UUID id,

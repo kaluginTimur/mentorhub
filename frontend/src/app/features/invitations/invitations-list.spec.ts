@@ -174,7 +174,8 @@ describe('InvitationsList', () => {
     expect(headers[4].querySelector('.sr-only')?.textContent?.trim()).toBe('Actions');
     const cells = element.querySelectorAll('tbody tr:first-child td');
     expect(cells[0].classList.contains('md:whitespace-normal')).toBe(true);
-    expect(cells[0].classList.contains('md:break-all')).toBe(true);
+    expect(cells[0].classList.contains('md:break-all')).toBe(false);
+    expect(cells[0].querySelector('app-email')).not.toBeNull();
     expect(cells[2].classList.contains('md:whitespace-normal')).toBe(true);
     expect(cells[3].classList.contains('md:whitespace-normal')).toBe(true);
     expect(cells[4].classList.contains('md:px-3')).toBe(true);

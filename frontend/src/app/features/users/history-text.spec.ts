@@ -107,6 +107,26 @@ describe('describeEntry', () => {
     expect(added).not.toBe(removed);
   });
 
+  it('names the track of an enrollment as "<code> · <name>", as stored', () => {
+    const track = { id: 't1', code: 'QA', name: 'Quality Assurance' };
+    expect(
+      describeEntry({ ...base, action: 'USER_ENROLLED', track, startDate: '2026-09-01' }),
+    ).toContain('QA · Quality Assurance');
+  });
+
+  // The date reads as in the enrollments list ("29 Jun 2026"), not as stored.
+  it('shows the start date of an enrollment as the enrollments list does', () => {
+    const track = { id: 't1', code: 'QA', name: 'Quality Assurance' };
+    const text = describeEntry({
+      ...base,
+      action: 'USER_ENROLLED',
+      track,
+      startDate: '2026-06-29',
+    });
+    expect(text).toContain('from 29 Jun 2026');
+    expect(text).not.toContain('2026-06-29');
+  });
+
   it('copes with missing optional lists', () => {
     expect(describeEntry({ ...base, action: 'USER_ROLES_CHANGED' })).toBe('Roles changed');
     expect(describeEntry({ ...base, action: 'USER_PROFILE_UPDATED' })).toBe('Profile updated');

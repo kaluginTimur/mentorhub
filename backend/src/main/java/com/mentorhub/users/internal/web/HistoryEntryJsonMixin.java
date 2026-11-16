@@ -8,6 +8,7 @@ import com.mentorhub.api.model.InvitationAcceptance;
 import com.mentorhub.api.model.ProfileChange;
 import com.mentorhub.api.model.Role;
 import com.mentorhub.api.model.TrackReference;
+import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.jackson.JacksonMixin;
@@ -42,4 +43,7 @@ abstract class HistoryEntryJsonMixin {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract @Nullable TrackReference getTrack();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable LocalDate getStartDate();
 }

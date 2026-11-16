@@ -16,6 +16,9 @@ export const PROBLEM = {
   userActive: 'urn:mentorhub:problem:user-active',
   trackArchived: 'urn:mentorhub:problem:track-archived',
   coordinatorNotEligible: 'urn:mentorhub:problem:coordinator-not-eligible',
+  trackHasActiveEnrollments: 'urn:mentorhub:problem:track-has-active-enrollments',
+  studentNotEligible: 'urn:mentorhub:problem:student-not-eligible',
+  studentAlreadyEnrolled: 'urn:mentorhub:problem:student-already-enrolled',
 } as const;
 
 export interface ProblemInfo {

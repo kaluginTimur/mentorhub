@@ -121,9 +121,9 @@
                       </td>
                       <td
                         hlmTd
-                        class="col-span-2 row-start-2 block min-w-0 p-0 font-mono text-xs break-all whitespace-normal text-muted-foreground md:table-cell md:px-4 md:py-3 md:text-sm md:break-all md:whitespace-normal"
+                        class="col-span-2 row-start-2 block min-w-0 p-0 font-mono text-xs whitespace-normal text-muted-foreground md:table-cell md:px-4 md:py-3 md:text-sm md:whitespace-normal"
                       >
-                        {{ user.email }}
+                        <app-email [value]="user.email" />
                       </td>
                       <td
                         hlmTd

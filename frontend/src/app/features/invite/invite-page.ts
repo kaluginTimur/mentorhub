@@ -29,6 +29,7 @@ import { InvitationSession } from '../../core/auth/invitation-session';
 import { PROBLEM, problemOf } from '../../core/problem';
 import { Loading } from '../../shared/loading/loading';
 import { Unavailable } from '../../shared/unavailable/unavailable';
+import { Email } from '../../shared/email/email';
 
 type View =
   | 'loading'
@@ -45,7 +46,7 @@ const LANDING_PATH = '/invite';
 /** The public landing page of an invitation link. */
 @Component({
   selector: 'app-invite-page',
-  imports: [HlmButton, HlmCardImports, NgIcon, Loading, Unavailable],
+  imports: [Email, HlmButton, HlmCardImports, NgIcon, Loading, Unavailable],
   providers: [
     provideIcons({ lucideLoaderCircle, lucideMail, lucideShieldAlert, lucideTriangleAlert }),
   ],

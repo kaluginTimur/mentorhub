@@ -39,10 +39,21 @@ public class TrackRepository {
                 .optional();
     }
 
+    /** The tracks with the given ids; ids no track has are left out. */
+    public List<StoredTrack> findAll(Collection<UUID> trackIds) {
+        if (trackIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("select id, code, name, status from tracks where id in (:ids)")
+                .param("ids", List.copyOf(trackIds))
+                .query(TrackRepository::storedTrack)
+                .list();
+    }
+
     /**
      * Locks the track's row until the end of the transaction, so the changes of one track, its archiving included, are
-     * serialized. {@code for no key update}, not {@code for update}: inserting into {@code track_coordinators} takes
-     * {@code for key share} on the track, which {@code for update} blocks.
+     * serialized. {@code for no key update}, not {@code for update}: inserting into {@code track_coordinators} or
+     * {@code enrollments} takes {@code for key share} on the track, which {@code for update} blocks.
      */
     public Optional<StoredTrack> lock(UUID trackId) {
         return jdbc.sql("select id, code, name, status from tracks where id = :id for no key update")

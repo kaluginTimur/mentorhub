@@ -20,7 +20,7 @@ import com.mentorhub.api.model.UserDetails;
 import com.mentorhub.api.model.UserPage;
 import com.mentorhub.api.model.UserStatus;
 import com.mentorhub.api.model.UserSummary;
-import com.mentorhub.users.CoordinatedTrack;
+import com.mentorhub.users.HistoryTrack;
 import com.mentorhub.users.internal.domain.UserChange;
 import com.mentorhub.users.internal.service.ManagedUser;
 import com.mentorhub.users.internal.service.MeDetails;
@@ -171,11 +171,15 @@ final class UsersMapper {
             }
             case UserChange.TrackCoordinatorAdded(var track) -> dto.setTrack(trackReference(track));
             case UserChange.TrackCoordinatorRemoved(var track) -> dto.setTrack(trackReference(track));
+            case UserChange.Enrolled(var track, var startDate) -> {
+                dto.setTrack(trackReference(track));
+                dto.setStartDate(startDate);
+            }
         }
         return dto;
     }
 
-    private static TrackReference trackReference(CoordinatedTrack track) {
+    private static TrackReference trackReference(HistoryTrack track) {
         return new TrackReference(track.id(), track.code(), track.name());
     }
 

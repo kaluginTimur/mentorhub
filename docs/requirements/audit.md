@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The record of who changed what in MentorHub, and when. Every audited change leaves one entry, written together with the change, that nobody can alter afterwards. Entries are read only through the history of one subject (a user, a track, later an enrollment), under that subject's own access rules. This capability owns the rules of the record and the catalog of every audited action (AUD-7); the capability that owns an action states that it is audited and cites the catalog. How a history is shown belongs to the capability that owns the subject (for users, user administration; for tracks, tracks).
+The record of who changed what in MentorHub, and when. Every audited change leaves one entry, written together with the change, that nobody can alter afterwards. Entries are read only through the history of one subject (a user, a track), under that subject's own access rules. This capability owns the rules of the record and the catalog of every audited action (AUD-7); the capability that owns an action states that it is audited and cites the catalog. How a history is shown belongs to the capability that owns the subject (for users, user administration; for tracks, tracks).
 
 ## Requirements
 
@@ -136,6 +136,8 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 | `TRACK_COORDINATOR_REMOVED` | track | An administrator removes a coordinator of the track | the administrator | the user |
 | `USER_TRACK_COORDINATOR_ADDED` | user | Written with `TRACK_COORDINATOR_ADDED`, about the named user | the administrator | the track, with its code and name at that moment |
 | `USER_TRACK_COORDINATOR_REMOVED` | user | Written with `TRACK_COORDINATOR_REMOVED`, about the removed user | the administrator | the track, with its code and name at that moment |
+| `TRACK_STUDENT_ENROLLED` | track | A coordinator of the track or an administrator enrolls a student on it | the person who enrolled | the student and the start date |
+| `USER_ENROLLED` | user | Written with `TRACK_STUDENT_ENROLLED`, about the enrolled student | the person who enrolled | the track, with its code and name at that moment, and the start date |
 
 #### AUD-7.1 The administrator bootstrap is audited without an actor
 
@@ -160,4 +162,4 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 
 - A global audit screen or any view across subjects, retention, and export. Each needs a decision on who may see which actions.
 - A view of the entries about invitations.
-- Audit entries for notes, feedback, enrollments and assignments, which are planned with their features.
+- Audit entries for notes, feedback and assignments, which are planned with their features.

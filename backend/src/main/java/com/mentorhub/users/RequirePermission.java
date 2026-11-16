@@ -8,15 +8,17 @@ import java.lang.annotation.Target;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * The operation requires the permission; without it the caller gets 403 {@code forbidden}. Every {@code /api/v1/**}
- * operation carries this annotation or {@link NoPermissionRequired}.
+ * The operation requires one of the permissions; without any of them the caller gets 403 {@code forbidden}. Every
+ * {@code /api/v1/**} operation carries this annotation or {@link NoPermissionRequired}. An operation that allows more
+ * than one permission, one of them only together with a relation to the resource, checks the relation in its service.
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-// {value} is filled from the enum constant by the AnnotationTemplateExpressionDefaults bean in the security setup.
-@PreAuthorize("hasAuthority('{value}')")
+// {value} is filled by the AnnotationTemplateExpressionDefaults bean in the security setup: the constants, each
+// quoted by Permission.getExpressionTemplateValue, joined with commas.
+@PreAuthorize("hasAnyAuthority({value})")
 public @interface RequirePermission {
 
-    Permission value();
+    Permission[] value();
 }

@@ -10,7 +10,8 @@ public enum TrackAuditAction {
     TRACK_ARCHIVED(TrackChange.Archived.class),
     TRACK_RESTORED(TrackChange.Restored.class),
     TRACK_COORDINATOR_ADDED(TrackChange.CoordinatorAdded.class),
-    TRACK_COORDINATOR_REMOVED(TrackChange.CoordinatorRemoved.class);
+    TRACK_COORDINATOR_REMOVED(TrackChange.CoordinatorRemoved.class),
+    TRACK_STUDENT_ENROLLED(TrackChange.StudentEnrolled.class);
 
     public static final String SUBJECT_TYPE = "TRACK";
 

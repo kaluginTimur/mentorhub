@@ -40,6 +40,17 @@ public class UserRepository {
             from users u
             """;
 
+    /** By the name as {@code HistoryActor} builds it, ignoring case, then by email ignoring case, then by id. */
+    private static final String NAME_ORDER = """
+            order by lower(coalesce(nullif(concat_ws(' ', u.first_name, u.last_name), ''), u.email)), lower(u.email), u.id
+            """;
+
+    private static final String ACTIVE_WITH_ROLE_EXCEPT = """
+            where u.status = 'ACTIVE'
+              and exists (select 1 from user_roles ur where ur.user_id = u.id and ur.role = :role)
+              and u.id <> all(:excluded)
+            """;
+
     // One row per stored role of the user; folded into a UserAccess.
     private record AccessRow(
             UUID userId, String status, @Nullable String role) {}
@@ -221,6 +232,67 @@ public class UserRepository {
                 .param("role", role.name())
                 .query(UserRepository::summaryWithoutRoles)
                 .list());
+    }
+
+    /** A page of the users with the given ids, sorted by name ({@link #NAME_ORDER}). */
+    public List<StoredUserSummary> findSummaryPage(Collection<UUID> userIds, int limit, long offset) {
+        return withRoleNames(
+                jdbc.sql(SUMMARY_SELECT + "where u.id = any(:ids)\n" + NAME_ORDER + "limit :limit offset :offset")
+                        .param("ids", UuidArray.of(userIds))
+                        .param("limit", limit)
+                        .param("offset", offset)
+                        .query(UserRepository::summaryWithoutRoles)
+                        .list());
+    }
+
+    public long countUsers(Collection<UUID> userIds) {
+        return jdbc.sql("select count(*) from users u where u.id = any(:ids)")
+                .param("ids", UuidArray.of(userIds))
+                .query(Long.class)
+                .single();
+    }
+
+    /**
+     * A page of the active users who hold the role, except the excluded ids, sorted by name ({@link #NAME_ORDER}).
+     *
+     * @param text as {@link UserSearch#text()}, or {@code null} for no search
+     */
+    public List<StoredUserSummary> findActiveWithRolePage(
+            Role role, @Nullable String text, Collection<UUID> excludedUserIds, int limit, long offset) {
+        Map<String, Object> params = activeWithRoleParams(role, text, excludedUserIds);
+        params.put("limit", limit);
+        params.put("offset", offset);
+        return withRoleNames(
+                jdbc.sql(SUMMARY_SELECT + activeWithRoleWhere(text) + NAME_ORDER + "limit :limit offset :offset")
+                        .params(params)
+                        .query(UserRepository::summaryWithoutRoles)
+                        .list());
+    }
+
+    public long countActiveWithRole(Role role, @Nullable String text, Collection<UUID> excludedUserIds) {
+        return jdbc.sql("select count(*) from users u\n" + activeWithRoleWhere(text))
+                .params(activeWithRoleParams(role, text, excludedUserIds))
+                .query(Long.class)
+                .single();
+    }
+
+    /** The contacts of the users with the given ids who are active and hold the role. */
+    public List<StoredContact> findActiveContactsWithRole(Collection<UUID> userIds, Role role) {
+        return jdbc.sql("""
+                        select u.id, u.email, u.first_name, u.last_name, u.phone
+                        from users u
+                        where u.id = any(:ids) and u.status = 'ACTIVE'
+                          and exists (select 1 from user_roles ur where ur.user_id = u.id and ur.role = :role)
+                        """ + NAME_ORDER)
+                .param("ids", UuidArray.of(userIds))
+                .param("role", role.name())
+                .query((rs, rowNum) -> new StoredContact(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("email"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("phone")))
+                .list();
     }
 
     public boolean isActiveWithRole(UUID userId, Role role) {
@@ -440,6 +512,24 @@ public class UserRepository {
                 rs.getString("disabled_comment"),
                 rs.getObject("created_at", OffsetDateTime.class).toInstant(),
                 roleNames);
+    }
+
+    private static String activeWithRoleWhere(@Nullable String text) {
+        return text == null ? ACTIVE_WITH_ROLE_EXCEPT : ACTIVE_WITH_ROLE_EXCEPT + """
+                          and (u.email ilike :pattern escape '\\' or u.first_name ilike :pattern escape '\\'
+                               or u.last_name ilike :pattern escape '\\')
+                        """;
+    }
+
+    private static Map<String, Object> activeWithRoleParams(
+            Role role, @Nullable String text, Collection<UUID> excludedUserIds) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("role", role.name());
+        params.put("excluded", UuidArray.of(excludedUserIds));
+        if (text != null) {
+            params.put("pattern", LikePatterns.contains(text));
+        }
+        return params;
     }
 
     private static String where(UserSearch search, Map<String, Object> params) {

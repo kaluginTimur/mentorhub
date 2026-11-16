@@ -1,3 +1,4 @@
+import { formatCalendarDate } from '../../shared/date/date-format';
 import { TrackHistoryEntry } from '../../core/api/models/track-history-entry';
 
 export function describeTrackEntry(entry: TrackHistoryEntry): string {
@@ -17,6 +18,8 @@ export function describeTrackEntry(entry: TrackHistoryEntry): string {
       return `Named ${user} a coordinator`;
     case 'TRACK_COORDINATOR_REMOVED':
       return `Removed ${user} as a coordinator`;
+    case 'TRACK_STUDENT_ENROLLED':
+      return `Enrolled ${user}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
     default: {
       const unreachable: never = entry.action;
       return unreachable;

@@ -55,6 +55,7 @@ import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS } from '../users/labels';
 import { InviteDialog, InviteDialogData } from './invite-dialog';
 import { INVITATION_STATUS_LABELS } from './labels';
+import { Email } from '../../shared/email/email';
 
 const PAGE_SIZE = 25;
 const SEARCH_DELAY = 300;
@@ -63,6 +64,7 @@ const SEARCH_LIMIT = 254;
 @Component({
   selector: 'app-invitations-list',
   imports: [
+    Email,
     DatePipe,
     RouterLink,
     NgIcon,

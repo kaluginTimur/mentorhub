@@ -1,5 +1,6 @@
 package com.mentorhub.tracks.internal.domain;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -78,6 +79,19 @@ public sealed interface TrackChange {
         @Override
         public TrackAuditAction action() {
             return TrackAuditAction.TRACK_COORDINATOR_REMOVED;
+        }
+    }
+
+    /** @param userId {@code users.id} of the enrolled student */
+    record StudentEnrolled(UUID userId, LocalDate startDate) implements TrackChange {
+        public StudentEnrolled {
+            Objects.requireNonNull(userId, "userId");
+            Objects.requireNonNull(startDate, "startDate");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_STUDENT_ENROLLED;
         }
     }
 }

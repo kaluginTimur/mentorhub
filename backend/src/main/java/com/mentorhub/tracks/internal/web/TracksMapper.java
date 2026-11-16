@@ -52,7 +52,8 @@ final class TracksMapper {
                                 user.email(),
                                 user.disabled(),
                                 user.roles().contains(Role.COORDINATOR)))
-                        .toList());
+                        .toList(),
+                track.canEnroll());
     }
 
     static CoordinatorCandidateList candidates(List<DirectoryUser> users) {
@@ -95,6 +96,10 @@ final class TracksMapper {
             case com.mentorhub.tracks.internal.domain.TrackChange.CoordinatorAdded _,
                     com.mentorhub.tracks.internal.domain.TrackChange.CoordinatorRemoved _ ->
                 dto.setUser(historyActor(item.user()));
+            case com.mentorhub.tracks.internal.domain.TrackChange.StudentEnrolled(var _, var startDate) -> {
+                dto.setUser(historyActor(item.user()));
+                dto.setStartDate(startDate);
+            }
         }
         return dto;
     }

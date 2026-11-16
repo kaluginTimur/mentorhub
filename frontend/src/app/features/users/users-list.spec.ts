@@ -90,7 +90,8 @@ describe('UsersList', () => {
     const cells = element.querySelectorAll('tbody tr td');
     expect(cells[0].classList.contains('md:whitespace-normal')).toBe(true);
     expect(cells[1].classList.contains('md:whitespace-normal')).toBe(true);
-    expect(cells[1].classList.contains('md:break-all')).toBe(true);
+    expect(cells[1].classList.contains('md:break-all')).toBe(false);
+    expect(cells[1].querySelector('app-email')).not.toBeNull();
   });
 
   it('restores search, filters and page from the URL', async () => {

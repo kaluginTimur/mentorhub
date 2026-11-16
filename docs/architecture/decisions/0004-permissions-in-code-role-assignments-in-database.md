@@ -13,14 +13,14 @@ Access to a student's data depends on relations that change over time: a mentor 
 - **Permissions** are a Java enum in the public API of the `users` module, one value per capability that code checks.
 - **Roles** are a Java enum that maps each role to a set of permissions. The initial roles are ADMIN, COORDINATOR, MENTOR and STUDENT. Adding a role or changing its permissions is a code change.
 - **Role assignments are data**: `user_roles(user_id, role)`, managed by administrators in the application. A user can have several roles or none; an active user without roles has no permissions.
-- **Roles are global, not scoped** to a track or cohort. Which students a user can access is decided by domain relations (enrollment, mentor assignment, track coordination) in resource-level checks.
+- **Roles are global, not scoped** to a track or cohort. Where access depends on who a user is to a student or a track, it is decided by domain relations (enrollment, mentor assignment, track coordination) in resource-level checks. A role may still hold a permission that is not narrowed by a relation: coordinators and administrators read the students of every track by a permission, since the center interviews candidates across its tracks.
 - **Authorization checks use permissions, never role names.**
 - **Enforcement is Spring Security.** On every request the JWT is converted into the current user:
   - `(iss, sub)` is resolved to `users.id` through `user_identities`;
   - unknown and disabled users are rejected with 403, except on the endpoints `docs/development/backend.md` lists as exempt;
   - roles are loaded from `user_roles` and expanded into permissions as granted authorities.
 - **Capability checks** use method security through a typed annotation, so permission names never appear in strings.
-- **Resource-level checks** are explicit service calls. An inaccessible resource throws `NotFoundException` and responds 404, exactly like a missing one; lists leave it out. 403 is reserved for a missing permission for the action as a whole.
+- **Resource-level checks** are explicit service calls. An inaccessible resource throws `NotFoundException` and responds 404, exactly like a missing one; lists leave it out. 403 is reserved for a missing permission for the action as a whole, and for an action a relation does not allow on a resource the caller may read: hiding that resource would hide nothing, as when a coordinator enrolls on a track they do not coordinate.
 - Roles and groups in the token are not used for authorization.
 - `GET /api/v1/me` returns the user's roles and effective permissions. The frontend uses them only to hide what the user cannot do; the backend enforces.
 - **The role enum and the stored assignments stay consistent.** Removing or renaming a role ships together with a migration of its assignments. A stored role the code does not know (for example after a release rollback) grants nothing and never fails a request.

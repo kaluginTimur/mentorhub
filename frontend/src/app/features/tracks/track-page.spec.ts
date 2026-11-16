@@ -5,6 +5,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { addTrackCoordinator } from '../../core/api/fn/tracks/add-track-coordinator';
 import { archiveTrack } from '../../core/api/fn/tracks/archive-track';
 import { getTrack } from '../../core/api/fn/tracks/get-track';
+import { listTrackEnrollments } from '../../core/api/fn/enrollments/list-track-enrollments';
 import { getTrackHistory } from '../../core/api/fn/tracks/get-track-history';
 import { listTrackCoordinatorCandidates } from '../../core/api/fn/tracks/list-track-coordinator-candidates';
 import { removeTrackCoordinator } from '../../core/api/fn/tracks/remove-track-coordinator';
@@ -28,6 +29,7 @@ import {
   track,
   trackAdmin,
 } from './test-data';
+import { enrollmentPage } from '../enrollments/test-data';
 import { TrackPage } from './track-page';
 
 const problem = (status: number, type: string) => problemError({ type, status, title: 'Error' });
@@ -48,6 +50,7 @@ describe('TrackPage', () => {
     api.reset();
     me.set(trackAdmin());
     api.resolve(getTrackHistory, emptyHistory);
+    api.resolve(listTrackEnrollments, enrollmentPage([]));
     api.resolve(listTrackCoordinatorCandidates, { items: [candidate()] });
     TestBed.configureTestingModule({
       providers: [
@@ -154,6 +157,22 @@ describe('TrackPage', () => {
       expect(api.callsFor(addTrackCoordinator)).toEqual([{ id: TRACK_ID, userId: CANDIDATE_ID }]);
       await vi.waitFor(() => expect(snack()).not.toBe(''));
       await vi.waitFor(() => expect(element.textContent).toContain('Quality Engineering'));
+    });
+
+    it('TRK-10.1 explains track-has-active-enrollments on archiving and shows the track as it is now', async () => {
+      trackChangedMeanwhile(track({ name: 'Quality Engineering' }));
+      api.reject(archiveTrack, problem(409, 'urn:mentorhub:problem:track-has-active-enrollments'));
+      const { element, settle } = await open();
+
+      buttonByText(element, 'Archive')?.click();
+      await settle();
+      buttonByText(overlay(), 'Archive')?.click();
+      await settle();
+
+      expect(api.callsFor(archiveTrack)).toEqual([{ id: TRACK_ID }]);
+      await vi.waitFor(() => expect(snack()).toMatch(/enrol/i));
+      await vi.waitFor(() => expect(element.textContent).toContain('Quality Engineering'));
+      expect(buttonByText(element, 'Archive')).toBeDefined();
     });
 
     it('TRK-10.1 explains track-archived on listing the candidates and shows the track as it is now', async () => {

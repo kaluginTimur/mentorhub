@@ -152,3 +152,17 @@ create table track_coordinators (
     created_at timestamptz not null default now(),
     primary key (track_id, user_id)
 );
+
+create table enrollments (
+    id          uuid        primary key default gen_random_uuid(),
+    student_id  uuid        not null references users (id) on delete restrict,
+    track_id    uuid        not null references tracks (id) on delete restrict,
+    start_date  date        not null,
+    status      text        not null default 'ACTIVE' check (status in ('ACTIVE')),
+    enrolled_by uuid        not null references users (id) on delete restrict,
+    created_at  timestamptz not null default now()
+);
+
+create unique index enrollments_active_student_uq on enrollments (student_id) where status = 'ACTIVE';
+
+create index enrollments_track_idx on enrollments (track_id);
