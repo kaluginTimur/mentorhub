@@ -902,8 +902,9 @@ paths:
         time of the request. Only an active user with the `STUDENT` role and no active enrollment, on any track, can
         be enrolled; a disabled user, a user without the role and an id no user has are refused alike with 409
         `student-not-eligible`. The start date may be any date, past or future; the enrollment is `ACTIVE` from the
-        moment it is recorded. Checked in this order: the permission (403), the request (400), the track (404), the
-        relation (403 `forbidden`), then the conflicts (409) in the order the response lists them.
+        moment it is recorded. An invalid body is answered 400 whoever sends it, before the permission is checked.
+        Otherwise checked in this order: the permission (403), the parameters (400), the track (404), the relation
+        (403 `forbidden`), then the conflicts (409) in the order the response lists them.
       parameters:
         - $ref: '#/components/parameters/TrackId'
       requestBody:

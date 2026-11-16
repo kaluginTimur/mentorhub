@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { booleanAttribute, Component, computed, input, output } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft, lucideChevronRight } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -10,7 +10,11 @@ import { HlmButton } from '@spartan-ng/helm/button';
   template: `
     <nav
       aria-label="Pagination"
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground"
+      class="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"
+      [class.border-t]="!borderless()"
+      [class.border-border]="!borderless()"
+      [class.px-4]="!borderless()"
+      [class.py-3]="!borderless()"
     >
       <span>{{ summary() }}</span>
       <div class="flex items-center gap-1.5">
@@ -46,6 +50,8 @@ export class Paginator {
   readonly totalItems = input.required<number>();
   readonly pageSize = input.required<number>();
   readonly pageIndex = input.required<number>();
+  /** No top border and side padding, for a list in a card that has its own spacing. */
+  readonly borderless = input(false, { transform: booleanAttribute });
   readonly pageChange = output<number>();
 
   protected readonly hasNext = computed(

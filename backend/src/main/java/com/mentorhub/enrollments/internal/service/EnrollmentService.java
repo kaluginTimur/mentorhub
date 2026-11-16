@@ -71,6 +71,8 @@ public class EnrollmentService {
         if (tracks.find(trackId).isEmpty()) {
             throw new NotFoundException();
         }
+        // Keyed by student over every status: holds only while a student has at most one enrollment on a
+        // track. Once an enrollment can end and the student return, toMap throws on the duplicate key.
         Map<UUID, StoredEnrollment> byStudent = enrollments.findByTrack(trackId).stream()
                 .collect(Collectors.toMap(StoredEnrollment::studentId, Function.identity()));
         DirectoryPage students = users.findUsers(byStudent.keySet(), page, size);

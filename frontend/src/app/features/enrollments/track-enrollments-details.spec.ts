@@ -119,6 +119,31 @@ describe('the enrollments of a track, as a paged list', () => {
     expect(element.textContent).not.toContain('No students enrolled yet');
     expect(element.querySelector('button[aria-label="Previous page"]')).not.toBeNull();
   });
+
+  it('says there are no items on a page past the last one also for a small total, and lets the user move back', async () => {
+    api.resolve(listTrackEnrollments, enrollmentPage([], { page: 2, totalItems: 3 }));
+    const { element, settle } = await open('/?enrollmentsPage=2');
+
+    await vi.waitFor(() => expect(element.textContent).toMatch(/on this page/i));
+    expect(element.textContent).not.toContain('No students enrolled yet');
+    const previous = element.querySelector<HTMLButtonElement>('button[aria-label="Previous page"]');
+    expect(previous, 'a way back').not.toBeNull();
+
+    previous?.click();
+    await settle();
+
+    const router = TestBed.inject(Router);
+    expect(Number(router.parseUrl(router.url).queryParams['enrollmentsPage'])).toBeLessThan(2);
+  });
+
+  it('says No students enrolled yet, with no paginator, when the track has no enrollment', async () => {
+    api.resolve(listTrackEnrollments, enrollmentPage([]));
+    const { element } = await open();
+
+    await vi.waitFor(() => expect(element.textContent).toContain('No students enrolled yet'));
+    expect(element.textContent).not.toMatch(/on this page/i);
+    expect(element.querySelector('app-paginator')).toBeNull();
+  });
 });
 
 describe('the track page without ENROLLMENTS_READ', () => {

@@ -4,7 +4,7 @@ Page patterns and conventions shared by screens. Styling rules are in `docs/deve
 
 ## Application shell
 
-- Route `/` and everything an active user with roles can open lives inside the shell (`frontend/src/app/features/shell/shell.ts`): a toolbar with "MentorHub", a link to each section the user's permissions allow, and the account menu, then the routed page. A section's link is marked as the current page on all of its routes.
+- Route `/` and everything an active user with roles can open lives inside the shell (`frontend/src/app/features/shell/shell.ts`): a toolbar with "MentorHub", a link to each section the user's permissions, or their own data such as an enrollment, allow, and the account menu, then the routed page. A section's link is marked as the current page on all of its routes.
 - Each page has one `h1`.
 
 ## Pages outside the shell

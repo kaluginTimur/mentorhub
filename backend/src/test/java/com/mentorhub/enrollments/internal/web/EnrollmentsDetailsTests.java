@@ -100,6 +100,23 @@ class EnrollmentsDetailsTests {
                     Problems.FORBIDDEN);
         }
 
+        @ParameterizedTest
+        @ValueSource(strings = {"mentor", "student", "clara", "admin"})
+        void anInvalidBodyIsRejectedBeforeThePermissionOnAKnownAndAnUnknownTrack(String caller) {
+            users.link(student, "student");
+            for (UUID track : List.of(ownTrack, otherTrack, UUID.randomUUID())) {
+                for (String body : List.of("{}", "{\"studentId\": \"" + student + "\"}")) {
+                    assertProblem(
+                            send(HttpMethod.POST, enrollPath(track), body, caller),
+                            HttpStatus.BAD_REQUEST,
+                            Problems.VALIDATION_FAILED);
+                }
+            }
+            assertNoItems(send(HttpMethod.GET, path(ownTrack, ""), "", "admin"));
+            assertNoItems(send(HttpMethod.GET, path(otherTrack, ""), "", "admin"));
+            assertThat(users.count("audit_log")).isZero();
+        }
+
         @Test
         void validityComesBeforeTheTrack() {
             UUID unknown = UUID.randomUUID();

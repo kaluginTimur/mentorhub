@@ -1,0 +1,59 @@
+import { Component } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { listTrackEnrollments } from '../../core/api/fn/enrollments/list-track-enrollments';
+import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
+import { problemError } from '../../core/testing/problem-error';
+import { TRACK_ID, enrollmentPage, trackEnrollment } from './test-data';
+import { TrackEnrollments } from './track-enrollments';
+
+@Component({
+  imports: [TrackEnrollments],
+  template: `<app-track-enrollments
+    [trackId]="trackId"
+    [canEnroll]="false"
+    trackStatus="ACTIVE"
+  />`,
+})
+class Host {
+  readonly trackId = TRACK_ID;
+}
+
+describe('the enrollments of a track when another page fails to load', () => {
+  const api = createApiStub();
+
+  beforeEach(() => {
+    api.reset();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: '', component: Host }]), provideApiStub(api)],
+    });
+  });
+
+  it('says so and offers Retry beside the rows already shown', async () => {
+    api.resolve(listTrackEnrollments, enrollmentPage([trackEnrollment()], { totalItems: 60 }));
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/', Host);
+    const element = harness.routeNativeElement as HTMLElement;
+    await vi.waitFor(() => {
+      harness.detectChanges();
+      expect(element.textContent).toContain('Sam Student');
+    });
+
+    api.rejectOnce(
+      listTrackEnrollments,
+      problemError({ type: 'about:blank', status: 500, title: 'Error' }),
+    );
+    element.querySelector<HTMLButtonElement>('button[aria-label="Next page"]')?.click();
+
+    await vi.waitFor(() => {
+      harness.detectChanges();
+      expect(element.querySelector('[role=alert]')?.textContent).toContain(
+        'Could not load the enrollments.',
+      );
+    });
+    expect(
+      [...element.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Retry'),
+    ).toBe(true);
+  });
+});

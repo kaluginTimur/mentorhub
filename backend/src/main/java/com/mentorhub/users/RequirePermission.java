@@ -15,9 +15,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-// {value} is filled by the AnnotationTemplateExpressionDefaults bean in the security setup: the constants, each quoted
-// by
-// Permission.getExpressionTemplateValue, joined with commas.
+// {value} is filled by the AnnotationTemplateExpressionDefaults bean in the security setup: the constants, each
+// quoted by Permission.getExpressionTemplateValue, joined with commas.
 @PreAuthorize("hasAnyAuthority({value})")
 public @interface RequirePermission {
 

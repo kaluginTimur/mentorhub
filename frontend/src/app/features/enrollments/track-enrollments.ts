@@ -70,14 +70,15 @@ const PAGE_PARAM = 'enrollmentsPage';
             </div>
           }
         </div>
-        @if (enrollments.error() && !loaded()) {
+        @if (enrollments.error()) {
           <div class="flex flex-wrap items-center gap-3">
             <p role="alert" class="text-sm text-destructive">Could not load the enrollments.</p>
             <button hlmBtn variant="outline" size="sm" type="button" (click)="enrollments.reload()">
               Retry
             </button>
           </div>
-        } @else if (loaded(); as page) {
+        }
+        @if (loaded(); as page) {
           @if (page.items.length > 0) {
             <ul class="divide-y divide-border">
               @for (e of page.items; track e.id) {
@@ -105,11 +106,12 @@ const PAGE_PARAM = 'enrollmentsPage';
             </ul>
           } @else if (page.totalItems > 0) {
             <p class="text-xs text-muted-foreground">No students on this page.</p>
-          } @else if (!enrollments.isLoading()) {
+          } @else if (!enrollments.isLoading() && !enrollments.error()) {
             <p class="text-xs text-muted-foreground">No students enrolled yet</p>
           }
-          @if (page.totalItems > PAGE_SIZE) {
+          @if (page.totalItems > PAGE_SIZE || (page.totalItems > 0 && pageIndex() > 0)) {
             <app-paginator
+              borderless
               [totalItems]="page.totalItems"
               [pageSize]="PAGE_SIZE"
               [pageIndex]="pageIndex()"
