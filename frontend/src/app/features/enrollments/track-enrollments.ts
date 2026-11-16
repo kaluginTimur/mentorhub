@@ -1,14 +1,5 @@
 import { DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  linkedSignal,
-  output,
-  resource,
-} from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -112,16 +103,18 @@ const PAGE_PARAM = 'enrollmentsPage';
                 </li>
               }
             </ul>
-            @if (page.totalItems > PAGE_SIZE) {
-              <app-paginator
-                [totalItems]="page.totalItems"
-                [pageSize]="PAGE_SIZE"
-                [pageIndex]="pageIndex()"
-                (pageChange)="onPage($event)"
-              />
-            }
+          } @else if (page.totalItems > 0) {
+            <p class="text-xs text-muted-foreground">No students on this page.</p>
           } @else if (!enrollments.isLoading()) {
             <p class="text-xs text-muted-foreground">No students enrolled yet</p>
+          }
+          @if (page.totalItems > PAGE_SIZE) {
+            <app-paginator
+              [totalItems]="page.totalItems"
+              [pageSize]="PAGE_SIZE"
+              [pageIndex]="pageIndex()"
+              (pageChange)="onPage($event)"
+            />
           }
         }
       </div>
@@ -167,16 +160,6 @@ export class TrackEnrollments {
     source: () => (this.enrollments.hasValue() ? this.enrollments.value() : undefined),
     computation: (page, previous) => page ?? previous?.value,
   });
-
-  constructor() {
-    effect(() => {
-      // A page past the end (after the track changed) falls back to the first one.
-      const page = this.loaded();
-      if (page && page.items.length === 0 && page.totalItems > 0 && this.pageIndex() > 0) {
-        this.onPage(0);
-      }
-    });
-  }
 
   protected onPage(index: number): void {
     void this.router.navigate([], {
