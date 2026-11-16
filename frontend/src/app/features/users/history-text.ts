@@ -1,5 +1,6 @@
 import { HistoryEntry } from '../../core/api/models/history-entry';
 import { ProfileField } from '../../core/api/models/profile-field';
+import { formatCalendarDate } from '../../shared/date/date-format';
 import { trackLabel } from '../../shared/track-label/track-label';
 import { REASON_LABELS, ROLE_LABELS } from './labels';
 
@@ -70,7 +71,7 @@ export function describeEntry(entry: HistoryEntry): string {
     case 'USER_TRACK_COORDINATOR_REMOVED':
       return `Removed as a coordinator of ${trackName(entry)}`;
     case 'USER_ENROLLED':
-      return ''; // sentence comes with the enrollments screens
+      return `Enrolled on ${trackName(entry)}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
     default: {
       const unreachable: never = entry.action;
       return unreachable;

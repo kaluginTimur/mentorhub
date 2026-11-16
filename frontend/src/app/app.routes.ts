@@ -65,6 +65,11 @@ export const routes: Routes = [
             ],
           },
           {
+            path: 'my-enrollment',
+            loadComponent: () =>
+              import('./features/enrollments/my-enrollment-page').then((m) => m.MyEnrollmentPage),
+          },
+          {
             path: 'profile',
             loadComponent: () => import('./features/profile/my-profile').then((m) => m.MyProfile),
           },

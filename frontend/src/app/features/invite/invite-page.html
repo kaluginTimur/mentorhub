@@ -43,8 +43,8 @@
                   [textContent]="'You\'re invited to MentorHub'"
                 ></h1>
                 <p class="text-sm text-muted-foreground">
-                  This invitation is for {{ preview()?.email }}. Sign in with that email, or create
-                  an account if you don't have one.
+                  This invitation is for <app-email [value]="preview()?.email ?? ''" />. Sign in
+                  with that email, or create an account if you don't have one.
                 </p>
               </div>
             }
@@ -62,11 +62,11 @@
                   [textContent]="'You\'re invited to MentorHub'"
                 ></h1>
                 <p class="text-sm text-muted-foreground">
-                  This invitation is for {{ preview()?.email }}.
+                  This invitation is for <app-email [value]="preview()?.email ?? ''" />.
                 </p>
                 <p class="text-sm text-muted-foreground">
                   @if (account().email; as email) {
-                    You're signed in as {{ email }}.
+                    You're signed in as <app-email [value]="email" />.
                   } @else {
                     You're signed in.
                   }
@@ -107,8 +107,8 @@
                   @if (unverified()) {
                     Verify your email in your account first, then try again.
                   } @else {
-                    This invitation is for {{ preview()?.email }}, but you're signed in as
-                    {{ account().email }}.
+                    This invitation is for <app-email [value]="preview()?.email ?? ''" />, but
+                    you're signed in as <app-email [value]="account().email ?? ''" />.
                   }
                 </p>
               </div>

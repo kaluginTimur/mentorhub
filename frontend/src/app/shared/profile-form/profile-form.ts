@@ -6,6 +6,7 @@ import { HlmLabel } from '@spartan-ng/helm/label';
 import { ProfileUpdate } from '../../core/api/models/profile-update';
 import { PROBLEM, problemOf } from '../../core/problem';
 import { ToastService } from '../toast/toast.service';
+import { Email } from '../email/email';
 
 export interface ProfileValues {
   email: string;
@@ -24,7 +25,7 @@ const blankToNull = (value: string): string | null => (value.trim() === '' ? nul
 /** First name, last name and phone of a user; shared by the user page and "My profile". */
 @Component({
   selector: 'app-profile-form',
-  imports: [FormField, HlmInput, HlmLabel, HlmButton],
+  imports: [Email, FormField, HlmInput, HlmLabel, HlmButton],
   template: `
     <form novalidate (submit)="onSubmit($event)" class="space-y-5">
       @if (showEmail()) {
@@ -32,7 +33,7 @@ const blankToNull = (value: string): string | null => (value.trim() === '' ? nul
           class="flex flex-wrap items-baseline gap-2 rounded-lg bg-muted/50 px-3.5 py-2.5 text-sm"
         >
           <span class="font-medium text-muted-foreground">Email</span>
-          <span class="font-mono text-foreground">{{ values().email }}</span>
+          <span class="font-mono text-foreground"><app-email [value]="values().email" /></span>
         </div>
       }
 

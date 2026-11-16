@@ -14,7 +14,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeft, lucidePencil, lucidePlus } from '@ng-icons/lucide';
+import { lucideArrowLeft, lucidePencil, lucidePlus, lucideTriangleAlert } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
@@ -39,12 +39,14 @@ import { Loading } from '../../shared/loading/loading';
 import { ToastOptions, ToastService } from '../../shared/toast/toast.service';
 import { trackLabel } from '../../shared/track-label/track-label';
 import { Unavailable } from '../../shared/unavailable/unavailable';
+import { TrackEnrollments } from '../enrollments/track-enrollments';
 import { AddCoordinatorDialog, AddCoordinatorDialogData } from './add-coordinator-dialog';
 import { AssignmentMark } from './assignment-mark';
 import { TrackStatusChip } from './track-status-chip';
 import { describeTrackEntry } from './track-history-text';
 import { TrackDialog, TrackDialogData } from './track-dialog';
 import { TracksListState } from './tracks-list-state';
+import { Email } from '../../shared/email/email';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,17 +56,19 @@ type Outcome = 'done' | 'refused' | 'failed';
 @Component({
   selector: 'app-track-page',
   imports: [
+    Email,
     DatePipe,
     RouterLink,
     NgIcon,
     HlmButton,
     AssignmentMark,
     TrackStatusChip,
+    TrackEnrollments,
     HlmCardImports,
     Loading,
     Unavailable,
   ],
-  providers: [provideIcons({ lucideArrowLeft, lucidePencil, lucidePlus })],
+  providers: [provideIcons({ lucideArrowLeft, lucidePencil, lucidePlus, lucideTriangleAlert })],
   templateUrl: './track-page.html',
 })
 export class TrackPage {
@@ -103,6 +107,9 @@ export class TrackPage {
     () => !!this.track.error() && !isForbidden(this.track.error()),
   );
   protected readonly canManage = computed(() => this.currentUser.hasPermission('TRACKS_MANAGE'));
+  protected readonly canReadEnrollments = computed(() =>
+    this.currentUser.hasPermission('ENROLLMENTS_READ'),
+  );
   protected readonly canReadUsers = computed(() => this.currentUser.hasPermission('USERS_READ'));
   protected readonly hasMarked = computed(
     () =>
@@ -278,6 +285,16 @@ export class TrackPage {
     this.toast.show(message, options);
   }
 
+  /** An enrollment was refused elsewhere on the page: show the track and its history as they are now. */
+  protected refreshed(): void {
+    this.track.reload();
+    void this.loadHistory(true);
+  }
+
+  protected enrolled(): void {
+    void this.loadHistory(true);
+  }
+
   private applied(updated: Track, message: string): void {
     this.track.set(updated);
     void this.loadHistory(true);
@@ -291,6 +308,11 @@ export class TrackPage {
       this.say("This track is archived, so it can't be changed. It is shown as it is now.", {
         politeness: 'assertive',
       });
+    } else if (type === PROBLEM.trackHasActiveEnrollments) {
+      this.say(
+        "This track still has active enrollments, so it can't be archived. It is shown as it is now.",
+        { politeness: 'assertive' },
+      );
     } else if (type === PROBLEM.coordinatorNotEligible) {
       this.say(
         'That user is no longer eligible: they must be active and hold the coordinator role.',

@@ -49,12 +49,14 @@ import { DisableDialog, DisableDialogData } from './disable-dialog';
 import { describeEntry } from './history-text';
 import { REASON_LABELS, ROLE_LABELS, STATUS_LABELS } from './labels';
 import { UsersListState } from './users-list-state';
+import { Email } from '../../shared/email/email';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Component({
   selector: 'app-user-page',
   imports: [
+    Email,
     DatePipe,
     RouterLink,
     NgIcon,

@@ -35,6 +35,7 @@ import { Paginator } from '../../shared/paginator/paginator';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { ROLE_LABELS, STATUS_LABELS } from './labels';
 import { UsersListState } from './users-list-state';
+import { Email } from '../../shared/email/email';
 
 const PAGE_SIZE = 25;
 const SEARCH_DELAY = 300;
@@ -43,6 +44,7 @@ const SEARCH_LIMIT = 100;
 @Component({
   selector: 'app-users-list',
   imports: [
+    Email,
     RouterLink,
     NgIcon,
     HlmButton,

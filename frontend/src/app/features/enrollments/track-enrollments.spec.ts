@@ -71,9 +71,21 @@ function type(field: HTMLInputElement | null, value: string) {
 }
 
 // The plan fixes the "Student" search field and the "Enroll" button, not how a candidate is picked.
-async function chooseStudent(search: string, name: string, settle: () => Promise<void>) {
-  type(fieldLabelled(overlay(), 'Student'), search);
+// The candidates are a drop-down: the user clicks the Student field to open it.
+// With `search`, the user also types to narrow the list.
+function openStudentList() {
+  const field = fieldLabelled(overlay(), 'Student');
+  expect(field, 'the Student field').not.toBeNull();
+  field?.click();
+}
+
+async function chooseStudent(search: string | null, name: string, settle: () => Promise<void>) {
+  openStudentList();
   await settle();
+  if (search !== null) {
+    type(fieldLabelled(overlay(), 'Student'), search);
+    await settle();
+  }
   await vi.waitFor(() => {
     const option = [
       ...overlay().querySelectorAll<HTMLElement>('[role=option], [role=radio], li, button'),
@@ -230,7 +242,7 @@ describe('TrackEnrollments', () => {
       buttonByText(element, 'Enroll student')?.click();
       await settle();
       expect(fieldLabelled(overlay(), 'Start date')?.value, 'today by default').toBe(today());
-      await chooseStudent('Olga', 'Olga Candidate', settle);
+      await chooseStudent(null, 'Olga Candidate', settle);
       buttonByText(overlay(), 'Enroll')?.click();
       await settle();
 
@@ -240,6 +252,23 @@ describe('TrackEnrollments', () => {
         ]),
       );
       await vi.waitFor(() => expect(element.textContent).toContain('Olga Candidate'));
+    });
+
+    it('lists the candidates when the Student field is clicked, without typing', async () => {
+      const { element, settle } = await open();
+      await vi.waitFor(() => expect(buttonByText(element, 'Enroll student')).toBeDefined());
+
+      buttonByText(element, 'Enroll student')?.click();
+      await settle();
+      openStudentList();
+      await settle();
+
+      await vi.waitFor(() => expect(overlay().textContent).toContain('Olga Candidate'));
+      const calls = api.callsFor(listEnrollmentCandidates);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual(expect.objectContaining({ id: TRACK_ID }));
+      expect(calls[0].q, 'no search').toBeUndefined();
+      expect(calls[0].page ?? 0, 'the first page').toBe(0);
     });
 
     it('sends the start date the user chose and the typed search to the candidates', async () => {
@@ -349,7 +378,7 @@ describe('a refused enrollment', () => {
 
       buttonByText(element, 'Enroll student')?.click();
       await settle();
-      await chooseStudent('olga', 'Olga Candidate', settle);
+      await chooseStudent(null, 'Olga Candidate', settle);
       buttonByText(overlay(), 'Enroll')?.click();
       await settle();
 
@@ -360,7 +389,7 @@ describe('a refused enrollment', () => {
     },
   );
 
-  it('ENR-7.1 explains track-archived on the candidates and shows the track and its enrollments as they are now', async () => {
+  it('ENR-7.1 explains track-archived on the first request for candidates and shows the track and its enrollments as they are now', async () => {
     trackChangedMeanwhile(track({ name: 'Quality Engineering', status: 'ARCHIVED' }));
     api.reject(listEnrollmentCandidates, problem(409, 'urn:mentorhub:problem:track-archived'));
     const { element, settle } = await open();
@@ -368,7 +397,6 @@ describe('a refused enrollment', () => {
 
     buttonByText(element, 'Enroll student')?.click();
     await settle();
-    type(fieldLabelled(overlay(), 'Student'), 'olga');
     await settle();
 
     await vi.waitFor(() => expect(snack()).toMatch(/archived/i));

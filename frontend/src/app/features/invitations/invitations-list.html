@@ -89,13 +89,13 @@
                     >
                       <td
                         hlmTd
-                        class="col-start-1 row-start-1 block min-w-0 p-0 whitespace-normal md:table-cell md:px-4 md:py-3 md:break-all md:whitespace-normal"
+                        class="col-start-1 row-start-1 block min-w-0 p-0 whitespace-normal md:table-cell md:px-4 md:py-3 md:whitespace-normal"
                       >
                         <div class="flex min-w-0 items-center gap-3">
                           <app-avatar [user]="{ email: invitation.email }" size="sm" />
-                          <span class="min-w-0 font-medium break-all text-foreground">{{
-                            invitation.email
-                          }}</span>
+                          <span class="min-w-0 font-medium text-foreground"
+                            ><app-email [value]="invitation.email"
+                          /></span>
                         </div>
                       </td>
                       <td

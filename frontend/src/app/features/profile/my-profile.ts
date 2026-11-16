@@ -8,10 +8,11 @@ import { displayName } from '../../core/auth/user-name';
 import { Avatar } from '../../shared/avatar/avatar';
 import { ProfileForm, ProfileValues } from '../../shared/profile-form/profile-form';
 import { ToastService } from '../../shared/toast/toast.service';
+import { Email } from '../../shared/email/email';
 
 @Component({
   selector: 'app-my-profile',
-  imports: [HlmCardImports, Avatar, ProfileForm],
+  imports: [Email, HlmCardImports, Avatar, ProfileForm],
   template: `
     <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
       <h1
@@ -37,9 +38,9 @@ import { ToastService } from '../../shared/toast/toast.service';
                 <div class="w-full space-y-1">
                   <p class="text-xs font-medium text-muted-foreground">Email</p>
                   <p
-                    class="rounded-lg bg-muted/60 px-3 py-2 text-center font-mono text-xs break-all text-muted-foreground"
+                    class="rounded-lg bg-muted/60 px-3 py-2 text-center font-mono text-xs text-muted-foreground"
                   >
-                    {{ addr }}
+                    <app-email [value]="addr" />
                   </p>
                 </div>
               }

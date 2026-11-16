@@ -16,11 +16,13 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { InvitationLink } from '../../core/api/models/invitation-link';
 import { ToastService } from '../../shared/toast/toast.service';
+import { Email } from '../../shared/email/email';
 
 /** The content of a dialog that shows an invitation link: 'new' offers to copy it, 'copy' is the manual fallback. */
 @Component({
   selector: 'app-link-view',
   imports: [
+    Email,
     DatePipe,
     NgIcon,
     HlmDialogHeader,
@@ -42,19 +44,19 @@ import { ToastService } from '../../shared/toast/toast.service';
       <div class="space-y-4">
         @if (mode() === 'new' && emailRequested()) {
           <p class="text-sm text-muted-foreground">
-            An email with this link is on its way to {{ link().email }}. It expires on
-            {{ link().expiresAt | date: 'd MMM y' }}. You can also copy the link, and copy it again
-            from the invitations list while it is pending.
+            An email with this link is on its way to <app-email [value]="link().email" />. It
+            expires on {{ link().expiresAt | date: 'd MMM y' }}. You can also copy the link, and
+            copy it again from the invitations list while it is pending.
           </p>
         } @else if (mode() === 'new') {
           <p class="text-sm text-muted-foreground">
-            Send this link to {{ link().email }}. It expires on
+            Send this link to <app-email [value]="link().email" />. It expires on
             {{ link().expiresAt | date: 'd MMM y' }}. You can copy it again from the invitations
             list while it is pending.
           </p>
         } @else {
           <p class="text-sm text-muted-foreground">
-            Copy this link and send it to {{ link().email }}. It expires on
+            Copy this link and send it to <app-email [value]="link().email" />. It expires on
             {{ link().expiresAt | date: 'd MMM y' }}.
           </p>
         }
