@@ -226,7 +226,12 @@ export function localToday(): string {
               >
                 <ng-icon name="lucideCalendar" aria-hidden="true" />
               </button>
-              <hlm-popover-content class="w-fit p-0" *hlmPopoverPortal>
+              <hlm-popover-content
+                class="w-fit p-0"
+                *hlmPopoverPortal
+                (keydown.tab)="onCalendarTab($event)"
+                (keydown.shift.tab)="onCalendarTab($event)"
+              >
                 <hlm-calendar
                   class="p-3"
                   [date]="pickedDate()"
@@ -336,6 +341,29 @@ export class EnrollStudentDialog {
       // The clear button leaves the page when it is used: the focus returns to the field.
       this.host.nativeElement.querySelector<HTMLInputElement>('#enroll-student-search')?.focus();
     }
+  }
+
+  /**
+   * The calendar renders in an overlay outside the dialog, so Tab from its edge would reach the page
+   * behind the modal: it closes the popup and returns the focus to the date field instead.
+   */
+  protected onCalendarTab(event: Event): void {
+    const keyboard = event as KeyboardEvent;
+    const popup = event.currentTarget as HTMLElement;
+    const stops = Array.from(popup.querySelectorAll<HTMLElement>('button, [tabindex]')).filter(
+      (el) =>
+        el.tabIndex >= 0 &&
+        !(el as HTMLButtonElement).disabled &&
+        !el.closest('[inert]') &&
+        getComputedStyle(el).visibility !== 'hidden',
+    );
+    const edge = keyboard.shiftKey ? stops[0] : stops[stops.length - 1];
+    if (stops.length > 0 && document.activeElement !== edge) {
+      return;
+    }
+    keyboard.preventDefault();
+    this.calendarState.set('closed');
+    this.host.nativeElement.querySelector<HTMLInputElement>('#enroll-start-date')?.focus();
   }
 
   protected pickDate(date: Date | undefined): void {

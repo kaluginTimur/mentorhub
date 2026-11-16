@@ -63,3 +63,58 @@ describe('EnrollStudentDialog candidates drop-down', () => {
     expect(overlay().querySelector('#enroll-student-chosen')?.textContent?.trim()).toBe('');
   });
 });
+
+describe('EnrollStudentDialog calendar popup keyboard', () => {
+  let ref: { close: () => void };
+  const calendar = () => overlay().querySelector<HTMLElement>('hlm-calendar');
+  const tabbable = () =>
+    [
+      ...(calendar()?.parentElement?.querySelectorAll<HTMLElement>('button, [tabindex]') ?? []),
+    ].filter((el) => el.tabIndex >= 0 && !el.closest('[inert]'));
+  const press = (target: HTMLElement, shiftKey: boolean) =>
+    target.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }),
+    );
+
+  beforeEach(async () => {
+    ref = TestBed.inject(HlmDialogService).open(EnrollStudentDialog, {
+      context: {
+        load: async () => ({ items: [], page: 0, size: 25, totalItems: 0 }),
+        enroll: async () => true,
+      } satisfies EnrollStudentDialogData,
+    });
+    await vi.waitFor(() => expect(field()).not.toBeNull());
+    overlay()
+      .querySelector<HTMLElement>('[aria-label="Choose the start date in a calendar"]')
+      ?.click();
+    await vi.waitFor(() =>
+      expect(calendar()?.parentElement?.contains(document.activeElement)).toBe(true),
+    );
+  });
+
+  afterEach(() => ref.close());
+
+  it('closes the popup on Tab from its last stop and focuses the date field', async () => {
+    const last = tabbable().at(-1) as HTMLElement;
+    last.focus();
+    const event = press(last, false);
+    expect(event).toBe(false);
+    await vi.waitFor(() => expect(calendar()).toBeNull());
+    expect(document.activeElement?.id).toBe('enroll-start-date');
+  });
+
+  it('closes the popup on Shift+Tab from its first stop and focuses the date field', async () => {
+    const first = tabbable()[0];
+    first.focus();
+    expect(press(first, true)).toBe(false);
+    await vi.waitFor(() => expect(calendar()).toBeNull());
+    expect(document.activeElement?.id).toBe('enroll-start-date');
+  });
+
+  it('leaves Tab between the stops of the popup alone', () => {
+    const first = tabbable()[0];
+    first.focus();
+    expect(press(first, false)).toBe(true);
+    expect(calendar()).not.toBeNull();
+  });
+});
