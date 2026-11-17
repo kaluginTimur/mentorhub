@@ -47,7 +47,7 @@ Before every stop for you, `/spec` and `/feature` write a handover into the plan
 
 You review diffs in your IDE; nothing is committed or pushed unless you agree. Do not switch branches while agents are running: background agents write to the same working tree.
 
-Nothing is committed on the default branch, so every change ends with `/pr`, an edit of the roadmap too. `/pr` runs `node scripts/check-path.mjs`, which fails when the branch's prefix names no path or the diff holds what that path does not change: a requirement on a `chore/` or `fix/` branch, the contract or a migration outside `feature/`, a file outside `docs/` on `explore/`.
+Nothing is committed on the default branch, so every change ends with `/pr`, an edit of the roadmap too. `/pr` runs `node scripts/check-path.mjs`, which fails when the branch's prefix names no path or the diff holds what that path does not change: a requirement on a `chore/` or `fix/` branch, the contract outside `feature/`, a migration outside `feature/` and `chore/`, a file outside `docs/` on `explore/`.
 
 ## Guardrails
 
