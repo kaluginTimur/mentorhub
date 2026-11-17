@@ -62,7 +62,7 @@ class InvitationEmailFailureTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"", " padded ", "two\nlines"})
-    void theConstructorRejectsTextTheDatabaseWouldNotStoreAsIs(String text) {
+    void theConstructorRejectsEmptyPaddedOrMultilineText(String text) {
         assertThatThrownBy(() -> new InvitationEmailFailure(text)).isInstanceOf(IllegalArgumentException.class);
     }
 

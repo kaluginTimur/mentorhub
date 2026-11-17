@@ -1,9 +1,9 @@
 package com.mentorhub.users.internal.domain;
 
 /**
- * The stored reason of a {@link InvitationEmailStatus#FAILED} email: one line of 1 to {@value #MAX_LENGTH} characters,
- * as the {@code failure} check of {@code invitation_emails} requires. Build it with {@link #of(String, String...)}, which
- * removes the token and the link; the database cannot check that.
+ * The stored reason of a {@link InvitationEmailStatus#FAILED} email: one line of 1 to {@value #MAX_LENGTH} characters.
+ * This record holds the rule; the schema does not check it. Build it with {@link #of(String, String...)}, which removes
+ * the token and the link.
  *
  * @param text the reason, without control characters
  */
