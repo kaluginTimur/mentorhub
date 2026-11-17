@@ -83,7 +83,7 @@ Skip this for a small change, and say so. Otherwise brief a fresh `test-engineer
 ## Review loop
 
 1. Run `reviewer` on the scope (the default model), with the base ref and the plan's path.
-2. Show the user every finding at once, blockers to minors, with your recommendation. The user decides what to fix.
+2. Ask `api-lookup` the questions the review leaves for it. Show the user every finding at once, blockers to minors, with your recommendation. The user decides what to fix.
 3. Send all accepted fixes to the agent that owns each area in one batch, so there is one fix round per review. For documentation fixes, tell the agent to check every statement against the code, not against the finding's wording.
 4. If the fixes were substantial, run a re-review: `reviewer` with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from. A new blocker or major from it goes back to step 2.
 

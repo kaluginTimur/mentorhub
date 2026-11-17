@@ -79,4 +79,4 @@ Review the changes under `docs/requirements/` against the plan's scope, with the
 - <what you could not verify and why>
 ```
 
-`blocker` means a security, privacy, data-loss or contract violation; `major` means a correctness bug or broken invariant; `minor` means maintainability. Skip style nits that formatters and linters handle. Report only findings you can point to in the code or spec; mark anything uncertain as "possible" and say what would confirm it.
+`blocker` means a security, privacy, data-loss or contract violation; `major` means a correctness bug or broken invariant; `minor` means maintainability. Skip style nits that formatters and linters handle. Report only findings you can point to in the code or spec; mark anything uncertain as "possible" and say what would confirm it. A finding that rests on how a dependency behaves, with no test showing it, is not a bug: state it as "<behavior> is not covered by a test", or as a question for `api-lookup`, which the coordinator asks before showing it to the user, or the user on a direct review.

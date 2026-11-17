@@ -15,7 +15,7 @@ Lead the change `$change` from its brief to a verified branch: the path **A chan
 ## Work
 
 - Documents, skills, hooks and scripts you edit yourself. Application code goes to `backend-dev` or `frontend-dev`, briefed with the brief's path and one task; add each agent to the brief's Agents table. On a PARTIAL report, a fresh agent of the same type continues from the brief's Partial work.
-- A detail a user sees gets an ordinary test without an id when something can break it. When screens change, the user looks at them on the sample center before the review.
+- A detail a user sees gets an ordinary test without an id when something can break it. When screens change, the user looks at them on the sample center before the review. When the user asks for a first look, run `manual-tester` before that, as **When the frontend is green** in `/feature` says.
 - A passage added to a guide or widened needs the four answers of the **Guides** section of `docs/README.md`: write them into the handover and show them to the user. Remove a passage the user does not agree with.
 - Record the user's decisions in the brief, in their words. What you inferred stays out of that list.
 
@@ -33,7 +33,7 @@ Do not record token usage: `agent-usage.mjs --record` and `/usage-review` measur
 
 ## Review, verify, finish
 
-1. Run `reviewer` with the base ref and the brief's path. Show the user every finding at once with your recommendation; the user decides what to fix. One fix round; after substantial fixes, a re-review with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from.
+1. Run `reviewer` with the base ref and the brief's path. Ask `api-lookup` the questions the review leaves for it, then show the user every finding at once with your recommendation; the user decides what to fix. One fix round; after substantial fixes, a re-review with the `model` parameter set to `sonnet`, the previous findings and the ref the fixes start from.
 2. Run `verifier` for the areas the change touches.
 3. Report what was done, the verification table, open items and a proposed commit message. **Stop** for the user to accept.
 4. On acceptance, finish as stage 8 of `docs/process.md` says: a rule for later changes to its guide, an architectural choice through `/decision`. Delete the roadmap item, if the change has one. Keep the brief: `/pr` takes the user's decisions and the answers for each guide passage from it, and deletes it before the pull request is opened.

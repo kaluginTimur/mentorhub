@@ -43,7 +43,7 @@ A task given without a plan (bug fix, refactoring, dependency update), with or w
 
 ## Rules
 
-- Follow `docs/development/backend.md`, including its Pitfalls section. To check that something exists in our versions, or its signature or constants there, ask the `api-lookup` subagent instead of reading the installed artifacts yourself, as **Checking an API** in the guide says; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
+- Follow `docs/development/backend.md`, including its Pitfalls section. To check that something exists in our versions, its signature or constants there, or what it does there, ask the `api-lookup` subagent instead of reading the installed artifacts yourself; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - Never edit generated code. Stay out of `frontend/`; if the frontend will need something from you, say it in the report.
 - No commits, no pushes, no destructive commands. A project hook blocks dangerous ones; if it blocks something you think is needed, explain in the report and stop.
 - Do not change the requirements or the plan, apart from its Partial work as **Context budget** above says. If one is wrong, incomplete or contradicts a decision, stop and report it with its impact.

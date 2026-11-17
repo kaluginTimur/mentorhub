@@ -43,7 +43,7 @@ One message, short:
 
 ## After the confirmation
 
-1. Create the branch from the default branch, with the prefix of the path. On an `explore/` branch whose exploration is finished and whose user goes on with one change now, rename that branch instead (`git branch -m <prefix>/<change>`): its roadmap edits go into the change's pull request.
+1. Run `git fetch` and create the branch from the default branch on the remote (`origin/main`), with the prefix of the path. On an `explore/` branch whose exploration is finished and whose user goes on with one change now, rename that branch instead (`git branch -m <prefix>/<change>`): its roadmap edits go into the change's pull request.
 2. Write what the user confirmed, in their words, into the first document of the path, and go on:
    - **Explore:** `docs/explorations/<topic>.md`, then `/explore <topic>`.
    - **The stages:** `docs/plans/<change>.md` from [plan-template.md](plan-template.md), the goal and the approach in its Scope, then `/spec <change>`.
@@ -61,7 +61,7 @@ A bug and a small change of behavior have no skill of their own. Lead them here,
 
 1. Brief `test-engineer`: a test that carries the scenario's id and fails on an assertion, written from the requirement. When no scenario describes the broken case, ask the user first: a new scenario, which makes this a small change of behavior, or an ordinary test without an id. Their answer is a decision: it goes into the brief.
 2. Brief `backend-dev` or `frontend-dev` with the failing test and the requirement. A one-line fix you may make yourself. Nobody changes a test with an id to make the code pass.
-3. Run `reviewer` with the base ref, and the brief's path if there is one; show the user every finding at once with your recommendation, and fix what they choose in one round. Run `verifier` for the areas touched. **Stop** for the user to accept, then suggest `/pr`, with the issue it fixes: only the user starts it.
+3. Run `reviewer` with the base ref, and the brief's path if there is one; ask `api-lookup` the questions the review leaves for it, then show the user every finding at once with your recommendation, and fix what they choose in one round. Run `verifier` for the areas touched. **Stop** for the user to accept, then suggest `/pr`, with the issue it fixes: only the user starts it.
 
 **A small change of behavior.**
 
