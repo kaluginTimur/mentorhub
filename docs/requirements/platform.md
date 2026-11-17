@@ -214,9 +214,29 @@ Every screen that shows a list with a search or filters, paged (PLT-3) or not, S
 - WHEN the screen loads
 - THEN the user is taken to the home page
 
-## Known limitations
+### PLT-10 The order of refusals
 
-- A caller without the permission for an operation may get 400 `validation-failed` for an invalid body instead of 403: the body is checked before the permission. 403 before 400 is not guaranteed.
+The system SHALL refuse a call to an operation that is not public for the first of these reasons that holds: the token (401, IDN-1), the gate (403, IDN-3), the permission the operation needs (403 `forbidden`, PERM-3), the validity of the request (400, PLT-2), and only then anything about a resource or the state of the system. A caller who is refused for the token, the gate or the permission learns nothing about the request or about what exists. A call that matches no operation by its method or media type is refused before the permission: the contract is public, so this tells the caller nothing about the request or what exists. A capability names only the order of its own refusals after these.
+
+#### PLT-10.1 The permission is checked before the request is read
+
+- GIVEN an active user who does not hold the permission an operation needs
+- WHEN the user calls it with an invalid body, with a body that is not JSON, with a path id that is not a UUID, and with a query parameter out of its range
+- THEN each response is 403 `forbidden`
+- AND nothing is changed
+
+#### PLT-10.2 The permission is checked before the resource is looked up
+
+- GIVEN an active user who does not hold the permission an operation needs
+- WHEN the user calls the operation for an id that does not exist
+- THEN the response is 403 `forbidden`
+
+#### PLT-10.3 The gate refuses before the request is read
+
+- GIVEN a signed-in caller whose user is disabled
+- WHEN the caller sends an invalid body to an operation
+- THEN the response is 403 `access-ended`
+- AND nothing is changed
 
 ## Out of scope
 

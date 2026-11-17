@@ -15,26 +15,23 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationResult;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AnnotationTemplateExpressionDefaults;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Two filter chains: public endpoints without bearer token processing, so a stale token cannot fail them, and
  * everything else, where {@code /api/v1/**} requires a token and the gate, and any other path is denied.
  */
 @Configuration(proxyBeanMethods = false)
-// Class proxies keep @RestController on controllers that implement a generated *Api interface; a JDK proxy would hide
-// it from handler mapping. Boot's AOP auto-configuration does this in the application, but not in @WebMvcTest slices.
-@EnableMethodSecurity(proxyTargetClass = true)
 class SecurityConfiguration {
 
     private static final List<String> PUBLIC_PATHS =
@@ -52,10 +49,15 @@ class SecurityConfiguration {
             "/actuator/info",
             "/actuator/modulith");
 
-    /** Lets {@code @RequirePermission} fill its {@code @PreAuthorize} template from the enum constant. */
+    /** Checks {@code @RequirePermission} before the request is read (PLT-10). */
     @Bean
-    static AnnotationTemplateExpressionDefaults annotationTemplateExpressionDefaults() {
-        return new AnnotationTemplateExpressionDefaults();
+    WebMvcConfigurer permissionCheck() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addInterceptors(InterceptorRegistry registry) {
+                registry.addInterceptor(new PermissionInterceptor());
+            }
+        };
     }
 
     @Bean

@@ -8,7 +8,7 @@ How administrators see who has access to MentorHub and control it without touchi
 
 ### USR-1 Who may do what
 
-The system SHALL require `USERS_READ` to read users and their history and `USERS_MANAGE` to change another user. A user saves their own profile with no permission, only active (IDN-3). A refusal is 403 `forbidden` and changes nothing (PERM-3, PERM-6).
+The system SHALL require `USERS_READ` to read users and their history and `USERS_MANAGE` to change another user. A user saves their own profile with no permission, only active (IDN-3). A refusal is 403 `forbidden` and changes nothing (PERM-3).
 
 #### USR-1.1 Reading users needs USERS_READ
 

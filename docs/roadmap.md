@@ -48,7 +48,6 @@ No commitment and no order.
 - My tracks for a coordinator: a "My track" pill, a filter of all, mine and not mine, own tracks first, a quick action on the home page, the list in the profile.
 - A page size chosen by the user in every paged list, and the list scrolled into view on a change of page; `docs/ui/guidelines.md` says "a paginator without a page-size selector" today.
 - Unknown properties of a request body: the contract's `additionalProperties: false` is not enforced, so a body with an unknown property is accepted (seen on `EnrollmentCreate`, probably every operation); to decide for all operations at once.
-- The order of validity and permission, settled for every operation one of two ways: 400 before 403 as the stated rule of the platform, or the permission checked before the body is read, as a core mechanism of the platform. Today an invalid body gets 400 before the permission while the query parameters are checked after it; either way the known limitation of `docs/requirements/platform.md` goes, and ENR-1 follows.
 
 ## Product decisions
 

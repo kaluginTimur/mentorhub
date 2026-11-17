@@ -102,15 +102,9 @@ The system SHALL treat a stored role the running version does not know (for exam
 - THEN the request is not failed
 - AND the user holds only the permissions of the roles the application knows
 
-### PERM-6 Refusing the action, hiding the resource
+### PERM-6 Hiding the resource
 
-The system SHALL check the permission before looking up any resource, so a caller without it learns nothing about what exists. A single resource the caller may not access SHALL be answered as one that does not exist (decision 0004).
-
-#### PERM-6.1 The permission is checked before the resource is looked up
-
-- GIVEN an active user who does not hold the permission an operation needs
-- WHEN the user calls the operation for an id that does not exist
-- THEN the response is 403 `forbidden`
+The system SHALL answer a single resource the caller may not access as one that does not exist (decision 0004). A caller without the permission is refused earlier (PLT-10).
 
 #### PERM-6.2 A missing resource is not found
 

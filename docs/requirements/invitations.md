@@ -8,7 +8,7 @@ Registration in MentorHub is by invitation only (decision 0003), so administrato
 
 ### INV-1 Invitations are managed by holders of USERS_INVITE
 
-The system SHALL let only a caller who holds `USERS_INVITE` create, list and revoke invitations, get a new link and read a link, for every invitation and not only the ones they created. A refusal is 403 `forbidden` and changes nothing (PERM-3, PERM-6). Previewing and accepting a link are described in INV-10 and INV-11.
+The system SHALL let only a caller who holds `USERS_INVITE` create, list and revoke invitations, get a new link and read a link, for every invitation and not only the ones they created. A refusal is 403 `forbidden` and changes nothing (PERM-3). Previewing and accepting a link are described in INV-10 and INV-11.
 
 #### INV-1.1 Every management action needs the permission
 

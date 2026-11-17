@@ -69,7 +69,7 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     }
 
     // Security exceptions must reach Spring Security's ExceptionTranslationFilter; the catch-all below would turn
-    // method security's AccessDeniedException into a 500.
+    // the AccessDeniedException of a missing permission or relation into a 500.
     @ExceptionHandler({AccessDeniedException.class, AuthenticationException.class})
     void rethrowSecurityException(RuntimeException exception) {
         throw exception;

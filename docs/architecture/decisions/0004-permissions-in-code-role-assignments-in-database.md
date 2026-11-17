@@ -19,7 +19,7 @@ Access to a student's data depends on relations that change over time: a mentor 
   - `(iss, sub)` is resolved to `users.id` through `user_identities`;
   - unknown and disabled users are rejected with 403, except on the endpoints `docs/development/backend.md` lists as exempt;
   - roles are loaded from `user_roles` and expanded into permissions as granted authorities.
-- **Capability checks** use method security through a typed annotation, so permission names never appear in strings.
+- **Capability checks** use a typed annotation on the controller method, checked before the request is read, so permission names never appear in strings.
 - **Resource-level checks** are explicit service calls. An inaccessible resource throws `NotFoundException` and responds 404, exactly like a missing one; lists leave it out. 403 is reserved for a missing permission for the action as a whole, and for an action a relation does not allow on a resource the caller may read: hiding that resource would hide nothing, as when a coordinator enrolls on a track they do not coordinate.
 - Roles and groups in the token are not used for authorization.
 - `GET /api/v1/me` returns the user's roles and effective permissions. The frontend uses them only to hide what the user cannot do; the backend enforces.
@@ -40,4 +40,5 @@ Access to a student's data depends on relations that change over time: a mentor 
 - **Keycloak Authorization Services, Spring Security ACL.** Every student and note would have to be registered as a resource or covered by ACL entries, kept in sync on every mentor reassignment.
 - **OpenFGA, SpiceDB.** A separate service with its own copy of the relations; too much for a modular monolith (decision 0001). Worth revisiting if relationship rules grow (sharing, delegation).
 - **jCasbin.** One more abstraction with string policies and little gain over enums.
+- **Method security (`@PreAuthorize`) for capability checks**, used until 2026-11-17: it runs after the request is read, so an invalid request was answered 400 before 403.
 - **A PostgreSQL `enum` type for stored roles.** An enum value cannot be dropped without recreating the type, and `ALTER TYPE ... ADD VALUE` has transaction restrictions under Flyway, while removing or renaming a text value is a plain `UPDATE` or `DELETE` in the migration's transaction. The foreign key gives the same integrity, plain text maps to the Java enum without custom JDBC or Hibernate type configuration, and the table leaves room for roles as data.

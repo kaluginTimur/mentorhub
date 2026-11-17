@@ -7,6 +7,7 @@ import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import com.mentorhub.web.NotFoundException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Test-only endpoints that exercise the gate, permissions and error handling. */
@@ -56,6 +58,22 @@ class PermissionProbeController {
     @RequirePermission(Permission.USERS_MANAGE)
     public void create(@Valid @RequestBody ProbeBody body) {
         resources.create(body);
+    }
+
+    /** Declares media types as the generated Api interfaces do. */
+    @PostMapping(
+            value = "/typed-resources",
+            consumes = {"application/json"},
+            produces = {"application/json", "application/problem+json"})
+    @RequirePermission(Permission.USERS_MANAGE)
+    public void createTyped(@Valid @RequestBody ProbeBody body) {
+        resources.create(body);
+    }
+
+    @PostMapping("/managed-resources/search")
+    @RequirePermission(Permission.USERS_MANAGE)
+    public void search(@RequestParam @Min(1) @Max(100) int size) {
+        resources.search(size);
     }
 
     /** A request body with validated properties, as the generated request types have. */

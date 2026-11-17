@@ -79,30 +79,9 @@ class EnrollmentsDetailsTests {
     @Nested
     class OrderOfTheChecks {
 
-        @Test
-        void thePermissionComesBeforeValidityOfThePagingOfTheEnrollments() {
-            assertProblem(
-                    send(HttpMethod.GET, "/api/v1/tracks/" + UUID.randomUUID() + "/enrollments?size=0", "", "mentor"),
-                    HttpStatus.FORBIDDEN,
-                    Problems.FORBIDDEN);
-        }
-
-        @Test
-        void thePermissionComesBeforeValidityOfTheCandidatesQuery() {
-            assertProblem(
-                    send(
-                            HttpMethod.GET,
-                            "/api/v1/tracks/" + UUID.randomUUID() + "/enrollment-candidates?page=-1&q="
-                                    + "x".repeat(101),
-                            "",
-                            "mentor"),
-                    HttpStatus.FORBIDDEN,
-                    Problems.FORBIDDEN);
-        }
-
         @ParameterizedTest
-        @ValueSource(strings = {"mentor", "student", "clara", "admin"})
-        void anInvalidBodyIsRejectedBeforeThePermissionOnAKnownAndAnUnknownTrack(String caller) {
+        @ValueSource(strings = {"clara", "admin"})
+        void anInvalidBodyIsRejectedBeforeTheTrackForAHolderOfThePermission(String caller) {
             users.link(student, "student");
             for (UUID track : List.of(ownTrack, otherTrack, UUID.randomUUID())) {
                 for (String body : List.of("{}", "{\"studentId\": \"" + student + "\"}")) {

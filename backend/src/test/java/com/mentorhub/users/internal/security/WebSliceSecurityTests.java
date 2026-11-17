@@ -2,6 +2,7 @@ package com.mentorhub.users.internal.security;
 
 import static com.mentorhub.users.internal.security.ProblemAssertions.assertProblem;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
@@ -19,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /** The slice setup other modules' controller tests use. */
 @ControllerSliceTest(PermissionProbeController.class)
@@ -96,13 +98,61 @@ class WebSliceSecurityTests {
 
     // Without the permission check first, the lookup would answer 404 and tell the caller the id does not exist.
     @Test
-    @DisplayName("PERM-6.1 The permission is checked before the resource is looked up")
+    @DisplayName("PLT-10.2 The permission is checked before the resource is looked up")
     void permissionIsCheckedBeforeAMissingResourceIsLookedUp() {
         willThrow(new NotFoundException()).given(resources).change(any());
 
         MvcTestResult result = change(UUID.randomUUID(), Permission.USERS_READ);
 
         assertProblem(result, HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("PLT-10.1 The permission is checked before the request is read")
+    void permissionIsCheckedBeforeTheRequestIsRead() {
+        RequestPostProcessor caller = TestAuthentications.activeUser(UUID.randomUUID(), Permission.USERS_READ);
+
+        MvcTestResult invalidBody = mvc.post()
+                .uri("/api/v1/test/managed-resources")
+                .with(caller)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"count\": 0}")
+                .exchange();
+        MvcTestResult notJson = mvc.post()
+                .uri("/api/v1/test/managed-resources")
+                .with(caller)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("not json")
+                .exchange();
+        MvcTestResult notAUuid = mvc.post()
+                .uri("/api/v1/test/managed-resources/{id}", "not-a-uuid")
+                .with(caller)
+                .exchange();
+        MvcTestResult outOfRange = mvc.post()
+                .uri("/api/v1/test/managed-resources/search?size=0")
+                .with(caller)
+                .exchange();
+
+        assertAll(
+                () -> assertProblem(invalidBody, HttpStatus.FORBIDDEN, Problems.FORBIDDEN),
+                () -> assertProblem(notJson, HttpStatus.FORBIDDEN, Problems.FORBIDDEN),
+                () -> assertProblem(notAUuid, HttpStatus.FORBIDDEN, Problems.FORBIDDEN),
+                () -> assertProblem(outOfRange, HttpStatus.FORBIDDEN, Problems.FORBIDDEN));
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("PLT-10.3 The gate refuses before the request is read")
+    void gateRefusesBeforeTheRequestIsRead() {
+        MvcTestResult result = mvc.post()
+                .uri("/api/v1/test/managed-resources")
+                .with(TestAuthentications.disabledUser(UUID.randomUUID()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"count\": 0}")
+                .exchange();
+
+        assertProblem(result, HttpStatus.FORBIDDEN, Problems.ACCESS_ENDED);
         then(resources).shouldHaveNoInteractions();
     }
 
@@ -145,6 +195,49 @@ class WebSliceSecurityTests {
                 .extractingPath("$.errors[*].field")
                 .asArray()
                 .containsExactly("count", "name");
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    // Spring MVC refuses a request no mapping accepts during the handler lookup, before the permission check.
+    @Test
+    void unsupportedContentTypeIsRefusedBeforeThePermissionIsChecked() {
+        MvcTestResult result = mvc.post()
+                .uri("/api/v1/test/typed-resources")
+                .with(TestAuthentications.activeUser(UUID.randomUUID(), Permission.USERS_READ))
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("x")
+                .exchange();
+
+        assertProblem(result, HttpStatus.UNSUPPORTED_MEDIA_TYPE, java.net.URI.create("about:blank"));
+        assertThat(result).headers().hasValue("Accept", "application/json");
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void unsupportedAcceptIsRefusedBeforeThePermissionIsChecked() {
+        MvcTestResult result = mvc.post()
+                .uri("/api/v1/test/typed-resources")
+                .with(TestAuthentications.activeUser(UUID.randomUUID(), Permission.USERS_READ))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept("text/csv")
+                .content("{\"name\":\"a\",\"count\":1}")
+                .exchange();
+
+        assertProblem(result, HttpStatus.NOT_ACCEPTABLE, java.net.URI.create("about:blank"));
+        then(resources).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void unmappedMethodIsRefusedBeforeThePermissionIsChecked() {
+        MvcTestResult result = mvc.put()
+                .uri("/api/v1/test/typed-resources")
+                .with(TestAuthentications.activeUser(UUID.randomUUID(), Permission.USERS_READ))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"a\",\"count\":1}")
+                .exchange();
+
+        assertProblem(result, HttpStatus.METHOD_NOT_ALLOWED, java.net.URI.create("about:blank"));
+        assertThat(result).headers().hasValue("Allow", "POST");
         then(resources).shouldHaveNoInteractions();
     }
 
