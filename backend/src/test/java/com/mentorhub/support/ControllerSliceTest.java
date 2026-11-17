@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AliasFor;
 
 /**
- * The web slice of one controller with the application's filter chains, gate and method security, for the operation's
+ * The web slice of one controller with the application's filter chains, gate and permission check, for the operation's
  * permission, request binding, validation before the service and the JSON of its responses. Authenticate requests with
  * {@code TestAuthentications}.
  */

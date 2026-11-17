@@ -9,7 +9,7 @@ import org.springframework.security.authentication.AuthenticationManagerResolver
 import org.springframework.security.authentication.BadCredentialsException;
 
 /**
- * The application's filter chains, gate, method security and Problem Details for {@code @WebMvcTest} slices. Bearer
+ * The application's filter chains, gate, permission check and Problem Details for {@code @WebMvcTest} slices. Bearer
  * tokens are rejected; authenticate requests with {@link TestAuthentications}.
  */
 @TestConfiguration(proxyBeanMethods = false)

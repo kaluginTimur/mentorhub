@@ -8,7 +8,7 @@ The tracks of the training center, such as SWE, QA and DevOps, and who coordinat
 
 ### TRK-1 Who may do what
 
-The system SHALL require `TRACKS_READ` to read tracks, their coordinators and their history, and `TRACKS_MANAGE` to change them. A refusal is 403 `forbidden` and changes nothing (PERM-3, PERM-6).
+The system SHALL require `TRACKS_READ` to read tracks, their coordinators and their history, and `TRACKS_MANAGE` to change them. A refusal is 403 `forbidden` and changes nothing (PERM-3).
 
 #### TRK-1.1 Reading tracks needs TRACKS_READ
 

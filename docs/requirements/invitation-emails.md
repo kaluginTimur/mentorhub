@@ -33,7 +33,7 @@ The system SHALL offer invitation emails only when a mail server is configured (
 
 ### IEM-2 Requesting an email needs USERS_INVITE
 
-The system SHALL let only a holder of `USERS_INVITE` request an invitation email, and SHALL let any holder do it for any invitation, not only their own (PERM-3, INV-1). Others get 403 `forbidden` and nothing changes; the refusal precedes any lookup of the invitation (PERM-6).
+The system SHALL let only a holder of `USERS_INVITE` request an invitation email, and SHALL let any holder do it for any invitation, not only their own (PERM-3, INV-1). Others get 403 `forbidden` and nothing changes.
 
 #### IEM-2.1 Requesting an email needs the permission
 

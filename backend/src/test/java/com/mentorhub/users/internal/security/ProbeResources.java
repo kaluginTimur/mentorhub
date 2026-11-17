@@ -9,5 +9,7 @@ class ProbeResources {
 
     void change(UUID id) {}
 
+    void search(int size) {}
+
     void create(PermissionProbeController.ProbeBody body) {}
 }
