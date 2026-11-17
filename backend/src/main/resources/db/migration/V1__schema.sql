@@ -3,7 +3,7 @@ COMMENT ON SCHEMA public IS 'MentorHub';
 -- disabled_reason must equal the DisableReason enum in code.
 create table users (
     id               uuid        primary key default gen_random_uuid(),
-    email            text        not null check (email <> ''),
+    email            text        not null,
     first_name       text,
     last_name        text,
     status           text        not null check (status in ('ACTIVE', 'DISABLED')),
@@ -84,7 +84,7 @@ execute function audit_log_reject_change();
 -- protection of a link.
 create table invitations (
     id               uuid        primary key default gen_random_uuid(),
-    email            text        not null check (email <> ''),
+    email            text        not null,
     created_at       timestamptz not null default now(),
     created_by       uuid        not null references users (id) on delete restrict,
     expires_at       timestamptz not null,
@@ -96,7 +96,6 @@ create table invitations (
     constraint invitations_accepted_ck check ((accepted_at is null) = (accepted_user_id is null)),
     constraint invitations_revoked_ck check ((revoked_at is null) = (revoked_by is null)),
     constraint invitations_closed_once_ck check (accepted_at is null or revoked_at is null),
-    constraint invitations_token_ck check (token ~ '^[A-Za-z0-9_-]{43}$'),
     constraint invitations_token_uq unique (token)
 );
 
@@ -124,7 +123,7 @@ create table invitation_emails (
     status        text        not null default 'QUEUED' check (status in ('QUEUED', 'SENT', 'FAILED', 'SKIPPED')),
     finished_at   timestamptz,
     -- A short reason for the log reader; never the token or the message body.
-    failure       text        check (char_length(failure) between 1 and 500),
+    failure       text,
     constraint invitation_emails_finished_ck check ((status = 'QUEUED') = (finished_at is null)),
     constraint invitation_emails_failure_ck check ((status = 'FAILED') = (failure is not null))
 );

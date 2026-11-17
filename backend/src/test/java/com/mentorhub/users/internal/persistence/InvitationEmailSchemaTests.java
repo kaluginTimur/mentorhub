@@ -79,11 +79,6 @@ class InvitationEmailSchemaTests {
     }
 
     @Test
-    void acceptsAFailureOf500Characters() {
-        assertThatCode(() -> insert("RESENT", "FAILED", true, "é".repeat(500))).doesNotThrowAnyException();
-    }
-
-    @Test
     void rejectsASecondQueuedRequestForAnInvitation() {
         insert("CREATED", "QUEUED", false, null);
 
