@@ -21,7 +21,7 @@ Lead the change `$change` from its brief to a verified branch: the path **A chan
 
 ## When the path is wrong
 
-Stop as soon as the change needs a requirement changed or added, the contract or a migration. That includes a rule this change alters that no requirement holds and one should, by the criterion in **Requirements** of `docs/development/docs.md`: a rule about access, data, state transitions, security or irreversible actions, or one whose breach is hard to notice. Do not finish the task first: write into the handover `Waiting for: a new path` with what you found and what is already made, and go to `/change`.
+Stop as soon as the change needs a requirement changed or added, the contract, or a migration that changes behavior. That includes a rule this change alters that no requirement holds and one should, by the criterion in **Requirements** of `docs/development/docs.md`: a rule about access, data, state transitions, security or irreversible actions, or one whose breach is hard to notice. Do not finish the task first: write into the handover `Waiting for: a new path` with what you found and what is already made, and go to `/change`.
 
 A rule of that kind that the change does not alter is not a reason to stop: write it under the handover's open questions, and the user decides at the next stop what becomes of it.
 

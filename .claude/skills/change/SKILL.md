@@ -32,7 +32,7 @@ One message, short:
   | An idea too vague to name its path, or a choice this step cannot settle | Explore | `explore/<topic>` |
   | The code departs from a requirement | A bug | `fix/<topic>` |
   | One or two requirements change or are added, no contract, no migration | A small change of behavior | `change/<change>` |
-  | No requirement describes what changes, and none should: the build, tooling, documents, a detail of the code or the UI | A change outside the requirements | `chore/<change>` |
+  | No requirement describes what changes, and none should: the build, tooling, documents, a detail of the code, the schema or the UI | A change outside the requirements | `chore/<change>` |
   | Anything else | The stages | `feature/<change>` |
 
   What users call a bug is wider than the path: the code may follow a requirement that is wrong (a change of behavior), or break a detail no requirement holds (a change outside the requirements).

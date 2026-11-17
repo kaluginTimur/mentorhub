@@ -11,6 +11,9 @@ const STAGES_ONLY = [
   (f) => f === CONTRACT || f.startsWith(MIGRATIONS),
   'the contract or a migration: that is a change for the stages (feature/)',
 ];
+// A chore may hold a migration that changes no requirement (an index, a dropped check that repeats the code); whether it
+// does is settled at Choosing a path, not here.
+const CONTRACT_ONLY = [(f) => f === CONTRACT, 'the contract: that is a change for the stages (feature/)'];
 const NO_REQUIREMENTS = [(f) => f.startsWith(REQUIREMENTS), 'a requirement: that is a change of behavior (change/ or feature/)'];
 
 // For each prefix: what a file of the change must not be, and where such a change belongs.
@@ -18,7 +21,7 @@ const PATHS = {
   feature: [],
   change: [STAGES_ONLY],
   fix: [NO_REQUIREMENTS, STAGES_ONLY],
-  chore: [NO_REQUIREMENTS, STAGES_ONLY],
+  chore: [NO_REQUIREMENTS, CONTRACT_ONLY],
   explore: [[(f) => !f.startsWith('docs/'), 'a file outside docs/: an exploration leaves findings, not code']],
 };
 
