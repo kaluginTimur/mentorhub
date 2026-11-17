@@ -7,7 +7,9 @@ import path from 'node:path';
 const PLANNED = /\b(if|when|once) it exists\b|\(planned\)/i;
 // Files that documents name as a location while their content changes with every feature.
 const LOCATION_ONLY = new Set(['api/openapi.yaml']);
-const CHECKED_COMMAND_SECTIONS = /^(Verification|Checking an API)\b/;
+const CHECKED_COMMAND_SECTIONS = /^Verification\b/;
+// api-lookup runs its own commands under the same allow rules.
+const CHECKED_COMMAND_DOCS = new Set(['.claude/agents/api-lookup.md']);
 const READ_ONLY_COMMANDS = ['cd', 'grep', 'cat', 'ls', 'head', 'tail', 'wc', 'echo', 'git status', 'git diff', 'git log', 'git show'];
 
 function git(args, options = {}) {
@@ -128,7 +130,8 @@ for (const doc of knowledgeFiles) {
       return;
     }
     if (fence !== null) {
-      if (fence === 'bash' && doc.startsWith('docs/development/') && CHECKED_COMMAND_SECTIONS.test(section)) {
+      const checked = (doc.startsWith('docs/development/') && CHECKED_COMMAND_SECTIONS.test(section)) || CHECKED_COMMAND_DOCS.has(doc);
+      if (fence === 'bash' && checked) {
         if (line.trim() && !line.trim().startsWith('#')) commands.push({ doc, lineNo, command: line.trim() });
       }
       return;

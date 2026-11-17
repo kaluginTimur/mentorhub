@@ -16,5 +16,6 @@ The rules every change must keep are in `docs/constitution.md`.
 - Every change starts with **Choosing a path** in `docs/process.md`, a one-line fix and a change begun in an ordinary conversation too: before anything is changed, the owner confirms the goal, the approach and the path, and the change gets its branch. Nothing is changed on the default branch.
 - Before planning a change, read the decisions and requirements it touches and its roadmap item, as **What to read** in `docs/process.md` says. Propose a new decision when a choice meets the threshold in the decisions index.
 - When a change conflicts with the constitution, a decision or a requirement, stop and report it with its impact. Do not widen the change silently or work around the conflict.
+- Run `git fetch` before stating what the remote's default branch holds, and before branching from it.
 - Ask before destructive or hard-to-reverse actions, even on local resources: deleting data, resetting databases or Docker volumes, rewriting git history, pushing.
 - When you suggest a destructive command for the user to run, say what it will destroy (for example, that `docker compose down -v` deletes the dev database volume).

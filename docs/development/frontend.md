@@ -86,6 +86,10 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 | Format | `npm run format` |
 | Regenerate the API client | `npm run generate:api` |
 
+Whether a package export exists in our versions, or what it does there: ask the `api-lookup` subagent instead of relying on memory: it inspects the installed package. The procedure is in `.claude/agents/api-lookup.md`.
+
+The Angular CLI MCP server (`.mcp.json`) offers best practices, documentation search and examples for the installed Angular version. It starts with the default Node, so the default must satisfy `.nvmrc` (`nvm alias default 24`).
+
 ## Verification
 
 The definition of done for frontend work. Run each command exactly in this form, in separate shell calls. `~/.nvm/nvm-exec` runs the command with the Node version from `.nvmrc`:
@@ -100,12 +104,3 @@ cd frontend && ~/.nvm/nvm-exec npm run build
 - If `node_modules` is missing, run `cd frontend && ~/.nvm/nvm-exec npm ci` first.
 - Formatting failures are fixed with `cd frontend && ~/.nvm/nvm-exec npm run format`.
 - Without nvm, check `node -v` (^24.15) and run the same `npm` commands directly.
-
-## Checking an API
-
-The `api-lookup` subagent follows this section. Implementation agents ask it and never inspect a dependency themselves: it answers from the exact versions on a small model, and the lookup stays out of their context.
-
-- Package version: `node_modules/<package>/package.json`.
-- Exports: the package's `.d.ts` files (see `types` / `exports` in its `package.json`).
-- The generated client: `frontend/src/app/core/api/` (run `npm run generate:api` if it is missing).
-- The Angular CLI MCP server (`.mcp.json`) offers best practices, documentation search and examples for the installed Angular version. It starts with the default Node, so the default must satisfy `.nvmrc` (`nvm alias default 24`).

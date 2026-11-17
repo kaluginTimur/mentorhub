@@ -124,7 +124,7 @@ Security pitfalls:
 - MockMvc does not perform the servlet container's error dispatch: an exception from a filter reaches the test as an exception instead of the `ProblemErrorController` response. Test filter-level failures with a `RANDOM_PORT` server, as `IssuerFailureTests` does.
 - A catch-all `@ExceptionHandler(Exception.class)` turns the `AccessDeniedException` of a missing permission or relation into a 500. `ProblemDetailsAdvice` rethrows security exceptions so Spring Security answers them.
 
-When unsure whether a class, annotation or method exists, check the real artifacts (see [Checking an API](#checking-an-api)) instead of relying on examples. Implementation agents ask the `api-lookup` subagent, which follows that section.
+When unsure whether a class, annotation or method exists in our versions, or what it does there, ask the `api-lookup` subagent instead of relying on examples or memory: it inspects the exact artifacts and their sources. The procedure is in `.claude/agents/api-lookup.md`.
 
 ## Commands
 
@@ -151,20 +151,3 @@ On success it prints only the OpenAPI Generator banner and a JVM warning. On fai
 - formatting: Spotless lists the unformatted files; fix with `./mvnw spotless:apply`;
 - module boundaries: `ModularityTests` names the violating dependency;
 - Docker unavailable: an environment problem, not a code failure.
-
-## Checking an API
-
-The `api-lookup` subagent follows this section. Implementation agents ask it and never inspect a dependency themselves: it answers from the exact versions on a small model, and the lookup stays out of their context. To verify a class, annotation or method against the exact versions the project compiles with:
-
-```bash
-cd backend && ./mvnw -q dependency:build-classpath -Dmdep.outputFile=target/classpath.txt
-```
-
-`backend/target/classpath.txt` lists the jar paths, colon-separated. Use only these jars, not other versions in `~/.m2`. Then, with absolute jar paths:
-
-```bash
-unzip -l <jar> | grep '<SimpleName>.class'
-javap -cp <jar> <fully.qualified.Name>
-```
-
-Run these commands in exactly this form (no `cd` into `~/.m2`, nothing appended); other forms do not match the allow rules.

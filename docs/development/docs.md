@@ -77,7 +77,7 @@ node scripts/requirements.mjs trace
 - a path in `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/`, `.claude/` or `.agents/` (when `.agents/` exists and is non-empty) that does not exist and is not gitignored;
 - an `@` import in an `AGENTS.md` or `CLAUDE.md` that does not resolve;
 - a section that an agent or skill refers to but no guide has, and a section any document names with its file ("the **Guides** section of `docs/README.md`") that the file lacks;
-- a Verification or Checking an API command that matches no allow rule;
+- a command of a guide's Verification section or of `.claude/agents/api-lookup.md` that matches no allow rule;
 - a repository path in `.claude/hooks/` or `.agents/plugins/mentorhub/hooks/` that no longer exists.
 
 It also lists the code and config files changed since the last checked commit (including uncommitted changes) that documents refer to, with the referring lines. These reminders do not fail the check; read the listed places and update them if the change made them wrong. To look at a specific range instead:
