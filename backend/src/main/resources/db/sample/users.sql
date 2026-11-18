@@ -150,9 +150,10 @@ with sample (id, email, first_name, last_name, phone, status, disabled_reason, d
            -- Coordinated the QA track until she left; tracks.sql keeps her assignment, marked.
            ('00000000-0000-4000-a000-000000000127', 'laura.chen@mentorhub.local', 'Laura', 'Chen', null, 'DISABLED',
             'STAFF_OFFBOARDED', 'Left at the end of her contract', interval '235 days', array ['COORDINATOR']),
-           -- A guest mentor from industry.
+           -- A guest mentor from industry, who lost the mentor role when his engagement ended; enrollments.sql keeps
+           -- him as a mentor of an enrollment, marked.
            ('00000000-0000-4000-a000-000000000124', 'thomas.grant@example.com', 'Thomas', 'Grant', null, 'ACTIVE', null,
-            null, interval '208 days', array ['MENTOR']),
+            null, interval '208 days', array []::text[]),
            -- Waits for the next DevOps cohort without roles.
            ('00000000-0000-4000-a000-000000000126', 'kevin.doyle@example.com', 'Kevin', 'Doyle', null, 'ACTIVE', null,
             null, interval '39 days', array []::text[])),
@@ -556,7 +557,9 @@ from (values (1, interval '300 days', null, 'USER_BOOTSTRAPPED_ADMIN', 'admin@me
               'irene.margaret.walsh@qa-faculty.northbridge-training-academy.example.com',
               '{"changes": [{"field": "phone", "oldValue": null, "newValue": "+77012223344"}]}'),
              (25, interval '12 days', 'admin@mentorhub.local', 'USER_DISABLED', 'laura.chen@mentorhub.local',
-              '{"reason": "STAFF_OFFBOARDED", "comment": "Left at the end of her contract"}'))
+              '{"reason": "STAFF_OFFBOARDED", "comment": "Left at the end of her contract"}'),
+             (26, interval '5 days', 'admin@mentorhub.local', 'USER_ROLES_CHANGED', 'thomas.grant@example.com',
+              '{"rolesAdded": [], "rolesRemoved": ["MENTOR"]}'))
          as s (n, ago, actor, action, subject, details)
          join users subject on subject.email = s.subject
          left join users actor on actor.email = s.actor;

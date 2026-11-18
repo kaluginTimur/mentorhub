@@ -91,11 +91,11 @@ Frontend tests use host components, the API stub (`core/testing/api-stub`) and t
 |---|---|---|---|
 | T1 Contract, the table in `V1__schema.sql`, stubs that keep the build green (new endpoints 501 or empty, `mentors: []`); regenerate the client. Plan gate. | — | backend-dev | done |
 | T2 Red tests, backend and frontend | all new and changed | test-engineer | done |
-| T3 Backend: mentors of an enrollment — assign, remove, candidates, mentors in the track's enrollments, audit, permission | ENR-1.5, 1.6, 4.2, 6.2, 9.1–9.4, 10.1; PERM-2.1; AUD-7 | backend-dev | pending |
-| T4 Backend: mentors on one's own enrollment, a mentor's students | ENR-5.3, 11.1, 11.2 | backend-dev | pending |
-| T5 Backend: sample center — mentors on enrollments covering every state of the screens: an enrollment with several mentors, with none, a mentor since disabled and one without the role; a mentor with students on two tracks, including a disabled student and one without the student role; a mentor with no student; a student whose mentors include one not shown (ENR-5.3). **Checkpoint: backend green.** | — | backend-dev | pending |
-| T6 Frontend: track page — mentors with marks, assign dialog, removal with confirmation; coordinator removal with confirmation; the six new history actions in the track's and the user's history (replacing T1's temporary fallback) | ENR-7, 7.1; TRK-10; ENR-6.2 as shown in TRK-7, USR-10 | frontend-dev | pending |
-| T7 Frontend: My enrollment mentors; My students page, its link and route guard | ENR-8, ENR-12 | frontend-dev | pending |
+| T3 Backend: mentors of an enrollment — assign, remove, candidates, mentors in the track's enrollments, audit, permission | ENR-1.5, 1.6, 4.2, 6.2, 9.1–9.4, 10.1; PERM-2.1; AUD-7 | backend-dev | in review |
+| T4 Backend: mentors on one's own enrollment, a mentor's students | ENR-5.3, 11.1, 11.2 | backend-dev | in review |
+| T5 Backend: sample center — mentors on enrollments covering every state of the screens: an enrollment with several mentors, with none, a mentor since disabled and one without the role; a mentor with students on two tracks, including a disabled student and one without the student role; a mentor with no student; a student whose mentors include one not shown (ENR-5.3). **Checkpoint: backend green.** | — | backend-dev | in review |
+| T6 Frontend: track page — mentors with marks, assign dialog, removal with confirmation; coordinator removal with confirmation; the six new history actions in the track's and the user's history (replacing T1's temporary fallback) | ENR-7, 7.1; TRK-10; ENR-6.2 as shown in TRK-7, USR-10 | frontend-dev | in review |
+| T7 Frontend: My enrollment mentors; My students page, its link and route guard | ENR-8, ENR-12 | frontend-dev | in review |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -115,13 +115,20 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - T1: new optional history properties (`HistoryEntry.user`, `.mentor`; `TrackHistoryEntry.mentor`) are `NON_NULL` through the JSON mixins.
 - T1: a stale copy of a deleted migration in `backend/target/classes` makes Flyway fail; `./mvnw clean` fixes it.
 - T6: replace the `TODO(T6)` fallbacks in `features/users/history-text.ts` and `features/tracks/track-history-text.ts` with texts for the six actions.
+- T3: the 409 detail reads "Only an active user with the mentor role can be assigned as a mentor."
+- T4: `EnrollmentService.mentored` keys the caller's enrollments by student, assuming one enrollment per student, as `listOfTrack` does; both change with End of an enrollment.
+- T4: two agents running the backend verification at once share `backend/target` and break each other's tests (timeouts in `InvitationEmailTests`); run builds one after another. Never wait for a build with a `pgrep -f` loop: it matches its own shell.
+- T5: personas for the screens — Mark Mentor: My students with 30 students on two pages, two tracks, disabled and without-role students; Alma Admin-Mentor: 4 students; Milo Mentor-Coordinator: none; Sofia Student: My enrollment shows 2 of her 4 mentors (Mark without a phone, Victor Novak with one); Administrator, Quality Assurance track: Sofia's enrollment with marks "Disabled" (Dan) and "No mentor role" (Thomas Grant), two enrollments without mentors after removals, removals in the track history; Coordinator, Software Engineering: Liam Carter with two mentors, Noah Bennett's disabled mentor; QA Automation: Grace Morgan without mentors; histories of Olivia Hayes, Daniel Kim, Mark Mentor.
+- T5: Thomas Grant (not a persona) lost the mentor role in the sample data and is now a user without roles. In sample scripts a mistyped email silently drops a row: check the counts.
+- T6: `AssignMentorDialog` closes with `true` on success and `'refused'` on 409/404; assign and remove emit the existing `enrolled` output so the page reloads the history; `PROBLEM.mentorNotEligible` is in `core/problem.ts`; `removeCoordinator` returns `Promise<void>`.
+- T7: My students keeps the page in the `page` query parameter; the route uses `requirePermission('ENROLLMENTS_READ_MENTORED')`.
 - T2: `MyStudentsPage` exists as an empty component; `AssignMentorDialog` and the `my-students` route do not exist yet (T6, T7).
 - T2: backend mentor tests are in `EnrollmentMentorsEndpointTests` and `EnrollmentsConcurrencyTests` (ENR-9.4); `TestEnrollments` has `addMentor`/`removeMentor`, `TestUsers.deleteAll` clears `enrollment_mentors` first.
 - T2: ENR-1.1's existing test already covers the reworded scenario and is unchanged; AUD-7's actions are covered by `ContractEnumsTests` and the history assertions of ENR-6.2 and ENR-9.4.
 
 ## Red tests
 
-Commit: <the commit holding the requirements, the contract, this plan and the red tests>
+Commit: d597e53
 
 ## Decisions
 
@@ -148,29 +155,40 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 - 2026-11-19: The four enrollment problem types missing from the contract's `Problem` list are added: "допиши".
 - 2026-11-19: The new history actions are shown by T6, with a temporary fallback from T1 so the frontend builds; the three contract-match tests stay red until T3: "остальное по рекомендациям".
 - 2026-11-19: Plan gate passed with these answers: "остальное по рекомендациям".
+- 2026-11-19: The four tests changed to PERM-1 by `test-engineer` after the red commit (PERM-1.1 `RoleTests`, IDN-5.1 `MeEndpointTests`, INV-11.1 `InvitationAcceptanceServiceTests`, PERM-5.1 `AuthenticationChainTests`, now with STUDENT as the known role) stay: "с изменениями тестов согласен".
+- 2026-11-19: Backend approved at the checkpoint: "одобряю"; commit: "бэкенд коммитить".
+- 2026-11-19: My enrollment: "объеденить карточки Coordinators to contact и Mentors to contact в одну карточку Contacts, а в ней перечислить Coordinators и Mentors. Карточку трека выровнять по высоте только с карточкой контактов - если появится новая карточка, то она по-умолчанию встанет ровно под карточкой трека и контактов".
+- 2026-11-19: "в диалогах на ассайн и снятие надо писать имя студента".
+- 2026-11-19: No unit tests for the history texts: "тесты на текст не делать".
+- 2026-11-19: The console error on the Users page is to be checked: "ошибку в консоли проверить".
+- 2026-11-19: The mentors on the track page: "список энроллментов на странице трека абсолютно нечитаемый. под каждым студентом перечислены его менторы ... нужно на карточке студента сделать ненавязчивый список менторов - либо аватарки, которые по наведению высвечивают имя ментора (типа как в соц сетях), либо какой-то всплывающий хинт с именами". Coordinator's choice of the two: avatars.
 
 ## Handover
 
-- Waiting for: the owner agrees to the texts the red tests assume (What the tests rely on), and to the red-tests commit.
-- To read: the test files in `git status`; the plan's What the tests rely on.
-- Documents changed (uncommitted; nothing committed on the branch):
-  - `api/openapi.yaml` changed: mentor candidates, assign and remove a mentor under `/api/v1/enrollments/{id}`, `/api/v1/me/students`; `TrackEnrollment.mentors`, `MyEnrollment.mentors`; `ENROLLMENTS_READ_MENTORED`; six history actions with `user`/`mentor`; `mentor-not-eligible`; `Track.canEnroll` widened; the `Problem` list gets four enrollment types (new since the last stop).
-  - `backend/src/main/resources/db/migration/V1__schema.sql` changed (new since the last stop; by the owner): table `enrollment_mentors`. V2 is gone.
-  - `docs/requirements/enrollments.md` changed: mentors of an enrollment (ENR-1, 4, 5, 6, 7, 8 changed; ENR-9 to 12 new).
-  - `docs/requirements/authorization.md` changed: Mentor gets `ENROLLMENTS_READ_MENTORED`; PERM-2.1.
-  - `docs/requirements/audit.md` changed: six actions in AUD-7.
-  - `docs/requirements/tracks.md` changed: TRK-10, a coordinator is removed after a confirmation.
-  - `docs/requirements/identity.md` changed: one out-of-scope line.
-  - `docs/roadmap.md` changed: Mentors of a track, The enrollments list in full, End of an enrollment notes.
-- State: T1 and T2 done. Red: backend 17 new or changed tests fail on assertions (plus the three contract-match tests waiting for T3); frontend 20 fail on assertions, 388 pass; format and lint pass; `trace` passes (259 of 259).
-- Open questions: the texts the tests assume (recommended: keep them).
-- On approval: commit the requirements, contract, migration, stubs, plan, tests and usage record; write the commit into Red tests; then T3 with `backend-dev`.
-- On remarks: relay them to `test-engineer` (texts) and stop again.
+- Waiting for: the owner's answers at the screens stop — the backend commit; the three doubtful points of the manual tester; the frontend developer's list of details; unit tests for the history texts.
+- To read: `.screens/enrollment-mentors/run-1/` (look at screens) and `run-2/` (manual checks); the frontend diff `git diff -- frontend`.
+- Documents changed: none since the red commit d597e53; only this plan.
+- State: T3–T7 done, uncommitted (backend approved by the owner, commit offered). Frontend verification by `frontend-dev`: format, lint, 408 of 408 tests, build PASS; no test changed. Manual tester run-1: every screen as the requirements say, three doubtful points; run-2: six manual checks PASS. Its run-2 saw "Console: 1 errors" on the Users page, not looked into.
+- Frontend list of details (T6, T7): confirmation texts "They stop being a mentor of this student. They can be assigned again later." and "They stop coordinating <track> and can no longer manage its enrollments."; dialog "Assign a mentor" with "Only active users with the mentor role who do not lead this student yet are listed.", 25 candidates per request; mentor actions also on an archived track (`canEnroll` only); snackbars "Mentor assigned", "<name> removed", the assertive refusal text; history texts (track "Assigned <mentor> as a mentor of <student>", student "<mentor> assigned as a mentor on <track>", mentor "Assigned as a mentor of <student> on <track>", and Removed alike); My enrollment cards "Coordinators to contact" then "Mentors to contact", empty "You have no mentor to contact yet"; My students empty "You do not lead any students yet", rows name/email left and track/start date right, paginator only above 25; "My students" after "My enrollment" in the nav.
+- Open questions:
+  1. The assign dialog does not name the student. Recommended: put the student in the title ("Assign a mentor to <student>") — a matter of taste, back to `frontend-dev` with an ordinary test.
+  2. The mentor removal confirmation does not name the student. Recommended: "Remove <mentor> as a mentor of <student>?" — the same.
+  3. My enrollment: the track card stretches tall on desktop. Recommended: fix it (cosmetic, `frontend-dev`).
+  4. No unit tests for the six history texts. Recommended: no — the texts are not in a requirement.
+  5. The console error on the Users page in run-2. Recommended: the manual tester looks once more on the re-check.
+- On approval: commit the backend (if agreed); send the chosen fixes to `frontend-dev` in one batch; re-run `manual-tester` on the affected states; the owner looks at the screens; then the second test pass.
+- On remarks: as the owner says.
 
 ## Agents
 
 | Agent | Model | Id | Phase | Context |
 |---|---|---|---|---|
 | reviewer | definition default | a605e2f72efae8ce6 | spec: requirements review | 79k |
-| backend-dev | definition default | a80fded15da6ee003 | plan: T1 | 129k |
+| backend-dev | definition default | a80fded15da6ee003 | plan: T1; implementation: T3 | 208k |
 | test-engineer | definition default | a644a079adf0c48c3 | tests first: T2 | 169k |
+| test-engineer | definition default | a92e56069c3ee2545 | implementation: four tests to PERM-1 | 30k |
+| backend-dev | definition default | ae4dd640762432271 | implementation: T4, T5 | 123k |
+| verifier | definition default | a3dfc08a0856a675a | implementation: backend | 13k |
+| frontend-dev | definition default | ab4373096fff40aa0 | implementation: T6, T7 | 118k |
+| manual-tester | definition default | add27f14315eca14c | implementation: look at screens, run-1 | 60k |
+| manual-tester | haiku | a2f8b80299f7fcd12 | implementation: manual checks, run-2 | — |

@@ -123,7 +123,7 @@ class InvitationAcceptanceServiceTests {
                                     "Sidorov",
                                     null,
                                     List.of(Role.MENTOR, Role.STUDENT),
-                                    List.of())));
+                                    List.of(Permission.ENROLLMENTS_READ_MENTORED))));
             assertThat(users.status(userId)).isEqualTo("ACTIVE");
             assertThat(linkedUser(SUBJECT)).isEqualTo(userId);
             assertThat(users.roles(userId)).containsExactly("MENTOR", "STUDENT");

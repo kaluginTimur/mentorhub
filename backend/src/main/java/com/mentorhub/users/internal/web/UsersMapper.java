@@ -175,6 +175,22 @@ final class UsersMapper {
                 dto.setTrack(trackReference(track));
                 dto.setStartDate(startDate);
             }
+            case UserChange.MentorAssigned(var _, var track) -> {
+                dto.setMentor(historyActor(entry.person()));
+                dto.setTrack(trackReference(track));
+            }
+            case UserChange.MentorRemoved(var _, var track) -> {
+                dto.setMentor(historyActor(entry.person()));
+                dto.setTrack(trackReference(track));
+            }
+            case UserChange.StudentAssigned(var _, var track) -> {
+                dto.setUser(historyActor(entry.person()));
+                dto.setTrack(trackReference(track));
+            }
+            case UserChange.StudentRemoved(var _, var track) -> {
+                dto.setUser(historyActor(entry.person()));
+                dto.setTrack(trackReference(track));
+            }
         }
         return dto;
     }

@@ -4,9 +4,13 @@ import com.mentorhub.enrollments.internal.domain.EnrollmentStatus;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -42,6 +46,13 @@ public class EnrollmentRepository {
                 .optional();
     }
 
+    public Optional<StoredEnrollment> find(UUID enrollmentId) {
+        return jdbc.sql("select " + COLUMNS + " from enrollments where id = :id")
+                .param("id", enrollmentId)
+                .query(EnrollmentRepository::storedEnrollment)
+                .optional();
+    }
+
     /** Every enrollment of the track, in any status. */
     public List<StoredEnrollment> findByTrack(UUID trackId) {
         return jdbc.sql("select " + COLUMNS + " from enrollments where track_id = :trackId")
@@ -59,6 +70,15 @@ public class EnrollmentRepository {
                 .list();
     }
 
+    /** Every enrollment, in any status, the user is a mentor of now. */
+    public List<StoredEnrollment> findByMentor(UUID mentorId) {
+        return jdbc.sql("select " + COLUMNS + " from enrollments"
+                        + " where id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)")
+                .param("mentorId", mentorId)
+                .query(EnrollmentRepository::storedEnrollment)
+                .list();
+    }
+
     /** The students who have an active enrollment, on any track. */
     public List<UUID> findActiveStudentIds() {
         return jdbc.sql("select student_id from enrollments where status = 'ACTIVE'")
@@ -71,6 +91,59 @@ public class EnrollmentRepository {
                 .param("trackId", trackId)
                 .query(Boolean.class)
                 .single();
+    }
+
+    /**
+     * Adds the mentor to the enrollment, unless they are one: the primary key decides, parallel inserts included
+     * (ENR-9.4).
+     *
+     * @return whether a row was inserted
+     */
+    public boolean insertMentor(UUID enrollmentId, UUID mentorId, UUID assignedBy) {
+        return jdbc.sql("""
+                        insert into enrollment_mentors (enrollment_id, mentor_id, assigned_by)
+                        values (:enrollmentId, :mentorId, :assignedBy)
+                        on conflict do nothing""")
+                        .param("enrollmentId", enrollmentId)
+                        .param("mentorId", mentorId)
+                        .param("assignedBy", assignedBy)
+                        .update()
+                > 0;
+    }
+
+    /** @return whether a row was deleted */
+    public boolean deleteMentor(UUID enrollmentId, UUID mentorId) {
+        return jdbc.sql("delete from enrollment_mentors where enrollment_id = :enrollmentId and mentor_id = :mentorId")
+                        .param("enrollmentId", enrollmentId)
+                        .param("mentorId", mentorId)
+                        .update()
+                > 0;
+    }
+
+    public boolean isMentor(UUID enrollmentId, UUID userId) {
+        return jdbc.sql("select exists (select 1 from enrollment_mentors"
+                        + " where enrollment_id = :enrollmentId and mentor_id = :userId)")
+                .param("enrollmentId", enrollmentId)
+                .param("userId", userId)
+                .query(Boolean.class)
+                .single();
+    }
+
+    /** The mentors of each of the enrollments; an enrollment without one is left out. */
+    public Map<UUID, Set<UUID>> mentorIds(Collection<UUID> enrollmentIds) {
+        if (enrollmentIds.isEmpty()) {
+            return Map.of();
+        }
+        record Row(UUID enrollmentId, UUID mentorId) {}
+        return jdbc
+                .sql("select enrollment_id, mentor_id from enrollment_mentors where enrollment_id in (:ids)")
+                .param("ids", enrollmentIds)
+                .query((rs, rowNum) ->
+                        new Row(rs.getObject("enrollment_id", UUID.class), rs.getObject("mentor_id", UUID.class)))
+                .list()
+                .stream()
+                .collect(Collectors.groupingBy(
+                        Row::enrollmentId, Collectors.mapping(Row::mentorId, Collectors.toSet())));
     }
 
     private static StoredEnrollment storedEnrollment(ResultSet rs, int rowNum) throws SQLException {

@@ -185,7 +185,7 @@ class AuthenticationChainTests {
     @DisplayName("PERM-5.1 An unknown role is skipped")
     void unknownStoredRoleGrantsNothing() {
         String unknownRole = storeUnknownRole();
-        UUID mentor = users.create("anna@example.com", UserStatus.ACTIVE, Role.MENTOR);
+        UUID mentor = users.create("anna@example.com", UserStatus.ACTIVE, Role.STUDENT);
         users.assignStoredRole(mentor, unknownRole);
         users.link(mentor, "anna");
         UUID admin = users.create("boris@example.com", UserStatus.ACTIVE, Role.ADMIN);

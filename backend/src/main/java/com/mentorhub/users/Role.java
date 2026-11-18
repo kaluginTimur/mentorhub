@@ -18,7 +18,7 @@ public enum Role {
             Permission.ENROLLMENTS_MANAGE)),
     COORDINATOR(
             EnumSet.of(Permission.TRACKS_READ, Permission.ENROLLMENTS_READ, Permission.ENROLLMENTS_MANAGE_COORDINATED)),
-    MENTOR(EnumSet.noneOf(Permission.class)),
+    MENTOR(EnumSet.of(Permission.ENROLLMENTS_READ_MENTORED)),
     STUDENT(EnumSet.noneOf(Permission.class));
 
     private final Set<Permission> permissions;

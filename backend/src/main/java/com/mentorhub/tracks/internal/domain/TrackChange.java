@@ -94,4 +94,36 @@ public sealed interface TrackChange {
             return TrackAuditAction.TRACK_STUDENT_ENROLLED;
         }
     }
+
+    /**
+     * @param userId {@code users.id} of the student of the enrollment
+     * @param mentorId {@code users.id} of the mentor
+     */
+    record EnrollmentMentorAssigned(UUID userId, UUID mentorId) implements TrackChange {
+        public EnrollmentMentorAssigned {
+            Objects.requireNonNull(userId, "userId");
+            Objects.requireNonNull(mentorId, "mentorId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_ENROLLMENT_MENTOR_ASSIGNED;
+        }
+    }
+
+    /**
+     * @param userId {@code users.id} of the student of the enrollment
+     * @param mentorId {@code users.id} of the mentor
+     */
+    record EnrollmentMentorRemoved(UUID userId, UUID mentorId) implements TrackChange {
+        public EnrollmentMentorRemoved {
+            Objects.requireNonNull(userId, "userId");
+            Objects.requireNonNull(mentorId, "mentorId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_ENROLLMENT_MENTOR_REMOVED;
+        }
+    }
 }

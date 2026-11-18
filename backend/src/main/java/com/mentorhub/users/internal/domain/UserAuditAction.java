@@ -13,7 +13,11 @@ public enum UserAuditAction {
     USER_INVITATION_ACCEPTED(UserChange.InvitationAccepted.class),
     USER_TRACK_COORDINATOR_ADDED(UserChange.TrackCoordinatorAdded.class),
     USER_TRACK_COORDINATOR_REMOVED(UserChange.TrackCoordinatorRemoved.class),
-    USER_ENROLLED(UserChange.Enrolled.class);
+    USER_ENROLLED(UserChange.Enrolled.class),
+    USER_MENTOR_ASSIGNED(UserChange.MentorAssigned.class),
+    USER_MENTOR_REMOVED(UserChange.MentorRemoved.class),
+    USER_STUDENT_ASSIGNED(UserChange.StudentAssigned.class),
+    USER_STUDENT_REMOVED(UserChange.StudentRemoved.class);
 
     public static final String SUBJECT_TYPE = "USER";
 
