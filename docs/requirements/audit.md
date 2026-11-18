@@ -138,6 +138,12 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 | `USER_TRACK_COORDINATOR_REMOVED` | user | Written with `TRACK_COORDINATOR_REMOVED`, about the removed user | the administrator | the track, with its code and name at that moment |
 | `TRACK_STUDENT_ENROLLED` | track | A coordinator of the track or an administrator enrolls a student on it | the person who enrolled | the student and the start date |
 | `USER_ENROLLED` | user | Written with `TRACK_STUDENT_ENROLLED`, about the enrolled student | the person who enrolled | the track, with its code and name at that moment, and the start date |
+| `TRACK_ENROLLMENT_MENTOR_ASSIGNED` | track | A coordinator of the track or an administrator assigns a user who is not yet a mentor of an enrollment on it | the person who assigned | the student and the mentor |
+| `TRACK_ENROLLMENT_MENTOR_REMOVED` | track | A coordinator of the track or an administrator removes a mentor of an enrollment on it | the person who removed | the student and the mentor |
+| `USER_MENTOR_ASSIGNED` | user | Written with `TRACK_ENROLLMENT_MENTOR_ASSIGNED`, about the student | the person who assigned | the mentor, and the track with its code and name at that moment |
+| `USER_MENTOR_REMOVED` | user | Written with `TRACK_ENROLLMENT_MENTOR_REMOVED`, about the student | the person who removed | the mentor, and the track with its code and name at that moment |
+| `USER_STUDENT_ASSIGNED` | user | Written with `TRACK_ENROLLMENT_MENTOR_ASSIGNED`, about the mentor | the person who assigned | the student, and the track with its code and name at that moment |
+| `USER_STUDENT_REMOVED` | user | Written with `TRACK_ENROLLMENT_MENTOR_REMOVED`, about the mentor | the person who removed | the student, and the track with its code and name at that moment |
 
 #### AUD-7.1 The administrator bootstrap is audited without an actor
 

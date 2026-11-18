@@ -14,7 +14,7 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 |---|---|
 | Administrator | `USERS_READ`, `USERS_MANAGE`, `USERS_INVITE`, `TRACKS_READ`, `TRACKS_MANAGE`, `ENROLLMENTS_READ`, `ENROLLMENTS_MANAGE` |
 | Coordinator | `TRACKS_READ`, `ENROLLMENTS_READ`, `ENROLLMENTS_MANAGE_COORDINATED` |
-| Mentor | none |
+| Mentor | `ENROLLMENTS_READ_MENTORED` |
 | Student | none |
 
 | Permission | Allows |
@@ -25,8 +25,9 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 | `TRACKS_READ` | Viewing tracks, their coordinators and their history |
 | `TRACKS_MANAGE` | Creating, changing, archiving and restoring tracks, listing the candidates for their coordinators, and naming and removing their coordinators |
 | `ENROLLMENTS_READ` | Viewing the enrollments of every track |
-| `ENROLLMENTS_MANAGE` | Enrolling students on any track, and listing the candidates |
+| `ENROLLMENTS_MANAGE` | Enrolling students on any track, assigning and removing the mentors of its enrollments, and listing the candidates for either |
 | `ENROLLMENTS_MANAGE_COORDINATED` | The same on a track the user coordinates |
+| `ENROLLMENTS_READ_MENTORED` | Viewing the enrollments the user is a mentor of |
 
 The capability that owns an action says which permission it needs.
 
@@ -44,7 +45,7 @@ The system SHALL give a user the union of the permissions of all their roles. A 
 
 - GIVEN an active user with the mentor role and the administrator role
 - WHEN the user's permissions are read
-- THEN they are the permissions of the administrator role, each once
+- THEN they are the permissions of the administrator role and `ENROLLMENTS_READ_MENTORED`, each once
 
 #### PERM-2.2 A user without roles has no permissions
 
@@ -132,11 +133,11 @@ The client SHALL offer actions, links and pages by the permissions of the curren
 
 ## Known limitations
 
-- The mentor and student roles grant no permission; what they may do is defined when the features that need them are built. A student is who may be enrolled (ENR-2), and reads their own enrollment as any active user does (ENR-5).
-- No operation yet hides a single resource from some callers, so PERM-6.3 is checked only against a test operation, and no list leaves items out. Enrolling depends on a relation (ENR-1), on a track the caller can read, so its refusal is 403 (decision 0004).
+- The student role grants no permission: a student is who may be enrolled (ENR-2), and reads their own enrollment as any active user does (ENR-5). The mentor role grants only the reading of the enrollments the mentor leads (ENR-11); a mentor is who may be assigned to an enrollment (ENR-9).
+- No operation yet hides a single resource from some callers, so PERM-6.3 is checked only against a test operation. The only list narrowed by a relation is a mentor's students (ENR-11). Enrolling and assigning mentors depend on a relation (ENR-1), on a track the caller can read, so their refusal is 403 (decision 0004).
 
 ## Out of scope
 
-- Access that depends on relations between people, such as a mentor's students, beyond what enrollments describe (ENR-1, ENR-5). When such access is built, it is decided by the relations current at the time of the request, roles stay global, and lists leave out the items the caller may not access.
+- Access that depends on relations between people, such as a mentor's students, beyond what enrollments describe (ENR-1, ENR-5, ENR-11). When such access is built, it is decided by the relations current at the time of the request, roles stay global, and lists leave out the items the caller may not access.
 - Roles and their permissions edited in the application.
 - Role assignments from the identity provider or from groups of a corporate sign-in.

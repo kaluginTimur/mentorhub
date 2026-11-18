@@ -30,4 +30,7 @@ abstract class TrackHistoryEntryJsonMixin {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract @Nullable LocalDate getStartDate();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable HistoryActor getMentor();
 }

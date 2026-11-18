@@ -41,7 +41,8 @@ final class EnrollmentsMapper {
                         student.disabled(),
                         student.roles().contains(Role.STUDENT)),
                 item.startDate(),
-                EnrollmentStatus.valueOf(item.status().name()));
+                EnrollmentStatus.valueOf(item.status().name()),
+                List.of());
     }
 
     static EnrollmentCandidatePage candidatePage(EnrollmentPage<DirectoryUser> page) {
@@ -66,7 +67,8 @@ final class EnrollmentsMapper {
                         EnrollmentStatus.valueOf(enrollment.status().name()),
                         enrollment.coordinators().stream()
                                 .map(contact -> new EnrollmentContact(contact.name(), contact.email(), contact.phone()))
-                                .toList()))
+                                .toList(),
+                        List.of()))
                 .toList());
     }
 }

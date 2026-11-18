@@ -20,6 +20,10 @@ export function describeTrackEntry(entry: TrackHistoryEntry): string {
       return `Removed ${user} as a coordinator`;
     case 'TRACK_STUDENT_ENROLLED':
       return `Enrolled ${user}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
+    // TODO(T6): temporary fallback until the mentor actions get their texts.
+    case 'TRACK_ENROLLMENT_MENTOR_ASSIGNED':
+    case 'TRACK_ENROLLMENT_MENTOR_REMOVED':
+      return entry.action;
     default: {
       const unreachable: never = entry.action;
       return unreachable;

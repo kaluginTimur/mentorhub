@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
 import { listMyEnrollments } from './core/api/fn/enrollments/list-my-enrollments';
+import { listMyStudents } from './core/api/fn/enrollments/list-my-students';
 import { getSystemInfo } from './core/api/fn/system/get-system-info';
 import { Me } from './core/api/models/me';
 import { MeUser } from './core/api/models/me-user';
@@ -24,9 +25,11 @@ describe('routes', () => {
   };
 
   const load = vi.fn();
+  const granted = new Set<string>();
   const api = createApiStub();
 
   beforeEach(() => {
+    granted.clear();
     load.mockReset().mockResolvedValue({ status: 'ACTIVE', user } satisfies Me);
     api.reset();
     api.resolve(getSystemInfo, { name: 'MentorHub', version: '0.1.0' });
@@ -48,7 +51,7 @@ describe('routes', () => {
             load,
             user: () => user,
             name: () => displayName(user),
-            hasPermission: () => false,
+            hasPermission: (p: string) => granted.has(p),
           },
         },
         provideApiStub(api),
@@ -72,6 +75,22 @@ describe('routes', () => {
     await harness.navigateByUrl(url);
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/');
+  });
+
+  it('leads /my-students to the home page without ENROLLMENTS_READ_MENTORED', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/my-students');
+    await harness.fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/');
+  });
+
+  it('opens /my-students to a user with ENROLLMENTS_READ_MENTORED', async () => {
+    granted.add('ENROLLMENTS_READ_MENTORED');
+    api.resolve(listMyStudents, { items: [], page: 0, size: 25, totalItems: 0 });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/my-students');
+    await harness.fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/my-students');
   });
 
   it('opens My enrollment to an active user without any permission', async () => {

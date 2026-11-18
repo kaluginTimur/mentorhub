@@ -3,6 +3,8 @@ package com.mentorhub.enrollments.internal.web;
 import com.mentorhub.api.EnrollmentsApi;
 import com.mentorhub.api.model.EnrollmentCandidatePage;
 import com.mentorhub.api.model.EnrollmentCreate;
+import com.mentorhub.api.model.MentorCandidatePage;
+import com.mentorhub.api.model.MentoredEnrollmentPage;
 import com.mentorhub.api.model.MyEnrollmentList;
 import com.mentorhub.api.model.TrackEnrollment;
 import com.mentorhub.api.model.TrackEnrollmentPage;
@@ -12,7 +14,9 @@ import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Enrollments} tag. Parameter names equal the request parameter names, because method validation reports
@@ -51,5 +55,29 @@ class EnrollmentsController implements EnrollmentsApi {
     @NoPermissionRequired
     public MyEnrollmentList listMyEnrollments() {
         return EnrollmentsMapper.myEnrollments(enrollments.mine());
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public MentorCandidatePage listMentorCandidates(UUID id, @Nullable String q, Integer page, Integer size) {
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public TrackEnrollment assignEnrollmentMentor(UUID id, UUID userId) {
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public TrackEnrollment removeEnrollmentMentor(UUID id, UUID userId) {
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @Override
+    @RequirePermission(Permission.ENROLLMENTS_READ_MENTORED)
+    public MentoredEnrollmentPage listMyStudents(Integer page, Integer size) {
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
     }
 }

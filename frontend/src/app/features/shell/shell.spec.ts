@@ -76,6 +76,7 @@ describe('shell', () => {
               { path: 'tracks', component: DummyPage },
               { path: 'profile', component: DummyPage },
               { path: 'my-enrollment', component: DummyPage },
+              { path: 'my-students', component: DummyPage },
             ],
           },
         ]),
@@ -240,6 +241,37 @@ describe('shell', () => {
 
     expect(await myEnrollmentLink(fixture.nativeElement as HTMLElement)).toBeUndefined();
     expect(api.callsFor(listMyEnrollments)).not.toHaveLength(0);
+  });
+
+  // ENR-12: the link is offered only to a user with ENROLLMENTS_READ_MENTORED, in the navigation or the account menu.
+  async function myStudentsLink(element: HTMLElement): Promise<Element | undefined> {
+    const find = (root: ParentNode) =>
+      [...root.querySelectorAll('a')].find((a) => a.textContent?.trim() === 'My students');
+    const inPage = find(element);
+    if (inPage) {
+      return inPage;
+    }
+    accountMenuTrigger(element)?.click();
+    await vi.waitFor(() => expect(document.querySelector('[hlmDropdownMenuItem]')).not.toBeNull());
+    return find(document);
+  }
+
+  it('shows the My students link to a user with ENROLLMENTS_READ_MENTORED', async () => {
+    user.update((u) => ({ ...u, permissions: ['ENROLLMENTS_READ_MENTORED'] }));
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+
+    await vi.waitFor(async () => {
+      const link = await myStudentsLink(fixture.nativeElement as HTMLElement);
+      expect(link?.getAttribute('href')).toBe('/my-students');
+    });
+  });
+
+  it('does not show the My students link to a user without ENROLLMENTS_READ_MENTORED', async () => {
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+
+    expect(await myStudentsLink(fixture.nativeElement as HTMLElement)).toBeUndefined();
   });
 
   it('has Profile above Sign out in the account menu', async () => {

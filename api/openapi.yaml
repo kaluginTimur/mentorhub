@@ -90,6 +90,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/me/students:
+    get:
+      tags: [Enrollments]
+      operationId: listMyStudents
+      summary: Page of the enrollments the caller is a mentor of
+      description: |
+        Requires `ENROLLMENTS_READ_MENTORED`. Only the enrollments the caller is a mentor of at the time of the
+        request, none of anyone else's; empty for a caller who leads no enrollment. Sorted by the student's name
+        (case-insensitive), then by the student's email, then by id.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentoredEnrollmentPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/me/profile:
     put:
       tags: [Users]
@@ -969,6 +994,103 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/TrackArchived'
+  /api/v1/enrollments/{id}/mentor-candidates:
+    get:
+      tags: [Enrollments]
+      operationId: listMentorCandidates
+      summary: Page of the users who may be assigned as mentors of an enrollment
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
+        track at the time of the request; `USERS_READ` is not needed. The active users with the `MENTOR` role who are
+        not mentors of the enrollment, sorted by name (case-insensitive), then by email, then by id. Checked in this
+        order: the permission (403), the request (400), the enrollment (404), the relation (403 `forbidden`).
+      parameters:
+        - $ref: '#/components/parameters/EnrollmentId'
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorCandidatePage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/enrollments/{id}/mentors/{userId}:
+    put:
+      tags: [Enrollments]
+      operationId: assignEnrollmentMentor
+      summary: Assign a user as a mentor of an enrollment
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
+        track at the time of the request. Only an active user with the `MENTOR` role can be assigned, the student of
+        the enrollment and the caller included, whatever the student's status or roles; a disabled user, a user
+        without the role and an id no user has are refused alike with 409 `mentor-not-eligible`. Assigning a mentor of
+        the enrollment again changes nothing and responds 200, even when they are no longer eligible (disabled or
+        without the role). The operation has no request body. Checked in this order: the permission (403), the
+        parameters (400), the enrollment (404), the relation (403 `forbidden`), the eligibility (409).
+      parameters:
+        - $ref: '#/components/parameters/EnrollmentId'
+        - $ref: '#/components/parameters/MentorUserId'
+      responses:
+        '200':
+          description: The enrollment after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEnrollment'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/MentorNotEligible'
+    delete:
+      tags: [Enrollments]
+      operationId: removeEnrollmentMentor
+      summary: Remove a mentor of an enrollment
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
+        track at the time of the request. Any mentor can be removed, also one who is disabled or no longer has the
+        `MENTOR` role. Removing a user who is not a mentor of the enrollment, or an id no user has, changes nothing and
+        responds 200. Checked in this order: the permission (403), the parameters (400), the enrollment (404), the
+        relation (403 `forbidden`).
+      parameters:
+        - $ref: '#/components/parameters/EnrollmentId'
+        - $ref: '#/components/parameters/MentorUserId'
+      responses:
+        '200':
+          description: The enrollment after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEnrollment'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -999,6 +1121,20 @@ components:
         type: string
         format: uuid
     CoordinatorUserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EnrollmentId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MentorUserId:
       name: userId
       in: path
       required: true
@@ -1188,6 +1324,14 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    MentorNotEligible:
+      description: |
+        The user was not assigned; nothing was changed. Problem type `urn:mentorhub:problem:mentor-not-eligible`: the id
+        is not a mentor of the enrollment and no active user with the `MENTOR` role has it.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
     SystemInfo:
       type: object
@@ -1284,6 +1428,7 @@ components:
         - ENROLLMENTS_READ
         - ENROLLMENTS_MANAGE
         - ENROLLMENTS_MANAGE_COORDINATED
+        - ENROLLMENTS_READ_MENTORED
     Problem:
       type: object
       description: |
@@ -1298,7 +1443,9 @@ components:
         `urn:mentorhub:problem:invitation-expired`, `urn:mentorhub:problem:invitation-email-mismatch`,
         `urn:mentorhub:problem:identity-linked-elsewhere`, `urn:mentorhub:problem:email-unavailable`,
         `urn:mentorhub:problem:email-queued`, `urn:mentorhub:problem:track-archived`,
-        `urn:mentorhub:problem:coordinator-not-eligible`.
+        `urn:mentorhub:problem:coordinator-not-eligible`, `urn:mentorhub:problem:track-has-active-enrollments`,
+        `urn:mentorhub:problem:student-not-eligible`, `urn:mentorhub:problem:student-already-enrolled`,
+        `urn:mentorhub:problem:mentor-not-eligible`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       additionalProperties: true
@@ -1516,7 +1663,15 @@ components:
         - `USER_INVITATION_ACCEPTED`: details `invitation`, `rolesAdded`, `rolesRemoved`; the actor is the user;
         - `USER_TRACK_COORDINATOR_ADDED`: details `track`; the user was named a coordinator of the track;
         - `USER_TRACK_COORDINATOR_REMOVED`: details `track`; the user was removed as a coordinator of the track;
-        - `USER_ENROLLED`: details `track`, `startDate`; the user was enrolled on the track.
+        - `USER_ENROLLED`: details `track`, `startDate`; the user was enrolled on the track;
+        - `USER_MENTOR_ASSIGNED`: details `mentor`, `track`; the mentor was assigned to the user's enrollment on the
+          track;
+        - `USER_MENTOR_REMOVED`: details `mentor`, `track`; the mentor was removed from the user's enrollment on the
+          track;
+        - `USER_STUDENT_ASSIGNED`: details `user`, `track`; the user was assigned as a mentor of the enrollment of the
+          student `user` on the track;
+        - `USER_STUDENT_REMOVED`: details `user`, `track`; the user was removed as a mentor of the enrollment of the
+          student `user` on the track.
       enum:
         - USER_DISABLED
         - USER_ENABLED
@@ -1527,6 +1682,10 @@ components:
         - USER_TRACK_COORDINATOR_ADDED
         - USER_TRACK_COORDINATOR_REMOVED
         - USER_ENROLLED
+        - USER_MENTOR_ASSIGNED
+        - USER_MENTOR_REMOVED
+        - USER_STUDENT_ASSIGNED
+        - USER_STUDENT_REMOVED
     HistoryActor:
       type: object
       additionalProperties: false
@@ -1585,6 +1744,12 @@ components:
           type: string
           format: date
           description: The start date of the enrollment.
+        user:
+          $ref: '#/components/schemas/HistoryActor'
+          description: The student of the enrollment, with their name as it is now.
+        mentor:
+          $ref: '#/components/schemas/HistoryActor'
+          description: The mentor assigned or removed, with their name as it is now.
     ProfileField:
       type: string
       enum: [firstName, lastName, phone]
@@ -1899,7 +2064,8 @@ components:
           description: |
             The caller may enroll students on the track: they hold `ENROLLMENTS_MANAGE`, or
             `ENROLLMENTS_MANAGE_COORDINATED` and are a coordinator of the track. Whatever the status: an archived track
-            still refuses enrolling with 409 `track-archived`.
+            still refuses enrolling with 409 `track-archived`. The same check allows assigning and removing the mentors
+            of the track's enrollments.
     TrackCoordinator:
       type: object
       description: |
@@ -1970,7 +2136,11 @@ components:
         - `TRACK_RESTORED`: no details;
         - `TRACK_COORDINATOR_ADDED`: details `user`;
         - `TRACK_COORDINATOR_REMOVED`: details `user`;
-        - `TRACK_STUDENT_ENROLLED`: details `user`, `startDate`; the user was enrolled on the track.
+        - `TRACK_STUDENT_ENROLLED`: details `user`, `startDate`; the user was enrolled on the track;
+        - `TRACK_ENROLLMENT_MENTOR_ASSIGNED`: details `user`, `mentor`; the mentor was assigned to the enrollment of
+          the student `user` on the track;
+        - `TRACK_ENROLLMENT_MENTOR_REMOVED`: details `user`, `mentor`; the mentor was removed from the enrollment of
+          the student `user` on the track.
       enum:
         - TRACK_CREATED
         - TRACK_UPDATED
@@ -1979,6 +2149,8 @@ components:
         - TRACK_COORDINATOR_ADDED
         - TRACK_COORDINATOR_REMOVED
         - TRACK_STUDENT_ENROLLED
+        - TRACK_ENROLLMENT_MENTOR_ASSIGNED
+        - TRACK_ENROLLMENT_MENTOR_REMOVED
     TrackHistoryEntry:
       type: object
       description: |
@@ -2014,11 +2186,15 @@ components:
         user:
           $ref: '#/components/schemas/HistoryActor'
           description: |
-            The user named or removed as a coordinator, or the enrolled student, with their name as it is now.
+            The user named or removed as a coordinator, or the student of the enrollment, with their name as it is
+            now.
         startDate:
           type: string
           format: date
           description: The start date of the enrollment.
+        mentor:
+          $ref: '#/components/schemas/HistoryActor'
+          description: The mentor assigned or removed, with their name as it is now.
     TrackField:
       type: string
       enum: [code, name]
@@ -2120,7 +2296,7 @@ components:
       type: object
       description: An enrollment as the enrollments of its track show it.
       additionalProperties: false
-      required: [id, student, startDate, status]
+      required: [id, student, startDate, status, mentors]
       properties:
         id:
           type: string
@@ -2133,6 +2309,36 @@ components:
           examples: ['2026-09-01']
         status:
           $ref: '#/components/schemas/EnrollmentStatus'
+        mentors:
+          type: array
+          description: Every mentor of the enrollment, sorted by name (case-insensitive), then by email; may be empty.
+          items:
+            $ref: '#/components/schemas/EnrollmentMentor'
+    EnrollmentMentor:
+      type: object
+      description: |
+        A mentor of an enrollment. The assignment grants nothing while the user is disabled or does not hold the
+        `MENTOR` role; it stays until it is removed.
+      additionalProperties: false
+      required: [id, name, email, disabled, mentorRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The user's id.
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+        disabled:
+          type: boolean
+          description: The user is disabled.
+        mentorRole:
+          type: boolean
+          description: The user holds the `MENTOR` role.
     TrackEnrollmentPage:
       type: object
       additionalProperties: false
@@ -2191,9 +2397,48 @@ components:
           type: integer
           format: int64
           description: The number of matching items on all pages.
+    MentorCandidate:
+      type: object
+      description: An active user with the `MENTOR` role who is not a mentor of the enrollment.
+      additionalProperties: false
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+    MentorCandidatePage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MentorCandidate'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
     EnrollmentContact:
       type: object
-      description: A coordinator of the enrollment's track who is active and holds the `COORDINATOR` role.
+      description: |
+        A person the student of an enrollment contacts: a coordinator of the enrollment's track who is active and holds
+        the `COORDINATOR` role, or a mentor of the enrollment who is active and holds the `MENTOR` role.
       additionalProperties: false
       required: [name, email, phone]
       properties:
@@ -2212,7 +2457,7 @@ components:
       type: object
       description: One of the caller's own enrollments.
       additionalProperties: false
-      required: [id, track, startDate, status, coordinators]
+      required: [id, track, startDate, status, coordinators, mentors]
       properties:
         id:
           type: string
@@ -2231,6 +2476,13 @@ components:
           description: Sorted by name (case-insensitive), then by email; may be empty.
           items:
             $ref: '#/components/schemas/EnrollmentContact'
+        mentors:
+          type: array
+          description: |
+            The mentors of the enrollment who are active and hold the `MENTOR` role, sorted by name (case-insensitive),
+            then by email; may be empty.
+          items:
+            $ref: '#/components/schemas/EnrollmentContact'
     MyEnrollmentList:
       type: object
       additionalProperties: false
@@ -2240,3 +2492,44 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MyEnrollment'
+    MentoredEnrollment:
+      type: object
+      description: An enrollment the caller is a mentor of.
+      additionalProperties: false
+      required: [id, student, track, startDate, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        student:
+          $ref: '#/components/schemas/EnrolledStudent'
+        track:
+          $ref: '#/components/schemas/TrackReference'
+          description: The track with its code and name as they are now.
+        startDate:
+          type: string
+          format: date
+          examples: ['2026-09-01']
+        status:
+          $ref: '#/components/schemas/EnrollmentStatus'
+    MentoredEnrollmentPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MentoredEnrollment'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.

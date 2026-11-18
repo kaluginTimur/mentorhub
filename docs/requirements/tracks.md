@@ -176,7 +176,7 @@ The client SHALL show the tracks as a list with a status filter, active by defau
 
 ### TRK-10 The track page
 
-The client SHALL show a track's code, name, status, coordinators with their marks (TRK-4) and history (TRK-7), read-only without `TRACKS_MANAGE`, with a back link to the list, the enrollments of the track (ENR-7), and that the track is not found for an unknown or invalid id. A user with `TRACKS_MANAGE` may change the code or the name of an active track in a dialog, archive it or restore an archived one after a confirmation, and name and remove coordinators of an active one. The choice of a new coordinator offers the candidates (TRK-6).
+The client SHALL show a track's code, name, status, coordinators with their marks (TRK-4) and history (TRK-7), read-only without `TRACKS_MANAGE`, with a back link to the list, the enrollments of the track (ENR-7), and that the track is not found for an unknown or invalid id. A user with `TRACKS_MANAGE` may change the code or the name of an active track in a dialog, archive it or restore an archived one after a confirmation, and name coordinators of an active one and remove them after a confirmation. The choice of a new coordinator offers the candidates (TRK-6).
 
 #### TRK-10.1 A refused change is explained and the track reloaded
 

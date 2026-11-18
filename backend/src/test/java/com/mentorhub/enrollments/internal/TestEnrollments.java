@@ -26,4 +26,20 @@ public final class TestEnrollments {
                 .query(UUID.class)
                 .single();
     }
+
+    public void addMentor(UUID enrollmentId, UUID mentorId, UUID assignedBy) {
+        jdbc.sql("insert into enrollment_mentors (enrollment_id, mentor_id, assigned_by)"
+                        + " values (:enrollment, :mentor, :assignedBy)")
+                .param("enrollment", enrollmentId)
+                .param("mentor", mentorId)
+                .param("assignedBy", assignedBy)
+                .update();
+    }
+
+    public void removeMentor(UUID enrollmentId, UUID mentorId) {
+        jdbc.sql("delete from enrollment_mentors where enrollment_id = :enrollment and mentor_id = :mentor")
+                .param("enrollment", enrollmentId)
+                .param("mentor", mentorId)
+                .update();
+    }
 }

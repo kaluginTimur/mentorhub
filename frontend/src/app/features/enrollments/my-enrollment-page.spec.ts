@@ -87,4 +87,51 @@ describe('MyEnrollmentPage', () => {
 
     await vi.waitFor(() => expect(element.textContent).toContain('You are not enrolled yet'));
   });
+
+  it('shows the mentors to contact with their emails and phones', async () => {
+    api.resolve(listMyEnrollments, {
+      items: [
+        myEnrollment({
+          mentors: [
+            contact({ name: 'Mia Mentor', email: 'mia@example.com', phone: '+77019998877' }),
+            contact({ name: 'Omar Mentor', email: 'omar@example.com', phone: null }),
+          ],
+        }),
+      ],
+    });
+
+    const element = await open();
+
+    await vi.waitFor(() => expect(element.textContent).toContain('Mia Mentor'));
+    expect(element.textContent).toContain('mia@example.com');
+    expect(element.textContent).toContain('+77019998877');
+    expect(element.textContent).toContain('Omar Mentor');
+    expect(element.textContent).toContain('omar@example.com');
+    expect(element.textContent).toContain('Clara Coordinator');
+    expect(element.textContent).not.toMatch(/no mentor/i);
+  });
+
+  it('says when the enrollment has no mentor to contact, apart from the coordinators', async () => {
+    api.resolve(listMyEnrollments, { items: [myEnrollment({ mentors: [] })] });
+
+    const element = await open();
+
+    await vi.waitFor(() => expect(element.textContent).toMatch(/no mentor/i));
+    expect(element.textContent).toContain('Clara Coordinator');
+    expect(element.textContent).not.toContain('no coordinator to contact');
+  });
+
+  it('says when the track has no coordinator but the enrollment has a mentor', async () => {
+    api.resolve(listMyEnrollments, {
+      items: [myEnrollment({ coordinators: [], mentors: [contact({ name: 'Mia Mentor' })] })],
+    });
+
+    const element = await open();
+
+    await vi.waitFor(() =>
+      expect(element.textContent).toContain('This track has no coordinator to contact'),
+    );
+    expect(element.textContent).toContain('Mia Mentor');
+    expect(element.textContent).not.toMatch(/no mentor/i);
+  });
 });
