@@ -70,6 +70,17 @@ export const routes: Routes = [
               import('./features/enrollments/my-enrollment-page').then((m) => m.MyEnrollmentPage),
           },
           {
+            path: 'my-students',
+            canActivateChild: [requirePermission('ENROLLMENTS_READ_MENTORED')],
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./features/enrollments/my-students-page').then((m) => m.MyStudentsPage),
+              },
+            ],
+          },
+          {
             path: 'profile',
             loadComponent: () => import('./features/profile/my-profile').then((m) => m.MyProfile),
           },

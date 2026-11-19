@@ -80,8 +80,16 @@ export class Shell {
     },
   });
   protected readonly hasEnrollment = computed(() => (this.myEnrollments.value()?.length ?? 0) > 0);
+  protected readonly canReadMentored = computed(() =>
+    this.currentUser.hasPermission('ENROLLMENTS_READ_MENTORED'),
+  );
   protected readonly hasNavLinks = computed(
-    () => this.canReadUsers() || this.canReadTracks() || this.canInvite() || this.hasEnrollment(),
+    () =>
+      this.canReadUsers() ||
+      this.canReadTracks() ||
+      this.canInvite() ||
+      this.hasEnrollment() ||
+      this.canReadMentored(),
   );
   protected readonly mobileMenuOpen = signal(false);
 

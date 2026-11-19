@@ -91,11 +91,11 @@ Frontend tests use host components, the API stub (`core/testing/api-stub`) and t
 |---|---|---|---|
 | T1 Contract, the table in `V1__schema.sql`, stubs that keep the build green (new endpoints 501 or empty, `mentors: []`); regenerate the client. Plan gate. | — | backend-dev | done |
 | T2 Red tests, backend and frontend | all new and changed | test-engineer | done |
-| T3 Backend: mentors of an enrollment — assign, remove, candidates, mentors in the track's enrollments, audit, permission | ENR-1.5, 1.6, 4.2, 6.2, 9.1–9.4, 10.1; PERM-2.1; AUD-7 | backend-dev | in review |
-| T4 Backend: mentors on one's own enrollment, a mentor's students | ENR-5.3, 11.1, 11.2 | backend-dev | in review |
-| T5 Backend: sample center — mentors on enrollments covering every state of the screens: an enrollment with several mentors, with none, a mentor since disabled and one without the role; a mentor with students on two tracks, including a disabled student and one without the student role; a mentor with no student; a student whose mentors include one not shown (ENR-5.3). **Checkpoint: backend green.** | — | backend-dev | in review |
-| T6 Frontend: track page — mentors with marks, assign dialog, removal with confirmation; coordinator removal with confirmation; the six new history actions in the track's and the user's history (replacing T1's temporary fallback) | ENR-7, 7.1; TRK-10; ENR-6.2 as shown in TRK-7, USR-10 | frontend-dev | in review |
-| T7 Frontend: My enrollment mentors; My students page, its link and route guard | ENR-8, ENR-12 | frontend-dev | in review |
+| T3 Backend: mentors of an enrollment — assign, remove, candidates, mentors in the track's enrollments, audit, permission | ENR-1.5, 1.6, 4.2, 6.2, 9.1–9.4, 10.1; PERM-2.1; AUD-7 | backend-dev | done |
+| T4 Backend: mentors on one's own enrollment, a mentor's students | ENR-5.3, 11.1, 11.2 | backend-dev | done |
+| T5 Backend: sample center — mentors on enrollments covering every state of the screens: an enrollment with several mentors, with none, a mentor since disabled and one without the role; a mentor with students on two tracks, including a disabled student and one without the student role; a mentor with no student; a student whose mentors include one not shown (ENR-5.3). **Checkpoint: backend green.** | — | backend-dev | done |
+| T6 Frontend: track page — mentors with marks, assign dialog, removal with confirmation; coordinator removal with confirmation; the six new history actions in the track's and the user's history (replacing T1's temporary fallback) | ENR-7, 7.1; TRK-10; ENR-6.2 as shown in TRK-7, USR-10 | frontend-dev | done |
+| T7 Frontend: My enrollment mentors; My students page, its link and route guard | ENR-8, ENR-12 | frontend-dev | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -162,21 +162,22 @@ Commit: d597e53
 - 2026-11-19: No unit tests for the history texts: "тесты на текст не делать".
 - 2026-11-19: The console error on the Users page is to be checked: "ошибку в консоли проверить".
 - 2026-11-19: The mentors on the track page: "список энроллментов на странице трека абсолютно нечитаемый. под каждым студентом перечислены его менторы ... нужно на карточке студента сделать ненавязчивый список менторов - либо аватарки, которые по наведению высвечивают имя ментора (типа как в соц сетях), либо какой-то всплывающий хинт с именами". Coordinator's choice of the two: avatars.
+- 2026-11-19: Run-3 findings: "1-5 исправить, 6 оставить" — fix the avatar overlap and the visibility of the marks, the clipped focus tooltip, the tooltip over an open popover, the doubled accessible names, and the dialog hint ("who are not mentors of this student yet"); keep "Dan Disabled, Disabled".
+- 2026-11-19: My enrollment layout: "трек в шапку, контакты в две колонки" — the track (code and name, start date, status) goes into the page header under the title, no track card; one full-width Contacts card with Coordinators and Mentors in two columns on desktop, stacked on a phone.
+- 2026-11-19: After looking at the screens: no status chip on My enrollment ("вряд ли студент сможет увидеть другой статус энроллмента, ... зачем студенту эта информация"); the mentors' avatars must not add height to an enrollment row ("между именем студента и датой находится очень большое расстояние"); in the mentor's popover, "Remove" goes to the right on the level of the name and email, as an icon if UX allows ("лучше подобрать иконку, если нет возражений по соображениям UX"). Coordinator's choice: an icon button with a tooltip and an accessible name, the confirmation still follows.
+- 2026-11-19: The mentors in the enrollments list are redone as a "Mentors" column with the name as text (mockup E in `.screens/enrollment-mentors/mentor-mockups.html`), since an enrollment almost always has one mentor: "давай E с уточнениями". The refinements: a click on the name opens the popover; an inactive mentor faint with a small ⚠ and a tooltip with the mark; several mentors as "Mark Mentor +1", the "+1" opening the rest; no mentor "—" then "+" (only "—" without the right to assign); on a phone a line "Mentor: …" under the email.
+- 2026-11-19: After looking at the Mentors column: the popover's Remove icon centred vertically ("кнопка удаления ментора смещена вверх, надо выровнять по высоте в центр"); the mentor names and the column headers muted as in the mockup, "с оглядкой на правила контраста на обоих темах"; a marked mentor behind "+N" must be visible without opening it ("можно ли как-то подсветить это?") — coordinator's proposal: a small ⚠ on "+N", with the count of inactive ones in its tooltip and accessible name.
+- 2026-11-19: The agents' hangs on a dead build are fixed by a separate change: "агентов исправим отдельным ченджем". No sample enrollment with only inactive mentors: "демо данных не надо, я сам посмотрел бледное имя с пометкой". The long coordinator email keeps wrapping: "емейл оставляем". The ⚠ mark looks too faint ("пометка с восклицательным знаком выглядит бледновато", `.screens/img.png`).
+- 2026-11-19: No italics for a marked mentor's name ("да, убери курсив"); the screens accepted: "в остальном, вроде, всё ок".
 
 ## Handover
 
-- Waiting for: the owner's answers at the screens stop — the backend commit; the three doubtful points of the manual tester; the frontend developer's list of details; unit tests for the history texts.
-- To read: `.screens/enrollment-mentors/run-1/` (look at screens) and `run-2/` (manual checks); the frontend diff `git diff -- frontend`.
-- Documents changed: none since the red commit d597e53; only this plan.
-- State: T3–T7 done, uncommitted (backend approved by the owner, commit offered). Frontend verification by `frontend-dev`: format, lint, 408 of 408 tests, build PASS; no test changed. Manual tester run-1: every screen as the requirements say, three doubtful points; run-2: six manual checks PASS. Its run-2 saw "Console: 1 errors" on the Users page, not looked into.
-- Frontend list of details (T6, T7): confirmation texts "They stop being a mentor of this student. They can be assigned again later." and "They stop coordinating <track> and can no longer manage its enrollments."; dialog "Assign a mentor" with "Only active users with the mentor role who do not lead this student yet are listed.", 25 candidates per request; mentor actions also on an archived track (`canEnroll` only); snackbars "Mentor assigned", "<name> removed", the assertive refusal text; history texts (track "Assigned <mentor> as a mentor of <student>", student "<mentor> assigned as a mentor on <track>", mentor "Assigned as a mentor of <student> on <track>", and Removed alike); My enrollment cards "Coordinators to contact" then "Mentors to contact", empty "You have no mentor to contact yet"; My students empty "You do not lead any students yet", rows name/email left and track/start date right, paginator only above 25; "My students" after "My enrollment" in the nav.
-- Open questions:
-  1. The assign dialog does not name the student. Recommended: put the student in the title ("Assign a mentor to <student>") — a matter of taste, back to `frontend-dev` with an ordinary test.
-  2. The mentor removal confirmation does not name the student. Recommended: "Remove <mentor> as a mentor of <student>?" — the same.
-  3. My enrollment: the track card stretches tall on desktop. Recommended: fix it (cosmetic, `frontend-dev`).
-  4. No unit tests for the six history texts. Recommended: no — the texts are not in a requirement.
-  5. The console error on the Users page in run-2. Recommended: the manual tester looks once more on the re-check.
-- On approval: commit the backend (if agreed); send the chosen fixes to `frontend-dev` in one batch; re-run `manual-tester` on the affected states; the owner looks at the screens; then the second test pass.
+- Waiting for: the owner agrees to commit the frontend (T6, T7 and the screen fixes) with this plan and the usage record.
+- To read: `git diff -- frontend`.
+- Documents changed: none since the red commit d597e53; only this plan. Backend committed in d300eae.
+- State: T1–T7 done; the owner accepted the screens. Frontend uncommitted; verification by `frontend-dev`: format, lint, 408 of 408, build PASS; tests changed since the red commit: only the three removal tests (no id). Track page: a "Student · Mentors · Start" list, the first mentor's name muted (a marked one with an amber 14px ⚠, no italics), "+N" with ⚠ and "N more mentors, M inactive" when one behind it is marked, popovers with a centred person-minus Remove, "—" and "+" when none. My enrollment: header "<code> · <name> · Enrolled from <date>", one Contacts card in two columns.
+- Open questions: none. The agents' hangs are a separate change (local memory `agent-build-hangs`).
+- On approval: commit; then the second test pass with a fresh `test-engineer`; then the review loop (`reviewer`), then `verifier` with scope all.
 - On remarks: as the owner says.
 
 ## Agents
@@ -189,6 +190,11 @@ Commit: d597e53
 | test-engineer | definition default | a92e56069c3ee2545 | implementation: four tests to PERM-1 | 30k |
 | backend-dev | definition default | ae4dd640762432271 | implementation: T4, T5 | 123k |
 | verifier | definition default | a3dfc08a0856a675a | implementation: backend | 13k |
-| frontend-dev | definition default | ab4373096fff40aa0 | implementation: T6, T7 | 118k |
+| frontend-dev | definition default | ab4373096fff40aa0 | implementation: T6, T7, screen fixes | 144k |
+| test-engineer | definition default | ab8fdc507e3a6b8d7 | implementation: removal tests for the popover | 35k |
+| manual-tester | definition default | a3a858b4d254114ee | implementation: re-check, run-3 | 45k |
+| frontend-dev | definition default | ac806180610113bd2 | implementation: screen fixes after run-3 to run-8 | 135k+ |
+| manual-tester | definition default | a84454314f38ff269 | implementation: re-check, run-4 | 45k |
+| frontend-dev | definition default | a58e2508a8f8be1ba | implementation: ⚠ mark, italics | 60k |
 | manual-tester | definition default | add27f14315eca14c | implementation: look at screens, run-1 | 60k |
 | manual-tester | haiku | a2f8b80299f7fcd12 | implementation: manual checks, run-2 | — |

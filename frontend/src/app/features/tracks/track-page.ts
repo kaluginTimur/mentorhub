@@ -228,12 +228,23 @@ export class TrackPage {
     }
   }
 
-  protected removeCoordinator(track: Track, coordinator: TrackCoordinator): Promise<Outcome> {
-    return this.change(
-      () => this.api.invoke(removeTrackCoordinator, { id: track.id, userId: coordinator.id }),
-      `${coordinator.name} removed`,
-      'Could not remove the coordinator. Try again.',
-    );
+  protected async removeCoordinator(track: Track, coordinator: TrackCoordinator): Promise<void> {
+    const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialog, {
+      contentClass: 'sm:max-w-[420px]',
+      context: {
+        title: `Remove ${coordinator.name} as a coordinator?`,
+        text: `They stop coordinating ${trackLabel(track)} and can no longer manage its enrollments.`,
+        confirmLabel: 'Remove',
+        destructive: true,
+      },
+    });
+    if (await firstValueFrom(ref.closed$)) {
+      await this.change(
+        () => this.api.invoke(removeTrackCoordinator, { id: track.id, userId: coordinator.id }),
+        `${coordinator.name} removed`,
+        'Could not remove the coordinator. Try again.',
+      );
+    }
   }
 
   protected addCoordinator(track: Track): void {

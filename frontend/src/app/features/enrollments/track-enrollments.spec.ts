@@ -327,12 +327,20 @@ describe('TrackEnrollments', () => {
         size: 25,
         totalItems: 1,
       });
-    // The remove action of a mentor is found by its accessible name, which contains the mentor's name.
-    const removeButton = (root: ParentNode, name: string) =>
+    // A mentor's avatar is a button whose accessible name contains the mentor's name; a click opens the popover
+    // with the removal.
+    const avatarButton = (root: ParentNode, name: string) =>
       [...root.querySelectorAll('button')].find((b) => {
         const label = `${b.getAttribute('aria-label') ?? ''} ${b.textContent ?? ''}`;
-        return label.includes(name) && /remove/i.test(label);
+        return label.includes(name) && !/assign/i.test(label);
       });
+    async function openMentorPopover(root: ParentNode, name: string, settle: () => Promise<void>) {
+      await vi.waitFor(() =>
+        expect(avatarButton(root, name), `the avatar of ${name}`).toBeDefined(),
+      );
+      avatarButton(root, name)?.click();
+      await settle();
+    }
     const countOf = (text: string | null | undefined, word: string) =>
       (text ?? '').split(word).length - 1;
 
@@ -397,13 +405,19 @@ describe('TrackEnrollments', () => {
       api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
       const { host, element, settle } = await open();
       await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
-      expect(removeButton(element, 'Mia Mentor'), 'the removal of Mia').toBeDefined();
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      await vi.waitFor(() =>
+        expect(buttonByText(overlay(), 'Remove'), 'the removal').toBeDefined(),
+      );
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
 
       host.canEnroll.set(false);
       await settle();
 
       await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeUndefined());
-      expect(removeButton(element, 'Mia Mentor')).toBeUndefined();
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      expect(buttonByText(overlay(), 'Remove')).toBeUndefined();
       expect(element.textContent).toContain('Mia Mentor');
     });
 
@@ -500,9 +514,9 @@ describe('TrackEnrollments', () => {
         return trackEnrollment();
       });
       const { element, settle } = await open();
-      await vi.waitFor(() => expect(removeButton(element, 'Mia Mentor')).toBeDefined());
-
-      removeButton(element, 'Mia Mentor')?.click();
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      await vi.waitFor(() => expect(buttonByText(overlay(), 'Remove')).toBeDefined());
+      buttonByText(overlay(), 'Remove')?.click();
       await settle();
       expect(api.callsFor(removeEnrollmentMentor)).toHaveLength(0);
       expect(overlay().textContent).toContain('Mia Mentor');
@@ -522,9 +536,9 @@ describe('TrackEnrollments', () => {
       api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
       api.resolve(removeEnrollmentMentor, trackEnrollment());
       const { element, settle } = await open();
-      await vi.waitFor(() => expect(removeButton(element, 'Mia Mentor')).toBeDefined());
-
-      removeButton(element, 'Mia Mentor')?.click();
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      await vi.waitFor(() => expect(buttonByText(overlay(), 'Remove')).toBeDefined());
+      buttonByText(overlay(), 'Remove')?.click();
       await settle();
       buttonByText(overlay(), 'Cancel')?.click();
       await settle();

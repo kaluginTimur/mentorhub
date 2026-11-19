@@ -9,7 +9,7 @@ import { trackLabel } from '../../shared/track-label/track-label';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { Email } from '../../shared/email/email';
 
-/** The caller's own enrollment and the coordinators to contact (ENR-8). */
+/** The caller's own enrollment, and the coordinators and mentors to contact (ENR-8). */
 @Component({
   selector: 'app-my-enrollment-page',
   imports: [Email, DatePipe, HlmCardImports, Loading, Unavailable],
@@ -20,46 +20,79 @@ import { Email } from '../../shared/email/email';
       <app-loading />
     } @else {
       <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
-        <h1 class="font-display text-2xl font-bold tracking-tight">My enrollment</h1>
+        <header class="flex flex-col gap-1">
+          <h1 class="font-display text-2xl font-bold tracking-tight">My enrollment</h1>
+          @if (enrollment(); as e) {
+            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              <span class="font-medium break-words text-foreground">{{ label(e.track) }}</span>
+              <span aria-hidden="true">·</span>
+              <span>
+                Enrolled from
+                <time [attr.datetime]="e.startDate">{{ e.startDate | date: dateFormat }}</time>
+              </span>
+            </p>
+          }
+        </header>
 
         @if (enrollment(); as e) {
-          <div class="grid gap-6 md:grid-cols-[3fr_7fr]">
+          <div class="flex flex-col gap-6">
             <div hlmCard>
               <div hlmCardHeader>
-                <h2 hlmCardTitle class="break-words">{{ label(e.track) }}</h2>
-                <p hlmCardDescription>
-                  Enrolled from
-                  <time [attr.datetime]="e.startDate">{{ e.startDate | date: dateFormat }}</time>
-                </p>
+                <h2 hlmCardTitle>Contacts</h2>
               </div>
-            </div>
-
-            <div hlmCard>
-              <div hlmCardHeader>
-                <h2 hlmCardTitle>Coordinators to contact</h2>
-              </div>
-              <div hlmCardContent>
-                @if (e.coordinators.length > 0) {
-                  <ul class="divide-y divide-border">
-                    @for (c of e.coordinators; track c.email) {
-                      <li class="flex flex-col gap-1 py-2.5">
-                        <span class="font-medium break-words">{{ c.name }}</span>
-                        <a
-                          class="w-fit font-mono text-xs text-mh-link hover:text-mh-link-hover hover:underline"
-                          [href]="'mailto:' + c.email"
-                          ><app-email [value]="c.email"
-                        /></a>
-                        @if (c.phone) {
-                          <span class="font-mono text-xs text-muted-foreground">{{ c.phone }}</span>
-                        }
-                      </li>
-                    }
-                  </ul>
-                } @else {
-                  <p class="text-sm text-muted-foreground">
-                    This track has no coordinator to contact
-                  </p>
-                }
+              <div hlmCardContent class="grid gap-6 md:grid-cols-2 md:gap-8">
+                <section aria-labelledby="my-coordinators">
+                  <h3 id="my-coordinators" class="text-sm font-semibold">Coordinators</h3>
+                  @if (e.coordinators.length > 0) {
+                    <ul class="divide-y divide-border">
+                      @for (c of e.coordinators; track c.email) {
+                        <li class="flex flex-col gap-1 py-2.5">
+                          <span class="font-medium break-words">{{ c.name }}</span>
+                          <a
+                            class="w-fit font-mono text-xs text-mh-link hover:text-mh-link-hover hover:underline"
+                            [href]="'mailto:' + c.email"
+                            ><app-email [value]="c.email"
+                          /></a>
+                          @if (c.phone) {
+                            <span class="font-mono text-xs text-muted-foreground">{{
+                              c.phone
+                            }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="pt-2 text-sm text-muted-foreground">
+                      This track has no coordinator to contact
+                    </p>
+                  }
+                </section>
+                <section aria-labelledby="my-mentors">
+                  <h3 id="my-mentors" class="text-sm font-semibold">Mentors</h3>
+                  @if (e.mentors.length > 0) {
+                    <ul class="divide-y divide-border">
+                      @for (c of e.mentors; track c.email) {
+                        <li class="flex flex-col gap-1 py-2.5">
+                          <span class="font-medium break-words">{{ c.name }}</span>
+                          <a
+                            class="w-fit font-mono text-xs text-mh-link hover:text-mh-link-hover hover:underline"
+                            [href]="'mailto:' + c.email"
+                            ><app-email [value]="c.email"
+                          /></a>
+                          @if (c.phone) {
+                            <span class="font-mono text-xs text-muted-foreground">{{
+                              c.phone
+                            }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="pt-2 text-sm text-muted-foreground">
+                      You have no mentor to contact yet
+                    </p>
+                  }
+                </section>
               </div>
             </div>
           </div>
