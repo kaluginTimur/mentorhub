@@ -61,6 +61,53 @@ for (const segment of segments) {
   }
 }
 
+// Hand-written waits hang when what they wait for has died or never started: a `pgrep -f` loop that matched its own
+// shell, a `curl` loop on a dev server that failed to compile. Waiting goes through scripts/stack.mjs or the Bash timeout.
+// A `for` loop is a wait when it leaves early (`break`, `exit`, `return`). Only what the shell runs counts: quoted text
+// and heredocs (a commit message, a file being written) do not, except a script handed to a shell or `eval`.
+const SHELL_SCRIPT_BEFORE = /(^|[\s;&|(/])((sh|bash|zsh)\s+(-\w+\s+)*-\w*c\s*|eval\s+|(sh|bash|zsh)\s*)$/;
+function executed(text) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const heredoc = /^<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n[ \t]*\2[ \t]*(?=\n|$)/.exec(text.slice(i));
+    if (heredoc) {
+      out += SHELL_SCRIPT_BEFORE.test(out) ? `\n${heredoc[3]}\n` : '\n';
+      i += heredoc[0].length - 1;
+      continue;
+    }
+    const c = text[i];
+    if (c !== "'" && c !== '"') {
+      out += c;
+      continue;
+    }
+    let j = i + 1;
+    while (j < text.length && text[j] !== c) j += c === '"' && text[j] === '\\' ? 2 : 1;
+    out += SHELL_SCRIPT_BEFORE.test(out) ? ` ${text.slice(i + 1, j)} ` : ' ';
+    i = j;
+  }
+  return out;
+}
+const LOOP = /\b(while|until|for)\s[\s\S]*?\bdo\b([\s\S]*?)\bdone\b/g;
+const polls = (kind, body) => /\bsleep\b/.test(body) && (kind !== 'for' || /\b(break|exit|return)\b/.test(body));
+if ([...executed(command).matchAll(LOOP)].some((m) => polls(m[1], m[2]))) {
+  deny(
+    'Blocked: a polling loop around `sleep`. It hangs when what it waits for has died or never started. ' +
+      "To bring up the stack, run `node scripts/stack.mjs start` in the foreground with the Bash tool's timeout at 600000: it waits with a time limit and fails fast with the log. " +
+      "Run a build or a test in the foreground with the Bash tool's timeout at 600000. In the main session, wait for a condition with the Monitor tool. " +
+      "Never wait for another agent's build: stop with your report and say so, since the coordinator runs builds one at a time.",
+  );
+}
+
+// A build, a test run or a server in the background leaves the agent polling its output file, or waiting on it after
+// it died; scripts/stack.mjs detaches the servers itself and returns once they are healthy.
+const BUILD_OR_SERVER = /\bmvnw\b|\bmvn\b|\bnpm\s+(start|test|t|run\s+\S+)\b|\bng\s+(serve|build|test|lint)\b|\bnpx\s+ng\b/;
+if (input.tool_input?.run_in_background === true && BUILD_OR_SERVER.test(command)) {
+  deny(
+    "Blocked: a build, a test run or a server in `run_in_background`. Run builds and tests in the foreground with the Bash tool's timeout at 600000. " +
+      "Start the stack with `node scripts/stack.mjs start` in the foreground with the same timeout: it detaches the servers and returns once they are healthy.",
+  );
+}
+
 if (SQL_CLIENT.test(command) && DESTRUCTIVE_SQL.test(command)) {
   deny(`Blocked: destructive SQL against a database. ${MANUAL}`);
 }

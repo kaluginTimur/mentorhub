@@ -14,7 +14,9 @@ Lead the change `$change` from its brief to a verified branch: the path **A chan
 
 ## Work
 
+- Never run two agents that build the backend at once: they share `backend/target` and break each other's tests. Continue an agent only while its cache is warm, as **Agents and briefs** in `/feature` says.
 - Documents, skills, hooks and scripts you edit yourself. Application code goes to `backend-dev` or `frontend-dev`, briefed with the brief's path and one task; add each agent to the brief's Agents table. On a PARTIAL report, a fresh agent of the same type continues from the brief's Partial work.
+- A screen with a real layout choice gets a mockup by `ui-designer` first, as **Plan** in `/feature` says, before `frontend-dev` builds it.
 - A detail a user sees gets an ordinary test without an id when something can break it. When screens change, the user looks at them on the sample center before the review. When the user asks for a first look, run `manual-tester` before that, as **When the frontend is green** in `/feature` says.
 - A passage added to a guide or widened needs the four answers of the **Guides** section of `docs/README.md`: write them into the handover and show them to the user. Remove a passage the user does not agree with.
 - Record the user's decisions in the brief, in their words. What you inferred stays out of that list.
@@ -27,7 +29,7 @@ A rule of that kind that the change does not alter is not a reason to stop: writ
 
 ## Before every stop for the user
 
-Update the task statuses and the handover, with its documents changed built from git as the brief template says. Say that the user can answer here, or run `/clear` first and then `/chore $change`. Never suggest `/compact`.
+Update the task statuses and the handover, with its documents changed built from git as the brief template says. Say that the user can answer here, or run `/clear` first and then `/chore $change`. `/clear` is safe only when the handover is current and no agent is running: agents of this session cannot be continued after it. While one runs, say that `/clear` waits for its report. Never suggest `/compact`.
 
 Do not record token usage: `agent-usage.mjs --record` and `/usage-review` measure only changes that go through `/spec` and `/feature`.
 

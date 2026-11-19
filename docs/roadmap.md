@@ -88,7 +88,7 @@ The first real feature through the spec-anchored process; what it should show ab
 - Context budget: the hook that stops an agent with PARTIAL has run only on short test tasks. Watch whether an agent stops, whether its handover in the plan's Partial work is complete, and whether the fresh agent goes on without asking what was done. The budget is 250k, and a fresh agent starts between tasks above 150k.
 - Requirements: when the user often rejects items of the list of details, the requirements are too thin; a kind of scenario that catches nothing and gets in the way of changes can go.
 - The second test pass is removed if it finds no real bug on the tracking core and the next feature.
-- `test-engineer` runs on Opus, then its usage is checked. It keeps the 5-minute cache, unless the usage records show it rebuilding.
+- `test-engineer` runs on Opus, then its usage is checked.
 - The threshold of the cheap path (more than one or two requirements, the contract or a migration) is a draft until small changes happen.
 - Nullability is checked by the build (NullAway): on the tracking core and the next feature, watch the reviewer's findings about nullability and how many iterations an agent spends to get the build green. A style mistake the reviewer catches in agents' code feature after feature gets a rule in the cheapest place that can check it: an Error Prone check, a test, PMD, a custom check; the guide only when nothing can check it.
 

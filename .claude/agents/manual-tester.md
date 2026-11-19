@@ -19,19 +19,10 @@ Read `README.md` for the development users (all have the password `mentorhub`) a
 
 ## The stack
 
-1. Check it: `curl -sS -o /dev/null -w "%{http_code}" http://localhost:4200` and `curl -sS http://localhost:8080/actuator/health`.
-2. Running: use it as is. Never restart or stop it. Your data changes land in the owner's database: list them in the report.
-3. Not running: start what is missing in the background (the Bash tool's `run_in_background`), each under `setsid` so that its whole process tree has its own process group. The shell that runs the start may already be a job-control shell, where `setsid` forks and `$!` is the wrong PID, so the started process writes its own id (equal to its group id) to a file first. Create the run folder, then start:
-   - `mkdir -p <repo>/.screens/<change>/<run>`
-   - `cd <repo>/backend && setsid sh -c 'echo $$ > <repo>/.screens/<change>/<run>/backend.pgid; exec ./mvnw spring-boot:run' > <repo>/.screens/<change>/<run>/backend.log 2>&1 < /dev/null`
-   - `cd <repo>/frontend && setsid sh -c 'echo $$ > <repo>/.screens/<change>/<run>/frontend.pgid; exec ~/.nvm/nvm-exec npm start' > <repo>/.screens/<change>/<run>/frontend.log 2>&1 < /dev/null`
-
-   The two `.pgid` files hold the group ids to stop in step 4; read them with `cat`. The logs are where to look when a start fails.
-
-   A `run_in_background` start reports "completed" within seconds because `setsid` forks; the stack keeps running, so judge by the health checks, not by that notice.
-
-   Wait until both checks answer (200 and `"status":"UP"`); the backend takes a minute or more. A stack that does not come up is a broken environment (below).
-4. When done, stop only the group ids in the two `.pgid` files from the launch: `kill -- -<PID>`. Never search for a process group or PID by name or port (`ps`, `pgrep`, `lsof`): a wrong match stops someone else's process. Never `docker compose down`: the services Spring Boot started from `infra/compose.yaml` stay, as after a person's run. If the stop is denied, do not work around it: report that the stack is still running, with the process group PIDs and the exact `kill -- -<PID>` command for the owner to run.
+1. Create the run folder: `mkdir -p <repo>/.screens/<change>/<run>`.
+2. Run `node scripts/stack.mjs start` from the repository root, in the foreground, with the Bash tool's timeout at 600000. It uses a backend or frontend that already answers, starts what is missing, and returns once both answer; the backend takes a minute or more. When it fails, it prints the log's tail and stops what it started: that is a broken environment (below). Never start the servers yourself and never wait for them in a loop.
+3. Your data changes land in the owner's database: list them in the report.
+4. When done, run `node scripts/stack.mjs stop <token>` with the token `start` printed. It stops only what that run started; a stack that was already running stays. Never stop a process found by name or port (`ps`, `pgrep`, `lsof`, `pkill`), and never `docker compose down`.
 
 ## The browser
 

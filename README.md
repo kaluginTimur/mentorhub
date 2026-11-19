@@ -18,6 +18,8 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm ci && npm start
 ```
 
+Or both at once, in the background: `node scripts/stack.mjs start` returns once both answer, or fails with the log's tail; `node scripts/stack.mjs stop <token>`, with the token `start` printed, stops what that run started. Agents bring up the stack this way.
+
 - Application: http://localhost:4200 (sign in as a development user, see below)
 - Swagger UI (API contract, `dev` profile only): http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
