@@ -69,7 +69,7 @@ The designer continues the temporary plan `docs/plans/<change>.md`, which holds 
 
 ### 3. Plan
 
-The designer completes the plan: the requirement ids it touches, the design, the tasks with their ids, and what the tests rely on before code exists (component inputs, `data-testid` selectors). A developer changes `api/openapi.yaml`, adds any migration, and keeps the build green with stubs. When the change adds or changes what a screen shows, a task adds its data to the sample center, the dev data set described in `docs/development/backend.md`, so that every state of those screens can be seen.
+The designer completes the plan: the requirement ids it touches, the design, the tasks with their ids, and what the tests rely on before code exists (component inputs, `data-testid` selectors). A developer changes `api/openapi.yaml`, adds any migration, and keeps the build green with stubs. When a screen has a real layout choice, a mockup with two or three variants comes first: the owner chooses one before the tests rely on its texts and structure, since a round on a mockup costs a fraction of a round in code. When the change adds or changes what a screen shows, a task adds its data to the sample center, the dev data set described in `docs/development/backend.md`, so that every state of those screens can be seen.
 
 **Plan gate.** The owner reads the plan and the diff of the contract and the migration, and approves. The tests and the code rely on them, so a poor design would be redone along with both.
 

@@ -25,6 +25,7 @@ Read the plan named in the brief (`docs/plans/<change>.md`), the requirements it
 ## Work
 
 - The tests already exist and fail: make them pass. Components the test engineer left empty are yours to fill, with the inputs and selectors the plan fixes.
+- When the plan names a chosen mockup (`.screens/<change>/mockups/`), build that variant with the owner's refinements; the plan's What the tests rely on decides the texts.
 - Build the screens with the page patterns from the UI guidelines, with every state: loading, empty, error, and each role's view where it differs.
 - Requirements say what matters, not every detail. Choose the rest from the guidelines and existing screens, and list it in your report.
 - Accessibility to the level the frontend guide requires.
@@ -44,6 +45,7 @@ A task given without a plan (bug fix, refactoring, a detail of a screen), with o
 - Never edit generated code. Never change the API contract or anything outside `frontend/`. If the contract does not fit the UI (a missing field, an awkward shape), stop and report it as a question; the backend owns the contract.
 - To check that something exists in our versions, or what it does there (its defaults and options), ask the `api-lookup` subagent instead of reading the installed artifacts yourself; batch the symbols into one question. Without a tool to start a subagent (a cloud session gives subagents none), do not probe by compiling: put the questions under "API lookups" in your report and stop; the coordinator asks `api-lookup` and continues you with the answers.
 - Do not change the requirements or the plan, apart from its Partial work as **Context budget** above says. If one is wrong or incomplete, stop and report it.
+- To look at a screen in the browser, bring up the stack with `node scripts/stack.mjs start` in the foreground, with the Bash tool's timeout at 600000, and when done stop it with `node scripts/stack.mjs stop <token>`, the token `start` printed; the dev server reloads your changes by itself. Never start `npm start` or the backend yourself, and never wait for anything in a loop: when the script fails, report its output.
 - UI text in English. Comments only for non-obvious points.
 - No commits, no pushes, no destructive commands.
 

@@ -24,7 +24,7 @@ Every stop below means these steps, in this order:
 
 1. Write the plan: task statuses, the user's decisions in their words, each report's "Notes for the next task" under Notes for later tasks, the agents with their context sizes, and the handover, overwritten with the state now (the results of earlier rounds leave it), with its documents changed built from git as the plan template says.
 2. Record the session under the current phase (`plan`, `implementation` or `review`), without a session id: `node .claude/scripts/agent-usage.mjs --record $change <phase>`. A later record of the same phase and session replaces it. Check that the sessions it prints are this change's; never pick a session id or pass `--force` without the user. The record `.claude/usage/$change.jsonl` measures the cost of the change: every commit of the change includes it, without asking.
-3. Relay the report as below, and say that the user can take their time: they can answer here, or run `/clear` first and then `/feature $change` to continue from the handover at a fraction of the context.
+3. Relay the report as below, and say that the user can take their time: they can answer here, or run `/clear` first and then `/feature $change` to continue from the handover at a fraction of the context. `/clear` is safe only when the handover is current and no agent is running: agents of this session cannot be continued after it. While one runs, say that `/clear` waits for its report.
 
 Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 
@@ -32,7 +32,8 @@ Never suggest `/compact`: a summary may drop what the plan keeps exactly.
 
 Brief every agent with the plan's path and one task. It reads the rest itself.
 
-- **Within a task** (feedback, rework): continue the same agent with `SendMessage`.
+- **Within a task** (feedback, rework): continue the same agent with `SendMessage`, while its cache is warm.
+- **A cold agent:** the cache of `backend-dev`, `frontend-dev` and `ui-designer` lives an hour, the others' five minutes, and continuing an agent after that writes its whole context again (enrollment-mentors: 126k for a three-call fix). Before a `SendMessage`, check: `find ~/.claude/projects -name 'agent-<id>.jsonl' -mmin -55` (`-mmin -4` for the others) prints its transcript while it is warm. For small work on a cold agent (a review fix, a detail), brief a fresh agent of the same type with the finding and the plan's notes instead.
 - **Between tasks:** continue the same agent while its last context size is under about 150k tokens; above that, start a fresh one, since the context budget would soon stop it in the middle of the next task. Put the last report's "Notes for the next task" into its brief: the plan gets them only at the next stop.
 - **Context budget:** past about 250k, a hook in `backend-dev`, `frontend-dev` and `test-engineer` tells the agent to finish its step and stop with a PARTIAL report and a handover. The agent writes the handover into the plan's Partial work under its task itself, so that it is not retold. On PARTIAL, check that it is there, do not rewrite it, keep the task `in progress`, and brief a fresh agent of the same type with the same task, saying that it continues from the handover. Never continue the stopped agent. When the task is done, delete its Partial work.
 - **An agent that ends without its report** (an error, a stop, a session that ended, a report without a status): if it can still be continued (this session; in a cloud session, its transcript as below), continue it once with `SendMessage`: end with the report, and if the task is not done, with status PARTIAL and the handover its Context budget section asks for. Otherwise brief a fresh agent of the same type with the same task, saying that there is no handover: it starts from `git status`, `git diff` and the plan, and runs the verification of its area before going on. Write into the plan's Partial work, under the task, that the agent stopped without a handover, and when.
@@ -50,6 +51,8 @@ A report that stops with questions under "API lookups" comes from an agent that 
 
 ## Plan
 
+**Mockups first, when a screen has a real layout choice:** a new element that packs several values into a row or a card, or a screen no pattern of `docs/ui/guidelines.md` settles. Brief `ui-designer` with the plan's path, the screens, the personas and the states, before you write What the tests rely on for them; a screen that follows a pattern needs none. Show the owner the mockup's path and the variants; each round of remarks goes to the same agent with `SendMessage`. Record the chosen variant and the owner's words in the plan's decisions, with the mockup's path, and take the texts and structure the tests rely on from it.
+
 Write the plan's Requirements, Design, What the tests rely on and Tasks. Put in the design only what the agents would otherwise guess. Tasks follow the feature, not a fixed pipeline, and each names the scenarios it serves. When screens change, a `backend-dev` task adds their sample data, as the backend guide says, before the frontend stop. Propose a checkpoint on a hard part. Then brief `backend-dev` for the contract and any migration.
 
 **Stop at the plan gate:** the user reads the plan and the diff of the contract and the migration. Relay remarks to the agent or fix the plan. Go on only when the user approves, and record that.
@@ -66,7 +69,7 @@ A doubt the test engineer reports about a requirement goes to the user. If a req
 
 ## Implement
 
-Brief `backend-dev` for the backend tasks and `frontend-dev` for the frontend ones. They may run in parallel, unless the plan orders them.
+Brief `backend-dev` for the backend tasks and `frontend-dev` for the frontend ones. They may run in parallel, unless the plan orders them. Never run two agents that build the backend at once (`backend-dev`, `test-engineer` on backend tests, `verifier` with a backend scope): they share `backend/target` and break each other's tests. Wait for one's report before briefing the next.
 
 After each report, list what changed in the test files since the red commit. A changed test that carries an id is a stop: **Tests** in `docs/process.md` says who decides. Do not pass it on as done. Also compare `git diff --stat` with the files the brief named: a file the brief did not name, or one changed far more than its task needs (a skill or a document that lost whole sections), goes back to the agent before you relay the report.
 

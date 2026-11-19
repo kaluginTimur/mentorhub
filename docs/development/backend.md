@@ -134,6 +134,7 @@ When unsure whether a class, annotation or method exists in our versions, or wha
 | Format | `./mvnw spotless:apply` |
 | Regenerate API interfaces | `./mvnw -q generate-sources` |
 | Run on :8080 in the `dev` profile (starts Postgres, Keycloak and Mailpit from `infra/compose.yaml`) | `./mvnw spring-boot:run` |
+| The whole stack for a browser check, waited for with a time limit; agents start it only this way, in the foreground with the Bash tool's timeout at 600000 | `node scripts/stack.mjs start` (from the root; `stop <token>` stops what that run started) |
 | Run in the `dev` profile with Postgres from Testcontainers; no Keycloak (start it with `docker compose -f infra/compose.yaml up -d keycloak` to sign in) and no Mailpit, so emails end failed | `TestMentorHubApplication` in `backend/src/test` |
 
 ## Verification

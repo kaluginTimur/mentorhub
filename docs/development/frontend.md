@@ -83,6 +83,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 |---|---|
 | Install | `npm ci` |
 | Dev server on :4200 (`/api` proxied to :8080) | `npm start` |
+| The whole stack for a browser check, waited for with a time limit; agents start it only this way, in the foreground with the Bash tool's timeout at 600000 | `node scripts/stack.mjs start` (from the root; `stop <token>` stops what that run started) |
 | Format | `npm run format` |
 | Regenerate the API client | `npm run generate:api` |
 

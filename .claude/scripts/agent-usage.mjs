@@ -152,7 +152,17 @@ function analyse(files, window = {}) {
     } catch {
       continue;
     }
-    if (e.timestamp && ((window.since && e.timestamp <= window.since) || (window.until && e.timestamp > window.until))) continue;
+    // A call before the window is not counted, but it is the agent's previous call: an agent continued in a later phase
+    // after its cache expired rewrites its whole history on its first call in the window.
+    if (e.timestamp && window.since && e.timestamp <= window.since) {
+      const u = e.type === 'assistant' ? e.message?.usage : null;
+      if (u) {
+        prev = Date.parse(e.timestamp);
+        s.context = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+      }
+      continue;
+    }
+    if (e.timestamp && window.until && e.timestamp > window.until) continue;
     for (const m of line.matchAll(/"effort":"(low|medium|high|xhigh|max)"/g)) efforts.add(m[1]);
     const m = e.message;
     // A streamed message is written several times under one id; the last copy has the final output count.
