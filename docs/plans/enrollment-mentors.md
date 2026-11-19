@@ -169,15 +169,16 @@ Commit: d597e53
 - 2026-11-19: After looking at the Mentors column: the popover's Remove icon centred vertically ("кнопка удаления ментора смещена вверх, надо выровнять по высоте в центр"); the mentor names and the column headers muted as in the mockup, "с оглядкой на правила контраста на обоих темах"; a marked mentor behind "+N" must be visible without opening it ("можно ли как-то подсветить это?") — coordinator's proposal: a small ⚠ on "+N", with the count of inactive ones in its tooltip and accessible name.
 - 2026-11-19: The agents' hangs on a dead build are fixed by a separate change: "агентов исправим отдельным ченджем". No sample enrollment with only inactive mentors: "демо данных не надо, я сам посмотрел бледное имя с пометкой". The long coordinator email keeps wrapping: "емейл оставляем". The ⚠ mark looks too faint ("пометка с восклицательным знаком выглядит бледновато", `.screens/img.png`).
 - 2026-11-19: No italics for a marked mentor's name ("да, убери курсив"); the screens accepted: "в остальном, вроде, всё ок".
+- 2026-11-19: Review findings R1–R6 and the second-pass questions as recommended (fix R1–R6 and "1 more mentor"; keep active mentors first in the Mentors column): "всё по рекомендациям".
 
 ## Handover
 
-- Waiting for: the owner agrees to commit the frontend (T6, T7 and the screen fixes) with this plan and the usage record.
-- To read: `git diff -- frontend`.
-- Documents changed: none since the red commit d597e53; only this plan. Backend committed in d300eae.
-- State: T1–T7 done; the owner accepted the screens. Frontend uncommitted; verification by `frontend-dev`: format, lint, 408 of 408, build PASS; tests changed since the red commit: only the three removal tests (no id). Track page: a "Student · Mentors · Start" list, the first mentor's name muted (a marked one with an amber 14px ⚠, no italics), "+N" with ⚠ and "N more mentors, M inactive" when one behind it is marked, popovers with a centred person-minus Remove, "—" and "+" when none. My enrollment: header "<code> · <name> · Enrolled from <date>", one Contacts card in two columns.
-- Open questions: none. The agents' hangs are a separate change (local memory `agent-build-hangs`).
-- On approval: commit; then the second test pass with a fresh `test-engineer`; then the review loop (`reviewer`), then `verifier` with scope all.
+- Waiting for: the owner accepts the change (stage 7 done), then stage 8 finish.
+- To read: the summary of the stop; uncommitted files in `git status`.
+- Documents changed: `docs/requirements/README.md` changed (new since the last stop): the Enrollments row names the mentors of an enrollment and a mentor's students. `README.md` changed (new since the last stop): the sample-center paragraph says where mentors show (Mark Mentor, Alma, Milo, Sofia's four mentors). Requirements, contract and V1 committed in d597e53.
+- State: review fixes R1–R6, Q1 done (the ENR-4 marks test rewritten on what is perceivable; hidden spans removed; "Remove <name>"; My students paginator past the last page; "1 more mentor"). No re-review: the fixes were small. Second test pass: no real bug found. `verifier` scope all: backend PASS; frontend format, lint, 414/414, build PASS; docs check-docs, requirements tests 64/64, trace 259 of 259 PASS. Uncommitted: the review fixes, the second-pass tests, the two docs.
+- Open questions: none.
+- On approval: stage 8 — no decision (no cross-cutting choice beyond 0004), a guide passage only if the owner agrees with its four answers; delete the roadmap item, this plan and `.screens/enrollment-mentors/`; commit if the owner asks; suggest `/pr` and then `/usage-review`.
 - On remarks: as the owner says.
 
 ## Agents
@@ -195,6 +196,9 @@ Commit: d597e53
 | manual-tester | definition default | a3a858b4d254114ee | implementation: re-check, run-3 | 45k |
 | frontend-dev | definition default | ac806180610113bd2 | implementation: screen fixes after run-3 to run-8 | 135k+ |
 | manual-tester | definition default | a84454314f38ff269 | implementation: re-check, run-4 | 45k |
-| frontend-dev | definition default | a58e2508a8f8be1ba | implementation: ⚠ mark, italics | 60k |
+| frontend-dev | definition default | a58e2508a8f8be1ba | implementation: ⚠ mark, italics | 61k |
+| test-engineer | definition default | a7be15806a54d0014 | second pass | 76k |
+| reviewer | definition default | a14c1a80bceaee82a | review | 178k |
+| verifier | definition default | ae943d332b0ce23f6 | review: all | — |
 | manual-tester | definition default | add27f14315eca14c | implementation: look at screens, run-1 | 60k |
 | manual-tester | haiku | a2f8b80299f7fcd12 | implementation: manual checks, run-2 | — |

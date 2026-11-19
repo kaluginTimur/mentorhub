@@ -172,7 +172,6 @@ const PAGE_PARAM = 'enrollmentsPage';
                             />
                           </hlm-popover-content>
                         </hlm-popover>
-                        <span class="sr-only" aria-hidden="true">{{ first.email }}</span>
                         @if (ms.length > 1) {
                           <hlm-popover
                             align="start"
@@ -213,32 +212,6 @@ const PAGE_PARAM = 'enrollmentsPage';
                               }
                             </hlm-popover-content>
                           </hlm-popover>
-                          <!-- Each further mentor is also a control of its own, kept out of sight. -->
-                          <span class="sr-only" aria-hidden="true">
-                            @for (m of ms.slice(1); track m.id) {
-                              <hlm-popover
-                                align="start"
-                                sideOffset="6"
-                                [state]="popoverState(e.id, m.id)"
-                                (stateChanged)="onPopover(e.id, m.id, $event)"
-                              >
-                                <button
-                                  hlmPopoverTrigger
-                                  type="button"
-                                  tabindex="-1"
-                                  [attr.aria-label]="mentorLabel(m)"
-                                >
-                                  {{ m.name }}{{ markText(m) }}
-                                </button>
-                                <hlm-popover-content *hlmPopoverPortal class="w-72 p-3">
-                                  <ng-container
-                                    *ngTemplateOutlet="mentorCard; context: { $implicit: m, e: e }"
-                                  />
-                                </hlm-popover-content>
-                              </hlm-popover>
-                              {{ m.email }}
-                            }
-                          </span>
                         }
                       } @else {
                         <span aria-hidden="true" class="text-muted-foreground/60">—</span>
@@ -309,7 +282,7 @@ const PAGE_PARAM = 'enrollmentsPage';
             variant="outline"
             size="icon-sm"
             type="button"
-            aria-label="Remove"
+            [attr.aria-label]="'Remove ' + m.name"
             class="relative shrink-0 border-destructive/40 bg-card text-destructive hover:bg-destructive/10 hover:text-mh-destructive-hover-foreground dark:border-destructive/50 dark:bg-card dark:hover:bg-destructive/20 after:pointer-events-none after:absolute after:right-0 after:bottom-full after:z-20 after:mb-1.5 after:rounded-md after:bg-foreground after:px-2 after:py-1 after:text-xs after:font-normal after:text-background after:opacity-0 after:transition-opacity after:content-['Remove'] hover:after:opacity-100 focus-visible:after:opacity-100"
             (click)="closePopovers(); removeMentor(e.id, e.student.name, m)"
           >
@@ -393,7 +366,8 @@ export class TrackEnrollments {
 
   protected moreLabel(ms: EnrollmentMentor[]): string {
     const inactive = this.inactiveCount(ms);
-    return `${ms.length - 1} more mentors${inactive > 0 ? `, ${inactive} inactive` : ''}`;
+    const more = ms.length - 1;
+    return `${more} more ${more === 1 ? 'mentor' : 'mentors'}${inactive > 0 ? `, ${inactive} inactive` : ''}`;
   }
 
   protected markOnly(m: EnrollmentMentor): string {

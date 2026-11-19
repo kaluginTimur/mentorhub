@@ -86,7 +86,7 @@ const PAGE_SIZE = 25;
                   <p class="text-xs text-muted-foreground">No students on this page.</p>
                 }
               </div>
-              @if (page.totalItems > PAGE_SIZE) {
+              @if (page.totalItems > PAGE_SIZE || (page.totalItems > 0 && pageIndex() > 0)) {
                 <app-paginator
                   [totalItems]="page.totalItems"
                   [pageSize]="PAGE_SIZE"

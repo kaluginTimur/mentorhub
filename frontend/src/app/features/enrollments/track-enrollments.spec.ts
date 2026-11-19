@@ -54,6 +54,12 @@ const problem = (status: number, type: string) => problemError({ type, status, t
 const today = () => new Intl.DateTimeFormat('en-CA').format(new Date());
 const buttonByText = (root: ParentNode, text: string) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+// The removal of a mentor in a popover: named "Remove" or "Remove <mentor name>"; the confirmation's button is
+// found by its exact text.
+const removalButton = (root: ParentNode) =>
+  [...root.querySelectorAll('button')].find((b) =>
+    /^Remove\b/.test(b.getAttribute('aria-label') ?? ''),
+  );
 const overlay = () =>
   (document.querySelector('.cdk-overlay-container') as HTMLElement | null) ??
   document.createElement('div');
@@ -389,16 +395,38 @@ describe('TrackEnrollments', () => {
           }),
         ),
       );
-
-      const { element } = await open();
-
+      const { element, settle } = await open();
       await vi.waitFor(() => expect(element.textContent).toContain('Mia Mentor'));
-      const row = rowOf(element, 'Sam Student')?.textContent;
-      expect(row).toContain('mia@example.com');
-      expect(row).toContain('Dora Disabled');
-      expect(row).toContain('Rita Retired');
-      expect(countOf(row, 'Disabled')).toBe(2); // the name Dora Disabled and the one mark
-      expect(countOf(row, 'No mentor role')).toBe(1);
+
+      // The first mentor is active: no mark in the name of its button; its popover has the email.
+      expect(avatarButton(element, 'Mia Mentor')?.getAttribute('aria-label')).toBe('Mia Mentor');
+      expect(element.textContent).not.toContain('Dora Disabled');
+      // Behind "+2" are the two marked ones, said by the button's name.
+      const more = [...element.querySelectorAll('button')].find((b) =>
+        /more mentors/.test(b.getAttribute('aria-label') ?? ''),
+      );
+      expect(more?.getAttribute('aria-label')).toBe('2 more mentors, 2 inactive');
+
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      expect(overlay().textContent).toContain('mia@example.com');
+      expect(overlay().textContent).not.toContain('Disabled');
+      expect(overlay().textContent).not.toContain('No mentor role');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+
+      more?.click();
+      await settle();
+      await vi.waitFor(() => expect(overlay().textContent).toContain('Rita Retired'));
+      const text = overlay().textContent ?? '';
+      expect(text).toContain('dora@example.com');
+      expect(text).toContain('rita@example.com');
+      expect(countOf(text, 'Disabled')).toBe(2); // the name Dora Disabled and the one mark
+      expect(countOf(text, 'No mentor role')).toBe(1);
+      // Each mark belongs to its mentor: Disabled sits between Dora and Rita, No mentor role after Rita.
+      const dora = text.indexOf('Dora Disabled');
+      const rita = text.indexOf('Rita Retired');
+      expect(text.indexOf('Disabled', dora + 'Dora Disabled'.length)).toBeLessThan(rita);
+      expect(text.indexOf('No mentor role')).toBeGreaterThan(rita);
     });
 
     it('offers "Assign mentor" and a removal per mentor only to a user who may enroll', async () => {
@@ -406,9 +434,7 @@ describe('TrackEnrollments', () => {
       const { host, element, settle } = await open();
       await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
       await openMentorPopover(element, 'Mia Mentor', settle);
-      await vi.waitFor(() =>
-        expect(buttonByText(overlay(), 'Remove'), 'the removal').toBeDefined(),
-      );
+      await vi.waitFor(() => expect(removalButton(overlay()), 'the removal').toBeDefined());
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       await settle();
 
@@ -417,7 +443,7 @@ describe('TrackEnrollments', () => {
 
       await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeUndefined());
       await openMentorPopover(element, 'Mia Mentor', settle);
-      expect(buttonByText(overlay(), 'Remove')).toBeUndefined();
+      expect(removalButton(overlay())).toBeUndefined();
       expect(element.textContent).toContain('Mia Mentor');
     });
 
@@ -515,8 +541,8 @@ describe('TrackEnrollments', () => {
       });
       const { element, settle } = await open();
       await openMentorPopover(element, 'Mia Mentor', settle);
-      await vi.waitFor(() => expect(buttonByText(overlay(), 'Remove')).toBeDefined());
-      buttonByText(overlay(), 'Remove')?.click();
+      await vi.waitFor(() => expect(removalButton(overlay())).toBeDefined());
+      removalButton(overlay())?.click();
       await settle();
       expect(api.callsFor(removeEnrollmentMentor)).toHaveLength(0);
       expect(overlay().textContent).toContain('Mia Mentor');
@@ -537,14 +563,121 @@ describe('TrackEnrollments', () => {
       api.resolve(removeEnrollmentMentor, trackEnrollment());
       const { element, settle } = await open();
       await openMentorPopover(element, 'Mia Mentor', settle);
-      await vi.waitFor(() => expect(buttonByText(overlay(), 'Remove')).toBeDefined());
-      buttonByText(overlay(), 'Remove')?.click();
+      await vi.waitFor(() => expect(removalButton(overlay())).toBeDefined());
+      removalButton(overlay())?.click();
       await settle();
       buttonByText(overlay(), 'Cancel')?.click();
       await settle();
 
       expect(api.callsFor(removeEnrollmentMentor)).toHaveLength(0);
       expect(element.textContent).toContain('Mia Mentor');
+    });
+
+    describe('the Mentors column', () => {
+      const extra = (over: Partial<ReturnType<typeof enrollmentMentor>>) =>
+        enrollmentMentor({ id: 'x', name: 'Xena Extra', email: 'xena@example.com', ...over });
+      const plusButton = (root: ParentNode) =>
+        [...root.querySelectorAll('button')].find((b) =>
+          /more mentors?\b/.test(b.getAttribute('aria-label') ?? ''),
+        );
+
+      it('shows an active mentor first even when a marked one sorts before', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [extra({ id: 'a', name: 'Aaron Away', disabled: true }), mia()],
+            }),
+          ),
+        );
+
+        const { element, settle } = await open();
+
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+        const group = element.querySelector('[role=group][aria-label=Mentors]');
+        expect(avatarButton(group ?? element, 'Mia Mentor')).toBeDefined();
+        expect(group?.textContent).not.toContain('Aaron Away');
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('1 more mentor, 1 inactive');
+        plusButton(element)?.click();
+        await settle();
+        await vi.waitFor(() => expect(overlay().textContent).toContain('Aaron Away'));
+      });
+
+      it('names the count and the inactive ones behind "+N" and lists the rest in its popover', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [
+                mia(),
+                extra({ id: 'b', name: 'Bea Active', email: 'bea@example.com' }),
+                extra({ id: 'c', name: 'Cy Disabled', email: 'cy@example.com', disabled: true }),
+              ],
+            }),
+          ),
+        );
+        const { element, settle } = await open();
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('2 more mentors, 1 inactive');
+        plusButton(element)?.click();
+        await settle();
+
+        await vi.waitFor(() => expect(overlay().textContent).toContain('Bea Active'));
+        expect(overlay().textContent).toContain('Cy Disabled');
+        expect(overlay().textContent).toContain('Disabled');
+        expect(overlay().textContent).not.toContain('Mia Mentor');
+      });
+
+      it('has no "+N" for one mentor', async () => {
+        api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
+        const { element } = await open();
+        await vi.waitFor(() => expect(element.textContent).toContain('Mia Mentor'));
+
+        expect(plusButton(element)).toBeUndefined();
+      });
+
+      it('names one more mentor in the singular, without inactive ones when all are active', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [mia(), extra({ id: 'b', name: 'Bea Active', email: 'bea@example.com' })],
+            }),
+          ),
+        );
+        const { element } = await open();
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('1 more mentor');
+      });
+
+      it('names one inactive mentor behind "+N" in the singular too', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [mia(), extra({ id: 'b', name: 'Bea Gone', disabled: true })],
+            }),
+          ),
+        );
+        const { element } = await open();
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('1 more mentor, 1 inactive');
+      });
+
+      it('shows a dash and no assignment to a user who may not enroll when there is no mentor', async () => {
+        api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [] })));
+        const { host, element, settle } = await open();
+        await vi.waitFor(() => expect(element.textContent).toContain('Sam Student'));
+        host.canEnroll.set(false);
+        await settle();
+
+        expect(buttonByText(element, 'Assign mentor')).toBeUndefined();
+        expect(plusButton(element)).toBeUndefined();
+        expect(element.textContent).toContain('—');
+      });
     });
   });
 });
