@@ -140,8 +140,8 @@ public class TrackService {
     }
 
     /**
-     * Newest first; entries with an action the code does not know are left out. The named or removed user, and the
-     * enrolled student, are shown with their current name.
+     * Newest first; entries with an action the code does not know are left out. The named or removed user, the enrolled
+     * student and a mentor are shown with their current name.
      */
     @Transactional(readOnly = true)
     public TrackHistory history(UUID trackId, int page, int size) {
@@ -150,7 +150,7 @@ public class TrackService {
         }
         TrackChangePage changes = auditTrail.find(trackId, page, size);
         Map<UUID, NamedUser> names = names(changes.items().stream()
-                .flatMap(change -> Stream.of(change.actorUserId(), namedUser(change.change())))
+                .flatMap(change -> Stream.of(change.actorUserId(), namedUser(change.change()), mentor(change.change())))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet()));
         List<TrackHistoryItem> items = changes.items().stream()
@@ -159,7 +159,8 @@ public class TrackService {
                         change.occurredAt(),
                         actorName(change.actorUserId(), names),
                         change.change(),
-                        userName(namedUser(change.change()), names)))
+                        userName(namedUser(change.change()), names),
+                        userName(mentor(change.change()), names)))
                 .toList();
         return new TrackHistory(items, page, size, changes.totalItems());
     }
@@ -301,6 +302,16 @@ public class TrackService {
             case TrackChange.CoordinatorAdded(var userId) -> userId;
             case TrackChange.CoordinatorRemoved(var userId) -> userId;
             case TrackChange.StudentEnrolled(var userId, var _) -> userId;
+            case TrackChange.EnrollmentMentorAssigned(var userId, var _) -> userId;
+            case TrackChange.EnrollmentMentorRemoved(var userId, var _) -> userId;
+            default -> null;
+        };
+    }
+
+    private static @Nullable UUID mentor(TrackChange change) {
+        return switch (change) {
+            case TrackChange.EnrollmentMentorAssigned(var _, var mentorId) -> mentorId;
+            case TrackChange.EnrollmentMentorRemoved(var _, var mentorId) -> mentorId;
             default -> null;
         };
     }

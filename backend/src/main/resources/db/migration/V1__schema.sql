@@ -165,3 +165,15 @@ create table enrollments (
 create unique index enrollments_active_student_uq on enrollments (student_id) where status = 'ACTIVE';
 
 create index enrollments_track_idx on enrollments (track_id);
+
+-- Who leads which enrollment. Only an active user with the MENTOR role is assigned, which the service checks; the row
+-- stays when the user is later disabled or loses the role. The primary key decides parallel assignments.
+create table enrollment_mentors (
+    enrollment_id uuid        not null references enrollments (id) on delete restrict,
+    mentor_id     uuid        not null references users (id) on delete restrict,
+    assigned_at   timestamptz not null default now(),
+    assigned_by   uuid        not null references users (id) on delete restrict,
+    primary key (enrollment_id, mentor_id)
+);
+
+create index enrollment_mentors_mentor_idx on enrollment_mentors (mentor_id);

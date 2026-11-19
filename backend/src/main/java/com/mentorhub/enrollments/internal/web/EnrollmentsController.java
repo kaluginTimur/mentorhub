@@ -3,6 +3,8 @@ package com.mentorhub.enrollments.internal.web;
 import com.mentorhub.api.EnrollmentsApi;
 import com.mentorhub.api.model.EnrollmentCandidatePage;
 import com.mentorhub.api.model.EnrollmentCreate;
+import com.mentorhub.api.model.MentorCandidatePage;
+import com.mentorhub.api.model.MentoredEnrollmentPage;
 import com.mentorhub.api.model.MyEnrollmentList;
 import com.mentorhub.api.model.TrackEnrollment;
 import com.mentorhub.api.model.TrackEnrollmentPage;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * The {@code Enrollments} tag. Parameter names equal the request parameter names, because method validation reports
  * violations by Java parameter name. Enrolling and the candidates admit both permissions; the service checks the
- * relation that {@code ENROLLMENTS_MANAGE_COORDINATED} needs.
+ * relation that {@code ENROLLMENTS_MANAGE_COORDINATED} needs; so do the mentors of an enrollment.
  */
 @RestController
 class EnrollmentsController implements EnrollmentsApi {
@@ -51,5 +53,29 @@ class EnrollmentsController implements EnrollmentsApi {
     @NoPermissionRequired
     public MyEnrollmentList listMyEnrollments() {
         return EnrollmentsMapper.myEnrollments(enrollments.mine());
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public MentorCandidatePage listMentorCandidates(UUID id, @Nullable String q, Integer page, Integer size) {
+        return EnrollmentsMapper.mentorCandidatePage(enrollments.mentorCandidates(id, q, page, size));
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public TrackEnrollment assignEnrollmentMentor(UUID id, UUID userId) {
+        return EnrollmentsMapper.trackEnrollment(enrollments.assignMentor(id, userId));
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public TrackEnrollment removeEnrollmentMentor(UUID id, UUID userId) {
+        return EnrollmentsMapper.trackEnrollment(enrollments.removeMentor(id, userId));
+    }
+
+    @Override
+    @RequirePermission(Permission.ENROLLMENTS_READ_MENTORED)
+    public MentoredEnrollmentPage listMyStudents(Integer page, Integer size) {
+        return EnrollmentsMapper.mentoredEnrollmentPage(enrollments.mentored(page, size));
     }
 }

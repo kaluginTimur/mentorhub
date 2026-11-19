@@ -295,5 +295,5 @@ The client SHALL show an active user with roles a toolbar with the application n
 - Corporate single sign-on, identity brokering and provisioning users with roles mapped from the provider. Roles in a token are never used (PERM-4).
 - The deployment configuration of the identity provider in production; only the rules it must satisfy (IDN-8) are stated here.
 - Registration, invitations and their landing page (see the invitations capability).
-- Enrollments, the relation between a student and a mentor, and revoking access after graduation.
+- Enrollments and their mentors (see the enrollments capability), and revoking access after graduation.
 - Rules for personal data such as consent, photos and retention.

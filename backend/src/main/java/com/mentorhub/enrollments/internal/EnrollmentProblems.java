@@ -10,6 +10,7 @@ public final class EnrollmentProblems {
 
     public static final URI STUDENT_NOT_ELIGIBLE = URI.create("urn:mentorhub:problem:student-not-eligible");
     public static final URI STUDENT_ALREADY_ENROLLED = URI.create("urn:mentorhub:problem:student-already-enrolled");
+    public static final URI MENTOR_NOT_ELIGIBLE = URI.create("urn:mentorhub:problem:mentor-not-eligible");
 
     private EnrollmentProblems() {}
 }

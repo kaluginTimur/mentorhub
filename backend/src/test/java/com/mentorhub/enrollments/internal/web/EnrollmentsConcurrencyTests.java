@@ -3,6 +3,7 @@ package com.mentorhub.enrollments.internal.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import com.mentorhub.enrollments.internal.TestEnrollments;
 import com.mentorhub.support.EndpointTest;
 import com.mentorhub.tracks.internal.TestTracks;
 import com.mentorhub.users.Role;
@@ -10,6 +11,7 @@ import com.mentorhub.users.internal.domain.UserStatus;
 import com.mentorhub.users.internal.security.TestIssuer;
 import com.mentorhub.users.internal.security.TestUsers;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +48,7 @@ class EnrollmentsConcurrencyTests {
     TestUsers users;
     TestTracks tracks;
     UUID student;
+    UUID admin;
     UUID first;
     UUID second;
 
@@ -54,7 +57,8 @@ class EnrollmentsConcurrencyTests {
         users = new TestUsers(jdbc);
         users.deleteAll();
         tracks = new TestTracks(jdbc);
-        users.link(users.create("anna@x.test", UserStatus.ACTIVE, Role.ADMIN), "anna");
+        admin = users.create("anna@x.test", UserStatus.ACTIVE, Role.ADMIN);
+        users.link(admin, "anna");
         users.link(users.create("boris@x.test", UserStatus.ACTIVE, Role.ADMIN), "boris");
         student = users.create("sam@x.test", UserStatus.ACTIVE, Role.STUDENT);
         first = tracks.active("QA", "Quality Assurance");
@@ -113,6 +117,31 @@ class EnrollmentsConcurrencyTests {
             assertThat(archivingStatus).isEqualTo(200);
             assertThat(count("/api/v1/tracks/" + first + "/enrollments")).isZero();
         }
+    }
+
+    @RepeatedTest(5)
+    @DisplayName("ENR-9.4 Parallel assignments of one mentor assign them once")
+    void parallelAssignmentsOfOneMentorAssignThemOnce() throws Exception {
+        UUID mentor = users.create("mia@x.test", UserStatus.ACTIVE, Role.MENTOR);
+        UUID enrollment = new TestEnrollments(jdbc).enroll(student, first, admin, LocalDate.now());
+        String path = "/api/v1/enrollments/" + enrollment + "/mentors/" + mentor;
+
+        List<MvcTestResult> results =
+                inParallel(() -> send(HttpMethod.PUT, path, "", "anna"), () -> send(HttpMethod.PUT, path, "", "boris"));
+
+        for (MvcTestResult result : results) {
+            assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        }
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/tracks/" + first + "/enrollments", "", "anna");
+        assertThat(list).hasStatusOk();
+        assertThat(list)
+                .bodyJson()
+                .extractingPath("$.items[0].mentors[*].id")
+                .asArray()
+                .containsExactly(mentor.toString());
+        assertThat(actions("/api/v1/tracks/" + first + "/history")).containsExactly("TRACK_ENROLLMENT_MENTOR_ASSIGNED");
+        assertThat(actions("/api/v1/users/" + student + "/history")).containsExactly("USER_MENTOR_ASSIGNED");
+        assertThat(actions("/api/v1/users/" + mentor + "/history")).containsExactly("USER_STUDENT_ASSIGNED");
     }
 
     private int count(String path) {

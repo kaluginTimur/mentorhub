@@ -2,6 +2,9 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { assignEnrollmentMentor } from '../../core/api/fn/enrollments/assign-enrollment-mentor';
+import { removeEnrollmentMentor } from '../../core/api/fn/enrollments/remove-enrollment-mentor';
+import { listMentorCandidates } from '../../core/api/fn/enrollments/list-mentor-candidates';
 import { enrollStudent } from '../../core/api/fn/enrollments/enroll-student';
 import { listEnrollmentCandidates } from '../../core/api/fn/enrollments/list-enrollment-candidates';
 import { listTrackEnrollments } from '../../core/api/fn/enrollments/list-track-enrollments';
@@ -18,9 +21,14 @@ import { problemError } from '../../core/testing/problem-error';
 import { track } from '../tracks/test-data';
 import { TrackPage } from '../tracks/track-page';
 import {
+  CANDIDATE_MENTOR_ID,
   CANDIDATE_STUDENT_ID,
+  ENROLLMENT_ID,
+  MENTOR_ID,
   TRACK_ID,
   enrolledStudent,
+  enrollmentMentor,
+  mentorCandidate,
   enrollmentCandidate,
   enrollmentPage,
   enrollmentsAdmin,
@@ -46,7 +54,15 @@ const problem = (status: number, type: string) => problemError({ type, status, t
 const today = () => new Intl.DateTimeFormat('en-CA').format(new Date());
 const buttonByText = (root: ParentNode, text: string) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
-const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
+// The removal of a mentor in a popover: named "Remove" or "Remove <mentor name>"; the confirmation's button is
+// found by its exact text.
+const removalButton = (root: ParentNode) =>
+  [...root.querySelectorAll('button')].find((b) =>
+    /^Remove\b/.test(b.getAttribute('aria-label') ?? ''),
+  );
+const overlay = () =>
+  (document.querySelector('.cdk-overlay-container') as HTMLElement | null) ??
+  document.createElement('div');
 const snack = () => document.querySelector('app-toast-host')?.textContent?.trim() ?? '';
 const rowOf = (root: ParentNode, text: string) =>
   [...root.querySelectorAll('li, tr')].find((r) => r.textContent?.includes(text));
@@ -306,6 +322,364 @@ describe('TrackEnrollments', () => {
       expect(api.callsFor(enrollStudent)).toHaveLength(0);
     });
   });
+
+  describe('mentors', () => {
+    const mia = () => enrollmentMentor();
+    const onePage = (...items: ReturnType<typeof trackEnrollment>[]) => enrollmentPage(items);
+    const mentorCandidates = () =>
+      api.resolve(listMentorCandidates, {
+        items: [mentorCandidate()],
+        page: 0,
+        size: 25,
+        totalItems: 1,
+      });
+    // A mentor's avatar is a button whose accessible name contains the mentor's name; a click opens the popover
+    // with the removal.
+    const avatarButton = (root: ParentNode, name: string) =>
+      [...root.querySelectorAll('button')].find((b) => {
+        const label = `${b.getAttribute('aria-label') ?? ''} ${b.textContent ?? ''}`;
+        return label.includes(name) && !/assign/i.test(label);
+      });
+    async function openMentorPopover(root: ParentNode, name: string, settle: () => Promise<void>) {
+      await vi.waitFor(() =>
+        expect(avatarButton(root, name), `the avatar of ${name}`).toBeDefined(),
+      );
+      avatarButton(root, name)?.click();
+      await settle();
+    }
+    const countOf = (text: string | null | undefined, word: string) =>
+      (text ?? '').split(word).length - 1;
+
+    // The plan fixes the "Assign mentor" button, the confirmation's "Remove" and the candidates with their search,
+    // not the dialog's wording: the field is looked for by the label "Mentor", or is the first input, and the
+    // confirming button is "Assign".
+    async function chooseMentor(search: string | null, name: string, settle: () => Promise<void>) {
+      const field = () =>
+        fieldLabelled(overlay(), 'Mentor') ?? overlay().querySelector<HTMLInputElement>('input');
+      field()?.click();
+      await settle();
+      if (search !== null) {
+        type(field(), search);
+        await settle();
+      }
+      await vi.waitFor(() => {
+        const option = [
+          ...overlay().querySelectorAll<HTMLElement>('[role=option], [role=radio], li, button'),
+        ].find((o) => o.textContent?.includes(name));
+        expect(option, `an option for ${name}`).toBeDefined();
+        option?.click();
+      });
+      await settle();
+    }
+
+    it('shows the mentors of an enrollment with the marks of ENR-4', async () => {
+      api.resolve(
+        listTrackEnrollments,
+        onePage(
+          trackEnrollment({
+            mentors: [
+              mia(),
+              enrollmentMentor({
+                id: 'm2',
+                name: 'Dora Disabled',
+                email: 'dora@example.com',
+                disabled: true,
+              }),
+              enrollmentMentor({
+                id: 'm3',
+                name: 'Rita Retired',
+                email: 'rita@example.com',
+                mentorRole: false,
+              }),
+            ],
+          }),
+        ),
+      );
+      const { element, settle } = await open();
+      await vi.waitFor(() => expect(element.textContent).toContain('Mia Mentor'));
+
+      // The first mentor is active: no mark in the name of its button; its popover has the email.
+      expect(avatarButton(element, 'Mia Mentor')?.getAttribute('aria-label')).toBe('Mia Mentor');
+      expect(element.textContent).not.toContain('Dora Disabled');
+      // Behind "+2" are the two marked ones, said by the button's name.
+      const more = [...element.querySelectorAll('button')].find((b) =>
+        /more mentors/.test(b.getAttribute('aria-label') ?? ''),
+      );
+      expect(more?.getAttribute('aria-label')).toBe('2 more mentors, 2 inactive');
+
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      expect(overlay().textContent).toContain('mia@example.com');
+      expect(overlay().textContent).not.toContain('Disabled');
+      expect(overlay().textContent).not.toContain('No mentor role');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+
+      more?.click();
+      await settle();
+      await vi.waitFor(() => expect(overlay().textContent).toContain('Rita Retired'));
+      const text = overlay().textContent ?? '';
+      expect(text).toContain('dora@example.com');
+      expect(text).toContain('rita@example.com');
+      expect(countOf(text, 'Disabled')).toBe(2); // the name Dora Disabled and the one mark
+      expect(countOf(text, 'No mentor role')).toBe(1);
+      // Each mark belongs to its mentor: Disabled sits between Dora and Rita, No mentor role after Rita.
+      const dora = text.indexOf('Dora Disabled');
+      const rita = text.indexOf('Rita Retired');
+      expect(text.indexOf('Disabled', dora + 'Dora Disabled'.length)).toBeLessThan(rita);
+      expect(text.indexOf('No mentor role')).toBeGreaterThan(rita);
+    });
+
+    it('offers "Assign mentor" and a removal per mentor only to a user who may enroll', async () => {
+      api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
+      const { host, element, settle } = await open();
+      await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      await vi.waitFor(() => expect(removalButton(overlay()), 'the removal').toBeDefined());
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+
+      host.canEnroll.set(false);
+      await settle();
+
+      await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeUndefined());
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      expect(removalButton(overlay())).toBeUndefined();
+      expect(element.textContent).toContain('Mia Mentor');
+    });
+
+    it('opens the candidates of the enrollment whose "Assign mentor" was clicked', async () => {
+      api.resolve(
+        listTrackEnrollments,
+        onePage(
+          trackEnrollment(),
+          trackEnrollment({
+            id: 'e2',
+            student: enrolledStudent({ id: 's2', name: 'Dina Second', email: 'dina@example.com' }),
+          }),
+        ),
+      );
+      mentorCandidates();
+      const { element, settle } = await open();
+      await vi.waitFor(() => expect(element.textContent).toContain('Dina Second'));
+
+      const second = rowOf(element, 'Dina Second');
+      expect(second, 'the row').toBeDefined();
+      (second && buttonByText(second, 'Assign mentor'))?.click();
+      await settle();
+
+      await vi.waitFor(() =>
+        expect(api.callsFor(listMentorCandidates)).toContainEqual(
+          expect.objectContaining({ id: 'e2' }),
+        ),
+      );
+    });
+
+    it('assigns the chosen candidate and lists the new mentor', async () => {
+      api.resolveOnce(listTrackEnrollments, onePage(trackEnrollment()));
+      mentorCandidates();
+      const assigned = enrollmentMentor({
+        id: CANDIDATE_MENTOR_ID,
+        name: 'Omar Candidate',
+        email: 'omar@example.com',
+      });
+      api.handle(assignEnrollmentMentor, () => {
+        api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [assigned] })));
+        return trackEnrollment({ mentors: [assigned] });
+      });
+      const { element, settle } = await open();
+      await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
+
+      buttonByText(element, 'Assign mentor')?.click();
+      await settle();
+      await chooseMentor(null, 'Omar Candidate', settle);
+      buttonByText(overlay(), 'Assign')?.click();
+      await settle();
+
+      await vi.waitFor(() =>
+        expect(api.callsFor(assignEnrollmentMentor)).toEqual([
+          { id: ENROLLMENT_ID, userId: CANDIDATE_MENTOR_ID },
+        ]),
+      );
+      await vi.waitFor(() => expect(element.textContent).toContain('Omar Candidate'));
+    });
+
+    it('sends the typed search to the candidates', async () => {
+      api.resolve(listTrackEnrollments, onePage(trackEnrollment()));
+      mentorCandidates();
+      const { element, settle } = await open();
+      await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
+
+      buttonByText(element, 'Assign mentor')?.click();
+      await settle();
+      await chooseMentor('omar', 'Omar Candidate', settle);
+
+      expect(api.callsFor(listMentorCandidates)).toContainEqual(
+        expect.objectContaining({ id: ENROLLMENT_ID, q: 'omar' }),
+      );
+    });
+
+    it('assigns nobody until a candidate is chosen', async () => {
+      api.resolve(listTrackEnrollments, onePage(trackEnrollment()));
+      mentorCandidates();
+      api.resolve(assignEnrollmentMentor, trackEnrollment());
+      const { element, settle } = await open();
+      await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
+
+      buttonByText(element, 'Assign mentor')?.click();
+      await settle();
+      buttonByText(overlay(), 'Assign')?.click();
+      await settle();
+
+      expect(api.callsFor(assignEnrollmentMentor)).toHaveLength(0);
+    });
+
+    it('removes a mentor after a confirmation and lists the enrollment without them', async () => {
+      api.resolveOnce(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
+      api.handle(removeEnrollmentMentor, () => {
+        api.resolve(listTrackEnrollments, onePage(trackEnrollment()));
+        return trackEnrollment();
+      });
+      const { element, settle } = await open();
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      await vi.waitFor(() => expect(removalButton(overlay())).toBeDefined());
+      removalButton(overlay())?.click();
+      await settle();
+      expect(api.callsFor(removeEnrollmentMentor)).toHaveLength(0);
+      expect(overlay().textContent).toContain('Mia Mentor');
+      buttonByText(overlay(), 'Remove')?.click();
+      await settle();
+
+      await vi.waitFor(() =>
+        expect(api.callsFor(removeEnrollmentMentor)).toEqual([
+          { id: ENROLLMENT_ID, userId: MENTOR_ID },
+        ]),
+      );
+      await vi.waitFor(() => expect(element.textContent).not.toContain('Mia Mentor'));
+      expect(element.textContent).toContain('Sam Student');
+    });
+
+    it('does not remove a mentor when the confirmation is cancelled', async () => {
+      api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
+      api.resolve(removeEnrollmentMentor, trackEnrollment());
+      const { element, settle } = await open();
+      await openMentorPopover(element, 'Mia Mentor', settle);
+      await vi.waitFor(() => expect(removalButton(overlay())).toBeDefined());
+      removalButton(overlay())?.click();
+      await settle();
+      buttonByText(overlay(), 'Cancel')?.click();
+      await settle();
+
+      expect(api.callsFor(removeEnrollmentMentor)).toHaveLength(0);
+      expect(element.textContent).toContain('Mia Mentor');
+    });
+
+    describe('the Mentors column', () => {
+      const extra = (over: Partial<ReturnType<typeof enrollmentMentor>>) =>
+        enrollmentMentor({ id: 'x', name: 'Xena Extra', email: 'xena@example.com', ...over });
+      const plusButton = (root: ParentNode) =>
+        [...root.querySelectorAll('button')].find((b) =>
+          /more mentors?\b/.test(b.getAttribute('aria-label') ?? ''),
+        );
+
+      it('shows an active mentor first even when a marked one sorts before', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [extra({ id: 'a', name: 'Aaron Away', disabled: true }), mia()],
+            }),
+          ),
+        );
+
+        const { element, settle } = await open();
+
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+        const group = element.querySelector('[role=group][aria-label=Mentors]');
+        expect(avatarButton(group ?? element, 'Mia Mentor')).toBeDefined();
+        expect(group?.textContent).not.toContain('Aaron Away');
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('1 more mentor, 1 inactive');
+        plusButton(element)?.click();
+        await settle();
+        await vi.waitFor(() => expect(overlay().textContent).toContain('Aaron Away'));
+      });
+
+      it('names the count and the inactive ones behind "+N" and lists the rest in its popover', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [
+                mia(),
+                extra({ id: 'b', name: 'Bea Active', email: 'bea@example.com' }),
+                extra({ id: 'c', name: 'Cy Disabled', email: 'cy@example.com', disabled: true }),
+              ],
+            }),
+          ),
+        );
+        const { element, settle } = await open();
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('2 more mentors, 1 inactive');
+        plusButton(element)?.click();
+        await settle();
+
+        await vi.waitFor(() => expect(overlay().textContent).toContain('Bea Active'));
+        expect(overlay().textContent).toContain('Cy Disabled');
+        expect(overlay().textContent).toContain('Disabled');
+        expect(overlay().textContent).not.toContain('Mia Mentor');
+      });
+
+      it('has no "+N" for one mentor', async () => {
+        api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [mia()] })));
+        const { element } = await open();
+        await vi.waitFor(() => expect(element.textContent).toContain('Mia Mentor'));
+
+        expect(plusButton(element)).toBeUndefined();
+      });
+
+      it('names one more mentor in the singular, without inactive ones when all are active', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [mia(), extra({ id: 'b', name: 'Bea Active', email: 'bea@example.com' })],
+            }),
+          ),
+        );
+        const { element } = await open();
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('1 more mentor');
+      });
+
+      it('names one inactive mentor behind "+N" in the singular too', async () => {
+        api.resolve(
+          listTrackEnrollments,
+          onePage(
+            trackEnrollment({
+              mentors: [mia(), extra({ id: 'b', name: 'Bea Gone', disabled: true })],
+            }),
+          ),
+        );
+        const { element } = await open();
+        await vi.waitFor(() => expect(plusButton(element)).toBeDefined());
+
+        expect(plusButton(element)?.getAttribute('aria-label')).toBe('1 more mentor, 1 inactive');
+      });
+
+      it('shows a dash and no assignment to a user who may not enroll when there is no mentor', async () => {
+        api.resolve(listTrackEnrollments, onePage(trackEnrollment({ mentors: [] })));
+        const { host, element, settle } = await open();
+        await vi.waitFor(() => expect(element.textContent).toContain('Sam Student'));
+        host.canEnroll.set(false);
+        await settle();
+
+        expect(buttonByText(element, 'Assign mentor')).toBeUndefined();
+        expect(plusButton(element)).toBeUndefined();
+        expect(element.textContent).toContain('—');
+      });
+    });
+  });
 });
 
 // ENR-7.1 is the behavior of the track page: it reloads the track and its enrollments after the refusal.
@@ -403,5 +777,83 @@ describe('a refused enrollment', () => {
     await vi.waitFor(() => expect(element.textContent).toContain('Quality Engineering'));
     await vi.waitFor(() => expect(element.textContent).toContain('Sam Student'));
     expect(buttonByText(element, 'Enroll student')).toBeUndefined();
+  });
+});
+
+// ENR-7.1 for the assignment of a mentor, on the track page as for an enrollment.
+describe('a refused mentor assignment', () => {
+  const api = createApiStub();
+  const me = signal<MeUser | null>(enrollmentsAdmin());
+  const currentUser = {
+    user: me,
+    load: vi.fn(),
+    hasPermission: (p: Permission) => me()?.permissions.includes(p) ?? false,
+  };
+
+  beforeEach(() => {
+    api.reset();
+    me.set(enrollmentsAdmin());
+    api.resolve(getTrackHistory, { items: [], page: 0, size: 25, totalItems: 0 });
+    api.resolve(listTrackCoordinatorCandidates, { items: [] });
+    api.resolve(listTrackEnrollments, enrollmentPage([trackEnrollment()]));
+    api.resolve(listMentorCandidates, {
+      items: [mentorCandidate()],
+      page: 0,
+      size: 25,
+      totalItems: 1,
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'tracks/:id', component: TrackPage }]),
+        provideApiStub(api),
+        { provide: CurrentUserService, useValue: currentUser },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    document.querySelector('.cdk-overlay-container')?.replaceChildren();
+  });
+
+  it('ENR-7.1 explains mentor-not-eligible on assigning and shows the track and its enrollments as they are now', async () => {
+    let loads = 0;
+    api.handle(getTrack, () => (loads++ === 0 ? track() : track({ name: 'Quality Engineering' })));
+    api.reject(assignEnrollmentMentor, problem(409, 'urn:mentorhub:problem:mentor-not-eligible'));
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(`/tracks/${TRACK_ID}`);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const element = harness.routeNativeElement as HTMLElement;
+    const settle = async () => {
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    };
+    await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
+    const enrollmentLoads = api.callsFor(listTrackEnrollments).length;
+
+    buttonByText(element, 'Assign mentor')?.click();
+    await settle();
+    const field =
+      fieldLabelled(overlay(), 'Mentor') ?? overlay().querySelector<HTMLInputElement>('input');
+    field?.click();
+    await settle();
+    await vi.waitFor(() => {
+      const option = [
+        ...overlay().querySelectorAll<HTMLElement>('[role=option], [role=radio], li, button'),
+      ].find((o) => o.textContent?.includes('Omar Candidate'));
+      expect(option, 'an option for Omar Candidate').toBeDefined();
+      option?.click();
+    });
+    await settle();
+    buttonByText(overlay(), 'Assign')?.click();
+    await settle();
+
+    expect(api.callsFor(assignEnrollmentMentor)).toHaveLength(1);
+    await vi.waitFor(() => expect(snack()).toMatch(/\S/));
+    await vi.waitFor(() => expect(element.textContent).toContain('Quality Engineering'));
+    await vi.waitFor(() =>
+      expect(api.callsFor(listTrackEnrollments).length).toBeGreaterThan(enrollmentLoads),
+    );
   });
 });

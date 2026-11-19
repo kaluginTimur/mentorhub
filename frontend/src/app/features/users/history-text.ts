@@ -72,6 +72,14 @@ export function describeEntry(entry: HistoryEntry): string {
       return `Removed as a coordinator of ${trackName(entry)}`;
     case 'USER_ENROLLED':
       return `Enrolled on ${trackName(entry)}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
+    case 'USER_MENTOR_ASSIGNED':
+      return `${entry.mentor?.name ?? 'A mentor'} assigned as a mentor on ${trackName(entry)}`;
+    case 'USER_MENTOR_REMOVED':
+      return `${entry.mentor?.name ?? 'A mentor'} removed as a mentor on ${trackName(entry)}`;
+    case 'USER_STUDENT_ASSIGNED':
+      return `Assigned as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
+    case 'USER_STUDENT_REMOVED':
+      return `Removed as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
     default: {
       const unreachable: never = entry.action;
       return unreachable;

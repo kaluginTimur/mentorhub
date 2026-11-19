@@ -12,16 +12,29 @@ import org.jspecify.annotations.Nullable;
  * @param actor {@code null} for a change made by the system
  * @param invitedBy for a {@link UserChange.InvitationAccepted}, the administrator who created the invitation;
  *     {@code null} for other changes or when that user cannot be resolved
+ * @param person for a mentor's assignment or removal, the mentor in the student's history and the student in the
+ *     mentor's; {@code null} for other changes or when that user cannot be resolved
  */
 public record UserHistoryEntry(
         UUID id,
         Instant occurredAt,
         @Nullable HistoryActor actor,
         UserChange change,
-        @Nullable HistoryActor invitedBy) {
+        @Nullable HistoryActor invitedBy,
+        @Nullable HistoryActor person) {
+
+    /** An entry of a change that names no other user than an inviter. */
+    public UserHistoryEntry(
+            UUID id,
+            Instant occurredAt,
+            @Nullable HistoryActor actor,
+            UserChange change,
+            @Nullable HistoryActor invitedBy) {
+        this(id, occurredAt, actor, change, invitedBy, null);
+    }
 
     /** An entry of a change that names no inviter. */
     public UserHistoryEntry(UUID id, Instant occurredAt, @Nullable HistoryActor actor, UserChange change) {
-        this(id, occurredAt, actor, change, null);
+        this(id, occurredAt, actor, change, null, null);
     }
 }

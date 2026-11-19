@@ -24,4 +24,18 @@ class UserEnrollmentHistoryService implements UserEnrollmentHistory {
     public void recordEnrolled(UUID actorUserId, UUID userId, HistoryTrack track, LocalDate startDate) {
         auditTrail.record(actorUserId, userId, new UserChange.Enrolled(track, startDate));
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordMentorAssigned(UUID actorUserId, UUID studentId, UUID mentorId, HistoryTrack track) {
+        auditTrail.record(actorUserId, studentId, new UserChange.MentorAssigned(mentorId, track));
+        auditTrail.record(actorUserId, mentorId, new UserChange.StudentAssigned(studentId, track));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordMentorRemoved(UUID actorUserId, UUID studentId, UUID mentorId, HistoryTrack track) {
+        auditTrail.record(actorUserId, studentId, new UserChange.MentorRemoved(mentorId, track));
+        auditTrail.record(actorUserId, mentorId, new UserChange.StudentRemoved(studentId, track));
+    }
 }

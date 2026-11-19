@@ -17,13 +17,14 @@ Nothing in progress.
 
 In this order:
 
-1. **Mentors of an enrollment:** a coordinator assigns mentors to a student, and a mentor sees the students they lead. Out of scope: mentors of a cohort. Touches enrollments, authorization and audit.
-2. **Cohorts:** a coordinator gathers the enrollments of one intake on a track and follows its progress as students finish one by one. Out of scope: mentors of a cohort, groups inside a cohort. A new capability; touches enrollments and audit.
-3. **Mentors of a cohort:** mentors assigned to a cohort as a whole see all its students. Touches cohorts, enrollments, authorization and audit.
-4. **End of an enrollment:** an enrollment ends with its outcome, and stays in the student's and the track's history. Out of scope: the result of the job interview, what happens to the student's access. Touches enrollments and audit.
-5. **Access lifecycle:** a student whose study has ended loses access as the product decisions below say. Out of scope: reading feedback and grades in the grace period, until those exist. Touches enrollments, authorization, user administration and audit.
-6. **Guides audit:** after the tracking core (items 1 to 5), one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
-7. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
+1. **Mentors of a track:** the mentors who teach on a track, and only they are assigned to its enrollments, since a mentor rarely teaches on more than one track. The track page shows its active mentors, each with the number of students they lead and, on request, those students, so that a coordinator follows each mentor's students without a page of the mentor. Who names them is not decided. Touches tracks, enrollments and audit.
+2. **The enrollments list in full:** search, sorting and filters in the enrollments of a track. Touches enrollments.
+3. **Cohorts:** a coordinator gathers the enrollments of one intake on a track and follows its progress as students finish one by one. Out of scope: mentors of a cohort, groups inside a cohort. A new capability; touches enrollments and audit.
+4. **Mentors of a cohort:** mentors assigned to a cohort as a whole see all its students. Touches cohorts, enrollments, authorization and audit.
+5. **End of an enrollment:** an enrollment ends with its outcome, and stays in the student's and the track's history. Decides whether a student reads their own enrollment by a permission of the student role, as a mentor reads their students, which depends on whether there is a grace period (Access lifecycle). An ended enrollment keeps its mentors, so that it stays known who led the student, but the relation gives the mentor no access to the student after the end. A mentor is not assigned to the enrollment of a student who is disabled or no longer holds the student role. Out of scope: the result of the job interview, what happens to the student's access. Touches enrollments and audit.
+6. **Access lifecycle:** a student whose study has ended loses access as the product decisions below say. Out of scope: reading feedback and grades in the grace period, until those exist. Touches enrollments, authorization, user administration and audit.
+7. **Guides audit:** after the tracking core (items 1 to 7), one pass over `docs/development/` and `docs/ui/guidelines.md` that asks of every passage why it is there, who needs it and whether its source already holds it, as the **Guides** section of `docs/README.md` says. Additions are gated, but old passages drift as the code changes. Once done, the item is replaced by the next pass, after another two or three features.
+8. **Vulnerable dependencies detected automatically:** known vulnerabilities in the backend's and the frontend's dependencies, transitive ones included, are reported without anyone having to look for them. Out of scope: deciding how fast a finding is fixed. Touches no capability. The way is not chosen yet; IDEA's inspections found CVEs rated up to 9.8 (Tomcat, Jackson) in November 2026.
 
 ## Later
 
@@ -44,7 +45,6 @@ No commitment and no order.
 - End-to-end tests of scenarios on the real stack, with their own data rather than the sample center's.
 - Every `dev` start now cleans the dev database, so a `dev` run no longer freezes a migration: reword that statement in `docs/development/backend.md` (How to run) and relax the hooks in `.claude/hooks/` that rely on it.
 - Bulk enrollment: a coordinator enrolls several students on a track at once.
-- Search and sorting in the enrollments of a track.
 - My tracks for a coordinator: a "My track" pill, a filter of all, mine and not mine, own tracks first, a quick action on the home page, the list in the profile.
 - A page size chosen by the user in every paged list, and the list scrolled into view on a change of page; `docs/ui/guidelines.md` says "a paginator without a page-size selector" today.
 - Unknown properties of a request body: the contract's `additionalProperties: false` is not enforced, so a body with an unknown property is accepted (seen on `EnrollmentCreate`, probably every operation); to decide for all operations at once.

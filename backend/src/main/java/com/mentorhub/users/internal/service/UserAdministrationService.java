@@ -113,7 +113,7 @@ public class UserAdministrationService {
         }
         UserChangePage changes = auditTrail.find(userId, page, size);
         Map<UUID, UserName> names = users.findNames(changes.items().stream()
-                .flatMap(change -> Stream.of(change.actorUserId(), inviter(change.change())))
+                .flatMap(change -> Stream.of(change.actorUserId(), inviter(change.change()), person(change.change())))
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
@@ -123,7 +123,8 @@ public class UserAdministrationService {
                         change.occurredAt(),
                         actor(change.actorUserId(), names),
                         withKnownRoles(change.change()),
-                        invitedBy(change.change(), names)))
+                        invitedBy(change.change(), names),
+                        named(person(change.change()), names)))
                 .toList();
         return new ResultPage<>(items, page, size, changes.totalItems());
     }
@@ -277,14 +278,28 @@ public class UserAdministrationService {
         return change instanceof UserChange.InvitationAccepted accepted ? accepted.invitedBy() : null;
     }
 
-    /** The inviter is resolved when possible; the history still shows the entry when not (contract). */
-    private static @Nullable HistoryActor invitedBy(UserChange change, Map<UUID, UserName> names) {
-        UUID inviter = inviter(change);
-        if (inviter == null) {
+    /** The mentor in a student's entry, or the student in a mentor's. */
+    private static @Nullable UUID person(UserChange change) {
+        return switch (change) {
+            case UserChange.MentorAssigned(var mentorId, var _) -> mentorId;
+            case UserChange.MentorRemoved(var mentorId, var _) -> mentorId;
+            case UserChange.StudentAssigned(var studentId, var _) -> studentId;
+            case UserChange.StudentRemoved(var studentId, var _) -> studentId;
+            default -> null;
+        };
+    }
+
+    /** A user an entry names is resolved when possible; the history still shows the entry when not (contract). */
+    private static @Nullable HistoryActor named(@Nullable UUID userId, Map<UUID, UserName> names) {
+        if (userId == null) {
             return null;
         }
-        UserName user = names.get(inviter);
+        UserName user = names.get(userId);
         return user == null ? null : HistoryActor.of(user);
+    }
+
+    private static @Nullable HistoryActor invitedBy(UserChange change, Map<UUID, UserName> names) {
+        return named(inviter(change), names);
     }
 
     private static @Nullable HistoryActor actor(@Nullable UUID actorUserId, Map<UUID, UserName> names) {

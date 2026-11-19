@@ -151,4 +151,74 @@ public sealed interface UserChange {
             return UserAuditAction.USER_ENROLLED;
         }
     }
+
+    /**
+     * A mentor was assigned to the user's enrollment on the track, given with its code and name at that moment.
+     *
+     * @param mentorId {@code users.id} of the mentor
+     */
+    record MentorAssigned(UUID mentorId, HistoryTrack track) implements UserChange {
+        public MentorAssigned {
+            Objects.requireNonNull(mentorId, "mentorId");
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_MENTOR_ASSIGNED;
+        }
+    }
+
+    /**
+     * A mentor was removed from the user's enrollment on the track, given with its code and name at that moment.
+     *
+     * @param mentorId {@code users.id} of the mentor
+     */
+    record MentorRemoved(UUID mentorId, HistoryTrack track) implements UserChange {
+        public MentorRemoved {
+            Objects.requireNonNull(mentorId, "mentorId");
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_MENTOR_REMOVED;
+        }
+    }
+
+    /**
+     * The user was assigned as a mentor of the student's enrollment on the track, given with its code and name at that
+     * moment.
+     *
+     * @param studentId {@code users.id} of the student
+     */
+    record StudentAssigned(UUID studentId, HistoryTrack track) implements UserChange {
+        public StudentAssigned {
+            Objects.requireNonNull(studentId, "studentId");
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_STUDENT_ASSIGNED;
+        }
+    }
+
+    /**
+     * The user was removed as a mentor of the student's enrollment on the track, given with its code and name at that
+     * moment.
+     *
+     * @param studentId {@code users.id} of the student
+     */
+    record StudentRemoved(UUID studentId, HistoryTrack track) implements UserChange {
+        public StudentRemoved {
+            Objects.requireNonNull(studentId, "studentId");
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_STUDENT_REMOVED;
+        }
+    }
 }

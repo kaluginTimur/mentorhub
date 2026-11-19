@@ -3,6 +3,7 @@ package com.mentorhub.users.internal.web;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mentorhub.api.model.BootstrapChanges;
 import com.mentorhub.api.model.DisableReason;
+import com.mentorhub.api.model.HistoryActor;
 import com.mentorhub.api.model.HistoryEntry;
 import com.mentorhub.api.model.InvitationAcceptance;
 import com.mentorhub.api.model.ProfileChange;
@@ -46,4 +47,10 @@ abstract class HistoryEntryJsonMixin {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract @Nullable LocalDate getStartDate();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable HistoryActor getUser();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable HistoryActor getMentor();
 }

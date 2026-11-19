@@ -88,7 +88,9 @@ describe('TrackPage', () => {
     api.handle(getTrack, () => (loads++ === 0 ? track() : now));
   };
 
-  const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
+  const overlay = () =>
+    (document.querySelector('.cdk-overlay-container') as HTMLElement | null) ??
+    document.createElement('div');
   const snack = () => document.querySelector('app-toast-host')?.textContent?.trim() ?? '';
 
   // The plan fixes the "Add coordinator" button, not how a candidate is picked: a native select, a Spartan select,
@@ -134,6 +136,10 @@ describe('TrackPage', () => {
       const remove = buttonByText(element, 'Remove');
       expect(remove, 'the "Remove" button of the coordinator').toBeDefined();
       remove?.click();
+      await settle();
+      const confirm = buttonByText(overlay(), 'Remove');
+      expect(confirm, 'the confirmation of the removal').toBeDefined();
+      confirm?.click();
       await settle();
 
       await vi.waitFor(() => expect(snack()).toMatch(/archived/i));
@@ -567,18 +573,37 @@ describe('TrackPage', () => {
         expect(overlay().querySelector('[role=alert]')).not.toBeNull();
       });
 
-      it('removes a coordinator without a confirmation', async () => {
+      it('removes a coordinator after a confirmation', async () => {
         const store = serverTrack(track());
         api.handle(removeTrackCoordinator, () => store(track({ coordinators: [] })));
         const { element, settle } = await open();
 
         buttonByText(element, 'Remove')?.click();
         await settle();
+        expect(api.callsFor(removeTrackCoordinator)).toHaveLength(0);
+        expect(overlay().textContent).toContain('Clara Coordinator');
+        buttonByText(overlay(), 'Remove')?.click();
+        await settle();
 
-        expect(api.callsFor(removeTrackCoordinator)).toEqual([
-          { id: TRACK_ID, userId: COORDINATOR_ID },
-        ]);
+        await vi.waitFor(() =>
+          expect(api.callsFor(removeTrackCoordinator)).toEqual([
+            { id: TRACK_ID, userId: COORDINATOR_ID },
+          ]),
+        );
         await vi.waitFor(() => expect(element.textContent).not.toContain('Clara Coordinator'));
+      });
+
+      it('does not remove a coordinator when the confirmation is cancelled', async () => {
+        api.resolve(getTrack, track());
+        const { element, settle } = await open();
+
+        buttonByText(element, 'Remove')?.click();
+        await settle();
+        buttonByText(overlay(), 'Cancel')?.click();
+        await settle();
+
+        expect(api.callsFor(removeTrackCoordinator)).toHaveLength(0);
+        expect(element.textContent).toContain('Clara Coordinator');
       });
     });
   });

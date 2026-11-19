@@ -25,7 +25,7 @@ class RoleTests {
             "COORDINATOR",
             EnumSet.of(Permission.TRACKS_READ, Permission.ENROLLMENTS_READ, Permission.ENROLLMENTS_MANAGE_COORDINATED),
             "MENTOR",
-            EnumSet.noneOf(Permission.class),
+            EnumSet.of(Permission.ENROLLMENTS_READ_MENTORED),
             "STUDENT",
             EnumSet.noneOf(Permission.class));
 

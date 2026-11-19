@@ -100,6 +100,11 @@ final class TracksMapper {
                 dto.setUser(historyActor(item.user()));
                 dto.setStartDate(startDate);
             }
+            case com.mentorhub.tracks.internal.domain.TrackChange.EnrollmentMentorAssigned _,
+                    com.mentorhub.tracks.internal.domain.TrackChange.EnrollmentMentorRemoved _ -> {
+                dto.setUser(historyActor(item.user()));
+                dto.setMentor(historyActor(item.mentor()));
+            }
         }
         return dto;
     }
