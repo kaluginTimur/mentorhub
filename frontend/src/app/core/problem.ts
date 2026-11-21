@@ -20,6 +20,7 @@ export const PROBLEM = {
   studentNotEligible: 'urn:mentorhub:problem:student-not-eligible',
   studentAlreadyEnrolled: 'urn:mentorhub:problem:student-already-enrolled',
   mentorNotEligible: 'urn:mentorhub:problem:mentor-not-eligible',
+  mentorLeadsEnrollments: 'urn:mentorhub:problem:mentor-leads-enrollments',
 } as const;
 
 export interface ProblemInfo {

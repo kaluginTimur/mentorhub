@@ -1,12 +1,14 @@
--- The sample center data of the tracks module (DEV-1, DEV-2): the tracks of the training center and their
--- coordinators. Runs after users.sql and refers to users by email. Times are relative to the start.
+-- The sample center data of the tracks module (DEV-1, DEV-2): the tracks of the training center, their
+-- coordinators and their mentors. Runs after users.sql and refers to users by email. Times are relative to the start.
 --
 -- Fixed ids by kind, with the number in the last group:
 --   tracks       00000000-0000-4000-f000-...   1 to 99
 --   audit_log    00000000-0000-4000-f<k>00-... f100 track created (number of the track), f200 track updated,
 --                                              f300 track archived or restored, f400 coordinator named and f500
 --                                              coordinator removed (number of the assignment), f600 and f700 the
---                                              entries about the user of f400 and f500, with the same number
+--                                              entries about the user of f400 and f500, with the same number; f800
+--                                              mentor named and f900 mentor removed (number of the mentor
+--                                              assignment), fa00 and fb00 the entries about the user of f800 and f900
 --
 -- An assignment is one period in which a user coordinated a track: named, then removed unless still a coordinator.
 -- The history is consistent with the tracks: the code and the name of a track are those of its last update, its status
@@ -164,10 +166,80 @@ select ('00000000-0000-4000-f500-' || lpad(n::text, 12, '0'))::uuid,
 from resolved
 where removed_at is not null;
 
--- The same namings and removals in the coordinators' histories, with the track as it was at that moment.
+-- The mentors of the tracks (ENR-13), named and removed as the coordinators are. Every mentor of an enrollment
+-- (enrollments.sql) was named a mentor of its track before being assigned, and stays one while leading an active
+-- enrollment on it. Each mentor was named while active with the mentor role, by an administrator or a coordinator of
+-- the track at that moment, and while the track was active. Dan Disabled was disabled and Thomas Grant lost the mentor
+-- role afterwards, so Quality Assurance marks them; Daniel Kim was removed from Quality Assurance after his last student
+-- there; Frontend Development keeps its mentor archived; QA Automation has none. Helen Park and Milo
+-- Mentor-Coordinator are mentors of no track, so every active track offers candidates.
+with assignment (n, track, mentor, named_by, named_ago, removed_by, removed_ago) as (
+    values (1, 1, 'mentor@mentorhub.local', 'coordinator@mentorhub.local', interval '136 days', null, null::interval),
+           (2, 1, 'paul.becker@mentorhub.local', 'coordinator@mentorhub.local', interval '136 days', null, null),
+           (3, 1, 'daniel.kim@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '121 days', null, null),
+           (4, 1, 'admin.mentor@mentorhub.local', 'admin.mentor@mentorhub.local', interval '101 days', null, null),
+           (5, 1, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '30 days', null, null),
+           (6, 2, 'mentor@mentorhub.local', 'laura.chen@mentorhub.local', interval '136 days', null, null),
+           (7, 2, 'disabled@mentorhub.local', 'laura.chen@mentorhub.local', interval '126 days', null, null),
+           (8, 2, 'victor.novak@mentorhub.local', 'laura.chen@mentorhub.local', interval '121 days', null, null),
+           (9, 2, 'thomas.grant@example.com',
+            'irene.margaret.walsh@qa-faculty.northbridge-training-academy.example.com', interval '101 days', null,
+            null),
+           (10, 2, 'daniel.kim@mentorhub.local',
+            'irene.margaret.walsh@qa-faculty.northbridge-training-academy.example.com', interval '141 days',
+            'irene.margaret.walsh@qa-faculty.northbridge-training-academy.example.com', interval '14 days'),
+           (11, 4, 'mentor@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '235 days', null, null),
+           (12, 3, 'victor.novak@mentorhub.local', 'mentor.coordinator@mentorhub.local', interval '20 days', null,
+            null)),
+     resolved as (
+         select a.n,
+                ('00000000-0000-4000-f000-' || lpad(a.track::text, 12, '0'))::uuid as track_id,
+                mentor.id                                                        as user_id,
+                named_by.id                                                      as named_by,
+                now() - a.named_ago                                              as named_at,
+                removed_by.id                                                    as removed_by,
+                now() - a.removed_ago                                            as removed_at
+         from assignment a
+                  join users mentor on mentor.email = a.mentor
+                  join users named_by on named_by.email = a.named_by
+                  left join users removed_by on removed_by.email = a.removed_by),
+     mentors as (
+         insert into track_mentors (track_id, user_id, created_at)
+             select track_id, user_id, named_at
+             from resolved
+             where removed_at is null),
+     named as (
+         insert into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
+             select ('00000000-0000-4000-f800-' || lpad(n::text, 12, '0'))::uuid,
+                    named_at,
+                    named_by,
+                    'TRACK_MENTOR_ADDED',
+                    'TRACK',
+                    track_id,
+                    jsonb_build_object('userId', user_id)
+             from resolved)
+insert
+into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
+select ('00000000-0000-4000-f900-' || lpad(n::text, 12, '0'))::uuid,
+       removed_at,
+       removed_by,
+       'TRACK_MENTOR_REMOVED',
+       'TRACK',
+       track_id,
+       jsonb_build_object('userId', user_id)
+from resolved
+where removed_at is not null;
+
+-- The same namings and removals in the coordinators' and the mentors' histories, with the track as it was at that
+-- moment.
 insert into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
-select ('00000000-0000-4000-' || case e.action when 'TRACK_COORDINATOR_ADDED' then 'f600' else 'f700' end || '-'
-            || right(e.id::text, 12))::uuid,
+select ('00000000-0000-4000-'
+            || case e.action
+                   when 'TRACK_COORDINATOR_ADDED' then 'f600'
+                   when 'TRACK_COORDINATOR_REMOVED' then 'f700'
+                   when 'TRACK_MENTOR_ADDED' then 'fa00'
+                   else 'fb00' end
+            || '-' || right(e.id::text, 12))::uuid,
        e.occurred_at,
        e.actor_user_id,
        'USER_' || e.action,
@@ -194,4 +266,5 @@ from audit_log e
                      order by u.occurred_at desc
                      limit 1), created.details ->> 'name') as name) track
 where e.subject_type = 'TRACK'
-  and e.action in ('TRACK_COORDINATOR_ADDED', 'TRACK_COORDINATOR_REMOVED');
+  and e.action in ('TRACK_COORDINATOR_ADDED', 'TRACK_COORDINATOR_REMOVED', 'TRACK_MENTOR_ADDED',
+                   'TRACK_MENTOR_REMOVED');

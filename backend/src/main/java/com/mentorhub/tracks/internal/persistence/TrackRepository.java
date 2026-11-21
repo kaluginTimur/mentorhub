@@ -52,8 +52,8 @@ public class TrackRepository {
 
     /**
      * Locks the track's row until the end of the transaction, so the changes of one track, its archiving included, are
-     * serialized. {@code for no key update}, not {@code for update}: inserting into {@code track_coordinators} or
-     * {@code enrollments} takes {@code for key share} on the track, which {@code for update} blocks.
+     * serialized. {@code for no key update}, not {@code for update}: inserting into {@code track_coordinators},
+     * {@code track_mentors} or {@code enrollments} takes {@code for key share} on the track, which {@code for update} blocks.
      */
     public Optional<StoredTrack> lock(UUID trackId) {
         return jdbc.sql("select id, code, name, status from tracks where id = :id for no key update")
@@ -121,6 +121,41 @@ public class TrackRepository {
     /** Returns the number of deleted rows: 0 when the user is not a coordinator of the track. */
     public int removeCoordinator(UUID trackId, UUID userId) {
         return jdbc.sql("delete from track_coordinators where track_id = :trackId and user_id = :userId")
+                .param("trackId", trackId)
+                .param("userId", userId)
+                .update();
+    }
+
+    public List<TrackMentor> findMentors(Collection<UUID> trackIds) {
+        if (trackIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("select track_id, user_id from track_mentors where track_id in (:ids)")
+                .param("ids", List.copyOf(trackIds))
+                .query((rs, rowNum) ->
+                        new TrackMentor(rs.getObject("track_id", UUID.class), rs.getObject("user_id", UUID.class)))
+                .list();
+    }
+
+    public boolean isMentor(UUID trackId, UUID userId) {
+        return jdbc.sql("select exists (select 1 from track_mentors where track_id = :trackId and user_id = :userId)")
+                .param("trackId", trackId)
+                .param("userId", userId)
+                .query(Boolean.class)
+                .single();
+    }
+
+    /** Returns the number of inserted rows: 0 when the user is already a mentor of the track. */
+    public int addMentorIfAbsent(UUID trackId, UUID userId) {
+        return jdbc.sql("""
+                        insert into track_mentors (track_id, user_id) values (:trackId, :userId)
+                        on conflict do nothing
+                        """).param("trackId", trackId).param("userId", userId).update();
+    }
+
+    /** Returns the number of deleted rows: 0 when the user is not a mentor of the track. */
+    public int removeMentor(UUID trackId, UUID userId) {
+        return jdbc.sql("delete from track_mentors where track_id = :trackId and user_id = :userId")
                 .param("trackId", trackId)
                 .param("userId", userId)
                 .update();

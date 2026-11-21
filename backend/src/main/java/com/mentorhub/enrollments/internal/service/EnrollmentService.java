@@ -37,8 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
  * enrollment (404), the relation for a caller who may enroll only on the tracks they coordinate (403), then the
  * conflicts (409). The mentors of an enrollment are managed under the same relation to the enrollment's track.
  *
- * <p>Enrolling locks the track's row first ({@link TrackDirectory#lockForEnrollment}), so enrolling on a track and
- * archiving it run one after another (TRK-5.6); no other lock is taken. One active enrollment per student is decided by
+ * <p>Enrolling and assigning a mentor of an enrollment lock the track's row first
+ * ({@link TrackDirectory#lockForEnrollment}), so enrolling on a track and archiving it, or assigning a mentor and
+ * removing them from the track, run one after another (TRK-5.6, ENR-13.7); no other lock is taken. One active enrollment per student is decided by
  * the unique index the insert relies on (ENR-2.6).
  */
 @Service
@@ -152,7 +153,8 @@ public class EnrollmentService {
     }
 
     /**
-     * The active users with the mentor role who are not mentors of the enrollment.
+     * The active users with the mentor role who are mentors of the enrollment's track and not mentors of the
+     * enrollment.
      *
      * @param q searched in the email, first and last name after trimming; blank means no search
      * @throws ValidationException for {@code q}
@@ -164,7 +166,8 @@ public class EnrollmentService {
         String text = searchText(q);
         StoredEnrollment enrollment = enrollments.find(enrollmentId).orElseThrow(NotFoundException::new);
         checkRelation(currentUser.currentUser(), enrollment.trackId());
-        DirectoryPage candidates = users.findActiveUsersWithRole(
+        DirectoryPage candidates = users.findActiveUsersWithRoleAmong(
+                tracks.mentorIds(enrollment.trackId()),
                 Role.MENTOR,
                 text,
                 enrollments.mentorIds(List.of(enrollmentId)).getOrDefault(enrollmentId, Set.of()),
@@ -174,8 +177,8 @@ public class EnrollmentService {
     }
 
     /**
-     * Assigns the user as a mentor of the enrollment, recorded in the track's, the student's and the mentor's history.
-     * A mentor of the enrollment is not checked again and changes nothing; parallel assignments are decided by the
+     * Assigns a mentor of the enrollment's track as a mentor of the enrollment, recorded in the track's, the student's
+     * and the mentor's history. A mentor of the enrollment is not checked again and changes nothing; parallel assignments are decided by the
      * primary key, and only the one that inserts records (ENR-9.4).
      *
      * @return the enrollment after the change
@@ -187,12 +190,14 @@ public class EnrollmentService {
     public TrackEnrollmentItem assignMentor(UUID enrollmentId, UUID userId) {
         CurrentUser caller = currentUser.currentUser();
         StoredEnrollment enrollment = enrollments.find(enrollmentId).orElseThrow(NotFoundException::new);
+        // An enrollment never changes its track, which is never deleted.
+        tracks.lockForEnrollment(enrollment.trackId());
         checkRelation(caller, enrollment.trackId());
         if (!enrollments.isMentor(enrollmentId, userId)) {
-            if (!users.isActiveWithRole(userId, Role.MENTOR)) {
+            if (!users.isActiveWithRole(userId, Role.MENTOR) || !tracks.isMentor(enrollment.trackId(), userId)) {
                 throw new ConflictException(
                         EnrollmentProblems.MENTOR_NOT_ELIGIBLE,
-                        "Only an active user with the mentor role can be assigned as a mentor.");
+                        "Only an active user with the mentor role who is a mentor of the track can be assigned.");
             }
             if (enrollments.insertMentor(enrollmentId, userId, caller.id())) {
                 trackHistory.recordMentorAssigned(caller.id(), enrollment.trackId(), enrollment.studentId(), userId);

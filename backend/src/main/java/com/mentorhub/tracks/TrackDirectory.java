@@ -16,7 +16,8 @@ public interface TrackDirectory {
 
     /**
      * Locks the track's row until the end of the caller's transaction, with the lock every change of the track and its
-     * archiving take, so that enrolling on the track and archiving it run one after another (TRK-5.6). Take it before
+     * archiving take, so that enrolling on the track and archiving it, or assigning a mentor of an enrollment and
+     * removing them from the track, run one after another (TRK-5.6, ENR-13.7). Take it before
      * any other row lock.
      *
      * @return empty for an id no track has
@@ -29,4 +30,10 @@ public interface TrackDirectory {
 
     /** The ids of the coordinators of the track, in any status and with any roles. */
     Set<UUID> coordinatorIds(UUID trackId);
+
+    /** Whether the user is a mentor of the track now, in any status and with any roles. */
+    boolean isMentor(UUID trackId, UUID userId);
+
+    /** The ids of the mentors of the track, in any status and with any roles. */
+    Set<UUID> mentorIds(UUID trackId);
 }

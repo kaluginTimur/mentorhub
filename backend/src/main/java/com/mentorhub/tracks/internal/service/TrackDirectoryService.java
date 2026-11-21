@@ -5,6 +5,7 @@ import com.mentorhub.tracks.TrackSummary;
 import com.mentorhub.tracks.internal.domain.TrackStatus;
 import com.mentorhub.tracks.internal.persistence.StoredTrack;
 import com.mentorhub.tracks.internal.persistence.TrackCoordinator;
+import com.mentorhub.tracks.internal.persistence.TrackMentor;
 import com.mentorhub.tracks.internal.persistence.TrackRepository;
 import java.util.Collection;
 import java.util.List;
@@ -56,6 +57,20 @@ class TrackDirectoryService implements TrackDirectory {
     public Set<UUID> coordinatorIds(UUID trackId) {
         return tracks.findCoordinators(List.of(trackId)).stream()
                 .map(TrackCoordinator::userId)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isMentor(UUID trackId, UUID userId) {
+        return tracks.isMentor(trackId, userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<UUID> mentorIds(UUID trackId) {
+        return tracks.findMentors(List.of(trackId)).stream()
+                .map(TrackMentor::userId)
                 .collect(Collectors.toUnmodifiableSet());
     }
 

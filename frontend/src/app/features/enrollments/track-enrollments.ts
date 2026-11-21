@@ -312,6 +312,11 @@ export class TrackEnrollments {
 
   protected readonly PAGE_SIZE = PAGE_SIZE;
 
+  /** Shows the enrollments as they are now. */
+  reload(): void {
+    this.enrollments.reload();
+  }
+
   private readonly params = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });

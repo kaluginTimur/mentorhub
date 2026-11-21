@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Answers archiving inside its transaction, after it has locked the track's row (TRK-5.6). */
+/**
+ * Answers archiving and the removal of a mentor of a track inside their transaction, after they have locked the track's
+ * row (TRK-5.6, ENR-13.7).
+ */
 @Service
 class ActiveEnrollmentsService implements ActiveEnrollments {
 
@@ -21,5 +24,11 @@ class ActiveEnrollmentsService implements ActiveEnrollments {
     @Transactional(propagation = Propagation.MANDATORY)
     public boolean existOnTrack(UUID trackId) {
         return enrollments.existActiveOnTrack(trackId);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean ledOnTrack(UUID trackId, UUID mentorId) {
+        return enrollments.existActiveLedOnTrack(trackId, mentorId);
     }
 }
