@@ -63,7 +63,8 @@ export type AssignMentorResult = true | 'refused';
           Assign a mentor to {{ data.studentName }}
         </h2>
         <p hlmDialogDescription>
-          Only active users with the mentor role who are not mentors of this student yet are listed.
+          Only active users with the mentor role who are mentors of this track and not mentors of
+          this student yet are listed.
         </p>
       </div>
 

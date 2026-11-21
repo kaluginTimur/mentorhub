@@ -458,7 +458,7 @@ export class TrackEnrollments {
       this.enrolled.emit();
     } else if (result === 'refused') {
       this.say(
-        'That user can no longer be assigned: they must be active and hold the mentor role. The enrollments are shown as they are now.',
+        'That user can no longer be assigned: they must be active, hold the mentor role and be a mentor of this track. The enrollments are shown as they are now.',
         { politeness: 'assertive' },
       );
       this.enrollments.reload();
