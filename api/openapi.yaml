@@ -20,7 +20,7 @@ tags:
   - name: Invitations
     description: Invitations by link, and their acceptance
   - name: Tracks
-    description: The tracks of the training center and their coordinators
+    description: The tracks of the training center, their coordinators and their mentors
   - name: Enrollments
     description: Who studies on which track
 paths:
@@ -648,8 +648,8 @@ paths:
       operationId: createTrack
       summary: Create a track
       description: |
-        Requires `TRACKS_MANAGE`. The track is created `ACTIVE`, without coordinators. Neither the code nor the name
-        has to be unique.
+        Requires `TRACKS_MANAGE`. The track is created `ACTIVE`, without coordinators or mentors. Neither the code nor
+        the name has to be unique.
       requestBody:
         required: true
         content:
@@ -731,8 +731,8 @@ paths:
       operationId: archiveTrack
       summary: Archive a track
       description: |
-        Requires `TRACKS_MANAGE`. The track becomes `ARCHIVED` and read-only, and keeps its coordinators. Archiving an
-        archived track changes nothing and responds 200. An active track with an active enrollment is not archived:
+        Requires `TRACKS_MANAGE`. The track becomes `ARCHIVED` and read-only, and keeps its coordinators and mentors.
+        Archiving an archived track changes nothing and responds 200. An active track with an active enrollment is not archived:
         409 `track-has-active-enrollments`.
       parameters:
         - $ref: '#/components/parameters/TrackId'
@@ -759,8 +759,8 @@ paths:
       operationId: restoreTrack
       summary: Restore an archived track
       description: |
-        Requires `TRACKS_MANAGE`. The track becomes `ACTIVE` with the coordinators it had. Restoring an active track
-        changes nothing and responds 200.
+        Requires `TRACKS_MANAGE`. The track becomes `ACTIVE` with the coordinators and mentors it had. Restoring an
+        active track changes nothing and responds 200.
       parameters:
         - $ref: '#/components/parameters/TrackId'
       responses:
@@ -891,6 +891,111 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/mentor-candidates:
+    get:
+      tags: [Tracks]
+      operationId: listTrackMentorCandidates
+      summary: Page of the users who may be named mentors of a track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request; `USERS_READ` is not needed. The active users with the `MENTOR` role who are not mentors
+        of the track, sorted by name (case-insensitive), then by email, then by id. An archived track has no
+        candidates to offer until it is restored: 409 `track-archived`. Checked in this order: the permission (403),
+        the request (400), the track (404), the relation (403 `forbidden`), its status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorCandidatePage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/mentors/{userId}:
+    put:
+      tags: [Tracks]
+      operationId: addTrackMentor
+      summary: Name a user a mentor of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. Only an active user with the `MENTOR` role can be named, a coordinator or a student of
+        the track and the caller included; a disabled user, a user without the role and an id no user has are refused
+        alike with 409 `mentor-not-eligible`. Naming a mentor of the track again changes nothing and responds 200, even
+        when they are no longer eligible (disabled or without the role); on an archived track it is 409
+        `track-archived` like any change. The operation has no request body. Checked in this order: the permission
+        (403), the parameters (400), the track (404), the relation (403 `forbidden`), then the conflicts (409) in the
+        order the response lists them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/MentorUserId'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackMentorConflict'
+    delete:
+      tags: [Tracks]
+      operationId: removeTrackMentor
+      summary: Remove a mentor of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. Any mentor can be removed, also one who is disabled or no longer has the `MENTOR` role,
+        unless they are a mentor of an active enrollment on the track: 409 `mentor-leads-enrollments`. Removing a user
+        who is not a mentor of the track, or an id no user has, changes nothing and responds 200; on an archived track
+        it is 409 `track-archived` like any change. Checked in this order: the permission (403), the parameters (400),
+        the track (404), the relation (403 `forbidden`), then the conflicts (409) in the order the response lists
+        them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/MentorUserId'
+      responses:
+        '200':
+          description: The track after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackMentorRemovalConflict'
   /api/v1/tracks/{id}/enrollments:
     get:
       tags: [Enrollments]
@@ -1002,8 +1107,9 @@ paths:
       description: |
         Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
         track at the time of the request; `USERS_READ` is not needed. The active users with the `MENTOR` role who are
-        not mentors of the enrollment, sorted by name (case-insensitive), then by email, then by id. Checked in this
-        order: the permission (403), the request (400), the enrollment (404), the relation (403 `forbidden`).
+        mentors of the enrollment's track and not mentors of the enrollment, sorted by name (case-insensitive), then by
+        email, then by id. Checked in this order: the permission (403), the request (400), the enrollment (404), the
+        relation (403 `forbidden`).
       parameters:
         - $ref: '#/components/parameters/EnrollmentId'
         - name: q
@@ -1037,9 +1143,10 @@ paths:
       summary: Assign a user as a mentor of an enrollment
       description: |
         Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
-        track at the time of the request. Only an active user with the `MENTOR` role can be assigned, the student of
-        the enrollment and the caller included, whatever the student's status or roles; a disabled user, a user
-        without the role and an id no user has are refused alike with 409 `mentor-not-eligible`. Assigning a mentor of
+        track at the time of the request. Only an active user with the `MENTOR` role who is a mentor of the
+        enrollment's track can be assigned, the student of the enrollment and the caller included, whatever the
+        student's status or roles; a disabled user, a user without the role, a user who is not a mentor of the track
+        and an id no user has are refused alike with 409 `mentor-not-eligible`. Assigning a mentor of
         the enrollment again changes nothing and responds 200, even when they are no longer eligible (disabled or
         without the role). The operation has no request body. Checked in this order: the permission (403), the
         parameters (400), the enrollment (404), the relation (403 `forbidden`), the eligibility (409).
@@ -1305,6 +1412,26 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    TrackMentorConflict:
+      description: |
+        The user was not named; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:mentor-not-eligible`: the id is not a mentor of the track and no active user with the
+          `MENTOR` role has it.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TrackMentorRemovalConflict:
+      description: |
+        The mentor was not removed; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:mentor-leads-enrollments`: the user is a mentor of an active enrollment on the track;
+          removed from those enrollments first, they can be removed from the track.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     TrackHasActiveEnrollments:
       description: |
         The track has an active enrollment and stays active; nothing was changed. Problem type
@@ -1327,7 +1454,8 @@ components:
     MentorNotEligible:
       description: |
         The user was not assigned; nothing was changed. Problem type `urn:mentorhub:problem:mentor-not-eligible`: the id
-        is not a mentor of the enrollment and no active user with the `MENTOR` role has it.
+        is not a mentor of the enrollment and no active user with the `MENTOR` role who is a mentor of the enrollment's
+        track has it.
       content:
         application/problem+json:
           schema:
@@ -1445,7 +1573,7 @@ components:
         `urn:mentorhub:problem:email-queued`, `urn:mentorhub:problem:track-archived`,
         `urn:mentorhub:problem:coordinator-not-eligible`, `urn:mentorhub:problem:track-has-active-enrollments`,
         `urn:mentorhub:problem:student-not-eligible`, `urn:mentorhub:problem:student-already-enrolled`,
-        `urn:mentorhub:problem:mentor-not-eligible`.
+        `urn:mentorhub:problem:mentor-not-eligible`, `urn:mentorhub:problem:mentor-leads-enrollments`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       additionalProperties: true
@@ -1663,6 +1791,8 @@ components:
         - `USER_INVITATION_ACCEPTED`: details `invitation`, `rolesAdded`, `rolesRemoved`; the actor is the user;
         - `USER_TRACK_COORDINATOR_ADDED`: details `track`; the user was named a coordinator of the track;
         - `USER_TRACK_COORDINATOR_REMOVED`: details `track`; the user was removed as a coordinator of the track;
+        - `USER_TRACK_MENTOR_ADDED`: details `track`; the user was named a mentor of the track;
+        - `USER_TRACK_MENTOR_REMOVED`: details `track`; the user was removed as a mentor of the track;
         - `USER_ENROLLED`: details `track`, `startDate`; the user was enrolled on the track;
         - `USER_MENTOR_ASSIGNED`: details `mentor`, `track`; the mentor was assigned to the user's enrollment on the
           track;
@@ -1681,6 +1811,8 @@ components:
         - USER_INVITATION_ACCEPTED
         - USER_TRACK_COORDINATOR_ADDED
         - USER_TRACK_COORDINATOR_REMOVED
+        - USER_TRACK_MENTOR_ADDED
+        - USER_TRACK_MENTOR_REMOVED
         - USER_ENROLLED
         - USER_MENTOR_ASSIGNED
         - USER_MENTOR_REMOVED
@@ -2004,7 +2136,7 @@ components:
       type: string
       description: |
         - `ACTIVE`: can be changed;
-        - `ARCHIVED`: read-only until restored; keeps its coordinators.
+        - `ARCHIVED`: read-only until restored; keeps its coordinators and mentors.
       enum: [ACTIVE, ARCHIVED]
     TrackStatusFilter:
       type: string
@@ -2041,7 +2173,7 @@ components:
     Track:
       type: object
       additionalProperties: false
-      required: [id, code, name, status, coordinators, canEnroll]
+      required: [id, code, name, status, coordinators, mentors, canEnroll]
       properties:
         id:
           type: string
@@ -2059,13 +2191,18 @@ components:
           description: Sorted by name (case-insensitive), then by email; may be empty.
           items:
             $ref: '#/components/schemas/TrackCoordinator'
+        mentors:
+          type: array
+          description: Sorted by name (case-insensitive), then by email; may be empty.
+          items:
+            $ref: '#/components/schemas/TrackMentor'
         canEnroll:
           type: boolean
           description: |
-            The caller may enroll students on the track: they hold `ENROLLMENTS_MANAGE`, or
-            `ENROLLMENTS_MANAGE_COORDINATED` and are a coordinator of the track. Whatever the status: an archived track
-            still refuses enrolling with 409 `track-archived`. The same check allows assigning and removing the mentors
-            of the track's enrollments.
+            The caller may enroll students on the track and name and remove its mentors: they hold
+            `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and are a coordinator of the track. Whatever the
+            status: an archived track still refuses enrolling and any change to its mentors with 409 `track-archived`.
+            The same check allows assigning and removing the mentors of the track's enrollments.
     TrackCoordinator:
       type: object
       description: |
@@ -2091,6 +2228,31 @@ components:
         coordinatorRole:
           type: boolean
           description: The user holds the `COORDINATOR` role.
+    TrackMentor:
+      type: object
+      description: |
+        A mentor of a track. While the user is disabled or does not hold the `MENTOR` role, they are not assigned to
+        the track's enrollments; they stay a mentor of the track until removed.
+      additionalProperties: false
+      required: [id, name, email, disabled, mentorRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The user's id.
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+        disabled:
+          type: boolean
+          description: The user is disabled.
+        mentorRole:
+          type: boolean
+          description: The user holds the `MENTOR` role.
     TrackList:
       type: object
       additionalProperties: false
@@ -2136,6 +2298,8 @@ components:
         - `TRACK_RESTORED`: no details;
         - `TRACK_COORDINATOR_ADDED`: details `user`;
         - `TRACK_COORDINATOR_REMOVED`: details `user`;
+        - `TRACK_MENTOR_ADDED`: details `user`; the user was named a mentor of the track;
+        - `TRACK_MENTOR_REMOVED`: details `user`; the user was removed as a mentor of the track;
         - `TRACK_STUDENT_ENROLLED`: details `user`, `startDate`; the user was enrolled on the track;
         - `TRACK_ENROLLMENT_MENTOR_ASSIGNED`: details `user`, `mentor`; the mentor was assigned to the enrollment of
           the student `user` on the track;
@@ -2148,6 +2312,8 @@ components:
         - TRACK_RESTORED
         - TRACK_COORDINATOR_ADDED
         - TRACK_COORDINATOR_REMOVED
+        - TRACK_MENTOR_ADDED
+        - TRACK_MENTOR_REMOVED
         - TRACK_STUDENT_ENROLLED
         - TRACK_ENROLLMENT_MENTOR_ASSIGNED
         - TRACK_ENROLLMENT_MENTOR_REMOVED
@@ -2186,8 +2352,8 @@ components:
         user:
           $ref: '#/components/schemas/HistoryActor'
           description: |
-            The user named or removed as a coordinator, or the student of the enrollment, with their name as it is
-            now.
+            The user named or removed as a coordinator or a mentor of the track, or the student of the enrollment,
+            with their name as it is now.
         startDate:
           type: string
           format: date
@@ -2399,7 +2565,9 @@ components:
           description: The number of matching items on all pages.
     MentorCandidate:
       type: object
-      description: An active user with the `MENTOR` role who is not a mentor of the enrollment.
+      description: |
+        An active user with the `MENTOR` role who is not a mentor of the track, or of the enrollment, it is listed for;
+        for an enrollment, also a mentor of its track.
       additionalProperties: false
       required: [id, name, email]
       properties:

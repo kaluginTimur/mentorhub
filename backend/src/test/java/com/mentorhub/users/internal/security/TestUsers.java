@@ -23,6 +23,7 @@ public final class TestUsers {
         jdbc.sql("delete from enrollment_mentors").update();
         jdbc.sql("delete from enrollments").update();
         jdbc.sql("delete from track_coordinators").update();
+        jdbc.sql("delete from track_mentors").update();
         jdbc.sql("delete from tracks").update();
         jdbc.sql("delete from invitation_emails").update();
         jdbc.sql("delete from invitation_roles").update();

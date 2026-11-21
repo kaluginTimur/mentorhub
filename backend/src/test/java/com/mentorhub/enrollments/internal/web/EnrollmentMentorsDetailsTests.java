@@ -68,6 +68,9 @@ class EnrollmentMentorsDetailsTests {
         UUID bella = person("bella@x.test", "Bella", "Aa", Role.MENTOR);
         UUID second = person("a2@x.test", "Anna", "Zed", Role.MENTOR);
         UUID first = person("a1@x.test", "anna", "zed", Role.MENTOR);
+        for (UUID mentor : List.of(bella, second, first)) {
+            tracks.addMentor(track, mentor);
+        }
 
         String path = "/api/v1/enrollments/" + enrollment + "/mentor-candidates";
         MvcTestResult page0 = get(path + "?size=2&page=0", "admin");
@@ -87,7 +90,8 @@ class EnrollmentMentorsDetailsTests {
         UUID student = person("sam@x.test", "Sam", "Student", Role.STUDENT);
         UUID enrollment = enrollments.enroll(student, track, admin, START);
         UUID bella = person("bella@x.test", "Bella", "Mentor", Role.MENTOR);
-        person("other@x.test", "Other", "Mentor", Role.MENTOR);
+        tracks.addMentor(track, bella);
+        tracks.addMentor(track, person("other@x.test", "Other", "Mentor", Role.MENTOR));
         String path = "/api/v1/enrollments/" + enrollment + "/mentor-candidates";
 
         assertThat(get(path + "?q=BELLA@", "admin"))

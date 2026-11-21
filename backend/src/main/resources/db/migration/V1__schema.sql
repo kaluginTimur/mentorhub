@@ -152,6 +152,15 @@ create table track_coordinators (
     primary key (track_id, user_id)
 );
 
+-- Who mentors on which track. Only an active user with the MENTOR role is named, which the service checks; the row
+-- stays when the user is later disabled or loses the role. The primary key decides parallel namings.
+create table track_mentors (
+    track_id   uuid        not null references tracks (id) on delete restrict,
+    user_id    uuid        not null references users (id) on delete restrict,
+    created_at timestamptz not null default now(),
+    primary key (track_id, user_id)
+);
+
 create table enrollments (
     id          uuid        primary key default gen_random_uuid(),
     student_id  uuid        not null references users (id) on delete restrict,

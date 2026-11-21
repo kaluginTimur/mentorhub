@@ -77,6 +77,8 @@ class EnrollmentMentorsEndpointTests {
         UUID candidate = person("cand@x.test", "Cand", "Idate", UserStatus.ACTIVE, Role.MENTOR);
         UUID mentor = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);
         UUID student = person("sam@x.test", "Sam", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        tracks.addMentor(track, candidate);
+        tracks.addMentor(track, mentor);
         UUID enrollment = enrollments.enroll(student, track, admin, START);
         enrollments.addMentor(enrollment, mentor, admin);
 
@@ -199,6 +201,7 @@ class EnrollmentMentorsEndpointTests {
         tracks.addCoordinator(track, clara);
         UUID student = person("sam@x.test", "Sam", "Student", UserStatus.ACTIVE, Role.STUDENT);
         UUID mentor = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(track, mentor);
         UUID enrollment = enrollments.enroll(student, track, admin, START);
         assertThat(send(HttpMethod.PUT, mentorPath(enrollment, mentor), "", "clara"))
                 .hasStatusOk();
@@ -247,6 +250,8 @@ class EnrollmentMentorsEndpointTests {
         UUID student = person("sam@x.test", "Sam", "Student", UserStatus.ACTIVE, Role.STUDENT);
         UUID mentor = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);
         UUID former = person("fred@x.test", "Fred", "Former", UserStatus.DISABLED, Role.MENTOR);
+        tracks.addMentor(track, mentor);
+        tracks.addMentor(track, former);
         UUID enrollment = enrollments.enroll(student, track, admin, START);
         enrollments.addMentor(enrollment, former, admin);
 
@@ -265,15 +270,19 @@ class EnrollmentMentorsEndpointTests {
     }
 
     @Test
-    @DisplayName("ENR-9.2 Only an active user with the mentor role is assigned")
-    void onlyAnActiveUserWithTheMentorRoleIsAssigned() {
+    @DisplayName("ENR-9.2 Only an active mentor of the track with the mentor role is assigned")
+    void onlyAnActiveMentorOfTheTrackWithTheMentorRoleIsAssigned() {
         UUID track = tracks.active("QA", "Quality Assurance");
         UUID student = person("sam@x.test", "Sam", "Student", UserStatus.ACTIVE, Role.STUDENT);
         UUID disabled = person("dina@x.test", "Dina", "Disabled", UserStatus.DISABLED, Role.MENTOR);
         UUID withoutRole = person("cora@x.test", "Cora", "Coordinator", UserStatus.ACTIVE, Role.COORDINATOR);
+        UUID elsewhere = person("eve@x.test", "Eve", "Elsewhere", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(track, disabled);
+        tracks.addMentor(track, withoutRole);
+        tracks.addMentor(tracks.active("SWE", "Software Engineering"), elsewhere);
         UUID enrollment = enrollments.enroll(student, track, admin, START);
 
-        for (UUID user : List.of(disabled, withoutRole, UUID.randomUUID())) {
+        for (UUID user : List.of(disabled, withoutRole, elsewhere, UUID.randomUUID())) {
             assertProblem(
                     send(HttpMethod.PUT, mentorPath(enrollment, user), "", "admin"),
                     HttpStatus.CONFLICT,
@@ -310,16 +319,20 @@ class EnrollmentMentorsEndpointTests {
     }
 
     @Test
-    @DisplayName("ENR-10.1 The candidates are the eligible mentors not yet assigned")
-    void theCandidatesAreTheEligibleMentorsNotYetAssigned() {
+    @DisplayName("ENR-10.1 The candidates are the eligible mentors of the track not yet assigned")
+    void theCandidatesAreTheEligibleMentorsOfTheTrackNotYetAssigned() {
         UUID clara = coordinator("clara@x.test", "clara");
         UUID track = tracks.active("QA", "Quality Assurance");
         tracks.addCoordinator(track, clara);
         UUID student = person("sam@x.test", "Sam", "Student", UserStatus.ACTIVE, Role.STUDENT);
         UUID assigned = person("alice@x.test", "Alice", "Assigned", UserStatus.ACTIVE, Role.MENTOR);
         UUID candidate = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);
-        person("dina@x.test", "Dina", "Disabled", UserStatus.DISABLED, Role.MENTOR);
-        person("stan@x.test", "Stan", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        UUID disabled = person("dina@x.test", "Dina", "Disabled", UserStatus.DISABLED, Role.MENTOR);
+        UUID withoutRole = person("cora@x.test", "Cora", "Coordinator", UserStatus.ACTIVE, Role.COORDINATOR);
+        person("eve@x.test", "Eve", "Elsewhere", UserStatus.ACTIVE, Role.MENTOR);
+        for (UUID mentor : List.of(assigned, candidate, disabled, withoutRole)) {
+            tracks.addMentor(track, mentor);
+        }
         UUID enrollment = enrollments.enroll(student, track, admin, START);
         enrollments.addMentor(enrollment, assigned, admin);
 

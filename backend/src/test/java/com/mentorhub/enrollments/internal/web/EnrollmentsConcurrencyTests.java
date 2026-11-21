@@ -123,6 +123,7 @@ class EnrollmentsConcurrencyTests {
     @DisplayName("ENR-9.4 Parallel assignments of one mentor assign them once")
     void parallelAssignmentsOfOneMentorAssignThemOnce() throws Exception {
         UUID mentor = users.create("mia@x.test", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(first, mentor);
         UUID enrollment = new TestEnrollments(jdbc).enroll(student, first, admin, LocalDate.now());
         String path = "/api/v1/enrollments/" + enrollment + "/mentors/" + mentor;
 
@@ -142,6 +143,44 @@ class EnrollmentsConcurrencyTests {
         assertThat(actions("/api/v1/tracks/" + first + "/history")).containsExactly("TRACK_ENROLLMENT_MENTOR_ASSIGNED");
         assertThat(actions("/api/v1/users/" + student + "/history")).containsExactly("USER_MENTOR_ASSIGNED");
         assertThat(actions("/api/v1/users/" + mentor + "/history")).containsExactly("USER_STUDENT_ASSIGNED");
+    }
+
+    @RepeatedTest(10)
+    @DisplayName("ENR-13.7 A removal from the track at the moment of an assignment never leaves an enrollment with a"
+            + " mentor from outside the track")
+    void aRemovalAtTheMomentOfAnAssignmentNeverLeavesAMentorFromOutsideTheTrack() throws Exception {
+        UUID mentor = users.create("mia@x.test", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(first, mentor);
+        UUID enrollment = new TestEnrollments(jdbc).enroll(student, first, admin, LocalDate.now());
+
+        List<MvcTestResult> results = inParallel(
+                () -> send(HttpMethod.DELETE, "/api/v1/tracks/" + first + "/mentors/" + mentor, "", "anna"),
+                () -> send(HttpMethod.PUT, "/api/v1/enrollments/" + enrollment + "/mentors/" + mentor, "", "boris"));
+
+        List<Integer> statuses =
+                results.stream().map(r -> r.getResponse().getStatus()).sorted().toList();
+        assertThat(statuses).containsExactly(200, 409);
+        MvcTestResult refused = results.stream()
+                .filter(r -> r.getResponse().getStatus() == 409)
+                .findFirst()
+                .orElseThrow();
+        assertThat(refused)
+                .bodyJson()
+                .extractingPath("$.type")
+                .asString()
+                .isIn("urn:mentorhub:problem:mentor-leads-enrollments", "urn:mentorhub:problem:mentor-not-eligible");
+        List<String> onTrack = JsonPath.read(
+                new String(
+                        send(HttpMethod.GET, "/api/v1/tracks/" + first, "", "anna")
+                                .getResponse()
+                                .getContentAsByteArray(),
+                        StandardCharsets.UTF_8),
+                "$.mentors[*].id");
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/tracks/" + first + "/enrollments", "", "anna");
+        List<String> onEnrollment = JsonPath.read(
+                new String(list.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
+                "$.items[0].mentors[*].id");
+        assertThat(onTrack).isEqualTo(onEnrollment);
     }
 
     private int count(String path) {

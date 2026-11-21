@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Who studies on which track. An enrollment links one student to one track from a start date; a coordinator of the track, or an administrator, records it, and assigns the mentors who lead the student. A mentor sees the students they lead. Coordinators and administrators see the students of every track, since the center interviews candidates across its tracks and everyone knows who went where; a student sees their own enrollment and whom to contact, their coordinators and mentors. An enrollment cannot be changed, cancelled or ended yet. Tracks and their coordinators are described by tracks (TRK), roles and permissions by authorization (PERM), recorded changes by audit (AUD). The API contract holds the fields, limits and response shapes.
+Who studies on which track. An enrollment links one student to one track from a start date; a coordinator of the track, or an administrator, records it, names the mentors who teach on the track, and assigns among them the mentors who lead the student. A mentor sees the students they lead. Coordinators and administrators see the students of every track, since the center interviews candidates across its tracks and everyone knows who went where; a student sees their own enrollment and whom to contact, their coordinators and mentors. An enrollment cannot be changed, cancelled or ended yet. Tracks and their coordinators are described by tracks (TRK), roles and permissions by authorization (PERM), recorded changes by audit (AUD). The API contract holds the fields, limits and response shapes.
 
 ## Requirements
 
 ### ENR-1 Who may do what
 
-The system SHALL require `ENROLLMENTS_READ` to read the enrollments of a track. A user reads their own enrollments with no permission, only active (IDN-3). Enrolling a student on a track, assigning and removing the mentors of an enrollment on it, and listing the candidates for either, SHALL need `ENROLLMENTS_MANAGE`, which allows it on any track, or `ENROLLMENTS_MANAGE_COORDINATED` together with being a coordinator of that track at the time of the request (decision 0004). After the common refusals (PLT-10), a request is checked for the track, or for the enrollment, either being 404 `not-found` when it does not exist, then for the relation (403 `forbidden`), and only then for anything else (ENR-2); a refusal changes nothing. The track tells the caller whether they may enroll on it, by the permission and the relation alone, whatever its status.
+The system SHALL require `ENROLLMENTS_READ` to read the enrollments of a track. A user reads their own enrollments with no permission, only active (IDN-3). Enrolling a student on a track, naming and removing the mentors of the track, assigning and removing the mentors of an enrollment on it, and listing the candidates for each, SHALL need `ENROLLMENTS_MANAGE`, which allows it on any track, or `ENROLLMENTS_MANAGE_COORDINATED` together with being a coordinator of that track at the time of the request (decision 0004). After the common refusals (PLT-10), a request is checked for the track, or for the enrollment, either being 404 `not-found` when it does not exist, then for the relation (403 `forbidden`), and only then for anything else (ENR-2); a refusal changes nothing. The track tells the caller whether they may enroll on it and name its mentors, by the permission and the relation alone, whatever its status.
 
 #### ENR-1.1 Reading the enrollments of a track needs ENROLLMENTS_READ
 
@@ -34,7 +34,7 @@ The system SHALL require `ENROLLMENTS_READ` to read the enrollments of a track. 
 #### ENR-1.4 An unknown track is not found
 
 - GIVEN an administrator, a coordinator of a track, and an id that no track has
-- WHEN each lists the enrollments of that id, lists the candidates for it, and enrolls a student on it
+- WHEN each lists the enrollments of that id, lists the candidates for it, enrolls a student on it, lists the candidates for its mentors, and names and removes a mentor of it
 - THEN each response is 404 `not-found`
 
 #### ENR-1.5 A coordinator assigns mentors only on a track they coordinate
@@ -49,6 +49,14 @@ The system SHALL require `ENROLLMENTS_READ` to read the enrollments of a track. 
 - GIVEN an administrator, a coordinator of a track, and an id that no enrollment has
 - WHEN each lists the candidates for the mentors of that id, assigns a mentor to it and removes one from it
 - THEN each response is 404 `not-found`
+
+#### ENR-1.7 A coordinator names the mentors only of a track they coordinate
+
+- GIVEN an active track with a mentor, a coordinator of another track only, a coordinator who has been removed from the track, and an active user with the mentor role
+- WHEN each coordinator lists the candidates for the mentors of the track, names the user, and removes the mentor
+- THEN each response is 403 `forbidden`
+- AND the track does not tell either coordinator that they may name its mentors
+- AND the track keeps its one mentor and nothing is recorded
 
 ### ENR-2 Enrolling a student
 
@@ -154,7 +162,7 @@ The system SHALL return, for any active caller, whatever roles they hold, the ca
 
 ### ENR-6 The history of an enrollment
 
-The system SHALL record an enrollment in the history of its track (TRK-7) and in the history of the student (USR-10), and the assignment and removal of a mentor in those and in the history of the mentor, as the catalog of audited actions says (AUD-7).
+The system SHALL record an enrollment in the history of its track (TRK-7) and in the history of the student (USR-10), the assignment and removal of a mentor of an enrollment in those and in the history of the mentor, and the naming and removal of a mentor of a track in the history of the track and of the mentor, as the catalog of audited actions says (AUD-7).
 
 #### ENR-6.1 An enrollment shows in the track's and the student's history
 
@@ -170,13 +178,20 @@ The system SHALL record an enrollment in the history of its track (TRK-7) and in
 - THEN the track's history has an entry of the assignment and one of the removal, each with the coordinator as the actor, the student and the mentor
 - AND the student's history has the two entries with the mentor, and the mentor's history the two entries with the student, each also with the track with the code and the name it had then
 
-### ENR-7 Enrollments on the track page
+#### ENR-6.3 Naming and removing a mentor of a track show in two histories
 
-The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_READ`, the enrollments of the track as a paged list (PLT-9) with the student's name and email, the start date, the mentors and the marks (ENR-4), and SHALL say when the track has no enrollment yet. To a user who may enroll on the track (ENR-1) it SHALL offer "Enroll student" on an active track, in a dialog that offers the candidates with their search (ENR-3) and a start date, today unless changed, and on each enrollment the assignment of a mentor, in a dialog that offers the candidates with their search (ENR-10), and the removal of a mentor after a confirmation.
+- GIVEN a mentor named to a track and later removed from it by a coordinator of the track, after which the track's code and name were changed
+- WHEN an administrator reads the history of the track and of the mentor
+- THEN the track's history has an entry of the naming and one of the removal, each with the coordinator as the actor and the mentor
+- AND the mentor's history has the two entries, each with the coordinator as the actor and the track with the code and the name it had then
+
+### ENR-7 Enrollments and mentors on the track page
+
+The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_READ`, the enrollments of the track as a paged list (PLT-9) with the student's name and email, the start date, the mentors and the marks (ENR-4), and SHALL say when the track has no enrollment yet. To a user who may enroll on the track (ENR-1) it SHALL offer "Enroll student" on an active track, in a dialog that offers the candidates with their search (ENR-3) and a start date, today unless changed, and on each enrollment the assignment of a mentor, in a dialog that offers the candidates with their search (ENR-10), and the removal of a mentor after a confirmation. It SHALL say when the track has no mentor yet. To a user who may name the mentors of the track (ENR-1) it SHALL offer, only on an active track, both the naming of a mentor in a dialog that offers the candidates with their search (ENR-14) and the removal of a mentor of the track after a confirmation.
 
 #### ENR-7.1 A refused enrollment or mentor assignment is explained and the list reloaded
 
-- GIVEN the server refuses an enrollment, the assignment of a mentor, or the candidates for either, with 409 `track-archived`, `student-not-eligible`, `student-already-enrolled` or `mentor-not-eligible`
+- GIVEN the server refuses an enrollment, the assignment of a mentor, the naming or removal of a mentor of the track, or the candidates for any of them, with 409 `track-archived`, `student-not-eligible`, `student-already-enrolled`, `mentor-not-eligible` or `mentor-leads-enrollments`
 - WHEN the client receives it
 - THEN a message explains the refusal
 - AND the track and its enrollments are shown as they are now
@@ -187,17 +202,17 @@ The client SHALL offer the My enrollment link only to a user who has an enrollme
 
 ### ENR-9 Mentors of an enrollment
 
-The system SHALL let a caller who may (ENR-1) assign as a mentor of an enrollment an active user who holds the mentor role, and remove any mentor of it. An enrollment may have any number of mentors, and a user may lead any number of enrollments, on any track. Any eligible user is assigned, the student of the enrollment and the caller included, and whatever the student's status or roles. When a mentor is later disabled or loses the mentor role, the assignment stays and grants nothing. Assigning a mentor already assigned, even one no longer eligible, or removing a user who is not a mentor of the enrollment or an id no user has, changes and records nothing. After the checks of ENR-1, a request is checked for the eligibility of the mentor. Parallel requests never end in a server error. Each change is audited (ENR-6).
+The system SHALL let a caller who may (ENR-1) assign as a mentor of an enrollment an active user who holds the mentor role and is a mentor of the enrollment's track (ENR-13), and remove any mentor of it. An enrollment may have any number of mentors, and a user may lead any number of enrollments, on any track they are a mentor of. Any eligible user is assigned, the student of the enrollment and the caller included, and whatever the student's status or roles. When a mentor is later disabled or loses the mentor role, the assignment stays and grants nothing. Assigning a mentor already assigned, even one no longer eligible, or removing a user who is not a mentor of the enrollment or an id no user has, changes and records nothing. After the checks of ENR-1, a request is checked for the eligibility of the mentor. Parallel requests never end in a server error. Each change is audited (ENR-6).
 
 #### ENR-9.1 A coordinator assigns and removes the mentors of an enrollment on their track
 
-- GIVEN an enrollment on a track, a coordinator of the track, an active user with the mentor role, and a mentor of the enrollment who has since been disabled
+- GIVEN an enrollment on a track, a coordinator of the track, an active user with the mentor role who is a mentor of the track, and a mentor of the enrollment who has since been disabled
 - WHEN the coordinator assigns the user and removes the disabled mentor
 - THEN the enrollments of the track list the enrollment with the user as its only mentor
 
-#### ENR-9.2 Only an active user with the mentor role is assigned
+#### ENR-9.2 Only an active mentor of the track with the mentor role is assigned
 
-- GIVEN an enrollment, a disabled user with the mentor role, an active user without it, and an id that no user has
+- GIVEN an enrollment on a track, a mentor of the track who has since been disabled, a mentor of the track whose mentor role has since been removed, an active user with the mentor role who is not a mentor of the track, and an id that no user has
 - WHEN an administrator assigns each as a mentor of the enrollment
 - THEN each response is 409 `mentor-not-eligible`
 - AND the enrollment has no new mentor and nothing is recorded
@@ -211,20 +226,20 @@ The system SHALL let a caller who may (ENR-1) assign as a mentor of an enrollmen
 
 #### ENR-9.4 Parallel assignments of one mentor assign them once
 
-- GIVEN an enrollment and an active user with the mentor role
+- GIVEN an enrollment and an active mentor of its track with the mentor role
 - WHEN two administrators assign the user as its mentor at the same moment
 - THEN both responses are a success, never 500
 - AND the user is a mentor of the enrollment once, with one entry in each history
 
 ### ENR-10 The candidates for mentors
 
-The system SHALL let a caller who may assign the mentors of an enrollment (ENR-1) list the candidates for them without `USERS_READ`: the active users with the mentor role who are not its mentors, each with their name and email, ordered by name, a page at a time (PLT-3), and narrowed by a search for a part of the name or the email.
+The system SHALL let a caller who may assign the mentors of an enrollment (ENR-1) list the candidates for them without `USERS_READ`: the active users with the mentor role who are mentors of the enrollment's track and not its mentors, each with their name and email, ordered by name, a page at a time (PLT-3), and narrowed by a search for a part of the name or the email.
 
-#### ENR-10.1 The candidates are the eligible mentors not yet assigned
+#### ENR-10.1 The candidates are the eligible mentors of the track not yet assigned
 
-- GIVEN an enrollment with a mentor, a coordinator of its track without `USERS_READ`, another active user with the mentor role, a disabled user with the mentor role, and an active user without it
+- GIVEN an enrollment with a mentor, a coordinator of its track without `USERS_READ`, another active mentor of the track with the mentor role, a mentor of the track who has since been disabled, a mentor of the track whose mentor role has since been removed, and an active user with the mentor role who is not a mentor of the track
 - WHEN the coordinator lists the candidates for the mentors of the enrollment
-- THEN only the other active user with the mentor role is listed
+- THEN only the other active mentor of the track is listed
 
 ### ENR-11 A mentor's students
 
@@ -247,19 +262,81 @@ The system SHALL return, for a caller with `ENROLLMENTS_READ_MENTORED`, the enro
 
 The client SHALL offer the My students link only to a user with `ENROLLMENTS_READ_MENTORED`, and take anyone else who opens its address to the home page (PERM-7). The page SHALL show the enrollments the user leads (ENR-11) as a paged list (PLT-9) with the student's name and email, the track, the start date and the marks, and SHALL say when the user leads no student yet.
 
+### ENR-13 Mentors of a track
+
+The system SHALL let a caller who may (ENR-1) name as a mentor of an active track an active user who holds the mentor role, and remove any mentor of it unless they are a mentor of an active enrollment on the track, which is 409 `mentor-leads-enrollments`. A track may have any number of mentors, and a user may be a mentor of any number of tracks, a coordinator or a student of the track included. When a mentor is later disabled or loses the mentor role, they stay a mentor of the track, marked (TRK-4), and are not assigned to its enrollments (ENR-9). Naming a mentor already named, even one no longer eligible, or removing a user who is not a mentor of the track or an id no user has, changes and records nothing. On an archived track, every naming and removal, even one that would change nothing, and listing the candidates SHALL be 409 `track-archived` (TRK-5). After the checks of ENR-1, a request is checked for an archived track, then a naming for the eligibility of the mentor, and a removal for the enrollments the mentor leads. The mentors of a track and the mentors of its enrollments change one after another, so a mentor of an active enrollment is always a mentor of its track. Parallel requests never end in a server error. Each change is audited (ENR-6).
+
+#### ENR-13.1 A coordinator names and removes the mentors of their track
+
+- GIVEN an active track with a mentor who leads no enrollment, a coordinator of the track, and an active user with the mentor role
+- WHEN the coordinator names the user and removes the mentor
+- THEN the track has the user as its only mentor
+
+#### ENR-13.2 Only an active user with the mentor role is named
+
+- GIVEN an active track, a disabled user with the mentor role, an active user without it, and an id that no user has
+- WHEN an administrator names each as a mentor of the track
+- THEN each response is 409 `mentor-not-eligible`
+- AND the track has no new mentor and nothing is recorded
+
+#### ENR-13.3 A repeated naming or removal records nothing
+
+- GIVEN an active track with a mentor and a mentor who has since been disabled
+- WHEN an administrator names each of them again, removes a user who is not a mentor of the track, and removes an id that no user has
+- THEN each response is a success, and the track keeps the same two mentors
+- AND nothing is recorded
+
+#### ENR-13.4 A mentor who leads a student on the track is not removed
+
+- GIVEN an active track and a mentor of it who leads an enrollment on it
+- WHEN an administrator removes the mentor from the track
+- THEN the response is 409 `mentor-leads-enrollments`
+- AND the user is still a mentor of the track and of the enrollment, and nothing is recorded
+
+#### ENR-13.5 The mentors of an archived track cannot be changed
+
+- GIVEN an archived track with a mentor, and an active user with the mentor role
+- WHEN an administrator lists the candidates for its mentors, names the user, names the mentor again, removes the mentor, and removes a user who is not its mentor
+- THEN each response is 409 `track-archived`
+- AND the track keeps its one mentor and nothing is recorded
+
+#### ENR-13.6 Parallel namings of one mentor name them once
+
+- GIVEN an active track and an active user with the mentor role
+- WHEN two administrators name the user as its mentor at the same moment
+- THEN each response is a success, never 500
+- AND the user is a mentor of the track once, with one entry in each history
+
+#### ENR-13.7 A removal from the track at the moment of an assignment never leaves an enrollment with a mentor from outside the track
+
+- GIVEN an enrollment on a track and an active mentor of the track who leads no enrollment
+- WHEN one administrator removes the mentor from the track while another assigns them to the enrollment, at the same moment
+- THEN exactly one request succeeds, and the other is 409 `mentor-leads-enrollments` or `mentor-not-eligible`, never 500
+- AND either the user is a mentor of the track and of the enrollment, or of neither
+
+### ENR-14 The candidates for the mentors of a track
+
+The system SHALL let a caller who may name the mentors of a track (ENR-1) list the candidates for them without `USERS_READ`: the active users with the mentor role who are not its mentors, each with their name and email, ordered by name, a page at a time (PLT-3), and narrowed by a search for a part of the name or the email.
+
+#### ENR-14.1 The candidates are the eligible mentors not yet named
+
+- GIVEN an active track with a mentor, a coordinator of the track without `USERS_READ`, another active user with the mentor role, a disabled user with the mentor role, and an active user without it
+- WHEN the coordinator lists the candidates for the mentors of the track
+- THEN only the other active user with the mentor role is listed
+
 ## Known limitations
 
 - An enrollment cannot be changed, cancelled or ended: a mistaken one, a wrong start date included, stays, and keeps the student from being enrolled elsewhere and the track from being archived (TRK-5), until the end of an enrollment exists. So does the enrollment of a student who was disabled since, such as an expelled one.
-- A user enrolled, or assigned as a mentor, at the moment an administrator disables them or removes their student or mentor role may keep an enrollment or an assignment that is already marked (ENR-4).
-- A coordinator removed from the track, or losing the role, at the moment they enroll a student or assign or remove a mentor may still do it; the entry names that coordinator as the actor.
-- Without `USERS_READ`, a caller with `ENROLLMENTS_READ` sees the names and emails of enrolled students, a caller who may enroll on a track those of every candidate, a caller with `TRACKS_READ` the students enrolled on a track and their mentors in its history (TRK-7), a student the names, emails and phones of the coordinators of their track and of their mentors, a caller with `ENROLLMENTS_READ` also the names and emails of the mentors of every enrollment, a caller who may assign mentors those of every candidate mentor, and a mentor the names and emails of the students they lead and their tracks.
+- A user enrolled, or assigned or named as a mentor, at the moment an administrator disables them or removes their student or mentor role may keep an enrollment or an assignment that is already marked (ENR-4, TRK-4).
+- A coordinator removed from the track, or losing the role, at the moment they enroll a student, name or remove a mentor of the track, or assign or remove a mentor of an enrollment may still do it; the entry names that coordinator as the actor.
+- Without `USERS_READ`, a caller with `ENROLLMENTS_READ` sees the names and emails of enrolled students, a caller who may enroll on a track those of every candidate, a caller with `TRACKS_READ` the students enrolled on a track and their mentors in its history (TRK-7), a student the names, emails and phones of the coordinators of their track and of their mentors, a caller with `ENROLLMENTS_READ` also the names and emails of the mentors of every enrollment, a caller who may assign or name mentors those of every candidate mentor, and a mentor the names and emails of the students they lead and their tracks.
 - A student whose student role is removed still reads their own enrollment while active; what a student loses when their study ends is decided with the access lifecycle.
 
 ## Out of scope
 
 - Changing, cancelling and ending an enrollment, its outcome, and moving a student to another track.
 - Mentors of a cohort, and cohorts.
-- Mentors of a track: any mentor of the center may lead an enrollment on any track.
+- The number of students each mentor of a track leads, and those students, on the track page.
 - What happens to the mentors of an enrollment when it ends, which enrollments a mentor sees after they end, and assigning a mentor to the enrollment of a student who is disabled or no longer holds the student role; all are decided with the end of an enrollment.
 - A page of one enrollment and a history of its own.
 - The enrollments of a user shown on the user page; the user's history shows when they were enrolled (USR-10).

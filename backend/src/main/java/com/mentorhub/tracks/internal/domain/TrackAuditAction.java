@@ -11,6 +11,8 @@ public enum TrackAuditAction {
     TRACK_RESTORED(TrackChange.Restored.class),
     TRACK_COORDINATOR_ADDED(TrackChange.CoordinatorAdded.class),
     TRACK_COORDINATOR_REMOVED(TrackChange.CoordinatorRemoved.class),
+    TRACK_MENTOR_ADDED(TrackChange.MentorAdded.class),
+    TRACK_MENTOR_REMOVED(TrackChange.MentorRemoved.class),
     TRACK_STUDENT_ENROLLED(TrackChange.StudentEnrolled.class),
     TRACK_ENROLLMENT_MENTOR_ASSIGNED(TrackChange.EnrollmentMentorAssigned.class),
     TRACK_ENROLLMENT_MENTOR_REMOVED(TrackChange.EnrollmentMentorRemoved.class);

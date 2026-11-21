@@ -13,6 +13,8 @@ public enum UserAuditAction {
     USER_INVITATION_ACCEPTED(UserChange.InvitationAccepted.class),
     USER_TRACK_COORDINATOR_ADDED(UserChange.TrackCoordinatorAdded.class),
     USER_TRACK_COORDINATOR_REMOVED(UserChange.TrackCoordinatorRemoved.class),
+    USER_TRACK_MENTOR_ADDED(UserChange.TrackMentorAdded.class),
+    USER_TRACK_MENTOR_REMOVED(UserChange.TrackMentorRemoved.class),
     USER_ENROLLED(UserChange.Enrolled.class),
     USER_MENTOR_ASSIGNED(UserChange.MentorAssigned.class),
     USER_MENTOR_REMOVED(UserChange.MentorRemoved.class),

@@ -136,6 +136,10 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 | `TRACK_COORDINATOR_REMOVED` | track | An administrator removes a coordinator of the track | the administrator | the user |
 | `USER_TRACK_COORDINATOR_ADDED` | user | Written with `TRACK_COORDINATOR_ADDED`, about the named user | the administrator | the track, with its code and name at that moment |
 | `USER_TRACK_COORDINATOR_REMOVED` | user | Written with `TRACK_COORDINATOR_REMOVED`, about the removed user | the administrator | the track, with its code and name at that moment |
+| `TRACK_MENTOR_ADDED` | track | A coordinator of the track or an administrator names a user who is not yet a mentor of the track | the person who named | the user |
+| `TRACK_MENTOR_REMOVED` | track | A coordinator of the track or an administrator removes a mentor of the track | the person who removed | the user |
+| `USER_TRACK_MENTOR_ADDED` | user | Written with `TRACK_MENTOR_ADDED`, about the named user | the person who named | the track, with its code and name at that moment |
+| `USER_TRACK_MENTOR_REMOVED` | user | Written with `TRACK_MENTOR_REMOVED`, about the removed user | the person who removed | the track, with its code and name at that moment |
 | `TRACK_STUDENT_ENROLLED` | track | A coordinator of the track or an administrator enrolls a student on it | the person who enrolled | the student and the start date |
 | `USER_ENROLLED` | user | Written with `TRACK_STUDENT_ENROLLED`, about the enrolled student | the person who enrolled | the track, with its code and name at that moment, and the start date |
 | `TRACK_ENROLLMENT_MENTOR_ASSIGNED` | track | A coordinator of the track or an administrator assigns a user who is not yet a mentor of an enrollment on it | the person who assigned | the student and the mentor |

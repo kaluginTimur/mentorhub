@@ -53,6 +53,8 @@ final class TracksMapper {
                                 user.disabled(),
                                 user.roles().contains(Role.COORDINATOR)))
                         .toList(),
+                // Placeholder until T3 of track-mentors reads the mentors of the track.
+                List.of(),
                 track.canEnroll());
     }
 
@@ -94,7 +96,9 @@ final class TracksMapper {
             case com.mentorhub.tracks.internal.domain.TrackChange.Archived _,
                     com.mentorhub.tracks.internal.domain.TrackChange.Restored _ -> {}
             case com.mentorhub.tracks.internal.domain.TrackChange.CoordinatorAdded _,
-                    com.mentorhub.tracks.internal.domain.TrackChange.CoordinatorRemoved _ ->
+                    com.mentorhub.tracks.internal.domain.TrackChange.CoordinatorRemoved _,
+                    com.mentorhub.tracks.internal.domain.TrackChange.MentorAdded _,
+                    com.mentorhub.tracks.internal.domain.TrackChange.MentorRemoved _ ->
                 dto.setUser(historyActor(item.user()));
             case com.mentorhub.tracks.internal.domain.TrackChange.StudentEnrolled(var _, var startDate) -> {
                 dto.setUser(historyActor(item.user()));

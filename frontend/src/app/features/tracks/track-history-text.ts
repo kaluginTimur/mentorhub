@@ -18,6 +18,10 @@ export function describeTrackEntry(entry: TrackHistoryEntry): string {
       return `Named ${user} a coordinator`;
     case 'TRACK_COORDINATOR_REMOVED':
       return `Removed ${user} as a coordinator`;
+    case 'TRACK_MENTOR_ADDED':
+      return `Named ${user} a mentor`;
+    case 'TRACK_MENTOR_REMOVED':
+      return `Removed ${user} as a mentor`;
     case 'TRACK_STUDENT_ENROLLED':
       return `Enrolled ${user}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
     case 'TRACK_ENROLLMENT_MENTOR_ASSIGNED':

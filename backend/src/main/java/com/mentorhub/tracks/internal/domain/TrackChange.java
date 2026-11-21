@@ -82,6 +82,30 @@ public sealed interface TrackChange {
         }
     }
 
+    /** @param userId {@code users.id} of the named mentor */
+    record MentorAdded(UUID userId) implements TrackChange {
+        public MentorAdded {
+            Objects.requireNonNull(userId, "userId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_MENTOR_ADDED;
+        }
+    }
+
+    /** @param userId {@code users.id} of the removed mentor */
+    record MentorRemoved(UUID userId) implements TrackChange {
+        public MentorRemoved {
+            Objects.requireNonNull(userId, "userId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_MENTOR_REMOVED;
+        }
+    }
+
     /** @param userId {@code users.id} of the enrolled student */
     record StudentEnrolled(UUID userId, LocalDate startDate) implements TrackChange {
         public StudentEnrolled {
