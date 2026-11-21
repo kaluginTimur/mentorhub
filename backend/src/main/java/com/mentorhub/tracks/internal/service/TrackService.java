@@ -9,14 +9,17 @@ import com.mentorhub.tracks.internal.persistence.StoredTrack;
 import com.mentorhub.tracks.internal.persistence.TrackAuditTrail;
 import com.mentorhub.tracks.internal.persistence.TrackChangePage;
 import com.mentorhub.tracks.internal.persistence.TrackCoordinator;
+import com.mentorhub.tracks.internal.persistence.TrackMentor;
 import com.mentorhub.tracks.internal.persistence.TrackRepository;
 import com.mentorhub.users.CoordinatorHistory;
 import com.mentorhub.users.CurrentUser;
 import com.mentorhub.users.CurrentUserProvider;
+import com.mentorhub.users.DirectoryPage;
 import com.mentorhub.users.DirectoryUser;
 import com.mentorhub.users.HistoryTrack;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
+import com.mentorhub.users.TrackMentorHistory;
 import com.mentorhub.users.UserDirectory;
 import com.mentorhub.web.ConflictException;
 import com.mentorhub.web.FieldViolation;
@@ -35,22 +38,26 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Tracks and their coordinators (TRK). Callers hold the permission the controller checks; every track is visible to
- * them, so the only resource-level rule is that an unknown id is {@link NotFoundException}.
+ * Tracks, their coordinators (TRK) and their mentors (ENR-13). Callers hold the permission the controller checks; every
+ * track is visible to them, so an unknown id is {@link NotFoundException}. The mentors of a track are managed only by a
+ * caller who may enroll on it (ENR-1), checked after the track is found.
  *
- * <p>Every change locks the track's row first ({@link TrackRepository#lock}), then checks the status, then the
- * eligibility of a coordinator not yet named, then writes; so changes of one track, enrollments on it and its archiving
- * run one after another (TRK-5.4, TRK-5.6). The track's row is the only lock taken.
+ * <p>Every change locks the track's row first ({@link TrackRepository#lock}), then checks the relation and the status,
+ * then the eligibility of a user not yet named or the enrollments of a mentor removed, then writes; so changes of one
+ * track, enrollments on it, the assignment of mentors to them and its archiving run one after another (TRK-5.4, TRK-5.6,
+ * ENR-13.7). The track's row is the only lock taken.
  */
 @Service
 public class TrackService {
 
     static final int MAX_CODE_LENGTH = 20;
     static final int MAX_NAME_LENGTH = 100;
+    static final int MAX_QUERY_LENGTH = 100;
 
     private final CurrentUserProvider currentUser;
     private final TrackRepository tracks;
@@ -58,6 +65,7 @@ public class TrackService {
     private final UserDirectory userDirectory;
     private final CoordinatorHistory coordinatorHistory;
     private final ActiveEnrollments activeEnrollments;
+    private final TrackMentorHistory mentorHistory;
 
     TrackService(
             CurrentUserProvider currentUser,
@@ -65,19 +73,21 @@ public class TrackService {
             TrackAuditTrail auditTrail,
             UserDirectory userDirectory,
             CoordinatorHistory coordinatorHistory,
-            ActiveEnrollments activeEnrollments) {
+            ActiveEnrollments activeEnrollments,
+            TrackMentorHistory mentorHistory) {
         this.currentUser = currentUser;
         this.tracks = tracks;
         this.auditTrail = auditTrail;
         this.userDirectory = userDirectory;
         this.coordinatorHistory = coordinatorHistory;
         this.activeEnrollments = activeEnrollments;
+        this.mentorHistory = mentorHistory;
     }
 
     /** @param status {@code null} for every track */
     @Transactional(readOnly = true)
     public List<TrackDetails> list(@Nullable TrackStatus status) {
-        return withCoordinators(tracks.findAll(status));
+        return withMembers(tracks.findAll(status));
     }
 
     @Transactional(readOnly = true)
@@ -224,6 +234,100 @@ public class TrackService {
         return details(track);
     }
 
+    /**
+     * The active users with the mentor role who are not mentors of the track.
+     *
+     * @param q searched in the email, first and last name after trimming; blank means no search
+     * @throws ValidationException for {@code q}
+     * @throws AccessDeniedException when the caller may not enroll on the track (ENR-1)
+     * @throws ConflictException {@link TrackProblems#TRACK_ARCHIVED}
+     */
+    @Transactional(readOnly = true)
+    public DirectoryPage mentorCandidates(UUID trackId, @Nullable String q, int page, int size) {
+        String text = searchText(q);
+        StoredTrack track = tracks.find(trackId).orElseThrow(NotFoundException::new);
+        checkMayEnroll(trackId);
+        if (track.status() == TrackStatus.ARCHIVED) {
+            throw trackArchived();
+        }
+        return userDirectory.findActiveUsersWithRole(Role.MENTOR, text, mentorIds(trackId), page, size);
+    }
+
+    /**
+     * Names the user a mentor of the track; naming a mentor again changes and records nothing, even one no longer
+     * eligible (ENR-13.3), so eligibility is checked only for a user not yet named.
+     *
+     * @throws AccessDeniedException when the caller may not enroll on the track (ENR-1)
+     * @throws ConflictException {@link TrackProblems#TRACK_ARCHIVED} or {@link TrackProblems#MENTOR_NOT_ELIGIBLE}
+     */
+    @Transactional
+    public TrackDetails addMentor(UUID trackId, UUID userId) {
+        StoredTrack track = lockForMentors(trackId);
+        if (tracks.isMentor(trackId, userId)) {
+            return details(track);
+        }
+        if (!userDirectory.isActiveWithRole(userId, Role.MENTOR)) {
+            throw new ConflictException(
+                    TrackProblems.MENTOR_NOT_ELIGIBLE,
+                    "Only an active user with the mentor role can be named a mentor.");
+        }
+        if (tracks.addMentorIfAbsent(trackId, userId) > 0) {
+            UUID actor = actor();
+            auditTrail.record(actor, trackId, new TrackChange.MentorAdded(userId));
+            mentorHistory.recordAdded(actor, userId, historyTrack(track));
+        }
+        return details(track);
+    }
+
+    /**
+     * Removes the user as a mentor of the track; removing a user who is not one, or an unknown id, changes and records
+     * nothing.
+     *
+     * @throws AccessDeniedException when the caller may not enroll on the track (ENR-1)
+     * @throws ConflictException {@link TrackProblems#TRACK_ARCHIVED} or {@link TrackProblems#MENTOR_LEADS_ENROLLMENTS}
+     */
+    @Transactional
+    public TrackDetails removeMentor(UUID trackId, UUID userId) {
+        StoredTrack track = lockForMentors(trackId);
+        if (!tracks.isMentor(trackId, userId)) {
+            return details(track);
+        }
+        if (activeEnrollments.ledOnTrack(trackId, userId)) {
+            throw new ConflictException(
+                    TrackProblems.MENTOR_LEADS_ENROLLMENTS,
+                    "The mentor leads active enrollments on the track; remove them from those enrollments first.");
+        }
+        if (tracks.removeMentor(trackId, userId) > 0) {
+            UUID actor = actor();
+            auditTrail.record(actor, trackId, new TrackChange.MentorRemoved(userId));
+            mentorHistory.recordRemoved(actor, userId, historyTrack(track));
+        }
+        return details(track);
+    }
+
+    private StoredTrack lockForMentors(UUID trackId) {
+        StoredTrack track = tracks.lock(trackId).orElseThrow(NotFoundException::new);
+        checkMayEnroll(trackId);
+        if (track.status() == TrackStatus.ARCHIVED) {
+            throw trackArchived();
+        }
+        return track;
+    }
+
+    /** The controller admits only callers with one of the two permissions (ENR-1). */
+    private void checkMayEnroll(UUID trackId) {
+        CurrentUser caller = currentUser.currentUser();
+        if (!caller.has(Permission.ENROLLMENTS_MANAGE) && !tracks.isCoordinator(trackId, caller.id())) {
+            throw new AccessDeniedException("Not a coordinator of the track");
+        }
+    }
+
+    private Set<UUID> mentorIds(UUID trackId) {
+        return tracks.findMentors(List.of(trackId)).stream()
+                .map(TrackMentor::userId)
+                .collect(Collectors.toSet());
+    }
+
     private TrackDetails changeStatus(UUID trackId, TrackStatus status, TrackChange change) {
         StoredTrack track = tracks.lock(trackId).orElseThrow(NotFoundException::new);
         if (track.status() == status) {
@@ -248,27 +352,37 @@ public class TrackService {
     }
 
     private TrackDetails details(StoredTrack track) {
-        return withCoordinators(List.of(track)).getFirst();
+        return withMembers(List.of(track)).getFirst();
     }
 
-    private List<TrackDetails> withCoordinators(List<StoredTrack> stored) {
+    private List<TrackDetails> withMembers(List<StoredTrack> stored) {
         CurrentUser caller = currentUser.currentUser();
-        Map<UUID, Set<UUID>> coordinatorIds =
-                coordinatorIds(stored.stream().map(StoredTrack::id).toList());
-        List<DirectoryUser> users = userDirectory.findUsers(
-                coordinatorIds.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+        List<UUID> trackIds = stored.stream().map(StoredTrack::id).toList();
+        Map<UUID, Set<UUID>> coordinatorIds = coordinatorIds(trackIds);
+        Map<UUID, Set<UUID>> mentorIds = new HashMap<>();
+        for (TrackMentor mentor : tracks.findMentors(trackIds)) {
+            mentorIds.computeIfAbsent(mentor.trackId(), id -> new HashSet<>()).add(mentor.userId());
+        }
+        List<DirectoryUser> users =
+                userDirectory.findUsers(Stream.concat(coordinatorIds.values().stream(), mentorIds.values().stream())
+                        .flatMap(Set::stream)
+                        .collect(Collectors.toSet()));
         return stored.stream()
                 .map(track -> {
-                    Set<UUID> ids = coordinatorIds.getOrDefault(track.id(), Set.of());
+                    Set<UUID> coordinators = coordinatorIds.getOrDefault(track.id(), Set.of());
+                    Set<UUID> mentors = mentorIds.getOrDefault(track.id(), Set.of());
                     return new TrackDetails(
                             track.id(),
                             track.code(),
                             track.name(),
                             track.status(),
                             users.stream()
-                                    .filter(user -> ids.contains(user.id()))
+                                    .filter(user -> coordinators.contains(user.id()))
                                     .toList(),
-                            canEnroll(caller, ids));
+                            users.stream()
+                                    .filter(user -> mentors.contains(user.id()))
+                                    .toList(),
+                            canEnroll(caller, coordinators));
                 })
                 .toList();
     }
@@ -340,6 +454,21 @@ public class TrackService {
 
     private static ConflictException trackArchived() {
         return new ConflictException(TrackProblems.TRACK_ARCHIVED, "The track is archived; restore it to change it.");
+    }
+
+    private static @Nullable String searchText(@Nullable String q) {
+        if (q == null) {
+            return null;
+        }
+        String text = q.strip();
+        if (text.isEmpty()) {
+            return null;
+        }
+        if (text.codePointCount(0, text.length()) > MAX_QUERY_LENGTH) {
+            throw new ValidationException(
+                    List.of(new FieldViolation("q", "must be at most " + MAX_QUERY_LENGTH + " characters")));
+        }
+        return text;
     }
 
     private static TrackValues validate(String code, String name) {

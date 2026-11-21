@@ -35,6 +35,20 @@ public interface UserDirectory {
     DirectoryPage findActiveUsersWithRole(
             Role role, @Nullable String text, Collection<UUID> excludedUserIds, int page, int size);
 
+    /**
+     * A page of the active users among the given ids who hold the role, except the excluded ids; otherwise as
+     * {@link #findActiveUsersWithRole(Role, String, Collection, int, int)}.
+     *
+     * @param userIds bounded by the number of users of the center
+     */
+    DirectoryPage findActiveUsersWithRoleAmong(
+            Collection<UUID> userIds,
+            Role role,
+            @Nullable String text,
+            Collection<UUID> excludedUserIds,
+            int page,
+            int size);
+
     /** Whether the id is an active user who holds the role; {@code false} for an id no user has. */
     boolean isActiveWithRole(UUID userId, Role role);
 

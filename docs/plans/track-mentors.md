@@ -80,8 +80,8 @@ No further index: the reads go by track (the primary key's leading column), as f
 |---|---|---|---|
 | T1 Contract, the schema SQL for the owner, stubs that keep the build green | all | backend-dev | done |
 | T2 Red tests | ENR-1.4, 1.7, 6.3, 7.1, 9.1, 9.2, 9.4, 10.1, 13.1–13.7, 14.1; TRK-4.3, 5.1, 5.4 | test-engineer | done |
-| T3 Backend: mentors of a track, candidates, `Track.mentors`, the narrowed assignment and candidates of an enrollment, the lock, audit and both histories, sample center data (checkpoint: backend green) | all backend ones | backend-dev | pending |
-| T4 Frontend: Mentors card, add dialog, removal, refusals (the history texts are done, early, to keep the build green) | ENR-7.1, TRK-10 | frontend-dev | pending |
+| T3 Backend: mentors of a track, candidates, `Track.mentors`, the narrowed assignment and candidates of an enrollment, the lock, audit and both histories, sample center data (checkpoint: backend green) | all backend ones | backend-dev | done |
+| T4 Frontend: Mentors card, add dialog, removal, refusals (the history texts are done, early, to keep the build green) | ENR-7.1, TRK-10 | frontend-dev | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -97,9 +97,15 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - T2 (test-engineer), for T3: `Track.mentors` sorted by name like the coordinators, with `disabled` and `mentorRole`; mentor-candidates returns `items` and `totalItems`; checks in the plan's order, an unknown track is 404 `not-found` for admin and coordinator alike (ENR-1.4); `TRACK_MENTOR_*` entries carry `actor` and `user`, `USER_TRACK_MENTOR_*` carry `actor` and `track` (id, code, name at that moment); ENR-13.7 and TRK-5.4 need the one track-row lock shared by naming, removing, archiving, enrolling and assigning; the response validator rejects any status or problem type not in the contract. The ENR-9.1 and ENR-9.4 tests already pass (the new rule only adds refusals) and must stay green. Test helpers: `TestTracks.addMentor`; `TestUsers.deleteAll` clears `track_mentors`.
 - T2 (test-engineer), for T4: a button `Add mentor`, only on an active track and only with `canEnroll`; per mentor a button with `aria-label="Remove <name>"`, then the shared confirmation dialog with the confirm button `Remove`; the add dialog has a `Mentor` field (or its first input), clicked to open the candidates, and a confirm button `Add`, the candidate picked as in the assign-mentor tests of `track-enrollments.spec.ts`; test data `trackMentor()` and `MENTOR_ID` in `test-data.ts`.
 
+- T3 (backend-dev): no stubs left. Mentor history in `users` is a new public `TrackMentorHistory` (beside `CoordinatorHistory`); the narrowed enrollment candidates use `UserDirectory.findActiveUsersWithRoleAmong` (SQL filter, so paging and `totalItems` hold); `ActiveEnrollments.ledOnTrack` is the ENR-13.4 check; `assignMentor` takes the track-row lock (`lockForEnrollment`) after finding the enrollment. `removeMentor` checks membership before the enrollment check (a non-mentor always gets 200). Sample center: SWE has Mark Mentor, Paul Becker (disabled), Daniel Kim, Alma Admin-Mentor, Sarah Lopez; QA has Mark Mentor, Dan Disabled (disabled), Victor Novak, Thomas Grant (no mentor role), and Daniel Kim named and removed 14 days ago; Frontend Development (archived) has Mark Mentor; DevOps has Victor Novak; QA Automation has none; Helen Park and Milo Mentor-Coordinator mentor no track, so every active track has candidates.
+- T4 (frontend-dev): the add dialog is an autocomplete with a "Showing N of M" hint like the assign-mentor dialog, not a paginator (What the tests rely on said "shared paginator"; no test depends on it). Every refusal goes through `refreshed()`, which reloads the track, its enrollments and its history; `track-enrollments.ts` got a public `reload()`.
+
+- T4 remark (owner, 2026-11-21, `.screens/img.png`): the Remove buttons were not vertically centered; fixed with `items-center` in both the Coordinators and Mentors rows of `track-page.html`.
+- Owner, 2026-11-21: the add-coordinator dialog must be aligned with the mentor and student pickers — out of this change, issue #53.
+
 ## Red tests
 
-Commit: <the commit holding the requirements, the contract, this plan and the red tests>
+Commit: `8805e6c` test: red tests for the mentors of a track
 
 ## Decisions
 
@@ -112,17 +118,16 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 - 2026-11-21: "sql миграции можно будет дать мне, чтобы я записал его в v1" — the schema change goes to the owner as SQL, and the owner writes it into `V1__schema.sql` instead of a new migration.
 - 2026-11-21: "всё по рекомендациям" (requirements review): findings 1 to 8, 11 and 12 applied; no search scenario for ENR-14; no further split.
 - 2026-11-21: "таких, за пределами sample center, нет. так что такой миграции не нужно" — no existing enrollment mentors outside the sample center, so the schema change carries no data over.
+- 2026-11-21, implementation stop: "всё ок, коммить и продолжай" — backend checkpoint, frontend, both lists of details and the manual-tester findings accepted as they are (the lingering error snackbar left as it is).
 - 2026-11-21, plan gate: "схему я руками дополнил, схема v1 ещё никуда не применялась. можешь продолжать" — plan and contract approved; the owner wrote the SQL of **Schema change** into `V1__schema.sql` as given; no database was migrated without `dev`, so nothing has to be dropped.
 
 ## Handover
 
-- Waiting for: the owner agrees to the red commit (requirements, contract, the owner's V1 change, the T1 stubs, the plan, the red tests, the usage record), or has remarks on the tests.
-- To read: this plan; the new tests `backend/src/test/java/com/mentorhub/tracks/internal/web/TrackMentorsEndpointTests.java`, `frontend/src/app/features/tracks/track-mentors.spec.ts`, and `git diff backend/src/test frontend/src/app/features/tracks/test-data.ts`.
-- Documents changed since the last stop: this plan (plan-gate approval in Decisions, T2 done, Notes from T2). The owner's change to `V1__schema.sql` (table `track_mentors`).
-- State: T2 done. Backend: 791 tests, 29 failing, all new or changed ones, on assertions (501 rejected by the response validator, empty `mentors`, ENR-9.2 assigns a user off the track, ENR-10.1 lists users off the track, TRK-5.4 does not wait for the lock); ENR-9.1 and ENR-9.4 pass already. Frontend: 414 existing pass, 3 new (ENR-7.1) fail on assertions. `trace`: 270 of 270 scenarios have tests, 4 manual. Nothing committed.
+- Waiting for: the second test-engineer pass (tests of details), then the review loop.
+- To read: this plan.
+- Documents changed since the last stop: the plan (T3, T4 done; decision of 2026-11-21 "всё ок").
+- State: T3 and T4 committed with the plan and the usage record; backend and frontend green; manual-tester and manual checks passed.
 - Open questions: none.
-- On agreement: commit, write the commit into Red tests, then brief `backend-dev` for T3 (a fresh agent; its last context was 108k, but the earlier agent is cold).
-- On remarks: relay them to `test-engineer`.
 
 ## Agents
 
@@ -133,3 +138,7 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 | frontend-dev | definition default | a7886742f5099df2d | plan: early T4 history texts | 43k |
 | test-engineer | definition default | a4b8f8775bb676be0 | plan: test-data fix | small |
 | test-engineer | definition default | a52b0b9f1e262d0eb | tests: T2 red tests | 143k |
+| backend-dev | definition default | a27a7d6aedf8c38b3 | implementation: T3 | 155k |
+| frontend-dev | definition default | a5994f14e13273d51 | implementation: T4, alignment fix | 92k |
+| manual-tester | definition default | a6932570ce14c95bd | implementation: screens | 68k |
+| manual-tester | haiku | a67a137083246eba4 | implementation: manual checks | small |

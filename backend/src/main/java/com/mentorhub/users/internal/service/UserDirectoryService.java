@@ -65,10 +65,29 @@ class UserDirectoryService implements UserDirectory {
     public DirectoryPage findActiveUsersWithRole(
             Role role, @Nullable String text, Collection<UUID> excludedUserIds, int page, int size) {
         return new DirectoryPage(
-                users.findActiveWithRolePage(role, text, excludedUserIds, size, offset(page, size)).stream()
+                users.findActiveWithRolePage(role, text, null, excludedUserIds, size, offset(page, size)).stream()
                         .map(this::directoryUser)
                         .toList(),
-                users.countActiveWithRole(role, text, excludedUserIds));
+                users.countActiveWithRole(role, text, null, excludedUserIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DirectoryPage findActiveUsersWithRoleAmong(
+            Collection<UUID> userIds,
+            Role role,
+            @Nullable String text,
+            Collection<UUID> excludedUserIds,
+            int page,
+            int size) {
+        if (userIds.isEmpty()) {
+            return new DirectoryPage(List.of(), 0);
+        }
+        return new DirectoryPage(
+                users.findActiveWithRolePage(role, text, userIds, excludedUserIds, size, offset(page, size)).stream()
+                        .map(this::directoryUser)
+                        .toList(),
+                users.countActiveWithRole(role, text, userIds, excludedUserIds));
     }
 
     @Override

@@ -93,6 +93,20 @@ public class EnrollmentRepository {
                 .single();
     }
 
+    public boolean existActiveLedOnTrack(UUID trackId, UUID mentorId) {
+        return jdbc.sql("""
+                        select exists (
+                            select 1 from enrollments e
+                            join enrollment_mentors m on m.enrollment_id = e.id
+                            where e.track_id = :trackId and e.status = 'ACTIVE' and m.mentor_id = :mentorId
+                        )
+                        """)
+                .param("trackId", trackId)
+                .param("mentorId", mentorId)
+                .query(Boolean.class)
+                .single();
+    }
+
     /**
      * Adds the mentor to the enrollment, unless they are one: the primary key decides, parallel inserts included
      * (ENR-9.4).

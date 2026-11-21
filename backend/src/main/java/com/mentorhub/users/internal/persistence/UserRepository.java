@@ -256,22 +256,32 @@ public class UserRepository {
      * A page of the active users who hold the role, except the excluded ids, sorted by name ({@link #NAME_ORDER}).
      *
      * @param text as {@link UserSearch#text()}, or {@code null} for no search
+     * @param amongUserIds the ids the page is restricted to, or {@code null} for every user
      */
     public List<StoredUserSummary> findActiveWithRolePage(
-            Role role, @Nullable String text, Collection<UUID> excludedUserIds, int limit, long offset) {
-        Map<String, Object> params = activeWithRoleParams(role, text, excludedUserIds);
+            Role role,
+            @Nullable String text,
+            @Nullable Collection<UUID> amongUserIds,
+            Collection<UUID> excludedUserIds,
+            int limit,
+            long offset) {
+        Map<String, Object> params = activeWithRoleParams(role, text, amongUserIds, excludedUserIds);
         params.put("limit", limit);
         params.put("offset", offset);
-        return withRoleNames(
-                jdbc.sql(SUMMARY_SELECT + activeWithRoleWhere(text) + NAME_ORDER + "limit :limit offset :offset")
-                        .params(params)
-                        .query(UserRepository::summaryWithoutRoles)
-                        .list());
+        return withRoleNames(jdbc.sql(SUMMARY_SELECT + activeWithRoleWhere(text, amongUserIds) + NAME_ORDER
+                        + "limit :limit offset :offset")
+                .params(params)
+                .query(UserRepository::summaryWithoutRoles)
+                .list());
     }
 
-    public long countActiveWithRole(Role role, @Nullable String text, Collection<UUID> excludedUserIds) {
-        return jdbc.sql("select count(*) from users u\n" + activeWithRoleWhere(text))
-                .params(activeWithRoleParams(role, text, excludedUserIds))
+    public long countActiveWithRole(
+            Role role,
+            @Nullable String text,
+            @Nullable Collection<UUID> amongUserIds,
+            Collection<UUID> excludedUserIds) {
+        return jdbc.sql("select count(*) from users u\n" + activeWithRoleWhere(text, amongUserIds))
+                .params(activeWithRoleParams(role, text, amongUserIds, excludedUserIds))
                 .query(Long.class)
                 .single();
     }
@@ -514,18 +524,26 @@ public class UserRepository {
                 roleNames);
     }
 
-    private static String activeWithRoleWhere(@Nullable String text) {
-        return text == null ? ACTIVE_WITH_ROLE_EXCEPT : ACTIVE_WITH_ROLE_EXCEPT + """
+    private static String activeWithRoleWhere(@Nullable String text, @Nullable Collection<UUID> amongUserIds) {
+        String where =
+                amongUserIds == null ? ACTIVE_WITH_ROLE_EXCEPT : ACTIVE_WITH_ROLE_EXCEPT + "  and u.id = any(:among)\n";
+        return text == null ? where : where + """
                           and (u.email ilike :pattern escape '\\' or u.first_name ilike :pattern escape '\\'
                                or u.last_name ilike :pattern escape '\\')
                         """;
     }
 
     private static Map<String, Object> activeWithRoleParams(
-            Role role, @Nullable String text, Collection<UUID> excludedUserIds) {
+            Role role,
+            @Nullable String text,
+            @Nullable Collection<UUID> amongUserIds,
+            Collection<UUID> excludedUserIds) {
         Map<String, Object> params = new HashMap<>();
         params.put("role", role.name());
         params.put("excluded", UuidArray.of(excludedUserIds));
+        if (amongUserIds != null) {
+            params.put("among", UuidArray.of(amongUserIds));
+        }
         if (text != null) {
             params.put("pattern", LikePatterns.contains(text));
         }

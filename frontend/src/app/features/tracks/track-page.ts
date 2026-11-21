@@ -20,16 +20,20 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../../core/api/api';
+import { addTrackMentor } from '../../core/api/fn/tracks/add-track-mentor';
 import { addTrackCoordinator } from '../../core/api/fn/tracks/add-track-coordinator';
 import { archiveTrack } from '../../core/api/fn/tracks/archive-track';
 import { getTrack } from '../../core/api/fn/tracks/get-track';
 import { getTrackHistory } from '../../core/api/fn/tracks/get-track-history';
 import { listTrackCoordinatorCandidates } from '../../core/api/fn/tracks/list-track-coordinator-candidates';
+import { listTrackMentorCandidates } from '../../core/api/fn/tracks/list-track-mentor-candidates';
+import { removeTrackMentor } from '../../core/api/fn/tracks/remove-track-mentor';
 import { removeTrackCoordinator } from '../../core/api/fn/tracks/remove-track-coordinator';
 import { restoreTrack } from '../../core/api/fn/tracks/restore-track';
 import { updateTrack } from '../../core/api/fn/tracks/update-track';
 import { Track } from '../../core/api/models/track';
 import { TrackCoordinator } from '../../core/api/models/track-coordinator';
+import { TrackMentor } from '../../core/api/models/track-mentor';
 import { TrackHistoryEntry } from '../../core/api/models/track-history-entry';
 import { TrackUpdate } from '../../core/api/models/track-update';
 import { CurrentUserService } from '../../core/auth/current-user.service';
@@ -41,6 +45,7 @@ import { trackLabel } from '../../shared/track-label/track-label';
 import { Unavailable } from '../../shared/unavailable/unavailable';
 import { TrackEnrollments } from '../enrollments/track-enrollments';
 import { AddCoordinatorDialog, AddCoordinatorDialogData } from './add-coordinator-dialog';
+import { AddTrackMentorDialog, AddTrackMentorDialogData } from './add-track-mentor-dialog';
 import { AssignmentMark } from './assignment-mark';
 import { TrackStatusChip } from './track-status-chip';
 import { describeTrackEntry } from './track-history-text';
@@ -81,6 +86,7 @@ export class TrackPage {
   protected readonly listState = inject(TracksListState);
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly trackEnrollments = viewChild(TrackEnrollments);
   private readonly routeParams = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
@@ -115,6 +121,12 @@ export class TrackPage {
     () =>
       this.track.hasValue() &&
       (this.track.value()?.coordinators ?? []).some((c) => c.disabled || !c.coordinatorRole),
+  );
+
+  protected readonly hasMarkedMentors = computed(
+    () =>
+      this.track.hasValue() &&
+      (this.track.value()?.mentors ?? []).some((m) => m.disabled || !m.mentorRole),
   );
 
   protected readonly entries = signal<TrackHistoryEntry[]>([]);
@@ -270,6 +282,48 @@ export class TrackPage {
     this.dialog.open(AddCoordinatorDialog, { contentClass: 'sm:max-w-[480px]', context: data });
   }
 
+  protected async removeMentor(track: Track, mentor: TrackMentor): Promise<void> {
+    const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialog, {
+      contentClass: 'sm:max-w-[420px]',
+      context: {
+        title: `Remove ${mentor.name} as a mentor?`,
+        text: `They stop being a mentor of ${trackLabel(track)} and can no longer be assigned to its enrollments.`,
+        confirmLabel: 'Remove',
+        destructive: true,
+      },
+    });
+    if (await firstValueFrom(ref.closed$)) {
+      await this.change(
+        () => this.api.invoke(removeTrackMentor, { id: track.id, userId: mentor.id }),
+        `${mentor.name} removed`,
+        'Could not remove the mentor. Try again.',
+      );
+    }
+  }
+
+  protected addMentor(track: Track): void {
+    const data: AddTrackMentorDialogData = {
+      trackName: trackLabel(track),
+      load: async (q, size) => {
+        try {
+          return await this.api.invoke(listTrackMentorCandidates, { id: track.id, q, size });
+        } catch (error) {
+          if (this.explainRefusal(error)) {
+            return null;
+          }
+          throw error;
+        }
+      },
+      add: async (userId) =>
+        (await this.change(
+          () => this.api.invoke(addTrackMentor, { id: track.id, userId }),
+          'Mentor added',
+          'Could not add the mentor. Try again.',
+        )) !== 'failed',
+    };
+    this.dialog.open(AddTrackMentorDialog, { contentClass: 'sm:max-w-[520px]', context: data });
+  }
+
   private async change(
     call: () => Promise<Track>,
     message: string,
@@ -299,6 +353,7 @@ export class TrackPage {
   /** An enrollment was refused elsewhere on the page: show the track and its history as they are now. */
   protected refreshed(): void {
     this.track.reload();
+    this.trackEnrollments()?.reload();
     void this.loadHistory(true);
   }
 
@@ -324,6 +379,15 @@ export class TrackPage {
         "This track still has active enrollments, so it can't be archived. It is shown as it is now.",
         { politeness: 'assertive' },
       );
+    } else if (type === PROBLEM.mentorNotEligible) {
+      this.say('That user is no longer eligible: they must be active and hold the mentor role.', {
+        politeness: 'assertive',
+      });
+    } else if (type === PROBLEM.mentorLeadsEnrollments) {
+      this.say(
+        'That mentor still leads active enrollments on this track, so they cannot be removed. The track is shown as it is now.',
+        { politeness: 'assertive' },
+      );
     } else if (type === PROBLEM.coordinatorNotEligible) {
       this.say(
         'That user is no longer eligible: they must be active and hold the coordinator role.',
@@ -332,8 +396,7 @@ export class TrackPage {
     } else {
       return false;
     }
-    this.track.reload();
-    void this.loadHistory(true);
+    this.refreshed();
     return true;
   }
 }

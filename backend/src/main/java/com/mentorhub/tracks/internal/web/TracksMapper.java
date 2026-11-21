@@ -3,6 +3,8 @@ package com.mentorhub.tracks.internal.web;
 import com.mentorhub.api.model.CoordinatorCandidate;
 import com.mentorhub.api.model.CoordinatorCandidateList;
 import com.mentorhub.api.model.HistoryActor;
+import com.mentorhub.api.model.MentorCandidate;
+import com.mentorhub.api.model.MentorCandidatePage;
 import com.mentorhub.api.model.Track;
 import com.mentorhub.api.model.TrackChange;
 import com.mentorhub.api.model.TrackCoordinator;
@@ -11,12 +13,14 @@ import com.mentorhub.api.model.TrackHistoryAction;
 import com.mentorhub.api.model.TrackHistoryEntry;
 import com.mentorhub.api.model.TrackHistoryPage;
 import com.mentorhub.api.model.TrackList;
+import com.mentorhub.api.model.TrackMentor;
 import com.mentorhub.api.model.TrackStatus;
 import com.mentorhub.api.model.TrackStatusFilter;
 import com.mentorhub.tracks.internal.service.NamedUser;
 import com.mentorhub.tracks.internal.service.TrackDetails;
 import com.mentorhub.tracks.internal.service.TrackHistory;
 import com.mentorhub.tracks.internal.service.TrackHistoryItem;
+import com.mentorhub.users.DirectoryPage;
 import com.mentorhub.users.DirectoryUser;
 import com.mentorhub.users.Role;
 import java.time.ZoneOffset;
@@ -53,8 +57,14 @@ final class TracksMapper {
                                 user.disabled(),
                                 user.roles().contains(Role.COORDINATOR)))
                         .toList(),
-                // Placeholder until T3 of track-mentors reads the mentors of the track.
-                List.of(),
+                track.mentors().stream()
+                        .map(user -> new TrackMentor(
+                                user.id(),
+                                user.name(),
+                                user.email(),
+                                user.disabled(),
+                                user.roles().contains(Role.MENTOR)))
+                        .toList(),
                 track.canEnroll());
     }
 
@@ -62,6 +72,16 @@ final class TracksMapper {
         return new CoordinatorCandidateList(users.stream()
                 .map(user -> new CoordinatorCandidate(user.id(), user.name(), user.email()))
                 .toList());
+    }
+
+    static MentorCandidatePage mentorCandidatePage(DirectoryPage candidates, int page, int size) {
+        return new MentorCandidatePage(
+                candidates.items().stream()
+                        .map(user -> new MentorCandidate(user.id(), user.name(), user.email()))
+                        .toList(),
+                page,
+                size,
+                candidates.totalItems());
     }
 
     static TrackHistoryPage historyPage(TrackHistory history) {
