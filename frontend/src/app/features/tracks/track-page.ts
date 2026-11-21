@@ -208,7 +208,7 @@ export class TrackPage {
       contentClass: 'sm:max-w-[420px]',
       context: {
         title: `Archive ${trackLabel(track)}?`,
-        text: 'It becomes read-only until it is restored. Its coordinators are kept.',
+        text: 'It becomes read-only until it is restored. Its coordinators and mentors are kept.',
         confirmLabel: 'Archive',
         destructive: true,
       },
@@ -227,7 +227,7 @@ export class TrackPage {
       contentClass: 'sm:max-w-[420px]',
       context: {
         title: `Restore ${trackLabel(track)}?`,
-        text: 'It becomes editable again. Its coordinators are kept.',
+        text: 'It becomes editable again. Its coordinators and mentors are kept.',
         confirmLabel: 'Restore',
       },
     });
