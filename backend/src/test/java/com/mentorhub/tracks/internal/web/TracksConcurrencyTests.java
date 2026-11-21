@@ -70,7 +70,7 @@ class TracksConcurrencyTests {
         tracks = new TestTracks(jdbc);
         users.link(users.create("anna@x.test", UserStatus.ACTIVE, Role.ADMIN), "anna");
         users.link(users.create("boris@x.test", UserStatus.ACTIVE, Role.ADMIN), "boris");
-        coordinator = users.create("clara@x.test", UserStatus.ACTIVE, Role.COORDINATOR);
+        coordinator = users.create("clara@x.test", UserStatus.ACTIVE, Role.COORDINATOR, Role.MENTOR);
         track = tracks.active("QA", "Quality Assurance");
         path = "/api/v1/tracks/" + track;
     }
@@ -99,6 +99,42 @@ class TracksConcurrencyTests {
         assertThat(after).bodyJson().extractingPath("$.status").isEqualTo("ARCHIVED");
         assertThat(after).bodyJson().extractingPath("$.coordinators").asArray().isEmpty();
         assertThat(trackActions()).containsExactly("TRACK_ARCHIVED");
+    }
+
+    @Test
+    @DisplayName("TRK-5.4 A change at the moment of archiving is never stored on an archived track (mentor)")
+    void namingAMentorAtTheMomentOfArchivingIsNeverStoredOnAnArchivedTrack() throws Exception {
+        MvcTestResult change = archivedFirst(() -> send(HttpMethod.PUT, path + "/mentors/" + coordinator, "", "boris"));
+
+        assertProblem(change, HttpStatus.CONFLICT, TRACK_ARCHIVED);
+        MvcTestResult after = send(HttpMethod.GET, path, "", "anna");
+        assertThat(after).bodyJson().extractingPath("$.status").isEqualTo("ARCHIVED");
+        assertThat(after).bodyJson().extractingPath("$.mentors").asArray().isEmpty();
+        assertThat(trackActions()).containsExactly("TRACK_ARCHIVED");
+    }
+
+    @RepeatedTest(5)
+    @DisplayName("ENR-13.6 Parallel namings of one mentor name them once")
+    void parallelNamingsOfOneMentorNameThemOnce() throws Exception {
+        String naming = path + "/mentors/" + coordinator;
+
+        List<MvcTestResult> results = inParallel(
+                () -> send(HttpMethod.PUT, naming, "", "anna"), () -> send(HttpMethod.PUT, naming, "", "boris"));
+
+        results.forEach(result -> assertThat(result).hasStatusOk());
+        MvcTestResult after = send(HttpMethod.GET, path, "", "anna");
+        assertThat(after)
+                .bodyJson()
+                .extractingPath("$.mentors[*].id")
+                .asArray()
+                .containsExactly(coordinator.toString());
+        assertThat(trackActions()).containsExactly("TRACK_MENTOR_ADDED");
+        MvcTestResult userHistory = send(HttpMethod.GET, "/api/v1/users/" + coordinator + "/history", "", "anna");
+        assertThat(userHistory)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly("USER_TRACK_MENTOR_ADDED");
     }
 
     @RepeatedTest(5)

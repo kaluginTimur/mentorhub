@@ -301,6 +301,8 @@ public class TrackService {
         return switch (change) {
             case TrackChange.CoordinatorAdded(var userId) -> userId;
             case TrackChange.CoordinatorRemoved(var userId) -> userId;
+            case TrackChange.MentorAdded(var userId) -> userId;
+            case TrackChange.MentorRemoved(var userId) -> userId;
             case TrackChange.StudentEnrolled(var userId, var _) -> userId;
             case TrackChange.EnrollmentMentorAssigned(var userId, var _) -> userId;
             case TrackChange.EnrollmentMentorRemoved(var userId, var _) -> userId;

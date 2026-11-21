@@ -38,4 +38,11 @@ public final class TestTracks {
                 .param("userId", userId)
                 .update();
     }
+
+    public void addMentor(UUID trackId, UUID userId) {
+        jdbc.sql("insert into track_mentors (track_id, user_id) values (:trackId, :userId)")
+                .param("trackId", trackId)
+                .param("userId", userId)
+                .update();
+    }
 }

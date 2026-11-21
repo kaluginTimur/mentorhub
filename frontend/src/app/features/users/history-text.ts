@@ -70,6 +70,10 @@ export function describeEntry(entry: HistoryEntry): string {
       return `Named a coordinator of ${trackName(entry)}`;
     case 'USER_TRACK_COORDINATOR_REMOVED':
       return `Removed as a coordinator of ${trackName(entry)}`;
+    case 'USER_TRACK_MENTOR_ADDED':
+      return `Named a mentor of ${trackName(entry)}`;
+    case 'USER_TRACK_MENTOR_REMOVED':
+      return `Removed as a mentor of ${trackName(entry)}`;
     case 'USER_ENROLLED':
       return `Enrolled on ${trackName(entry)}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
     case 'USER_MENTOR_ASSIGNED':

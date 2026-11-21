@@ -166,6 +166,18 @@ class EnrollmentsEndpointTests {
                     HttpStatus.NOT_FOUND,
                     Problems.NOT_FOUND);
             assertProblem(enroll(unknown, student, START, caller), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
+            assertProblem(
+                    send(HttpMethod.GET, path + "/mentor-candidates", "", caller),
+                    HttpStatus.NOT_FOUND,
+                    Problems.NOT_FOUND);
+            assertProblem(
+                    send(HttpMethod.PUT, path + "/mentors/" + student, "", caller),
+                    HttpStatus.NOT_FOUND,
+                    Problems.NOT_FOUND);
+            assertProblem(
+                    send(HttpMethod.DELETE, path + "/mentors/" + student, "", caller),
+                    HttpStatus.NOT_FOUND,
+                    Problems.NOT_FOUND);
         }
     }
 

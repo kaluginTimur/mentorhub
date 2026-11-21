@@ -139,6 +139,30 @@ public sealed interface UserChange {
         }
     }
 
+    /** The user was named a mentor of the track, given with its code and name at that moment. */
+    record TrackMentorAdded(HistoryTrack track) implements UserChange {
+        public TrackMentorAdded {
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_TRACK_MENTOR_ADDED;
+        }
+    }
+
+    /** The user was removed as a mentor of the track, given with its code and name at that moment. */
+    record TrackMentorRemoved(HistoryTrack track) implements UserChange {
+        public TrackMentorRemoved {
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_TRACK_MENTOR_REMOVED;
+        }
+    }
+
     /** The user was enrolled on the track, given with its code and name at that moment. */
     record Enrolled(HistoryTrack track, LocalDate startDate) implements UserChange {
         public Enrolled {
