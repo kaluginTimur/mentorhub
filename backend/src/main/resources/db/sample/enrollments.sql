@@ -122,6 +122,8 @@ from enrollments e
 -- Helen Park without the student role; he was removed from Mia Foster. Alma Admin-Mentor leads four, Milo
 -- Mentor-Coordinator none. The Student persona has four mentors and is shown two: Dan Disabled was disabled and Thomas
 -- Grant lost the mentor role afterwards, so they are marked on the track page. Paul Becker was disabled afterwards too.
+-- On Software Engineering every count of students shows: Mark Mentor more than a scroll of them, Paul Becker and
+-- Daniel Kim one, Konstantin Vasilenko two with Zoe Palmer since disabled, Thomas Grant two after losing the role.
 -- Olivia Hayes had Daniel Kim until he was removed, and has no mentor now, nor do Mia Foster and Grace Morgan.
 with assignment (enrollment, mentor, assigned_by, assigned_ago, removed_by, removed_ago) as (
     select e,
@@ -135,11 +137,17 @@ with assignment (enrollment, mentor, assigned_by, assigned_ago, removed_by, remo
     values (1, 'admin.mentor@mentorhub.local', 'admin.mentor@mentorhub.local', interval '100 days', null, null),
            (2, 'daniel.kim@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '120 days', null, null),
            (3, 'paul.becker@mentorhub.local', 'coordinator@mentorhub.local', interval '135 days', null, null),
+           (4, 'thomas.grant@example.com', 'coordinator@mentorhub.local', interval '99 days', null, null),
+           (5, 'thomas.grant@example.com', 'coordinator@mentorhub.local', interval '99 days', null, null),
            (20, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '29 days', null, null),
            (21, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '29 days', null, null),
            (22, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '29 days', null, null),
            (23, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '29 days', null, null),
            (24, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '29 days', null, null),
+           (23, 'konstantin.vasilenko@mentoring-staff.northbridge-training-academy.example.com',
+            'coordinator@mentorhub.local', interval '28 days', null, null),
+           (24, 'konstantin.vasilenko@mentoring-staff.northbridge-training-academy.example.com',
+            'coordinator@mentorhub.local', interval '28 days', null, null),
            (25, 'admin.mentor@mentorhub.local', 'admin.mentor@mentorhub.local', interval '28 days', null, null),
            (26, 'admin.mentor@mentorhub.local', 'admin.mentor@mentorhub.local', interval '28 days', null, null),
            (27, 'admin.mentor@mentorhub.local', 'admin.mentor@mentorhub.local', interval '28 days', null, null),

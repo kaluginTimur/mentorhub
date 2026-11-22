@@ -73,8 +73,8 @@ UI (exact texts, from the mockup):
 |---|---|---|---|
 | 1. Contract: `TrackMentor.students`, the `mentor` parameter of `listTrackEnrollments` | ENR-15.1–15.3, ENR-1.1, ENR-1.4 | backend-dev | done |
 | 2. Red tests, backend and frontend | ENR-15.1–15.3, ENR-1.1, ENR-1.4, ENR-7 (client) | test-engineer | done |
-| 3. Backend: the count and the filter; sample center data. Checkpoint: backend green | ENR-15.1–15.3, ENR-1.1, ENR-1.4 | backend-dev | in progress |
-| 4. Frontend: the accordion of mentors on the track page | ENR-7, ENR-7.1 | frontend-dev | pending |
+| 3. Backend: the count and the filter; sample center data. Checkpoint: backend green | ENR-15.1–15.3, ENR-1.1, ENR-1.4 | backend-dev | done |
+| 4. Frontend: the accordion of mentors on the track page | ENR-7, ENR-7.1 | frontend-dev | in progress |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -87,7 +87,7 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 
 ## Red tests
 
-Commit: <the commit holding the requirements, the contract, this plan and the red tests>
+Commit: bbbd21b (requirements, contract, plan, red tests, backend stubs, usage record).
 
 ## Decisions
 
@@ -115,10 +115,11 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 - 2026-11-22: "одобряю макет, подпись не нужна, колонка ок": variant A as of round 8 approved; no caption on the phone; on an archived track the gutter column is dropped on the phone and kept on desktop.
 - 2026-11-22: Plan gate: "одобряю план и контракт, продолжай".
 - 2026-11-22: "оба по рекомендации, коммить": the three backend tests red on the contract check of the stub's 501 are accepted as red; ENR-7 gets no scenarios, its client tests carry no ids.
+- 2026-11-22: Backend checkpoint: "одобряю, коммить и продолжай".
 
 ## Handover
 
-- Waiting for: `backend-dev` (task 3: the count, the filter, the sample center data; checkpoint: backend green).
+- Waiting for: `frontend-dev` (task 4: the accordion of mentors on the track page).
 - To read: this plan; `docs/requirements/enrollments.md` (ENR-1, ENR-4, ENR-7, ENR-15) and `docs/requirements/tracks.md` (TRK-4).
 - Documents changed:
   - `docs/requirements/enrollments.md`, changed: ENR-15 added (the number of students of each mentor of a track, the mentor filter of the enrollments of a track; scenarios ENR-15.1 to 15.3); ENR-1.1 and ENR-1.4 cover the filtered list; ENR-4 points to the filter; ENR-7 shows the number with each mentor and, with `ENROLLMENTS_READ`, all the students a mentor leads on request; Out of scope: the number and students line removed, filters narrowed to other than by mentor, the number added to what is decided with the end of an enrollment.
@@ -126,9 +127,9 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
   - `docs/requirements/README.md`, changed: the ENR summary names the students of each mentor of a track.
   - `docs/roadmap.md`, changed: Next 1 says "each mentor" and drops "without a page of the mentor"; Ideas gains pages of a user reached from their name.
   - `api/openapi.yaml`, changed: `TrackMentor.students` (required, int32, minimum 0) and the optional `mentor` uuid parameter of `listTrackEnrollments`, with its check order (403, 400, 404).
-- State: requirements approved; mockup approved (round 8); Design, What the tests rely on and Tasks written; plan gate passed; task 1 done (contract plus two backend stubs); task 2 done: red tests, `trace` 273 of 273.
+- State: requirements approved; mockup approved (round 8); Design, What the tests rely on and Tasks written; plan gate passed; task 1 done (contract plus two backend stubs); task 2 done (red commit bbbd21b); task 3 done and committed after the owner's approval; task 4 in progress.
 - Open questions: none.
-- Next: on task 3's report, check the test files against the red commit, then stop at the backend checkpoint.
+- Next: on task 4's report, check the test files against bbbd21b and the diff --stat, then run `manual-tester` on the track page.
 
 ## Agents
 
@@ -141,5 +142,5 @@ Commit: <the commit holding the requirements, the contract, this plan and the re
 | general-purpose | definition | ac0839fe2e0f7d375 | plan, UI/UX review of the mockup | — |
 | ui-designer | definition | aa17a66bebf9a253b | plan, mockup round 7 | 67k |
 | ui-designer | definition | a79709978cc92a447 | plan, mockup round 8 | 60k |
-| backend-dev | definition | ae06b59b172aa24c1 | plan, contract (task 1) | 56k |
+| backend-dev | definition | ae06b59b172aa24c1 | plan, contract (task 1); backend (task 3) | 127k |
 | test-engineer | definition | a7ba6ef9886a921c1 | tests, first pass (task 2) | 99k |

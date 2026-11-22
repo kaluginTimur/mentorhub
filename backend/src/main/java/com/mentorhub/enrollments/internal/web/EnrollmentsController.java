@@ -14,9 +14,7 @@ import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Enrollments} tag. Parameter names equal the request parameter names, because method validation reports
@@ -35,11 +33,7 @@ class EnrollmentsController implements EnrollmentsApi {
     @Override
     @RequirePermission(Permission.ENROLLMENTS_READ)
     public TrackEnrollmentPage listTrackEnrollments(UUID id, @Nullable UUID mentor, Integer page, Integer size) {
-        if (mentor != null) {
-            // stub until task 3 implements the mentor filter (ENR-15)
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
-        }
-        return EnrollmentsMapper.trackEnrollmentPage(enrollments.listOfTrack(id, page, size));
+        return EnrollmentsMapper.trackEnrollmentPage(enrollments.listOfTrack(id, mentor, page, size));
     }
 
     @Override

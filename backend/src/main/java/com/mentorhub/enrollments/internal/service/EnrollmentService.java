@@ -69,16 +69,23 @@ public class EnrollmentService {
         this.userHistory = userHistory;
     }
 
-    /** The enrollments of an active or an archived track, sorted by the student's name, then email, then id. */
+    /**
+     * The enrollments of an active or an archived track, sorted by the student's name, then email, then id.
+     *
+     * @param mentorId narrows to the enrollments the user is a mentor of (ENR-15); {@code null} for all
+     */
     @Transactional(readOnly = true)
-    public EnrollmentPage<TrackEnrollmentItem> listOfTrack(UUID trackId, int page, int size) {
+    public EnrollmentPage<TrackEnrollmentItem> listOfTrack(UUID trackId, @Nullable UUID mentorId, int page, int size) {
         if (tracks.find(trackId).isEmpty()) {
             throw new NotFoundException();
         }
+        List<StoredEnrollment> ofTrack = mentorId == null
+                ? enrollments.findByTrack(trackId)
+                : enrollments.findByTrackAndMentor(trackId, mentorId);
         // Keyed by student over every status: holds only while a student has at most one enrollment on a
         // track. Once an enrollment can end and the student return, toMap throws on the duplicate key.
-        Map<UUID, StoredEnrollment> byStudent = enrollments.findByTrack(trackId).stream()
-                .collect(Collectors.toMap(StoredEnrollment::studentId, Function.identity()));
+        Map<UUID, StoredEnrollment> byStudent =
+                ofTrack.stream().collect(Collectors.toMap(StoredEnrollment::studentId, Function.identity()));
         DirectoryPage students = users.findUsers(byStudent.keySet(), page, size);
         List<StoredEnrollment> onPage = students.items().stream()
                 .map(student -> stored(byStudent.get(student.id()), student))
