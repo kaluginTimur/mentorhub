@@ -17,7 +17,7 @@ Nothing in progress.
 
 In this order:
 
-1. **Students of the mentors of a track:** the track page shows each active mentor of the track with the number of students they lead and, on request, those students, so that a coordinator follows each mentor's students without a page of the mentor. Touches tracks and enrollments.
+1. **Students of the mentors of a track:** the track page shows each mentor of the track with the number of students they lead and, on request, those students, so that a coordinator follows each mentor's students. Touches tracks and enrollments.
 2. **The enrollments list in full:** search, sorting and filters in the enrollments of a track. Touches enrollments.
 3. **Cohorts:** a coordinator gathers the enrollments of one intake on a track and follows its progress as students finish one by one. Out of scope: mentors of a cohort, groups inside a cohort. A new capability; touches enrollments and audit.
 4. **Mentors of a cohort:** mentors assigned to a cohort as a whole see all its students. Touches cohorts, enrollments, authorization and audit.
@@ -44,6 +44,10 @@ No commitment and no order.
 - A global audit view for administrators, once there are rules for who may see which actions (deferred in decision 0005).
 - End-to-end tests of scenarios on the real stack, with their own data rather than the sample center's.
 - Every `dev` start now cleans the dev database, so a `dev` run no longer freezes a migration: reword that statement in `docs/development/backend.md` (How to run) and relax the hooks in `.claude/hooks/` that rely on it.
+- Pages of a user, such as a student or a mentor, reached from their name on every screen that shows it (a track, a calendar, an assignment), with what is relevant about them.
+- Contrast of mockups measured, not estimated: `ui-designer` has no tool to compute WCAG ratios or render a page, so its contrast in both themes is a guess until someone checks it; give every mockup a measured check of its foreground and background pairs.
+- Quieter buttons in the dark theme: the Helm outline button (`bg-input/30` with its border) and the primary button read as too bright on dark surfaces; tone them down for the whole app.
+- The indeterminate loading bar honours `prefers-reduced-motion`: a static or slowly pulsing bar for users who asked their system to reduce motion; app-wide, not required by WCAG AA.
 - Bulk enrollment: a coordinator enrolls several students on a track at once.
 - My tracks for a coordinator: a "My track" pill, a filter of all, mine and not mine, own tracks first, a quick action on the home page, the list in the profile.
 - A page size chosen by the user in every paged list, and the list scrolled into view on a change of page; `docs/ui/guidelines.md` says "a paginator without a page-size selector" today.

@@ -13,8 +13,8 @@ The system SHALL require `ENROLLMENTS_READ` to read the enrollments of a track. 
 #### ENR-1.1 Reading the enrollments of a track needs ENROLLMENTS_READ
 
 - GIVEN a track with an enrollment, and an active user without `ENROLLMENTS_READ`, such as a mentor of the enrollment or the enrolled student
-- WHEN the user lists the enrollments of the track
-- THEN the response is 403 `forbidden`
+- WHEN the user lists the enrollments of the track, and lists them narrowed to themselves (ENR-15)
+- THEN each response is 403 `forbidden`
 
 #### ENR-1.2 A coordinator enrolls only on a track they coordinate
 
@@ -34,7 +34,7 @@ The system SHALL require `ENROLLMENTS_READ` to read the enrollments of a track. 
 #### ENR-1.4 An unknown track is not found
 
 - GIVEN an administrator, a coordinator of a track, and an id that no track has
-- WHEN each lists the enrollments of that id, lists the candidates for it, enrolls a student on it, lists the candidates for its mentors, and names and removes a mentor of it
+- WHEN each lists the enrollments of that id, lists them narrowed to a mentor (ENR-15), lists the candidates for it, enrolls a student on it, lists the candidates for its mentors, and names and removes a mentor of it
 - THEN each response is 404 `not-found`
 
 #### ENR-1.5 A coordinator assigns mentors only on a track they coordinate
@@ -122,7 +122,7 @@ The system SHALL let a caller who may enroll on a track (ENR-1) list the candida
 
 ### ENR-4 The enrollments of a track
 
-The system SHALL return, for a caller with `ENROLLMENTS_READ`, the enrollments of an active or an archived track, ordered by the student's name and a page at a time (PLT-3). Each has the student's name and email, the start date, the status and the mentors with their names and emails. The student is marked when disabled or no longer holding the student role, and a mentor when disabled or no longer holding the mentor role.
+The system SHALL return, for a caller with `ENROLLMENTS_READ`, the enrollments of an active or an archived track, ordered by the student's name and a page at a time (PLT-3). Each has the student's name and email, the start date, the status and the mentors with their names and emails. The student is marked when disabled or no longer holding the student role, and a mentor when disabled or no longer holding the mentor role. The list may be narrowed to the enrollments one user is a mentor of (ENR-15).
 
 #### ENR-4.1 A coordinator of another track sees the enrollments with the marks
 
@@ -187,7 +187,7 @@ The system SHALL record an enrollment in the history of its track (TRK-7) and in
 
 ### ENR-7 Enrollments and mentors on the track page
 
-The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_READ`, the enrollments of the track as a paged list (PLT-9) with the student's name and email, the start date, the mentors and the marks (ENR-4), and SHALL say when the track has no enrollment yet. To a user who may enroll on the track (ENR-1) it SHALL offer "Enroll student" on an active track, in a dialog that offers the candidates with their search (ENR-3) and a start date, today unless changed, and on each enrollment the assignment of a mentor, in a dialog that offers the candidates with their search (ENR-10), and the removal of a mentor after a confirmation. It SHALL say when the track has no mentor yet. To a user who may name the mentors of the track (ENR-1) it SHALL offer, only on an active track, both the naming of a mentor in a dialog that offers the candidates with their search (ENR-14) and the removal of a mentor of the track after a confirmation.
+The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_READ`, the enrollments of the track as a paged list (PLT-9) with the student's name and email, the start date, the mentors and the marks (ENR-4), and SHALL say when the track has no enrollment yet. To a user who may enroll on the track (ENR-1) it SHALL offer "Enroll student" on an active track, in a dialog that offers the candidates with their search (ENR-3) and a start date, today unless changed, and on each enrollment the assignment of a mentor, in a dialog that offers the candidates with their search (ENR-10), and the removal of a mentor after a confirmation. It SHALL say when the track has no mentor yet. It SHALL show with each mentor of the track the number of students they lead on it (ENR-15) and, to a user with `ENROLLMENTS_READ`, offer on request all the enrollments of the track that mentor leads, not a page of them, with the student's name and email, the start date and the marks, and SHALL say when the mentor leads no student. To a user who may name the mentors of the track (ENR-1) it SHALL offer, only on an active track, both the naming of a mentor in a dialog that offers the candidates with their search (ENR-14) and the removal of a mentor of the track after a confirmation.
 
 #### ENR-7.1 A refused enrollment or mentor assignment is explained and the list reloaded
 
@@ -324,6 +324,29 @@ The system SHALL let a caller who may name the mentors of a track (ENR-1) list t
 - WHEN the coordinator lists the candidates for the mentors of the track
 - THEN only the other active user with the mentor role is listed
 
+### ENR-15 Students of the mentors of a track
+
+The system SHALL return with each mentor of a track (TRK-4), marked or not, the number of active enrollments on the track that the user is a mentor of, whatever the marks of their students, and SHALL narrow the enrollments of a track (ENR-4), for a caller with `ENROLLMENTS_READ`, to those a given user is a mentor of, each still with all its mentors. A user who leads no enrollment on the track narrows it to an empty answer, not an error.
+
+#### ENR-15.1 Each mentor of a track has the number of students they lead on it
+
+- GIVEN a track with three mentors: the first a mentor of two enrollments on it, one of them of a student since disabled, removed from a third enrollment on it, and a mentor of an enrollment on another track; the second since disabled and a mentor of one enrollment on it; the third a mentor of none
+- WHEN a coordinator views the track
+- THEN the first mentor has 2 students, the second 1 and the third 0
+
+#### ENR-15.2 The enrollments of a track are narrowed to those of one mentor
+
+- GIVEN a track with three enrollments, a mentor of the first and the second, another mentor of the second and the third, and an enrollment on another track the first mentor leads
+- WHEN a coordinator of another track lists the enrollments of the track narrowed to the first mentor
+- THEN the answer is the first and the second enrollments, ordered by the student's name
+- AND the second has both its mentors
+
+#### ENR-15.3 A user who leads no student on the track narrows the list to nothing
+
+- GIVEN a track with an enrollment, a mentor of the track who leads none, a mentor of an enrollment on another track only, and an id that no user has
+- WHEN an administrator lists the enrollments of the track narrowed to each
+- THEN each response is 200 with no enrollment
+
 ## Known limitations
 
 - An enrollment cannot be changed, cancelled or ended: a mistaken one, a wrong start date included, stays, and keeps the student from being enrolled elsewhere and the track from being archived (TRK-5), until the end of an enrollment exists. So does the enrollment of a student who was disabled since, such as an expelled one.
@@ -336,9 +359,8 @@ The system SHALL let a caller who may name the mentors of a track (ENR-1) list t
 
 - Changing, cancelling and ending an enrollment, its outcome, and moving a student to another track.
 - Mentors of a cohort, and cohorts.
-- The number of students each mentor of a track leads, and those students, on the track page.
-- What happens to the mentors of an enrollment when it ends, which enrollments a mentor sees after they end, and assigning a mentor to the enrollment of a student who is disabled or no longer holds the student role; all are decided with the end of an enrollment.
+- What happens to the mentors of an enrollment when it ends, which enrollments a mentor sees after they end and whether the number of a mentor's students on a track (ENR-15) counts them, and assigning a mentor to the enrollment of a student who is disabled or no longer holds the student role; all are decided with the end of an enrollment.
 - A page of one enrollment and a history of its own.
 - The enrollments of a user shown on the user page; the user's history shows when they were enrolled (USR-10).
-- Search and filters in the enrollments of a track.
+- Search, sorting, and filters other than by mentor in the enrollments of a track.
 - What a student loses when their study ends.

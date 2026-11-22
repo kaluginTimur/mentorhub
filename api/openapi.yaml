@@ -1003,9 +1003,19 @@ paths:
       summary: Page of the enrollments of a track
       description: |
         Requires `ENROLLMENTS_READ`. For an active and an archived track alike. Sorted by the student's name
-        (case-insensitive), then by the student's email, then by id.
+        (case-insensitive), then by the student's email, then by id. Checked in this order: the permission (403),
+        the request (400), the track (404).
       parameters:
         - $ref: '#/components/parameters/TrackId'
+        - name: mentor
+          in: query
+          description: |
+            Narrows the page to the enrollments the user is a mentor of, each still with all its mentors; the order
+            and the paging are unchanged. An id no user has, or of a user who is a mentor of no enrollment on the
+            track, gives an empty page, not an error.
+          schema:
+            type: string
+            format: uuid
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -2234,7 +2244,7 @@ components:
         A mentor of a track. While the user is disabled or does not hold the `MENTOR` role, they are not assigned to
         the track's enrollments; they stay a mentor of the track until removed.
       additionalProperties: false
-      required: [id, name, email, disabled, mentorRole]
+      required: [id, name, email, disabled, mentorRole, students]
       properties:
         id:
           type: string
@@ -2253,6 +2263,14 @@ components:
         mentorRole:
           type: boolean
           description: The user holds the `MENTOR` role.
+        students:
+          type: integer
+          format: int32
+          minimum: 0
+          description: |
+            The number of active enrollments on the track the user is a mentor of, whatever the marks of their
+            students. Needs no `ENROLLMENTS_READ`; listing those enrollments does (`listTrackEnrollments` with
+            `mentor`).
     TrackList:
       type: object
       additionalProperties: false

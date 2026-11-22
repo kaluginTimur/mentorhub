@@ -63,7 +63,8 @@ final class TracksMapper {
                                 user.name(),
                                 user.email(),
                                 user.disabled(),
-                                user.roles().contains(Role.MENTOR)))
+                                user.roles().contains(Role.MENTOR),
+                                0)) // stub until task 3 computes the number of students (ENR-15)
                         .toList(),
                 track.canEnroll());
     }

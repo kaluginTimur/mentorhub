@@ -50,6 +50,7 @@ class TrackMentorsEndpointTests {
 
     TestUsers users;
     TestTracks tracks;
+    TestEnrollments enrollments;
     UUID admin;
 
     @BeforeEach
@@ -57,6 +58,7 @@ class TrackMentorsEndpointTests {
         users = new TestUsers(jdbc);
         users.deleteAll();
         tracks = new TestTracks(jdbc);
+        enrollments = new TestEnrollments(jdbc);
         admin = users.create("admin@x.test", UserStatus.ACTIVE, Role.ADMIN);
         users.link(admin, "admin");
     }
@@ -209,7 +211,6 @@ class TrackMentorsEndpointTests {
         UUID mentor = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);
         UUID student = person("sam@x.test", "Sam", "Student", UserStatus.ACTIVE, Role.STUDENT);
         tracks.addMentor(track, mentor);
-        TestEnrollments enrollments = new TestEnrollments(jdbc);
         UUID enrollment = enrollments.enroll(student, track, admin, LocalDate.of(2026, 9, 1));
         enrollments.addMentor(enrollment, mentor, admin);
 
@@ -327,6 +328,48 @@ class TrackMentorsEndpointTests {
                 .extractingPath("$.mentors[*].id")
                 .asArray()
                 .containsExactly(mentor.toString());
+    }
+
+    @Test
+    @DisplayName("ENR-15.1 Each mentor of a track has the number of students they lead on it")
+    void eachMentorOfATrackHasTheNumberOfStudentsTheyLeadOnIt() {
+        UUID clara = coordinator("clara@x.test", "clara");
+        UUID track = tracks.active("QA", "Quality Assurance");
+        UUID other = tracks.active("SWE", "Software Engineering");
+        tracks.addCoordinator(track, clara);
+        UUID first = person("alice@x.test", "Alice", "First", UserStatus.ACTIVE, Role.MENTOR);
+        UUID second = person("boris@x.test", "Boris", "Second", UserStatus.DISABLED, Role.MENTOR);
+        UUID third = person("cora@x.test", "Cora", "Third", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(track, first);
+        tracks.addMentor(track, second);
+        tracks.addMentor(track, third);
+        UUID active = person("s1@x.test", "Sam", "One", UserStatus.ACTIVE, Role.STUDENT);
+        UUID disabled = person("s2@x.test", "Sam", "Two", UserStatus.DISABLED, Role.STUDENT);
+        UUID removed = person("s3@x.test", "Sam", "Three", UserStatus.ACTIVE, Role.STUDENT);
+        UUID elsewhere = person("s4@x.test", "Sam", "Four", UserStatus.ACTIVE, Role.STUDENT);
+        UUID ledBySecond = person("s5@x.test", "Sam", "Five", UserStatus.ACTIVE, Role.STUDENT);
+        LocalDate start = LocalDate.of(2026, 9, 1);
+        enrollments.addMentor(enrollments.enroll(active, track, admin, start), first, admin);
+        enrollments.addMentor(enrollments.enroll(disabled, track, admin, start), first, admin);
+        UUID thirdEnrollment = enrollments.enroll(removed, track, admin, start);
+        enrollments.addMentor(thirdEnrollment, first, admin);
+        enrollments.removeMentor(thirdEnrollment, first);
+        enrollments.addMentor(enrollments.enroll(elsewhere, other, admin, start), first, admin);
+        enrollments.addMentor(enrollments.enroll(ledBySecond, track, admin, start), second, admin);
+
+        MvcTestResult result = send(HttpMethod.GET, path(track), "", "clara");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.mentors[*].id")
+                .asArray()
+                .containsExactly(first.toString(), second.toString(), third.toString());
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.mentors[*].students")
+                .asArray()
+                .containsExactly(2, 1, 0);
     }
 
     private static String path(UUID track) {

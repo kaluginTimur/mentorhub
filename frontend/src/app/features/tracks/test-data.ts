@@ -28,6 +28,7 @@ export function trackMentor(overrides: Partial<TrackMentor> = {}): TrackMentor {
     email: 'mia@example.com',
     disabled: false,
     mentorRole: true,
+    students: 0,
     ...overrides,
   };
 }
