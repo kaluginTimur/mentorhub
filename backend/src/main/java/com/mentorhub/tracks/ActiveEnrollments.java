@@ -6,8 +6,8 @@ import java.util.UUID;
 
 /**
  * Tells archiving whether a track has an active enrollment (TRK-5), the removal of a mentor of a track whether they
- * lead an active enrollment on it (ENR-13.4), and a track how many students each of its mentors leads (ENR-15). Declared here and implemented by the module that
- * owns enrollments, so that {@code tracks} does not depend on it.
+ * lead an active enrollment on it (ENR-13.4), and a track how many students each of its mentors leads (ENR-15).
+ * Declared here and implemented by the module that owns enrollments, so that {@code tracks} does not depend on it.
  */
 public interface ActiveEnrollments {
 

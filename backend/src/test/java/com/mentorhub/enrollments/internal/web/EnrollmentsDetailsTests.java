@@ -116,6 +116,10 @@ class EnrollmentsDetailsTests {
                     HttpStatus.BAD_REQUEST,
                     Problems.VALIDATION_FAILED);
             assertProblem(
+                    send(HttpMethod.GET, "/api/v1/tracks/" + unknown + "/enrollments?mentor=not-a-uuid", "", "admin"),
+                    HttpStatus.BAD_REQUEST,
+                    Problems.VALIDATION_FAILED);
+            assertProblem(
                     send(HttpMethod.POST, "/api/v1/tracks/" + unknown + "/enrollments", "{}", "admin"),
                     HttpStatus.BAD_REQUEST,
                     Problems.VALIDATION_FAILED);

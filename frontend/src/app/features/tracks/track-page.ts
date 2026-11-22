@@ -6,6 +6,7 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
   resource,
   signal,
   untracked,
@@ -157,22 +158,29 @@ export class TrackPage {
 
   protected readonly studentsText = studentsText;
   private readonly studentLists = viewChildren(MentorStudents);
-  private readonly openMentors = signal<ReadonlySet<string>>(new Set());
+  /** Mentors left open; starts empty again on each track, so a list opened on one track does not open on the next. */
+  private readonly openMentors = linkedSignal<string, ReadonlySet<string>>({
+    source: () => this.id(),
+    computation: () => new Set(),
+  });
+  /** Students can be shown: the user may read enrollments and some mentor leads students. */
+  private readonly studentsAvailable = computed(
+    () =>
+      this.canReadEnrollments() &&
+      (this.track.hasValue() ? (this.track.value()?.mentors ?? []) : []).some(
+        (m) => m.students > 0,
+      ),
+  );
   /** The first column of the mentors exists when students can be shown: always on desktop, on a phone only if some mentor leads students. */
   protected readonly mentorColumns = computed(() => {
     if (!this.canReadEnrollments()) {
       return 'grid-cols-[2rem_minmax(0,1fr)_auto] pl-3';
     }
-    const any = (this.track.hasValue() ? (this.track.value()?.mentors ?? []) : []).some(
-      (m) => m.students > 0,
-    );
-    return any
+    return this.studentsAvailable()
       ? 'grid-cols-[2.5rem_2rem_minmax(0,1fr)_auto] gap-x-2.5 sm:grid-cols-[3rem_2rem_minmax(0,1fr)_auto] sm:gap-x-3'
       : 'grid-cols-[2rem_minmax(0,1fr)_auto] gap-x-2.5 pl-3 sm:grid-cols-[3rem_2rem_minmax(0,1fr)_auto] sm:gap-x-3 sm:pl-0';
   });
-  protected readonly gutterOnPhone = computed(() =>
-    this.mentorColumns().startsWith('grid-cols-[2.5rem'),
-  );
+  protected readonly gutterOnPhone = this.studentsAvailable;
 
   protected isOpen(mentor: TrackMentor): boolean {
     return this.canReadEnrollments() && mentor.students > 0 && this.openMentors().has(mentor.id);

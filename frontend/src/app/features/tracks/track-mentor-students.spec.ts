@@ -2,10 +2,14 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { assignEnrollmentMentor } from '../../core/api/fn/enrollments/assign-enrollment-mentor';
+import { listMentorCandidates } from '../../core/api/fn/enrollments/list-mentor-candidates';
 import { listTrackEnrollments } from '../../core/api/fn/enrollments/list-track-enrollments';
 import { getTrack } from '../../core/api/fn/tracks/get-track';
 import { getTrackHistory } from '../../core/api/fn/tracks/get-track-history';
 import { listTrackCoordinatorCandidates } from '../../core/api/fn/tracks/list-track-coordinator-candidates';
+import { addTrackMentor } from '../../core/api/fn/tracks/add-track-mentor';
+import { listTrackMentorCandidates } from '../../core/api/fn/tracks/list-track-mentor-candidates';
 import { removeTrackMentor } from '../../core/api/fn/tracks/remove-track-mentor';
 import { MeUser } from '../../core/api/models/me-user';
 import { Permission } from '../../core/api/models/permission';
@@ -13,7 +17,7 @@ import { TrackEnrollment } from '../../core/api/models/track-enrollment';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { createApiStub, provideApiStub } from '../../core/testing/api-stub';
 import { problemError } from '../../core/testing/problem-error';
-import { enrollmentPage, trackEnrollment } from '../enrollments/test-data';
+import { enrollmentPage, mentorCandidate, trackEnrollment } from '../enrollments/test-data';
 import { MENTOR_ID, TRACK_ID, track, trackAdmin, trackMentor } from './test-data';
 import { TrackPage } from './track-page';
 
@@ -316,5 +320,107 @@ describe('the students of the mentors on the track page', () => {
     expect(api.callsFor(removeTrackMentor)).toHaveLength(1);
     await vi.waitFor(() => expect(text(element)).not.toContain('Omar Mentor'));
     await vi.waitFor(() => expect(byMentor(MENTOR_ID).length).toBeGreaterThan(loads));
+  });
+
+  async function pickAndConfirm(settle: () => Promise<void>, name: string, confirm: string) {
+    const field = () => overlay().querySelector<HTMLInputElement>('input');
+    field()?.click();
+    await settle();
+    await vi.waitFor(() => {
+      const option = [
+        ...overlay().querySelectorAll<HTMLElement>('[role=option], [role=radio], li, button'),
+      ].find((o) => o.textContent?.includes(name));
+      expect(option, `an option for ${name}`).toBeDefined();
+      option?.click();
+    });
+    await settle();
+    buttonByText(overlay(), confirm)?.click();
+    await settle();
+  }
+
+  it('reloads the track and every open students list after a mentor is assigned to an enrollment', async () => {
+    api.handle(listTrackEnrollments, (p) => {
+      if (!p?.mentor) return enrollmentPage([trackEnrollment()]);
+      return enrollmentPage(students(3), { size: 100, totalItems: 3 });
+    });
+    api.resolve(listMentorCandidates, {
+      items: [mentorCandidate()],
+      page: 0,
+      size: 25,
+      totalItems: 1,
+    });
+    api.handle(assignEnrollmentMentor, () => {
+      api.resolve(getTrack, track({ mentors: [trackMentor({ students: 4 }), omar()] }));
+      return trackEnrollment();
+    });
+    const { element, expand, settle } = await open();
+    await expand('Mia Mentor');
+    await vi.waitFor(() => expect(text(element)).toContain('Student 03'));
+    expect(text(element)).toContain('3 students');
+    const loads = byMentor(MENTOR_ID).length;
+
+    await vi.waitFor(() => expect(buttonByText(element, 'Assign mentor')).toBeDefined());
+    buttonByText(element, 'Assign mentor')?.click();
+    await settle();
+    await pickAndConfirm(settle, 'Omar Candidate', 'Assign');
+
+    expect(api.callsFor(assignEnrollmentMentor)).toHaveLength(1);
+    await vi.waitFor(() => expect(text(element)).toContain('4 students'));
+    await vi.waitFor(() => expect(byMentor(MENTOR_ID).length).toBeGreaterThan(loads));
+  });
+
+  it('reloads every open students list after a mentor is named for the track', async () => {
+    api.resolve(listTrackMentorCandidates, {
+      items: [mentorCandidate()],
+      page: 0,
+      size: 25,
+      totalItems: 1,
+    });
+    api.resolve(addTrackMentor, track({ mentors: [mia(), omar()] }));
+    const { element, expand, settle } = await open();
+    await expand('Mia Mentor');
+    await vi.waitFor(() => expect(text(element)).toContain('Student 03'));
+    const loads = byMentor(MENTOR_ID).length;
+
+    buttonByText(element, 'Add mentor')?.click();
+    await settle();
+    await pickAndConfirm(settle, 'Omar Candidate', 'Add');
+
+    expect(api.callsFor(addTrackMentor)).toHaveLength(1);
+    await vi.waitFor(() => expect(byMentor(MENTOR_ID).length).toBeGreaterThan(loads));
+  });
+
+  it('starts with every mentor collapsed when the route moves to another track', async () => {
+    const OTHER_TRACK_ID = '33333333-3333-4333-8333-444444444444';
+    api.handle(getTrack, (p) =>
+      p?.id === OTHER_TRACK_ID
+        ? track({ id: OTHER_TRACK_ID, code: 'SWE', name: 'Software', mentors: [mia(), omar()] })
+        : track({ mentors: [mia(), omar()] }),
+    );
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(`/tracks/${TRACK_ID}`);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const element = harness.routeNativeElement as HTMLElement;
+    const settle = async () => {
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    };
+    const chevron = (name: string) =>
+      element.querySelector<HTMLButtonElement>(`button[aria-label="Students of ${name}"]`);
+    chevron('Mia Mentor')?.click();
+    await settle();
+    await vi.waitFor(() => expect(text(element)).toContain('Student 03'));
+    expect(chevron('Mia Mentor')?.getAttribute('aria-expanded')).toBe('true');
+
+    await harness.navigateByUrl(`/tracks/${OTHER_TRACK_ID}`);
+    await settle();
+
+    await vi.waitFor(() => expect(text(element)).toContain('Software'));
+    expect(chevron('Mia Mentor')?.getAttribute('aria-expanded')).toBe('false');
+    expect(chevron('Omar Mentor')).toBeNull();
+    expect(text(element)).not.toContain('Student 03');
+    expect(byMentor(MENTOR_ID).filter((c) => c?.id === OTHER_TRACK_ID)).toHaveLength(0);
   });
 });

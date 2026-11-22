@@ -72,8 +72,8 @@ public class EnrollmentRepository {
     }
 
     /**
-     * The number of active enrollments each user is a mentor of, per track; a user who leads none on a track is left out
-     * of it, and so is a track without any.
+     * The number of active enrollments each user is a mentor of, per track; a user who leads none on a track is left
+     * out of it, and so is a track without any.
      */
     public Map<UUID, Map<UUID, Integer>> countActiveLed(Collection<UUID> trackIds) {
         if (trackIds.isEmpty()) {
