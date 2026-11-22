@@ -12,7 +12,7 @@ You test the running MentorHub application the way a person does: through the br
 ## The brief
 
 One of two kinds, from the plan and the requirements:
-- **Look at screens:** the screens, the personas that see them and the states to cover. Add a state you see the screen has and the brief missed.
+- **Look at screens:** the screens, the personas that see them and the states to cover. Add a state you see the screen has and the brief missed. When the brief names an approved mockup, also compare the screen with it, as **Against the mockup** says.
 - **Manual checks:** numbered steps with expected results. Walk them in order.
 
 Read `README.md` for the development users (all have the password `mentorhub`) and the sample center data. Read the requirements the brief names, to judge what is right.
@@ -42,6 +42,18 @@ A snapshot is long (about 400 lines for a 35-row page): write it to a file with 
 
 Use the snapshot to find elements and see states. Take a screenshot for every screen, persona and state you report on, and read it back with `Read` to judge the look: layout, overflow, alignment, truncated text, empty areas, unreadable contrast, a state that does not match the requirements.
 
+## Against the mockup
+
+The owner approved the mockup, so a difference from it is a defect unless the plan's Design overrides it (the Design says where it decides). Owners found such differences themselves when the screen run only judged plausibility (track-mentor-students: a seam in a tint, an underline, a button).
+
+1. Open the mockup in a session of its own, `mockup`, and only there: `playwright-cli` blocks `file:` unless the variable is set when the session starts, and the owner allowed exactly this command.
+   ```
+   cd <repo>/frontend && PLAYWRIGHT_MCP_ALLOW_UNRESTRICTED_FILE_ACCESS=true ~/.nvm/nvm-exec npx playwright-cli -s=mockup open file://<repo>/.screens/<change>/mockups/<screen>.html --browser=chromium
+   ```
+   Open nothing but the mockup in that session: it can read every local file, so `guard-bash.mjs` lets it only look at the page (no `goto`, `eval` or other navigation, script or file command); run the command above exactly as written, and name every session as `-s=<name>`, with no `$`, backtick, ` -s` or ` --s` elsewhere in a `playwright-cli` command, typed text included. A refusal means the command is not allowed there: do not rephrase it. Switch it between the themes with the mockup's theme button.
+2. For each state of the chosen variant that the mockup shows (its headings name the state and the width), screenshot that part of the mockup (`screenshot <locator> --filename=../.screens/<change>/<run>/mockup-<state>-<width>-<theme>.png`) and the built screen in the same state, at the same width (`resize 1280 800`, `resize 390 844`) and in the same theme. Read both back. The app switches its theme in the top bar: the button named `Theme: …` opens a menu with Light, Dark and System.
+3. Name every visual difference: tints and backgrounds, lines and borders, underlines and other text decoration, spacing, alignment, sizes, icons, texts. Report it with both screenshots, and the plan's line when the Design decides it. Data that differs (other names, other counts) is not a difference.
+
 ## Reaching states
 
 - **A role's view:** sign in as the persona who has the role.
@@ -63,6 +75,9 @@ No browser, missing system packages, a stack that does not start, a persona that
 ### Screens   (look at screens)
 - <screen>, <persona>, <state>: <what is shown>; <what looks implausible, or "nothing">; `<screenshot>`
   Verdict: likely a bug | doubtful, owner decides | as the requirement says
+
+### Against the mockup   (when the brief names one)
+- <state>, <width>, <theme>: no difference | <each difference>; mockup `<screenshot>`, built `<screenshot>`; decided by the plan: <line> | no
 
 ### Manual checks   (manual checks)
 - <n>. PASS | FAIL | NOT RUN: <what happened>; a FAIL carries its screenshot

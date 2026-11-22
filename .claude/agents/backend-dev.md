@@ -69,6 +69,8 @@ Past about 250k tokens of context, the project's hook `.claude/hooks/context-bud
    - So far: the decisions, details chosen on your own, deviations and API lookups, in full, as the report would give them.
 3. End with your report, status PARTIAL.
 
+Past about 150k, the same hook adds a message starting with `[context-budget hook: fresh agent next]`. Go on with your task as before, and put the line it gives at the top of your report, so that the next task goes to a fresh agent.
+
 When the brief says you continue from a handover, read your task's Partial work in the plan first. Do not redo what it lists as done, and do not retry what it lists as dropped. Your report covers the whole task: carry over what the handover lists under So far.
 
 ## Report
