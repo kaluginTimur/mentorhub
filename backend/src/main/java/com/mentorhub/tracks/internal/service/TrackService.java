@@ -363,6 +363,7 @@ public class TrackService {
         for (TrackMentor mentor : tracks.findMentors(trackIds)) {
             mentorIds.computeIfAbsent(mentor.trackId(), id -> new HashSet<>()).add(mentor.userId());
         }
+        Map<UUID, Map<UUID, Integer>> students = activeEnrollments.countLed(trackIds);
         List<DirectoryUser> users =
                 userDirectory.findUsers(Stream.concat(coordinatorIds.values().stream(), mentorIds.values().stream())
                         .flatMap(Set::stream)
@@ -382,6 +383,7 @@ public class TrackService {
                             users.stream()
                                     .filter(user -> mentors.contains(user.id()))
                                     .toList(),
+                            students.getOrDefault(track.id(), Map.of()),
                             canEnroll(caller, coordinators));
                 })
                 .toList();

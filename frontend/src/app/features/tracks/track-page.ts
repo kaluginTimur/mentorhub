@@ -6,15 +6,26 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
   resource,
   signal,
   untracked,
   viewChild,
+  viewChildren,
+  afterNextRender,
+  Injector,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeft, lucidePencil, lucidePlus, lucideTriangleAlert } from '@ng-icons/lucide';
+import {
+  lucideArrowLeft,
+  lucideChevronRight,
+  lucidePencil,
+  lucidePlus,
+  lucideTriangleAlert,
+  lucideUserMinus,
+} from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
@@ -52,6 +63,9 @@ import { describeTrackEntry } from './track-history-text';
 import { TrackDialog, TrackDialogData } from './track-dialog';
 import { TracksListState } from './tracks-list-state';
 import { Email } from '../../shared/email/email';
+import { Avatar } from '../../shared/avatar/avatar';
+import { MentorStudents } from './mentor-students';
+import { studentsText } from './students-text';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -62,6 +76,8 @@ type Outcome = 'done' | 'refused' | 'failed';
   selector: 'app-track-page',
   imports: [
     Email,
+    Avatar,
+    MentorStudents,
     DatePipe,
     RouterLink,
     NgIcon,
@@ -73,7 +89,16 @@ type Outcome = 'done' | 'refused' | 'failed';
     Loading,
     Unavailable,
   ],
-  providers: [provideIcons({ lucideArrowLeft, lucidePencil, lucidePlus, lucideTriangleAlert })],
+  providers: [
+    provideIcons({
+      lucideArrowLeft,
+      lucideChevronRight,
+      lucidePencil,
+      lucidePlus,
+      lucideTriangleAlert,
+      lucideUserMinus,
+    }),
+  ],
   templateUrl: './track-page.html',
 })
 export class TrackPage {
@@ -83,6 +108,8 @@ export class TrackPage {
   private readonly currentUser = inject(CurrentUserService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly listState = inject(TracksListState);
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
@@ -128,6 +155,71 @@ export class TrackPage {
       this.track.hasValue() &&
       (this.track.value()?.mentors ?? []).some((m) => m.disabled || !m.mentorRole),
   );
+
+  protected readonly studentsText = studentsText;
+  private readonly studentLists = viewChildren(MentorStudents);
+  /** Mentors left open; starts empty again on each track, so a list opened on one track does not open on the next. */
+  private readonly openMentors = linkedSignal<string, ReadonlySet<string>>({
+    source: () => this.id(),
+    computation: () => new Set(),
+  });
+  /** Students can be shown: the user may read enrollments and some mentor leads students. */
+  private readonly studentsAvailable = computed(
+    () =>
+      this.canReadEnrollments() &&
+      (this.track.hasValue() ? (this.track.value()?.mentors ?? []) : []).some(
+        (m) => m.students > 0,
+      ),
+  );
+  /** The first column of the mentors exists when students can be shown: always on desktop, on a phone only if some mentor leads students. */
+  protected readonly mentorColumns = computed(() => {
+    if (!this.canReadEnrollments()) {
+      return 'grid-cols-[2rem_minmax(0,1fr)_auto] pl-3';
+    }
+    return this.studentsAvailable()
+      ? 'grid-cols-[2.5rem_2rem_minmax(0,1fr)_auto] gap-x-2.5 sm:grid-cols-[3rem_2rem_minmax(0,1fr)_auto] sm:gap-x-3'
+      : 'grid-cols-[2rem_minmax(0,1fr)_auto] gap-x-2.5 pl-3 sm:grid-cols-[3rem_2rem_minmax(0,1fr)_auto] sm:gap-x-3 sm:pl-0';
+  });
+  protected readonly gutterOnPhone = this.studentsAvailable;
+
+  protected isOpen(mentor: TrackMentor): boolean {
+    return this.canReadEnrollments() && mentor.students > 0 && this.openMentors().has(mentor.id);
+  }
+
+  protected toggle(mentor: TrackMentor): void {
+    this.openMentors.update((open) => {
+      const next = new Set(open);
+      if (!next.delete(mentor.id)) {
+        next.add(mentor.id);
+      }
+      return next;
+    });
+  }
+
+  /** The bottom chevron: hide the list, then bring the reader back to the mentor's own chevron. */
+  protected hideStudents(mentor: TrackMentor): void {
+    this.openMentors.update((open) => {
+      const next = new Set(open);
+      next.delete(mentor.id);
+      return next;
+    });
+    afterNextRender(
+      () => {
+        const chevron = this.host.nativeElement.querySelector<HTMLElement>(
+          `[data-students-toggle="${mentor.id}"]`,
+        );
+        chevron?.focus();
+        chevron?.scrollIntoView?.({ block: 'nearest' });
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private reloadStudents(): void {
+    for (const list of this.studentLists()) {
+      list.reload();
+    }
+  }
 
   protected readonly entries = signal<TrackHistoryEntry[]>([]);
   protected readonly historyTotal = signal(0);
@@ -293,11 +385,15 @@ export class TrackPage {
       },
     });
     if (await firstValueFrom(ref.closed$)) {
-      await this.change(
-        () => this.api.invoke(removeTrackMentor, { id: track.id, userId: mentor.id }),
-        `${mentor.name} removed`,
-        'Could not remove the mentor. Try again.',
-      );
+      if (
+        (await this.change(
+          () => this.api.invoke(removeTrackMentor, { id: track.id, userId: mentor.id }),
+          `${mentor.name} removed`,
+          'Could not remove the mentor. Try again.',
+        )) === 'done'
+      ) {
+        this.mentorsChanged();
+      }
     }
   }
 
@@ -314,14 +410,23 @@ export class TrackPage {
           throw error;
         }
       },
-      add: async (userId) =>
-        (await this.change(
+      add: async (userId) => {
+        const outcome = await this.change(
           () => this.api.invoke(addTrackMentor, { id: track.id, userId }),
           'Mentor added',
           'Could not add the mentor. Try again.',
-        )) !== 'failed',
+        );
+        if (outcome === 'done') {
+          this.mentorsChanged();
+        }
+        return outcome !== 'failed';
+      },
     };
     this.dialog.open(AddTrackMentorDialog, { contentClass: 'sm:max-w-[520px]', context: data });
+  }
+
+  private mentorsChanged(): void {
+    this.reloadStudents();
   }
 
   private async change(
@@ -353,11 +458,15 @@ export class TrackPage {
   /** An enrollment was refused elsewhere on the page: show the track and its history as they are now. */
   protected refreshed(): void {
     this.track.reload();
+    this.reloadStudents();
     this.trackEnrollments()?.reload();
     void this.loadHistory(true);
   }
 
+  /** An enrollment or its mentors changed: the counts and the open lists change with it (ENR-7.1). */
   protected enrolled(): void {
+    this.track.reload();
+    this.reloadStudents();
     void this.loadHistory(true);
   }
 

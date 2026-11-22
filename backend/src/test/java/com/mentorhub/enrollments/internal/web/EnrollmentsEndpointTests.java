@@ -84,6 +84,14 @@ class EnrollmentsEndpointTests {
 
         assertProblem(send(HttpMethod.GET, path, "", "mentor"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
         assertProblem(send(HttpMethod.GET, path, "", "student"), HttpStatus.FORBIDDEN, Problems.FORBIDDEN);
+        assertProblem(
+                send(HttpMethod.GET, path + "?mentor=" + mentor, "", "mentor"),
+                HttpStatus.FORBIDDEN,
+                Problems.FORBIDDEN);
+        assertProblem(
+                send(HttpMethod.GET, path + "?mentor=" + student, "", "student"),
+                HttpStatus.FORBIDDEN,
+                Problems.FORBIDDEN);
 
         MvcTestResult control = send(HttpMethod.GET, path, "", "admin");
         assertThat(control).hasStatusOk();
@@ -161,6 +169,10 @@ class EnrollmentsEndpointTests {
         for (String caller : List.of("admin", "clara")) {
             assertProblem(
                     send(HttpMethod.GET, path + "/enrollments", "", caller), HttpStatus.NOT_FOUND, Problems.NOT_FOUND);
+            assertProblem(
+                    send(HttpMethod.GET, path + "/enrollments?mentor=" + student, "", caller),
+                    HttpStatus.NOT_FOUND,
+                    Problems.NOT_FOUND);
             assertProblem(
                     send(HttpMethod.GET, path + "/enrollment-candidates", "", caller),
                     HttpStatus.NOT_FOUND,
@@ -356,6 +368,70 @@ class EnrollmentsEndpointTests {
         assertThat(result).bodyJson().extractingPath("$.items[0].startDate").isEqualTo("2026-09-01");
         assertThat(result).bodyJson().extractingPath("$.items[0].status").isEqualTo("ACTIVE");
         assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("ENR-15.2 The enrollments of a track are narrowed to those of one mentor")
+    void theEnrollmentsOfATrackAreNarrowedToThoseOfOneMentor() {
+        UUID coordinator = person("clara@x.test", "Clara", "Coordinator", UserStatus.ACTIVE, Role.COORDINATOR);
+        users.link(coordinator, "clara");
+        tracks.addCoordinator(tracks.active("SWE", "Software Engineering"), coordinator);
+        UUID track = tracks.active("QA", "Quality Assurance");
+        UUID elsewhere = tracks.active("OPS", "Operations");
+        UUID first = person("mia@x.test", "Mia", "First", UserStatus.ACTIVE, Role.MENTOR);
+        UUID other = person("max@x.test", "Max", "Other", UserStatus.ACTIVE, Role.MENTOR);
+        UUID alice = person("alice@x.test", "Alice", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        UUID boris = person("boris@x.test", "Boris", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        UUID cora = person("cora@x.test", "Cora", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        UUID dan = person("dan@x.test", "Dan", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        // Enrolled in reverse order, so the order of the answer is the sorting's.
+        UUID forCora = enrollments.enroll(cora, track, admin, START);
+        UUID forBoris = enrollments.enroll(boris, track, admin, START);
+        UUID forAlice = enrollments.enroll(alice, track, admin, START);
+        enrollments.addMentor(forAlice, first, admin);
+        enrollments.addMentor(forBoris, first, admin);
+        enrollments.addMentor(forBoris, other, admin);
+        enrollments.addMentor(forCora, other, admin);
+        enrollments.addMentor(enrollments.enroll(dan, elsewhere, admin, START), first, admin);
+
+        MvcTestResult result =
+                send(HttpMethod.GET, "/api/v1/tracks/" + track + "/enrollments?mentor=" + first, "", "clara");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.items[*].student.id")
+                .asArray()
+                .containsExactly(alice.toString(), boris.toString());
+        assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(2);
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.items[1].mentors[*].id")
+                .asArray()
+                .containsExactlyInAnyOrder(first.toString(), other.toString());
+    }
+
+    @Test
+    @DisplayName("ENR-15.3 A user who leads no student on the track narrows the list to nothing")
+    void aUserWhoLeadsNoStudentOnTheTrackNarrowsTheListToNothing() {
+        UUID track = tracks.active("QA", "Quality Assurance");
+        UUID elsewhere = tracks.active("SWE", "Software Engineering");
+        UUID idle = person("idle@x.test", "Ida", "Idle", UserStatus.ACTIVE, Role.MENTOR);
+        UUID away = person("away@x.test", "Abe", "Away", UserStatus.ACTIVE, Role.MENTOR);
+        UUID alice = person("alice@x.test", "Alice", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        UUID boris = person("boris@x.test", "Boris", "Student", UserStatus.ACTIVE, Role.STUDENT);
+        enrollments.enroll(alice, track, admin, START);
+        tracks.addMentor(track, idle);
+        enrollments.addMentor(enrollments.enroll(boris, elsewhere, admin, START), away, admin);
+
+        for (UUID mentor : List.of(idle, away, UUID.randomUUID())) {
+            MvcTestResult result =
+                    send(HttpMethod.GET, "/api/v1/tracks/" + track + "/enrollments?mentor=" + mentor, "", "admin");
+
+            assertThat(result).hasStatusOk();
+            assertThat(result).bodyJson().extractingPath("$.items").asArray().isEmpty();
+            assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(0);
+        }
     }
 
     @Test

@@ -61,6 +61,40 @@ public class EnrollmentRepository {
                 .list();
     }
 
+    /** Every enrollment of the track, in any status, the user is a mentor of now. */
+    public List<StoredEnrollment> findByTrackAndMentor(UUID trackId, UUID mentorId) {
+        return jdbc.sql("select " + COLUMNS + " from enrollments where track_id = :trackId"
+                        + " and id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)")
+                .param("trackId", trackId)
+                .param("mentorId", mentorId)
+                .query(EnrollmentRepository::storedEnrollment)
+                .list();
+    }
+
+    /**
+     * The number of active enrollments each user is a mentor of, per track; a user who leads none on a track is left
+     * out of it, and so is a track without any.
+     */
+    public Map<UUID, Map<UUID, Integer>> countActiveLed(Collection<UUID> trackIds) {
+        if (trackIds.isEmpty()) {
+            return Map.of();
+        }
+        record Row(UUID trackId, UUID mentorId, int count) {}
+        return jdbc
+                .sql("""
+                        select e.track_id, m.mentor_id, count(*) as led
+                        from enrollments e
+                        join enrollment_mentors m on m.enrollment_id = e.id
+                        where e.track_id in (:ids) and e.status = 'ACTIVE'
+                        group by e.track_id, m.mentor_id""")
+                .param("ids", trackIds)
+                .query((rs, rowNum) -> new Row(
+                        rs.getObject("track_id", UUID.class), rs.getObject("mentor_id", UUID.class), rs.getInt("led")))
+                .list()
+                .stream()
+                .collect(Collectors.groupingBy(Row::trackId, Collectors.toMap(Row::mentorId, Row::count)));
+    }
+
     /** Every enrollment of the student, in any status, newest first. */
     public List<StoredEnrollment> findByStudent(UUID studentId) {
         return jdbc.sql("select " + COLUMNS + " from enrollments where student_id = :studentId"

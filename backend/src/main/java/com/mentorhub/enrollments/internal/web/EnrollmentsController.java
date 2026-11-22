@@ -32,8 +32,8 @@ class EnrollmentsController implements EnrollmentsApi {
 
     @Override
     @RequirePermission(Permission.ENROLLMENTS_READ)
-    public TrackEnrollmentPage listTrackEnrollments(UUID id, Integer page, Integer size) {
-        return EnrollmentsMapper.trackEnrollmentPage(enrollments.listOfTrack(id, page, size));
+    public TrackEnrollmentPage listTrackEnrollments(UUID id, @Nullable UUID mentor, Integer page, Integer size) {
+        return EnrollmentsMapper.trackEnrollmentPage(enrollments.listOfTrack(id, mentor, page, size));
     }
 
     @Override

@@ -63,7 +63,8 @@ final class TracksMapper {
                                 user.name(),
                                 user.email(),
                                 user.disabled(),
-                                user.roles().contains(Role.MENTOR)))
+                                user.roles().contains(Role.MENTOR),
+                                track.students().getOrDefault(user.id(), 0)))
                         .toList(),
                 track.canEnroll());
     }

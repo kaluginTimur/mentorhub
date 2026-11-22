@@ -58,7 +58,7 @@ The system SHALL return, for a caller with `TRACKS_READ`, all tracks of the requ
 
 ### TRK-4 One track
 
-The system SHALL return a track, for a caller with `TRACKS_READ`, with its code, name, status, coordinators and mentors. Each coordinator is shown with their name and email, and marked when the assignment grants nothing: the user is disabled or no longer holds the coordinator role (TRK-6). Each mentor is shown the same way, and marked when disabled or no longer holding the mentor role (ENR-13).
+The system SHALL return a track, for a caller with `TRACKS_READ`, with its code, name, status, coordinators and mentors. Each coordinator is shown with their name and email, and marked when the assignment grants nothing: the user is disabled or no longer holds the coordinator role (TRK-6). Each mentor is shown the same way, marked when disabled or no longer holding the mentor role (ENR-13), and with the number of students they lead on the track (ENR-15).
 
 #### TRK-4.1 A coordinator who is disabled or lost the role is marked
 
@@ -197,7 +197,7 @@ The client SHALL show a track's code, name, status, coordinators and mentors wit
 - When two administrators change the same track at the same moment, the last save of the code or the name wins; each change is still audited.
 - A history page can hold fewer entries than its size, and its total counts entries that are left out (AUD-6).
 - A user named a coordinator at the moment another administrator disables them or removes their coordinator role may keep an assignment that is already marked (TRK-4).
-- A caller with `TRACKS_READ`, a coordinator included, sees the names and emails of the coordinators and the mentors and the history of every track, with the students enrolled on it and the mentors named to it (ENR-6), without `USERS_READ`, and a caller with `USERS_READ` sees in a user's history the tracks they coordinated or were a mentor of without `TRACKS_READ`.
+- A caller with `TRACKS_READ`, a coordinator included, sees the names and emails of the coordinators and the mentors and the history of every track, with the students enrolled on it and the mentors named to it (ENR-6), without `USERS_READ`, and how many students each mentor leads on it (ENR-15) without `ENROLLMENTS_READ`, and a caller with `USERS_READ` sees in a user's history the tracks they coordinated or were a mentor of without `TRACKS_READ`.
 
 ## Out of scope
 

@@ -170,9 +170,10 @@ where removed_at is not null;
 -- (enrollments.sql) was named a mentor of its track before being assigned, and stays one while leading an active
 -- enrollment on it. Each mentor was named while active with the mentor role, by an administrator or a coordinator of
 -- the track at that moment, and while the track was active. Dan Disabled was disabled and Thomas Grant lost the mentor
--- role afterwards, so Quality Assurance marks them; Daniel Kim was removed from Quality Assurance after his last student
--- there; Frontend Development keeps its mentor archived; QA Automation has none. Helen Park and Milo
--- Mentor-Coordinator are mentors of no track, so every active track offers candidates.
+-- role afterwards, so Quality Assurance marks them, and Software Engineering marks Paul Becker, since disabled, and
+-- Thomas Grant; Daniel Kim was removed from Quality Assurance after his last student there; Victor Novak leads no
+-- student on Software Engineering; Frontend Development keeps its mentor archived; QA Automation has none. Helen Park
+-- and Milo Mentor-Coordinator are mentors of no track, so every active track offers candidates.
 with assignment (n, track, mentor, named_by, named_ago, removed_by, removed_ago) as (
     values (1, 1, 'mentor@mentorhub.local', 'coordinator@mentorhub.local', interval '136 days', null, null::interval),
            (2, 1, 'paul.becker@mentorhub.local', 'coordinator@mentorhub.local', interval '136 days', null, null),
@@ -190,7 +191,11 @@ with assignment (n, track, mentor, named_by, named_ago, removed_by, removed_ago)
             'irene.margaret.walsh@qa-faculty.northbridge-training-academy.example.com', interval '14 days'),
            (11, 4, 'mentor@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '235 days', null, null),
            (12, 3, 'victor.novak@mentorhub.local', 'mentor.coordinator@mentorhub.local', interval '20 days', null,
-            null)),
+            null),
+           (13, 1, 'konstantin.vasilenko@mentoring-staff.northbridge-training-academy.example.com',
+            'coordinator@mentorhub.local', interval '33 days', null, null),
+           (14, 1, 'thomas.grant@example.com', 'coordinator@mentorhub.local', interval '102 days', null, null),
+           (15, 1, 'victor.novak@mentorhub.local', 'coordinator@mentorhub.local', interval '10 days', null, null)),
      resolved as (
          select a.n,
                 ('00000000-0000-4000-f000-' || lpad(a.track::text, 12, '0'))::uuid as track_id,
