@@ -36,6 +36,7 @@
       "Bash(node scripts/requirements.mjs *)",
       "Bash(node --test scripts/requirements.test.mjs *)",
       "Bash(~/.nvm/nvm-exec npx playwright-cli *)",
+      "Bash(PLAYWRIGHT_MCP_ALLOW_UNRESTRICTED_FILE_ACCESS=true ~/.nvm/nvm-exec npx playwright-cli -s=mockup open file://*/.screens/*/mockups/*.html *)",
       "Bash(mkdir -p *.screens/*)",
       "Bash(node scripts/stack.mjs *)",
       "Bash(gh auth status *)",

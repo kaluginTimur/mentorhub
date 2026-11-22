@@ -37,7 +37,11 @@ One self-contained HTML file per screen, `.screens/<change>/mockups/<screen>.htm
 
 ## Rounds
 
-On the owner's remarks, edit the same file: change what they asked, keep the variants they did not reject, add one when asked. Mark the variant they chose as chosen, with their refinements applied, and keep the rest below it collapsed.
+The owner's remarks come in their own words and language, with the paths of any screenshots they gave: open each screenshot with `Read` before editing. Edit the same file: change what they asked, keep the variants they did not reject, add one when asked. Mark the variant they chose as chosen, with their refinements applied, and keep the rest below it collapsed.
+
+- **Rounds in the notes:** keep a collapsed "Rounds" block at the top of the mockup, one entry per round: the owner's words as given and what you changed. The plan does not keep them, so this block is the record of how the design was reached.
+- **"No change visible":** when the owner sees no change, find why in the file yourself (a rule overridden later, a selector that does not match, a variable defined twice) and say in the report what it was.
+- **Labelled states:** give each state and width of the chosen variant a visible heading (for example "Open, 22 students, 390 px"), so that `manual-tester` can find it and compare it with the built screen.
 
 ## Rules
 
