@@ -45,7 +45,7 @@ Frontend (track page, the Mentors card, ENR-7):
 - An accordion: one container, rows divided by lines. Each row: at the left a chevron button (the only toggle; rotates when open), the avatar, the name (a link to the user page with `USERS_READ`, as today), email and marks, the count as plain text, Remove at the right (an icon with a tooltip on the phone).
 - A mentor with 0 students has no chevron (the space stays so names align) and never opens. A user without `ENROLLMENTS_READ` sees the counts and no chevrons.
 - Several rows can be open at once. Expanding loads all the mentor's enrollments with `mentor=<id>` (size 100, following pages until all are loaded): all of them, not a page, in a scroll area; no sorting control.
-- Open row: the header and the table are one tinted block (the L of round 6) with a 4 px accent bar on the left; the table has a fixed layout (Student 36%, Email the rest, Started 120 px) so the columns line up across mentors, long names and emails wrap in their column. Desktop shows the caption "<b>N students</b> of <name> on this track, ordered by name" over the table. When more than 8 students, a foot "End of the list: all N students shown" and a bottom chevron in the gutter, both only once the list has loaded; the bottom chevron hides the list, moves focus to that mentor's top chevron and scrolls it into view.
+- Open row: the header and the table are one tinted block (the L of round 6) with a 4 px accent bar on the left; the table has a fixed layout (Student 36%, Email the rest, Started 120 px) so the columns line up across mentors, long names and emails wrap in their column. No caption over the table, on any width (owner, after the screen runs). When more than 8 students, a foot "End of the list: all N students shown" and a bottom chevron in the gutter, both only once the list has loaded; the bottom chevron hides the list, moves focus to that mentor's top chevron and scrolls it into view.
 - Phone (below sm, 640 px): no tinted gutter below the open header, no caption; the 4 px bar runs the whole height of the open mentor; student rows are cards using the full width, marks on their own line, emails break after "@" and "."; the bottom chevron is on the left of the foot row in a tinted 40 px cell; scroll area `max-height: min(26rem, 55dvh)`; on an archived track the gutter column is dropped.
 - Loading: a labelled progress bar in the open block; failed: the error and Retry in the block, the mentors stay usable.
 - After enrolling, assigning or removing a mentor of an enrollment, or naming or removing a mentor of the track, the track and every open students list reload (ENR-7.1 included).
@@ -61,7 +61,7 @@ UI (exact texts, from the mockup):
 - Count: "1 student", "N students", and "No students" for 0.
 - Top chevron: a button with accessible name "Students of <name>" and `aria-expanded` carrying the state; absent for a mentor with 0 students and for a user without `ENROLLMENTS_READ`.
 - Open table headers: "Student", "Email", "Started"; the student's marks "Disabled" and "No student role" as in the enrollments list.
-- Desktop caption: "<N students> of <name> on this track, ordered by name" (count text as above).
+- No caption over the open table (removed by the owner after the screen runs).
 - Foot (more than 8 students, after loading): "End of the list: all N students shown"; bottom control named "Hide the students of <name> (back to top)".
 - Loading: a progressbar named "Loading the students of <name>" and text "Loading the students of <name>..."; failed: an alert "Could not load the students of <name>." and a "Retry" button.
 - Empty answer (a mentor whose count was stale): "<name> leads no students on this track."
@@ -74,7 +74,8 @@ UI (exact texts, from the mockup):
 | 1. Contract: `TrackMentor.students`, the `mentor` parameter of `listTrackEnrollments` | ENR-15.1–15.3, ENR-1.1, ENR-1.4 | backend-dev | done |
 | 2. Red tests, backend and frontend | ENR-15.1–15.3, ENR-1.1, ENR-1.4, ENR-7 (client) | test-engineer | done |
 | 3. Backend: the count and the filter; sample center data. Checkpoint: backend green | ENR-15.1–15.3, ENR-1.1, ENR-1.4 | backend-dev | done |
-| 4. Frontend: the accordion of mentors on the track page | ENR-7, ENR-7.1 | frontend-dev | in progress |
+| 4. Frontend: the accordion of mentors on the track page | ENR-7, ENR-7.1 | frontend-dev | done |
+| 5. Owner's details: no caption (test, then code), bundle warning budget, a sample student with a long email | ENR-7 | test-engineer, frontend-dev, backend-dev | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -116,10 +117,12 @@ Commit: bbbd21b (requirements, contract, plan, red tests, backend stubs, usage r
 - 2026-11-22: Plan gate: "одобряю план и контракт, продолжай".
 - 2026-11-22: "оба по рекомендации, коммить": the three backend tests red on the contract check of the stub's 501 are accepted as red; ENR-7 gets no scenarios, its client tests carry no ids.
 - 2026-11-22: Backend checkpoint: "одобряю, коммить и продолжай".
+- 2026-11-22: After the screen runs: "бандл по рекомендации, полосу оставить, студента с длинным email добавить. строку под шапкой ... наверное, стоит убрать и с десктопного вида - она не несёт полезной информации": `maximumWarning` raised to about 575 kB; the desktop gutter stays; a sample student with a long email; no caption over the students table on any width. The remove dialog stays as it is (recommendation, no objection).
+- 2026-11-22: Screens approved: "одобряю, коммить и запускай ревью"; the second test pass is skipped as a small change.
 
 ## Handover
 
-- Waiting for: `frontend-dev` (task 4: the accordion of mentors on the track page).
+- Waiting for: `reviewer` on the branch against main (review loop step 1).
 - To read: this plan; `docs/requirements/enrollments.md` (ENR-1, ENR-4, ENR-7, ENR-15) and `docs/requirements/tracks.md` (TRK-4).
 - Documents changed:
   - `docs/requirements/enrollments.md`, changed: ENR-15 added (the number of students of each mentor of a track, the mentor filter of the enrollments of a track; scenarios ENR-15.1 to 15.3); ENR-1.1 and ENR-1.4 cover the filtered list; ENR-4 points to the filter; ENR-7 shows the number with each mentor and, with `ENROLLMENTS_READ`, all the students a mentor leads on request; Out of scope: the number and students line removed, filters narrowed to other than by mentor, the number added to what is decided with the end of an enrollment.
@@ -127,9 +130,9 @@ Commit: bbbd21b (requirements, contract, plan, red tests, backend stubs, usage r
   - `docs/requirements/README.md`, changed: the ENR summary names the students of each mentor of a track.
   - `docs/roadmap.md`, changed: Next 1 says "each mentor" and drops "without a page of the mentor"; Ideas gains pages of a user reached from their name.
   - `api/openapi.yaml`, changed: `TrackMentor.students` (required, int32, minimum 0) and the optional `mentor` uuid parameter of `listTrackEnrollments`, with its check order (403, 400, 404).
-- State: requirements approved; mockup approved (round 8); Design, What the tests rely on and Tasks written; plan gate passed; task 1 done (contract plus two backend stubs); task 2 done (red commit bbbd21b); task 3 done and committed after the owner's approval; task 4 in progress.
+- State: requirements approved; mockup approved (round 8); Design, What the tests rely on and Tasks written; plan gate passed; task 1 done (contract plus two backend stubs); task 2 done (red commit bbbd21b); task 3 committed (e74a84e); tasks 4 and 5 done and committed after the owner's approval; second test pass skipped (small change); review in progress.
 - Open questions: none.
-- Next: on task 4's report, check the test files against bbbd21b and the diff --stat, then run `manual-tester` on the track page.
+- Next: the owner's choices to `frontend-dev` (fresh: the last one is at 160k), `manual-tester` on the affected states, then the owner looks at the screens; then the review loop (the second test pass may be skipped as a small change).
 
 ## Agents
 
@@ -142,5 +145,12 @@ Commit: bbbd21b (requirements, contract, plan, red tests, backend stubs, usage r
 | general-purpose | definition | ac0839fe2e0f7d375 | plan, UI/UX review of the mockup | — |
 | ui-designer | definition | aa17a66bebf9a253b | plan, mockup round 7 | 67k |
 | ui-designer | definition | a79709978cc92a447 | plan, mockup round 8 | 60k |
-| backend-dev | definition | ae06b59b172aa24c1 | plan, contract (task 1); backend (task 3) | 127k |
+| backend-dev | definition | ae06b59b172aa24c1 | plan, contract (task 1); backend (task 3); sample student (task 5) | 134k |
 | test-engineer | definition | a7ba6ef9886a921c1 | tests, first pass (task 2) | 99k |
+| frontend-dev | definition | a446d8b90cc60c91c | implementation (task 4), bundle investigation, visual fixes, task 5 | 168k |
+| test-engineer | definition | acfa74a6212d51eb5 | implementation, spec fixes | 28k |
+| manual-tester | definition | a2c5988725c303357 | implementation, screen run | 66k |
+| manual-tester | haiku | a32eb2068bec029fa | implementation, numbered checks 5–6 | — |
+| manual-tester | definition | aa69aed72d0592f6c | implementation, re-check of three fixes | — |
+| test-engineer | definition | a31890a49f96f5b54 | implementation, no-caption spec (task 5) | 26k |
+| manual-tester | definition | a15431e6f0b8d6fba | implementation, re-check task 5 | — |

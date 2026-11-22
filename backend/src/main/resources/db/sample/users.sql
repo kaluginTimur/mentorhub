@@ -105,6 +105,10 @@ with sample (id, email, first_name, last_name, phone, status, disabled_reason, d
             'ACTIVE', null, null, interval '39 days', array ['STUDENT']),
            ('00000000-0000-4000-a000-000000000144', 'sienna.holt@example.com', 'Sienna', 'Holt', null,
             'ACTIVE', null, null, interval '39 days', array ['STUDENT']),
+           -- An email long enough to wrap in the student column of the enrollments of Software Engineering.
+           ('00000000-0000-4000-a000-000000000152',
+            'alexandra.konstantinopoulou@students.northbridge-training-academy.example.com', 'Alexandra',
+            'Konstantinopoulou', null, 'ACTIVE', null, null, interval '41 days', array ['STUDENT']),
            -- Wait for the next cohort: candidates for enrollment (enrollments.sql).
            ('00000000-0000-4000-a000-000000000145', 'tessa.martin@example.com', 'Tessa', 'Martin', null,
             'ACTIVE', null, null, interval '12 days', array ['STUDENT']),
@@ -338,7 +342,9 @@ with sample (n, email, created_by, created_ago, link_ago, accepted_ago, revoked_
            (159, 'zachary.bell@example.com', 'admin@mentorhub.local', interval '6 days', null,
             interval '5 days', null, null, array ['STUDENT']),
            (160, 'konstantin.vasilenko@mentoring-staff.northbridge-training-academy.example.com',
-            'admin@mentorhub.local', interval '181 days', null, interval '180 days', null, null, array ['MENTOR'])),
+            'admin@mentorhub.local', interval '181 days', null, interval '180 days', null, null, array ['MENTOR']),
+           (161, 'alexandra.konstantinopoulou@students.northbridge-training-academy.example.com',
+            'admin@mentorhub.local', interval '42 days', null, interval '41 days', null, null, array ['STUDENT'])),
      inserted as (
          insert into invitations (id, email, created_at, created_by, expires_at, accepted_at, accepted_user_id,
                                   revoked_at, revoked_by, token)

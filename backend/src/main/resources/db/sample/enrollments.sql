@@ -49,6 +49,8 @@ with sample (n, track, student, enrolled_by, enrolled_ago, start_ago) as (
            (25, 1, 'penelope.ross@example.com', 'sarah.lopez@mentorhub.local', interval '36 days', interval '35 days'),
            (26, 1, 'rafael.santos@example.com', 'coordinator@mentorhub.local', interval '36 days', interval '35 days'),
            (27, 1, 'sienna.holt@example.com', 'admin.mentor@mentorhub.local', interval '30 days', interval '35 days'),
+           (34, 1, 'alexandra.konstantinopoulou@students.northbridge-training-academy.example.com',
+            'coordinator@mentorhub.local', interval '37 days', interval '35 days'),
            -- Quality Assurance. Helen Park was enrolled before the track had a coordinator.
            (28, 2, 'helen.park@example.com', 'admin@mentorhub.local', interval '260 days', interval '255 days'),
            (29, 2, 'student@mentorhub.local', 'laura.chen@mentorhub.local', interval '148 days', interval '140 days'),
@@ -117,14 +119,15 @@ from enrollments e
 -- The mentors of the enrollments (ENR-9 to ENR-12). An assignment is one period in which a user was a mentor of an
 -- enrollment: assigned, then removed unless still a mentor. It is numbered in the order of the enrollment, then the
 -- mentor's email. Every mentor was assigned while active with the mentor role, after the enrollment, by an
--- administrator or a coordinator of the track at that moment. Mark Mentor leads every Software Engineering student and
--- three of Quality Assurance, more than one page, among them Lily Barnes, Zoe Palmer and Ruby Hughes since disabled and
--- Helen Park without the student role; he was removed from Mia Foster. Alma Admin-Mentor leads four, Milo
--- Mentor-Coordinator none. The Student persona has four mentors and is shown two: Dan Disabled was disabled and Thomas
--- Grant lost the mentor role afterwards, so they are marked on the track page. Paul Becker was disabled afterwards too.
--- On Software Engineering every count of students shows: Mark Mentor more than a scroll of them, Paul Becker and
--- Daniel Kim one, Konstantin Vasilenko two with Zoe Palmer since disabled, Thomas Grant two after losing the role.
--- Olivia Hayes had Daniel Kim until he was removed, and has no mentor now, nor do Mia Foster and Grace Morgan.
+-- administrator or a coordinator of the track at that moment. Mark Mentor leads every Software Engineering student but
+-- Alexandra Konstantinopoulou, and three of Quality Assurance, more than one page, among them Lily Barnes, Zoe Palmer
+-- and Ruby Hughes since disabled and Helen Park without the student role; he was removed from Mia Foster. Alma
+-- Admin-Mentor leads four, Milo Mentor-Coordinator none. The Student persona has four mentors and is shown two: Dan
+-- Disabled was disabled and Thomas Grant lost the mentor role afterwards, so they are marked on the track page. Paul
+-- Becker was disabled afterwards too. On Software Engineering every count of students shows: Mark Mentor more than a
+-- scroll of them, Paul Becker one, Daniel Kim two with Alexandra Konstantinopoulou and her long email, Konstantin
+-- Vasilenko two with Zoe Palmer since disabled, Thomas Grant two after losing the role. Olivia Hayes had Daniel Kim
+-- until he was removed, and has no mentor now, nor do Mia Foster and Grace Morgan.
 with assignment (enrollment, mentor, assigned_by, assigned_ago, removed_by, removed_ago) as (
     select e,
            'mentor@mentorhub.local',
@@ -136,6 +139,7 @@ with assignment (enrollment, mentor, assigned_by, assigned_ago, removed_by, remo
     union all
     values (1, 'admin.mentor@mentorhub.local', 'admin.mentor@mentorhub.local', interval '100 days', null, null),
            (2, 'daniel.kim@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '120 days', null, null),
+           (34, 'daniel.kim@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '29 days', null, null),
            (3, 'paul.becker@mentorhub.local', 'coordinator@mentorhub.local', interval '135 days', null, null),
            (4, 'thomas.grant@example.com', 'coordinator@mentorhub.local', interval '99 days', null, null),
            (5, 'thomas.grant@example.com', 'coordinator@mentorhub.local', interval '99 days', null, null),

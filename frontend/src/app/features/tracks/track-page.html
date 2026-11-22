@@ -164,43 +164,111 @@
         </div>
         <div hlmCardContent>
           @if (t.mentors.length > 0) {
-            <ul class="divide-y divide-border">
+            <ul class="divide-y divide-border overflow-hidden rounded-xl border border-border">
               @for (m of t.mentors; track m.id) {
-                <li class="flex items-center justify-between gap-x-4 gap-y-2 py-2.5">
-                  <div class="flex min-w-0 flex-1 flex-col gap-1">
-                    <div class="flex flex-wrap items-center gap-2">
-                      @if (canReadUsers()) {
-                        <a
-                          [routerLink]="['/users', m.id]"
-                          class="font-medium break-words text-mh-link hover:text-mh-link-hover hover:underline"
-                          >{{ m.name }}</a
+                @let open = isOpen(m);
+                <li
+                  class="relative"
+                  [class]="
+                    open
+                      ? 'before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-1 before:bg-mh-link'
+                      : ''
+                  "
+                >
+                  <div
+                    class="grid items-stretch pr-3"
+                    [class]="mentorColumns() + (open ? ' bg-primary/15 dark:bg-primary/22' : '')"
+                  >
+                    @if (canReadEnrollments()) {
+                      @if (m.students > 0) {
+                        <button
+                          type="button"
+                          class="flex min-h-[52px] items-center justify-center text-mh-link focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-mh-highlight-soft-foreground dark:focus-visible:outline-ring"
+                          [class]="
+                            open
+                              ? 'text-accent-foreground hover:bg-primary/10 dark:text-foreground dark:hover:bg-primary/15'
+                              : 'bg-primary/6 hover:bg-primary/15 dark:bg-primary/12 dark:hover:bg-primary/18'
+                          "
+                          [attr.aria-label]="'Students of ' + m.name"
+                          [attr.aria-expanded]="open"
+                          [attr.data-students-toggle]="m.id"
+                          (click)="toggle(m)"
                         >
+                          <ng-icon
+                            name="lucideChevronRight"
+                            size="16"
+                            aria-hidden="true"
+                            [class.rotate-90]="open"
+                          />
+                        </button>
                       } @else {
-                        <span class="font-medium break-words">{{ m.name }}</span>
+                        <span
+                          aria-hidden="true"
+                          [class]="gutterOnPhone() ? '' : 'max-sm:hidden'"
+                        ></span>
                       }
-                      @if (m.disabled) {
-                        <app-assignment-mark label="Disabled" />
-                      }
-                      @if (!m.mentorRole) {
-                        <app-assignment-mark label="No mentor role" />
-                      }
-                    </div>
-                    <span class="block font-mono text-xs text-muted-foreground"
-                      ><app-email [value]="m.email"
-                    /></span>
-                  </div>
-                  @if (t.canEnroll && t.status === 'ACTIVE') {
-                    <button
-                      hlmBtn
-                      variant="outline"
+                    }
+                    <app-avatar
+                      class="self-center"
+                      [user]="{ id: m.id, email: m.email, firstName: m.name }"
                       size="sm"
-                      type="button"
-                      class="shrink-0 border-destructive/40 bg-card text-destructive hover:bg-destructive/10 hover:text-mh-destructive-hover-foreground dark:border-destructive/50 dark:bg-card dark:hover:bg-destructive/20"
-                      [attr.aria-label]="'Remove ' + m.name"
-                      (click)="removeMentor(t, m)"
+                    />
+                    <div
+                      class="flex min-w-0 flex-col gap-1 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4"
                     >
-                      Remove
-                    </button>
+                      <div class="flex min-w-0 flex-col gap-1 sm:flex-1 sm:basis-60">
+                        <div class="flex flex-wrap items-center gap-2">
+                          @if (canReadUsers()) {
+                            <a
+                              [routerLink]="['/users', m.id]"
+                              class="font-medium break-words text-mh-link hover:text-mh-link-hover hover:underline"
+                              >{{ m.name }}</a
+                            >
+                          } @else {
+                            <span class="font-medium break-words">{{ m.name }}</span>
+                          }
+                          @if (m.disabled) {
+                            <app-assignment-mark label="Disabled" />
+                          }
+                          @if (!m.mentorRole) {
+                            <app-assignment-mark label="No mentor role" />
+                          }
+                        </div>
+                        <span class="block font-mono text-xs text-muted-foreground"
+                          ><app-email [value]="m.email"
+                        /></span>
+                      </div>
+                      <span
+                        class="text-sm whitespace-nowrap"
+                        [class.text-muted-foreground]="m.students === 0"
+                        >{{ studentsText(m.students) }}</span
+                      >
+                    </div>
+                    @if (t.canEnroll && t.status === 'ACTIVE') {
+                      <button
+                        hlmBtn
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        class="relative shrink-0 self-center border-destructive/40 bg-card text-destructive hover:bg-destructive/10 hover:text-mh-destructive-hover-foreground max-sm:size-10 max-sm:px-0 max-sm:after:pointer-events-none max-sm:after:absolute max-sm:after:right-full max-sm:after:z-20 max-sm:after:mr-1.5 max-sm:after:rounded-md max-sm:after:bg-foreground max-sm:after:px-2 max-sm:after:py-1 max-sm:after:text-xs max-sm:after:font-normal max-sm:after:whitespace-nowrap max-sm:after:text-background max-sm:after:opacity-0 max-sm:after:transition-opacity max-sm:after:content-[attr(data-tip)] max-sm:hover:after:opacity-100 max-sm:focus-visible:after:opacity-100 dark:border-destructive/50 dark:bg-card dark:hover:bg-destructive/20"
+                        [attr.aria-label]="'Remove ' + m.name"
+                        [attr.data-tip]="'Remove ' + m.name"
+                        (click)="removeMentor(t, m)"
+                      >
+                        <span class="max-sm:hidden">Remove</span>
+                        <span class="sm:hidden">
+                          <ng-icon name="lucideUserMinus" size="18" aria-hidden="true" />
+                        </span>
+                      </button>
+                    }
+                  </div>
+                  @if (open) {
+                    <app-mentor-students
+                      [trackId]="t.id"
+                      [mentorId]="m.id"
+                      [mentorName]="m.name"
+                      (hide)="hideStudents(m)"
+                    />
                   }
                 </li>
               }

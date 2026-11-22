@@ -151,7 +151,7 @@ describe('the students of the mentors on the track page', () => {
     expect(byMentor(MENTOR_ID)).toHaveLength(0);
   });
 
-  it('loads the students of a mentor on request, narrowed to the mentor, with the headers and the caption', async () => {
+  it('loads the students of a mentor on request, narrowed to the mentor, with the headers and no caption', async () => {
     const { element, expand, chevron } = await open();
     expect(byMentor(MENTOR_ID)).toHaveLength(0);
 
@@ -162,7 +162,8 @@ describe('the students of the mentors on the track page', () => {
     expect(chevron('Mia Mentor')?.getAttribute('aria-expanded')).toBe('true');
     const headers = [...element.querySelectorAll('[role=columnheader], th')].map((h) => text(h));
     expect(headers).toEqual(expect.arrayContaining(['Student', 'Email', 'Started']));
-    expect(text(element)).toContain('3 students of Mia Mentor on this track, ordered by name');
+    expect(text(element)).not.toMatch(/students? of Mia Mentor on this track/);
+    expect(text(element)).not.toContain('ordered by name');
     expect(text(element)).toContain('student1@example.com');
     expect(text(element)).not.toContain('End of the list');
   });
@@ -175,7 +176,7 @@ describe('the students of the mentors on the track page', () => {
 
     await vi.waitFor(() => expect(text(element)).toContain('Student 150'));
     expect(byMentor(MENTOR_ID).map((c) => c?.page)).toEqual([0, 1]);
-    expect(text(element)).toContain('Student 001');
+    expect(text(element)).toContain('Student 01');
     expect(text(element)).toContain('End of the list: all 150 students shown');
   });
 
@@ -203,7 +204,7 @@ describe('the students of the mentors on the track page', () => {
     await vi.waitFor(() => expect(byMentor(OTHER_MENTOR_ID)).toHaveLength(1));
     expect(chevron('Mia Mentor')?.getAttribute('aria-expanded')).toBe('true');
     expect(chevron('Omar Mentor')?.getAttribute('aria-expanded')).toBe('true');
-    expect(text(element)).toContain('2 students of Omar Mentor on this track');
+    expect(text(element)).not.toContain('on this track, ordered by name');
   });
 
   it('hides the students when the chevron is used again', async () => {
@@ -300,13 +301,12 @@ describe('the students of the mentors on the track page', () => {
     );
   });
 
-  it('reloads the track and every open students list after a mentor of the track is removed', async () => {
+  it('shows the mentors of the track as returned and reloads every open students list after a mentor of the track is removed', async () => {
     const { element, expand, settle } = await open();
     await expand('Mia Mentor');
     await vi.waitFor(() => expect(text(element)).toContain('Student 03'));
-    api.resolve(removeTrackMentor, undefined as never);
+    api.resolve(removeTrackMentor, track({ mentors: [mia()] }));
     const loads = byMentor(MENTOR_ID).length;
-    const trackLoads = api.callsFor(getTrack).length;
 
     element.querySelector<HTMLButtonElement>('button[aria-label="Remove Omar Mentor"]')?.click();
     await settle();
@@ -314,7 +314,7 @@ describe('the students of the mentors on the track page', () => {
     await settle();
 
     expect(api.callsFor(removeTrackMentor)).toHaveLength(1);
-    await vi.waitFor(() => expect(api.callsFor(getTrack).length).toBeGreaterThan(trackLoads));
+    await vi.waitFor(() => expect(text(element)).not.toContain('Omar Mentor'));
     await vi.waitFor(() => expect(byMentor(MENTOR_ID).length).toBeGreaterThan(loads));
   });
 });
