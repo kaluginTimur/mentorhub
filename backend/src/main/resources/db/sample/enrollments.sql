@@ -7,7 +7,10 @@
 --                                              with the number of the enrollment; 9300, 9400 and 9500 a mentor
 --                                              assigned, 9600, 9700 and 9800 a mentor removed, about the track, the
 --                                              student and the mentor in this order, with the number of the mentor
---                                              assignment
+--                                              assignment; 9a00 a cohort created and 9b00 a cohort deleted, with
+--                                              the number of the cohort; 9c00 and 9d00 a change of an enrollment's
+--                                              cohort, about the track and the student, with the number of the change
+--   cohorts      00000000-0000-4000-9900-...   1 to 99
 --
 -- Every enrollment is one the application could have recorded: the student was active with the student role, the
 -- track active and the one who enrolled an administrator or then a coordinator of the track; a student has one
@@ -16,8 +19,57 @@
 -- Student persona, Ruby Hughes since disabled and Helen Park, who lost the student role when she came back as a
 -- mentor; QA Automation has one student and no coordinator to contact; DevOps has none. James Porter, Mason Ward and
 -- the students who joined in the last two weeks are the candidates.
+--
+-- The cohorts (COH). Software Engineering has three: Intake A and Intake B with students, and Intake C starting in
+-- about seven weeks, still empty; a misspelled Intake B was deleted at once; Marcus Lane, Nadia Rahman and Sienna Holt
+-- are in no cohort. Frontend Development keeps the empty cohort it had planned before it was closed.
+-- Quality Assurance and the other tracks have none. A cohort was created by a coordinator of its track at that moment.
+with sample (n, track, name, start_ago, created_ago, created_by, deleted_ago, deleted_by) as (
+    values (1, 1, 'Intake A', interval '140 days', interval '139 days', 'coordinator@mentorhub.local',
+            null::interval, null),
+           (2, 1, 'Intkae B', interval '35 days', interval '40 days', 'sarah.lopez@mentorhub.local',
+            interval '40 days' - interval '2 minutes', 'sarah.lopez@mentorhub.local'),
+           (3, 1, 'Intake B', interval '35 days', interval '40 days' - interval '3 minutes',
+            'sarah.lopez@mentorhub.local', null, null),
+           (4, 1, 'Intake C', interval '-48 days', interval '5 days', 'coordinator@mentorhub.local', null, null),
+           (5, 4, 'Intake A', interval '60 days', interval '120 days', 'sarah.lopez@mentorhub.local', null,
+            null)),
+     cohort as (
+         select s.n,
+                ('00000000-0000-4000-9900-' || lpad(s.n::text, 12, '0'))::uuid as id,
+                ('00000000-0000-4000-f000-' || lpad(s.track::text, 12, '0'))::uuid as track_id,
+                s.name,
+                (now() - s.start_ago)::date                                    as start_date,
+                now() - s.created_ago                                          as created_at,
+                created_by.id                                                  as created_by,
+                now() - s.deleted_ago                                          as deleted_at,
+                deleted_by.id                                                  as deleted_by
+         from sample s
+                  join users created_by on created_by.email = s.created_by
+                  left join users deleted_by on deleted_by.email = s.deleted_by),
+     inserted as (
+         insert into cohorts (id, track_id, name, start_date, created_at)
+             select id, track_id, name, start_date, created_at
+             from cohort
+             where deleted_at is null)
+insert
+into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
+select ('00000000-0000-4000-9' || case when e.deleted then 'b' else 'a' end || '00-' || lpad(c.n::text, 12, '0'))::uuid,
+       case when e.deleted then c.deleted_at else c.created_at end,
+       case when e.deleted then c.deleted_by else c.created_by end,
+       case when e.deleted then 'TRACK_COHORT_DELETED' else 'TRACK_COHORT_CREATED' end,
+       'TRACK',
+       c.track_id,
+       jsonb_build_object('cohort', jsonb_build_object('id', c.id, 'name', c.name),
+                          'startDate', to_char(c.start_date, 'YYYY-MM-DD'))
+from cohort c
+         cross join (values (false), (true)) as e (deleted)
+where not e.deleted or c.deleted_at is not null;
+
+-- Intake B of Software Engineering was enrolled into its cohort; Intake A was put into its cohort only after it had
+-- started (below).
 with sample (n, track, student, enrolled_by, enrolled_ago, start_ago) as (
-    -- The spring cohort of Software Engineering; Marcus Lane and Nadia Rahman joined late.
+    -- Intake A of Software Engineering; Marcus Lane and Nadia Rahman joined late.
     values (1, 1, 'liam.carter@example.com', 'coordinator@mentorhub.local', interval '144 days', interval '140 days'),
            (2, 1, 'emma.miller@example.com', 'coordinator@mentorhub.local', interval '144 days', interval '140 days'),
            (3, 1, 'noah.bennett@example.com', 'coordinator@mentorhub.local', interval '144 days', interval '140 days'),
@@ -40,7 +92,7 @@ with sample (n, track, student, enrolled_by, enrolled_ago, start_ago) as (
            (17, 1, 'leah.fleming@example.com', 'coordinator@mentorhub.local', interval '142 days', interval '140 days'),
            (18, 1, 'marcus.lane@example.com', 'coordinator@mentorhub.local', interval '138 days', interval '138 days'),
            (19, 1, 'nadia.rahman@example.com', 'coordinator@mentorhub.local', interval '138 days', interval '138 days'),
-           -- The autumn cohort of Software Engineering; Sienna Holt was enrolled after it had started.
+           -- Intake B of Software Engineering; Sienna Holt was enrolled after it had started.
            (20, 1, 'ava.collins@example.com', 'coordinator@mentorhub.local', interval '37 days', interval '35 days'),
            (21, 1, 'chloe.turner@example.com', 'coordinator@mentorhub.local', interval '37 days', interval '35 days'),
            (22, 1, 'n.shah@example.com', 'sarah.lopez@mentorhub.local', interval '37 days', interval '35 days'),
@@ -63,16 +115,20 @@ with sample (n, track, student, enrolled_by, enrolled_ago, start_ago) as (
            (32, 2, 'mia.charlotte.foster@students.northbridge-training-academy.example.com',
             'laura.chen@mentorhub.local', interval '146 days', interval '140 days'),
            -- QA Automation, from a start date a week ahead.
-           (33, 5, 'grace.morgan@example.com', 'admin.mentor@mentorhub.local', interval '2 days', interval '-7 days'))
+           (33, 5, 'grace.morgan@example.com', 'admin.mentor@mentorhub.local', interval '2 days', interval '-7 days')),
+     enrolled_into (n, cohort) as (
+         values (20, 3), (21, 3), (22, 3), (23, 3), (24, 3), (25, 3), (26, 3), (27, 3), (34, 3))
 insert
-into enrollments (id, student_id, track_id, start_date, enrolled_by, created_at)
+into enrollments (id, student_id, track_id, start_date, cohort_id, enrolled_by, created_at)
 select ('00000000-0000-4000-9000-' || lpad(s.n::text, 12, '0'))::uuid,
        student.id,
        ('00000000-0000-4000-f000-' || lpad(s.track::text, 12, '0'))::uuid,
        (now() - s.start_ago)::date,
+       ('00000000-0000-4000-9900-' || lpad(i.cohort::text, 12, '0'))::uuid,
        enrolled_by.id,
        now() - s.enrolled_ago
 from sample s
+         left join enrolled_into i on i.n = s.n
          join users student on student.email = s.student
          join users enrolled_by on enrolled_by.email = s.enrolled_by;
 
@@ -84,7 +140,10 @@ select ('00000000-0000-4000-9100-' || right(e.id::text, 12))::uuid,
        'TRACK',
        e.track_id,
        jsonb_build_object('userId', e.student_id, 'startDate', to_char(e.start_date, 'YYYY-MM-DD'))
-from enrollments e;
+           || case when c.id is null then '{}'::jsonb
+                   else jsonb_build_object('cohort', jsonb_build_object('id', c.id, 'name', c.name)) end
+from enrollments e
+         left join cohorts c on c.id = e.cohort_id;
 
 -- The same enrollments in the students' histories, with the track as it was at that moment.
 insert into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
@@ -96,7 +155,10 @@ select ('00000000-0000-4000-9200-' || right(e.id::text, 12))::uuid,
        e.student_id,
        jsonb_build_object('track', jsonb_build_object('id', e.track_id, 'code', track.code, 'name', track.name),
                           'startDate', to_char(e.start_date, 'YYYY-MM-DD'))
+           || case when c.id is null then '{}'::jsonb
+                   else jsonb_build_object('cohort', jsonb_build_object('id', c.id, 'name', c.name)) end
 from enrollments e
+         left join cohorts c on c.id = e.cohort_id
          join audit_log created
               on created.subject_type = 'TRACK' and created.subject_id = e.track_id
                   and created.action = 'TRACK_CREATED'
@@ -216,6 +278,87 @@ select ('00000000-0000-4000-9' || (subject.k + case when c.removed then 6 else 3
            else jsonb_build_object('studentId', c.student_id, 'track', track.reference) end
 from change c
          cross join (values (0), (1), (2)) as subject (k)
+         join audit_log created
+              on created.subject_type = 'TRACK' and created.subject_id = c.track_id
+                  and created.action = 'TRACK_CREATED'
+         cross join lateral (
+    select jsonb_build_object(
+                   'id', c.track_id,
+                   'code', coalesce((select ch ->> 'newValue'
+                                     from audit_log u
+                                              cross join jsonb_array_elements(u.details -> 'changes') ch
+                                     where u.subject_type = 'TRACK' and u.subject_id = c.track_id
+                                       and u.action = 'TRACK_UPDATED' and ch ->> 'field' = 'code'
+                                       and u.occurred_at < c.occurred_at
+                                     order by u.occurred_at desc
+                                     limit 1), created.details ->> 'code'),
+                   'name', coalesce((select ch ->> 'newValue'
+                                     from audit_log u
+                                              cross join jsonb_array_elements(u.details -> 'changes') ch
+                                     where u.subject_type = 'TRACK' and u.subject_id = c.track_id
+                                       and u.action = 'TRACK_UPDATED' and ch ->> 'field' = 'name'
+                                       and u.occurred_at < c.occurred_at
+                                     order by u.occurred_at desc
+                                     limit 1), created.details ->> 'name')) as reference) track;
+
+-- The changes of the enrollments' cohorts (COH-3), in the order they were made, and the cohort each enrollment is in
+-- now. Intake A was created with its students but Marcus Lane and Nadia Rahman, each added a moment after the creation
+-- as the application writes them; Lucas Price later moved to Intake B, and Sienna Holt was taken out of it.
+with change (n, enrollment, from_cohort, to_cohort, actor, occurred_at) as (
+    select e,
+           e,
+           null::int,
+           1,
+           'coordinator@mentorhub.local',
+           (select created_at from cohorts where id = '00000000-0000-4000-9900-000000000001')
+               + e * interval '1 millisecond'
+    from generate_series(1, 17) e
+    union all
+    values (18, 5, 1, 3, 'coordinator@mentorhub.local', now() - interval '30 days'),
+           (19, 27, 3, null, 'coordinator@mentorhub.local', now() - interval '20 days')),
+     resolved as (
+         select c.n,
+                e.id          as enrollment_id,
+                e.track_id,
+                e.student_id,
+                actor.id      as actor,
+                c.occurred_at,
+                to_cohort.id  as to_id,
+                case when from_cohort.id is not null
+                         then jsonb_build_object('id', from_cohort.id, 'name', from_cohort.name)
+                     else 'null'::jsonb end as from_ref,
+                case when to_cohort.id is not null
+                         then jsonb_build_object('id', to_cohort.id, 'name', to_cohort.name)
+                     else 'null'::jsonb end as to_ref
+         from change c
+                  join enrollments e on e.id = ('00000000-0000-4000-9000-' || lpad(c.enrollment::text, 12, '0'))::uuid
+                  join users actor on actor.email = c.actor
+                  left join cohorts from_cohort
+                            on from_cohort.id = ('00000000-0000-4000-9900-' || lpad(c.from_cohort::text, 12, '0'))::uuid
+                  left join cohorts to_cohort
+                            on to_cohort.id = ('00000000-0000-4000-9900-' || lpad(c.to_cohort::text, 12, '0'))::uuid),
+     moved as (
+         update enrollments e
+             set cohort_id = last.to_id
+             from (select distinct on (enrollment_id) enrollment_id, to_id
+                   from resolved
+                   order by enrollment_id, n desc) last
+             where e.id = last.enrollment_id)
+-- Each change in the histories of the track and the student, with the track as it was at that moment.
+insert
+into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
+select ('00000000-0000-4000-9' || case when subject.k = 0 then 'c' else 'd' end || '00-'
+            || lpad(c.n::text, 12, '0'))::uuid,
+       c.occurred_at,
+       c.actor,
+       case subject.k when 0 then 'TRACK_ENROLLMENT_COHORT_CHANGED' else 'USER_COHORT_CHANGED' end,
+       case subject.k when 0 then 'TRACK' else 'USER' end,
+       case subject.k when 0 then c.track_id else c.student_id end,
+       case subject.k
+           when 0 then jsonb_build_object('userId', c.student_id, 'from', c.from_ref, 'to', c.to_ref)
+           else jsonb_build_object('track', track.reference, 'from', c.from_ref, 'to', c.to_ref) end
+from resolved c
+         cross join (values (0), (1)) as subject (k)
          join audit_log created
               on created.subject_type = 'TRACK' and created.subject_id = c.track_id
                   and created.action = 'TRACK_CREATED'

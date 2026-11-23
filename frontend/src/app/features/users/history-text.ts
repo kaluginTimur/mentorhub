@@ -75,7 +75,7 @@ export function describeEntry(entry: HistoryEntry): string {
     case 'USER_TRACK_MENTOR_REMOVED':
       return `Removed as a mentor of ${trackName(entry)}`;
     case 'USER_ENROLLED':
-      return `Enrolled on ${trackName(entry)}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}`;
+      return `Enrolled on ${trackName(entry)}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}${entry.cohort ? `, into the cohort ${entry.cohort.name}` : ''}`;
     case 'USER_MENTOR_ASSIGNED':
       return `${entry.mentor?.name ?? 'A mentor'} assigned as a mentor on ${trackName(entry)}`;
     case 'USER_MENTOR_REMOVED':
@@ -84,8 +84,18 @@ export function describeEntry(entry: HistoryEntry): string {
       return `Assigned as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
     case 'USER_STUDENT_REMOVED':
       return `Removed as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
-    case 'USER_COHORT_CHANGED':
-      return 'Cohort changed'; // TODO(cohorts T6): real wording
+    case 'USER_COHORT_CHANGED': {
+      const { from, to } = entry.cohortChange ?? { from: null, to: null };
+      if (from && to) {
+        return `Moved from the cohort ${from.name} to the cohort ${to.name} on ${trackName(entry)}`;
+      }
+      if (to) {
+        return `Put into the cohort ${to.name} on ${trackName(entry)}`;
+      }
+      return from
+        ? `Taken out of the cohort ${from.name} on ${trackName(entry)}`
+        : `Cohort changed on ${trackName(entry)}`;
+    }
     default: {
       const unreachable: never = entry.action;
       return unreachable;

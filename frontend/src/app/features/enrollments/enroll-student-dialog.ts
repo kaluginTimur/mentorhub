@@ -9,13 +9,10 @@ import {
   resource,
   signal,
 } from '@angular/core';
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCalendar } from '@ng-icons/lucide';
 import { BrnDialogRef, injectBrnDialogContext } from '@spartan-ng/brain/dialog';
 import type { BrnOverlayState } from '@spartan-ng/brain/overlay';
 import { HlmAutocompleteImports } from '@spartan-ng/helm/autocomplete';
 import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmCalendar } from '@spartan-ng/helm/calendar';
 import {
   HlmDialogDescription,
   HlmDialogFooter,
@@ -24,10 +21,13 @@ import {
 } from '@spartan-ng/helm/dialog';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
-import { HlmPopoverImports } from '@spartan-ng/helm/popover';
+import { Cohort } from '../../core/api/models/cohort';
 import { EnrollmentCandidate } from '../../core/api/models/enrollment-candidate';
 import { EnrollmentCandidatePage } from '../../core/api/models/enrollment-candidate-page';
+import { DateField, parseIsoDate, toIsoDate } from '../../shared/date-field/date-field';
+import { DATE_FORMAT } from '../../shared/date/date-format';
 import { Email } from '../../shared/email/email';
+import { DatePipe } from '@angular/common';
 
 export const CANDIDATE_SEARCH_LIMIT = 100;
 const SEARCH_DELAY = 300;
@@ -39,25 +39,13 @@ export interface EnrollStudentDialogData {
    * Enrolls the student. Resolves true when the dialog may close (done, or refused and explained),
    * false to stay open, or a message to show under the start date field.
    */
-  enroll: (studentId: string, startDate: string) => Promise<boolean | string>;
-}
-
-const toIsoDate = (date: Date): string => {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-};
-
-/** A real calendar date typed as `yyyy-mm-dd`, in the user's time zone; otherwise undefined. */
-function parseIsoDate(text: string): Date | undefined {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
-  if (!match) {
-    return undefined;
-  }
-  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
-    ? date
-    : undefined;
+  enroll: (
+    studentId: string,
+    startDate: string,
+    cohortId: string | null,
+  ) => Promise<boolean | string>;
+  /** The cohorts of the track, newest start first (ENR-7); none when the track has none. */
+  cohorts?: Cohort[];
 }
 
 /** Today in the user's time zone, as `yyyy-mm-dd`. */
@@ -69,7 +57,6 @@ export function localToday(): string {
 @Component({
   selector: 'app-enroll-student-dialog',
   imports: [
-    NgIcon,
     HlmDialogHeader,
     HlmDialogTitle,
     HlmDialogDescription,
@@ -79,10 +66,9 @@ export function localToday(): string {
     HlmAutocompleteImports,
     Email,
     HlmLabel,
-    HlmCalendar,
-    HlmPopoverImports,
+    DateField,
+    DatePipe,
   ],
-  providers: [provideIcons({ lucideCalendar })],
   template: `
     <div class="flex flex-col gap-5">
       <div hlmDialogHeader>
@@ -192,61 +178,48 @@ export function localToday(): string {
           </div>
         </div>
 
-        <div class="flex flex-col gap-2.5">
-          <label hlmLabel for="enroll-start-date">Start date</label>
-          <div class="relative">
-            <input
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-2.5">
+            <label hlmLabel for="enroll-cohort">Cohort</label>
+            <select
               hlmInput
-              id="enroll-start-date"
-              type="text"
-              inputmode="numeric"
-              autocomplete="off"
-              placeholder="yyyy-mm-dd"
-              class="pr-10"
-              [value]="startDate()"
-              [attr.aria-invalid]="dateError() ? 'true' : null"
-              [attr.aria-describedby]="dateError() ? 'enroll-start-date-error' : null"
-              (input)="startDate.set($any($event.target).value); serverDateError.set('')"
-              (change)="startDate.set($any($event.target).value)"
-            />
-            <hlm-popover
-              align="end"
-              sideOffset="4"
-              [state]="calendarState()"
-              (stateChanged)="calendarState.set($event)"
+              id="enroll-cohort"
+              data-testid="enroll-cohort"
+              [disabled]="cohorts.length === 0"
+              [attr.aria-describedby]="cohorts.length === 0 ? 'enroll-cohort-hint' : null"
+              (change)="cohortId.set($any($event.target).value)"
             >
-              <button
-                hlmBtn
-                hlmPopoverTrigger
-                variant="ghost"
-                size="icon-sm"
-                type="button"
-                class="absolute top-1/2 right-0.5 -translate-y-1/2"
-                aria-label="Choose the start date in a calendar"
-              >
-                <ng-icon name="lucideCalendar" aria-hidden="true" />
-              </button>
-              <hlm-popover-content
-                class="w-fit p-0"
-                *hlmPopoverPortal
-                (keydown.tab)="onCalendarTab($event)"
-                (keydown.shift.tab)="onCalendarTab($event)"
-              >
-                <hlm-calendar
-                  class="p-3"
-                  [date]="pickedDate()"
-                  [defaultFocusedDate]="pickedDate() ?? undefined"
-                  (dateChange)="pickDate($event)"
-                />
-              </hlm-popover-content>
-            </hlm-popover>
+              <option value="" [selected]="cohortId() === ''">No cohort</option>
+              @for (c of cohorts; track c.id) {
+                <option [value]="c.id" [selected]="cohortId() === c.id">
+                  {{ c.name }} (starts {{ c.startDate | date: dateFormat }})
+                </option>
+              }
+            </select>
+            <div class="min-h-4">
+              @if (cohorts.length === 0) {
+                <p id="enroll-cohort-hint" class="text-xs text-muted-foreground">
+                  This track has no cohorts yet.
+                </p>
+              }
+            </div>
           </div>
-          <div class="min-h-4">
-            @if (dateError(); as message) {
-              <p id="enroll-start-date-error" class="text-xs text-destructive" role="alert">
-                {{ message }}
-              </p>
-            }
+          <div class="flex flex-col gap-2.5">
+            <label hlmLabel for="enroll-start-date">Start date</label>
+            <app-date-field
+              inputId="enroll-start-date"
+              [invalid]="!!dateError()"
+              [describedBy]="dateError() ? 'enroll-start-date-error' : undefined"
+              [value]="startDate()"
+              (valueChange)="startDate.set($event); serverDateError.set('')"
+            />
+            <div class="min-h-4">
+              @if (dateError(); as message) {
+                <p id="enroll-start-date-error" class="text-xs text-destructive" role="alert">
+                  {{ message }}
+                </p>
+              }
+            </div>
           </div>
         </div>
 
@@ -276,8 +249,10 @@ export class EnrollStudentDialog {
   private releaseSearch: (() => void) | undefined;
 
   protected readonly selected = signal<EnrollmentCandidate | null>(null);
+  protected readonly cohorts = this.data.cohorts ?? [];
+  protected readonly dateFormat = DATE_FORMAT;
+  protected readonly cohortId = signal('');
   protected readonly startDate = signal(localToday());
-  protected readonly calendarState = signal<BrnOverlayState | null>(null);
   /** The typed text as a date for the calendar, or undefined while it is not a valid date. */
   protected readonly pickedDate = computed(() => parseIsoDate(this.startDate()));
   protected readonly saving = signal(false);
@@ -343,37 +318,6 @@ export class EnrollStudentDialog {
     }
   }
 
-  /**
-   * The calendar renders in an overlay outside the dialog, so Tab from its edge would reach the page
-   * behind the modal: it closes the popup and returns the focus to the date field instead.
-   */
-  protected onCalendarTab(event: Event): void {
-    const keyboard = event as KeyboardEvent;
-    const popup = event.currentTarget as HTMLElement;
-    const stops = Array.from(popup.querySelectorAll<HTMLElement>('button, [tabindex]')).filter(
-      (el) =>
-        el.tabIndex >= 0 &&
-        !(el as HTMLButtonElement).disabled &&
-        !el.closest('[inert]') &&
-        getComputedStyle(el).visibility !== 'hidden',
-    );
-    const edge = keyboard.shiftKey ? stops[0] : stops[stops.length - 1];
-    if (stops.length > 0 && document.activeElement !== edge) {
-      return;
-    }
-    keyboard.preventDefault();
-    this.calendarState.set('closed');
-    this.host.nativeElement.querySelector<HTMLInputElement>('#enroll-start-date')?.focus();
-  }
-
-  protected pickDate(date: Date | undefined): void {
-    if (date) {
-      this.startDate.set(toIsoDate(date));
-      this.serverDateError.set('');
-    }
-    this.calendarState.set('closed');
-  }
-
   protected async onSubmit(event: Event): Promise<void> {
     event.preventDefault();
     if (this.saving()) {
@@ -386,7 +330,11 @@ export class EnrollStudentDialog {
     }
     this.saving.set(true);
     try {
-      const result = await this.data.enroll(student.id, this.startDate().trim());
+      const result = await this.data.enroll(
+        student.id,
+        this.startDate().trim(),
+        this.cohortId() || null,
+      );
       if (result === true) {
         this.ref.close(true);
       } else if (typeof result === 'string') {

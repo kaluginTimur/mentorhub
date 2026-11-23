@@ -18,6 +18,8 @@ export interface ConfirmDialogData {
   destructive?: boolean;
   /** An optional checkbox below the text; the dialog then closes with `{ checked }` instead of `true`. */
   checkbox?: { label: string; checked: boolean };
+  /** `data-testid`s of the dialog and of its confirming button. */
+  testIds?: { dialog: string; confirm: string };
 }
 
 export interface ConfirmResult {
@@ -36,7 +38,7 @@ export interface ConfirmResult {
     HlmLabel,
   ],
   template: `
-    <div class="flex flex-col gap-5">
+    <div class="flex flex-col gap-5" [attr.data-testid]="data.testIds?.dialog ?? null">
       <div hlmDialogHeader>
         <h2
           hlmDialogTitle
@@ -70,6 +72,7 @@ export interface ConfirmResult {
               ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
               : ''
           "
+          [attr.data-testid]="data.testIds?.confirm ?? null"
           (click)="ref.close(result())"
         >
           {{ data.confirmLabel }}

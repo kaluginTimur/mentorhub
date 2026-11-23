@@ -94,8 +94,8 @@ Source: the approved mockup `.screens/cohorts/mockups/track-page-cohorts.html`, 
 | T2 Mockup of the cohorts on the track page and the dialogs | COH-8, ENR-7 | ui-designer | done |
 | T3 Red tests, backend and frontend | all new and changed scenarios | test-engineer | done |
 | T4 Cohorts backend: reading, creating, adding, taking out, deleting, candidates, enrolling into a cohort, the filter, the histories; checkpoint | COH-1 to COH-7, ENR-2.7, ENR-4.3, TRK-5.4 | backend-dev | done |
-| T5 Sample data for the cohorts | | backend-dev | pending |
-| T6 Track page: cohorts, filter, dialogs, enroll into a cohort, the histories | COH-8.1, COH-8.2, ENR-7.1, TRK-10 | frontend-dev | pending |
+| T5 Sample data for the cohorts | | backend-dev | done |
+| T6 Track page: cohorts, filter, dialogs, enroll into a cohort, the histories | COH-8.1, COH-8.2, ENR-7.1, TRK-10 | frontend-dev | done |
 
 Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" when the user wants to stop after it.
 
@@ -116,6 +116,12 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - T1 (frontend): the history texts of the four new actions are stubs marked `TODO(cohorts T6)`; `trackEnrollment()` in `features/enrollments/test-data.ts` defaults `cohort: null`.
 - T4 (for T5): audit rows take their time at insert (`clock_timestamp()`); a cohort created with members writes `TRACK_COHORT_CREATED` first, then a `TRACK_ENROLLMENT_COHORT_CHANGED` / `USER_COHORT_CHANGED` pair per member; write sample rows in that order with increasing times. Details: created/deleted `{"cohort": {id, name}, "startDate"}`; track change `{"userId", "from", "to"}`; user change `{"track": {id, code, name}, "from", "to"}`, `from`/`to` `{id, name}` or null; `TRACK_STUDENT_ENROLLED` / `USER_ENROLLED` carry `"cohort": {id, name}` only when there is one.
 - T4: `EnrollmentRepository.findByTrackAndMentor` is replaced by `findByTrack(trackId, mentorId, cohortId)`; shared checks are in `EnrollmentRules`; `users.HistoryCohort` is the one public cohort type of both history APIs.
+- T5: sample center (`db/sample/enrollments.sql`): SWE has Intake C (empty, newest), Intake B (9), Intake A (16), and Marcus Lane, Nadia Rahman, Sienna Holt in no cohort; Lucas Price moved A to B, Sienna taken out of B, "Intkae B" created and deleted; Frontend Development (archived) has an empty "Intake A"; QA, DevOps, QA Automation have none. Sign-ins: `coordinator@mentorhub.local` or `sarah.lopez@mentorhub.local` (SWE coordinators), `admin@mentorhub.local`, read-only `mentor.coordinator@mentorhub.local` (DevOps only). Candidates for a new SWE cohort: 28 with the switch off, 3 on.
+- T5 (for the test engineer, second pass): `SampleCenterDataTests` reads every user history entry but not every track history entry.
+- T6: deviations from the mockup kept for old specs (`track-enrollments*.spec.ts`): the row and cohort menus are inline lists, not overlays; "No students enrolled yet" instead of "No enrollments yet."; the shared paginator ("1–25 of N"); "—" for no mentor; "Assign mentor" moved into the row menu. Old specs do not stub `listTrackCohorts`. New: `shared/action-menu/action-menu.ts`, `features/enrollments/cohort-candidate-picker.ts`, `cohort-dialogs.ts`; `ConfirmDialog` takes optional `testIds`.
+- T6: details chosen by the developer: a created cohort becomes the chosen one; the create dialog's start date starts blank, required ("Choose a start date."); the picker pages by 10; a cohort load failure shows "Could not load the cohorts." with "Try again"; an unknown `?cohort=` counts as All enrollments; success snackbars 5 s; refusal texts its own; mentor removal in the popover still shows on an archived track (unchanged).
+- T6 rework: shared `shared/date-field/date-field.ts` (`app-date-field`) used by the enroll and create-cohort dialogs; the shared dialog content scrolls (`max-h` 100dvh) and its footer is one wrapping row, for every dialog; "All enrollments" takes the total from one extra `listTrackEnrollments` (size 1) while a cohort is chosen (an API field would remove it); the student link only for users with USERS_READ; the Assign mentor icon button (`enrollment-assign-mentor`) keeps a tooltip; `TrackEnrollments` injects `CurrentUserService`.
+- T6 rounds 2-3: page scroll lock while a dialog is open is global in `frontend/src/styles/tailwind.css` (overflow hidden with a stable gutter, not a fixed body), so the sticky header stays; the loading spinner is a sticky badge in the enrollments area; at 390 px the row actions cell is layered above the following cards, and the Assign mentor icon sits bottom-right (the mockup centers it).
 
 ## Red tests
 
@@ -139,18 +145,19 @@ Commit: 6dd4644 "test: red tests for cohorts"
 - 2026-11-24: The mockup approved ("утверждаю"): variant C after round 5, `.screens/cohorts/mockups/track-page-cohorts.html`. The decisions the tests and the code rely on are in What the tests rely on. On the way: "Only without cohort" in the singular ("у студента только одна активная когорта"); on a phone, the cohort actions under the dots for any cohort; a single action is a compact icon instead of a menu; the strip of the chosen cohort removed and its actions in a dots menu ("полосу убрать, а экшены над когортой спрятать под выпадайку по аналогии"); the review fixes accepted as recommended ("да, отдавай дизайнеру как предлагаешь").
 - 2026-11-24: Plan gate passed: the plan, the contract and the schema approved ("одобряю").
 - 2026-11-24: T4 approved at the checkpoint ("одобряю"); the audit clock line of `docs/development/backend.md` changed now: "вариант (a)" (an audit entry takes `clock_timestamp()` at insert, so that changes serialized by a lock keep their order).
+- 2026-11-24: The screen run's decisions: the two bugs fixed ("All enrollments" counts the whole track; the picker overflow); at 390 px "сделать как в макете" (buttons in one row, Cancel left); every dialog scrolls when taller than the screen, fields do not stick out ("я не могу листать поп-ап ... похоже, что это верно для всех попапов"); a track with no cohort hides the Cohort column ("колонку скрывать"); student names are links, headings bold as in the mockup; kept: header icons, the picker without one box and without a pager on one page, the X with a visible hover in the dark theme, the move list as a bordered box, "Enroll a student", the T6 deviations; Start date uses the project's own calendar; a row whose only action is Assign mentor shows an icon button instead of the dots ("заменить иконку выпадайки на кнопку Assign mentor, но сделать кнопку подходящей иконкой"; applied to any such row, including an enrollment in no cohort on a track with cohorts); no tooltips on the dots menus ("убрать всплывающие подсказки").
+- 2026-11-24: Fix rounds 2-3 ("по всем пунктам как рекомендуешь"): coordinators without USERS_READ see names as plain text; the Assign mentor icon keeps its tooltip; the picker wraps long names and emails; the empty texts placed as the mockup ("исправить как в мокапе"); a centered spinner instead of the loading bar ("заменить на крутящийся кружок в самой середине части окна энроллментов"); the open row menu covers the next card at 390 px (`.screens/img_1.png`); the header stays when a dialog opens on a scrolled page; kept: a dialog title scrolls away with tall content, the range label changes before the rows, "No students enrolled yet" and the shared paginator.
+- 2026-11-24: The spinner at the top of the list, paging jumping to the top, the status text as live content: kept ("по всем пунктам как рекомендуешь"). T5 and T6 accepted and committed ("да, коммить").
 
 ## Handover
 
-- Waiting for: T5 (sample data, `backend-dev`).
-- To read: `git diff 6dd4644 -- backend` (start with `audit/internal/persistence/AuditLogRepository.java`, `enrollments/internal/service/CohortService.java` `moveInto`, `eligible`, `candidates`, `EnrollmentService.enroll`).
+- Waiting for: nothing; next is the second test-engineer pass (tests of details), a fresh `test-engineer`.
+- To read: the commit "feat: cohorts sample data and track page"; `git diff 8dd7040`.
 - Documents changed:
-  - changed `docs/development/backend.md` (new since the last stop): Database, the clock line widened: an audit entry takes `clock_timestamp()` at insert so that changes serialized by a lock keep their order. Four answers: (1) any later change with parallel changes of one object under a lock and a test of the history order, such as the end of an enrollment; (2) taking the transaction's time and getting entries out of order, a flaky test; (3) the comment in `AuditLogRepository` is seen only by whoever opens it, and the guide said the opposite; (4) yes: the test engineer flagged it and `backend-dev` had to change the audit insert in T4.
-  - added `docs/requirements/cohorts.md`; changed `docs/requirements/enrollments.md`, `tracks.md`, `audit.md`, `platform.md`, `authorization.md`, `README.md`; changed `api/openapi.yaml`; changed `backend/src/main/resources/db/migration/V1__schema.sql`: all committed in 6dd4644, unchanged since.
-- State: T4 done: backend verification passes, every red backend test is green; no test file changed since 6dd4644. Beyond `enrollments`, T4 touched `audit` (the insert takes `clock_timestamp()` instead of the default `now()`, for every module), `tracks` and `users` (history writes, `HistoryCohort`, `UserDirectory.findUsers(ids, text, page, size)`).
-- Open questions: none. (Settled: `docs/development/backend.md` (Database) said "The database's `now()` is the one clock for expiry, status and audit", which the audit insert no longer follows. (a) change the line to say audit entries take `clock_timestamp()`, so that changes serialized by a lock keep their order (a guide change: four answers given in the relay), or (b) leave it, the comment in `AuditLogRepository` explains. Recommendation: (a); the owner chose (a).)
-- On approval: offer to commit T4 with the plan and the usage record; then T5 (sample data) to a fresh `backend-dev`, then T6 to `frontend-dev`.
-- On remarks: to a fresh `backend-dev` with the remarks and this plan's notes (this one is at 196k).
+  - changed `docs/development/backend.md`: the audit clock line (in 8dd7040).
+  - added `docs/requirements/cohorts.md`; changed `docs/requirements/enrollments.md`, `tracks.md`, `audit.md`, `platform.md`, `authorization.md`, `README.md`; changed `api/openapi.yaml`, `backend/src/main/resources/db/migration/V1__schema.sql`: committed in 6dd4644, unchanged since.
+- State: T1-T6 done and committed; frontend verification green in the developer's report (446 tests); no spec changed since 6dd4644. Screen runs under `.screens/cohorts/`.
+- Next: the second test-engineer pass (doubts to the owner, failing tests to the owning developer; note whether it found a real bug), then the review loop, then `verifier` with scope `all`.
 
 ## Agents
 
@@ -167,3 +174,13 @@ Commit: 6dd4644 "test: red tests for cohorts"
 | verifier | inherited | a8f7020b70dcb37b7 | plan: backend after the owner's schema fix | 13k |
 | test-engineer | inherited | a63059c1288673fb1 | tests first: T3 | 168k |
 | backend-dev | inherited | a83357a9ecb52e047 | implementation: T4 | 196k |
+| backend-dev | inherited | aea5b2584ffaf40f0 | implementation: T5 | 98k |
+| frontend-dev | inherited | aeae6885a1fbacc1f | implementation: T6 | 194k |
+| manual-tester | inherited | a3b7265d1c56022d8 | implementation: screen run, NOT RUN | 20k |
+| manual-tester | inherited | ad98166d6979a01e6 | implementation: screen run | 100k |
+| manual-tester | haiku | a90f9f8ba4d935741 | implementation: numbered run | see usage |
+| frontend-dev | inherited | a97dc3b17b70d6941 | implementation: T6 fix rounds 1-4 | 145k |
+| manual-tester | inherited | acd847ccb167c1797 | implementation: fix-round screen run | see usage |
+| manual-tester | inherited | a801342f084af8fea | implementation: round 2 run | 91k |
+| manual-tester | inherited | ae37072c66960ae2e | implementation: round 3 run | 51k |
+| manual-tester | haiku | a3ad987ab84085adb | implementation: spinner steps | see usage |
