@@ -23,6 +23,8 @@ tags:
     description: The tracks of the training center, their coordinators and their mentors
   - name: Enrollments
     description: Who studies on which track
+  - name: Cohorts
+    description: The intakes of a track and their enrollments
 paths:
   /api/v1/system/info:
     get:
@@ -1016,6 +1018,14 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: cohortId
+          in: query
+          description: |
+            Narrows the page to the enrollments in the cohort; the order and the paging are unchanged. Combines with
+            `mentor`. A cohort of another track, or an id no cohort has, gives an empty page, not an error.
+          schema:
+            type: string
+            format: uuid
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1042,7 +1052,8 @@ paths:
         time of the request. Only an active user with the `STUDENT` role and no active enrollment, on any track, can
         be enrolled; a disabled user, a user without the role and an id no user has are refused alike with 409
         `student-not-eligible`. The start date may be any date, past or future; the enrollment is `ACTIVE` from the
-        moment it is recorded. An invalid body is answered 400 whoever sends it, before the permission is checked.
+        moment it is recorded. A cohort given must be a cohort of the track: a cohort of another track and an id no
+        cohort has are refused alike with 409 `cohort-not-eligible`. An invalid body is answered 400 whoever sends it, before the permission is checked.
         Otherwise checked in this order: the permission (403), the parameters (400), the track (404), the relation
         (403 `forbidden`), then the conflicts (409) in the order the response lists them.
       parameters:
@@ -1099,6 +1110,253 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnrollmentCandidatePage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/cohorts:
+    get:
+      tags: [Cohorts]
+      operationId: listTrackCohorts
+      summary: All cohorts of a track
+      description: |
+        Requires `ENROLLMENTS_READ`. For an active and an archived track alike. Not paged. Sorted by start date, newest
+        first, then by name (case-insensitive), then by id. Checked in this order: the permission (403), the request
+        (400), the track (404).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CohortList'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Cohorts]
+      operationId: createCohort
+      summary: Create a cohort on an active track, with its enrollments
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. Neither the name nor the start date has to be unique. Each enrollment given must be an
+        active enrollment of the track, or nothing is stored: 409 `enrollment-not-eligible`. An enrollment in another
+        cohort of the track is moved into the new one; an id given twice counts once. Checked in this order: the
+        permission (403), the request (400), the track (404), the relation (403 `forbidden`), then the conflicts (409)
+        in the order the response lists them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CohortCreate'
+      responses:
+        '201':
+          description: The new cohort
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cohort'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/CohortEnrollmentConflict'
+  /api/v1/tracks/{id}/cohorts/{cohortId}:
+    delete:
+      tags: [Cohorts]
+      operationId: deleteCohort
+      summary: Delete an empty cohort of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. Only a cohort without enrollments is deleted; its entries in the histories stay. A cohort
+        of another track is not found. Checked in this order: the permission (403), the parameters (400), the track
+        and the cohort (404), the relation (403 `forbidden`), then the conflicts (409) in the order the response lists
+        them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+      responses:
+        '204':
+          description: The cohort is deleted
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/CohortDeletionConflict'
+  /api/v1/tracks/{id}/cohorts/{cohortId}/enrollments:
+    post:
+      tags: [Cohorts]
+      operationId: addCohortEnrollments
+      summary: Add enrollments to a cohort of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. All or nothing: each enrollment given must be an active enrollment of the track, or
+        nothing is stored: 409 `enrollment-not-eligible`. An enrollment in another cohort of the track is moved into
+        this one; an enrollment already in this cohort, or an id given twice, changes nothing more. A cohort of another
+        track is not found. Checked in this order: the permission (403), the request (400), the track and the cohort
+        (404), the relation (403 `forbidden`), then the conflicts (409) in the order the response lists them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CohortEnrollmentsAddition'
+      responses:
+        '200':
+          description: The cohort after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cohort'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/CohortEnrollmentConflict'
+  /api/v1/tracks/{id}/cohorts/{cohortId}/enrollments/{enrollmentId}:
+    delete:
+      tags: [Cohorts]
+      operationId: removeCohortEnrollment
+      summary: Take an enrollment out of a cohort of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. The enrollment is left in no cohort. Taking out an enrollment that is not in the cohort,
+        or an id no enrollment has, changes nothing and responds 204; on an archived track it is 409 `track-archived`
+        like any change. A cohort of another track is not found. Checked in this order: the permission (403), the
+        parameters (400), the track and the cohort (404), the relation (403 `forbidden`), its status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+        - $ref: '#/components/parameters/CohortEnrollmentId'
+      responses:
+        '204':
+          description: The enrollment is in no cohort, or was not in this one
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/cohort-candidates:
+    get:
+      tags: [Cohorts]
+      operationId: listNewCohortCandidates
+      summary: Page of the enrollments that may be added to a new cohort of a track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request; `USERS_READ` is not needed. The active enrollments of the track, each with the cohort it
+        is in now, sorted by the student's name (case-insensitive), then by the student's email, then by id. An
+        archived track has no candidates to offer until it is restored: 409 `track-archived`. Checked in this order:
+        the permission (403), the request (400), the track (404), the relation (403 `forbidden`), its status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the student's email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - name: withoutCohort
+          in: query
+          description: Narrows the page to the enrollments in no cohort.
+          schema:
+            type: boolean
+            default: false
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CohortCandidatePage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/cohorts/{cohortId}/candidates:
+    get:
+      tags: [Cohorts]
+      operationId: listCohortCandidates
+      summary: Page of the enrollments that may be added to a cohort
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request; `USERS_READ` is not needed. The active enrollments of the track that are not in the
+        cohort, each with the cohort it is in now, sorted by the student's name (case-insensitive), then by the
+        student's email, then by id. A cohort of another track is not found. An archived track has no candidates to
+        offer until it is restored: 409 `track-archived`. Checked in this order: the permission (403), the request
+        (400), the track and the cohort (404), the relation (403 `forbidden`), its status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the student's email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - name: withoutCohort
+          in: query
+          description: Narrows the page to the enrollments in no cohort.
+          schema:
+            type: boolean
+            default: false
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CohortCandidatePage'
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
@@ -1253,6 +1511,20 @@ components:
         format: uuid
     MentorUserId:
       name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CohortId:
+      name: cohortId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CohortEnrollmentId:
+      name: enrollmentId
       in: path
       required: true
       schema:
@@ -1454,9 +1726,30 @@ components:
       description: |
         The student was not enrolled; nothing was changed. Problem type is one of, checked in this order:
         - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:cohort-not-eligible`: the track has no cohort with the id `cohortId`;
         - `urn:mentorhub:problem:student-not-eligible`: no active user with the `STUDENT` role has the id;
         - `urn:mentorhub:problem:student-already-enrolled`: the student has an active enrollment, on this or another
           track.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    CohortEnrollmentConflict:
+      description: |
+        No enrollment was put into the cohort, and no cohort was created; nothing was changed. Problem type is one of,
+        checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:enrollment-not-eligible`: an id given is not an active enrollment of the track.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    CohortDeletionConflict:
+      description: |
+        The cohort was not deleted; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:cohort-not-empty`: an enrollment is in the cohort; taken out first, the cohort can be
+          deleted.
       content:
         application/problem+json:
           schema:
@@ -1583,7 +1876,9 @@ components:
         `urn:mentorhub:problem:email-queued`, `urn:mentorhub:problem:track-archived`,
         `urn:mentorhub:problem:coordinator-not-eligible`, `urn:mentorhub:problem:track-has-active-enrollments`,
         `urn:mentorhub:problem:student-not-eligible`, `urn:mentorhub:problem:student-already-enrolled`,
-        `urn:mentorhub:problem:mentor-not-eligible`, `urn:mentorhub:problem:mentor-leads-enrollments`.
+        `urn:mentorhub:problem:mentor-not-eligible`, `urn:mentorhub:problem:mentor-leads-enrollments`,
+        `urn:mentorhub:problem:enrollment-not-eligible`, `urn:mentorhub:problem:cohort-not-empty`,
+        `urn:mentorhub:problem:cohort-not-eligible`.
         Other errors use `about:blank`.
         Other RFC 9457 members (such as `instance`) may be present.
       additionalProperties: true
@@ -1803,7 +2098,8 @@ components:
         - `USER_TRACK_COORDINATOR_REMOVED`: details `track`; the user was removed as a coordinator of the track;
         - `USER_TRACK_MENTOR_ADDED`: details `track`; the user was named a mentor of the track;
         - `USER_TRACK_MENTOR_REMOVED`: details `track`; the user was removed as a mentor of the track;
-        - `USER_ENROLLED`: details `track`, `startDate`; the user was enrolled on the track;
+        - `USER_ENROLLED`: details `track`, `startDate`, and `cohort` when the user was enrolled into one; the user
+          was enrolled on the track;
         - `USER_MENTOR_ASSIGNED`: details `mentor`, `track`; the mentor was assigned to the user's enrollment on the
           track;
         - `USER_MENTOR_REMOVED`: details `mentor`, `track`; the mentor was removed from the user's enrollment on the
@@ -1811,7 +2107,9 @@ components:
         - `USER_STUDENT_ASSIGNED`: details `user`, `track`; the user was assigned as a mentor of the enrollment of the
           student `user` on the track;
         - `USER_STUDENT_REMOVED`: details `user`, `track`; the user was removed as a mentor of the enrollment of the
-          student `user` on the track.
+          student `user` on the track;
+        - `USER_COHORT_CHANGED`: details `track`, `cohortChange`; the user's enrollment on the track was put into a
+          cohort, moved to another or taken out.
       enum:
         - USER_DISABLED
         - USER_ENABLED
@@ -1828,6 +2126,7 @@ components:
         - USER_MENTOR_REMOVED
         - USER_STUDENT_ASSIGNED
         - USER_STUDENT_REMOVED
+        - USER_COHORT_CHANGED
     HistoryActor:
       type: object
       additionalProperties: false
@@ -1892,6 +2191,11 @@ components:
         mentor:
           $ref: '#/components/schemas/HistoryActor'
           description: The mentor assigned or removed, with their name as it is now.
+        cohort:
+          $ref: '#/components/schemas/CohortReference'
+          description: The cohort the user was enrolled into, with its name at that moment.
+        cohortChange:
+          $ref: '#/components/schemas/CohortChange'
     ProfileField:
       type: string
       enum: [firstName, lastName, phone]
@@ -2212,7 +2516,9 @@ components:
             The caller may enroll students on the track and name and remove its mentors: they hold
             `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and are a coordinator of the track. Whatever the
             status: an archived track still refuses enrolling and any change to its mentors with 409 `track-archived`.
-            The same check allows assigning and removing the mentors of the track's enrollments.
+            The same check allows assigning and removing the mentors of the track's enrollments, and creating and
+            deleting its cohorts and changing their enrollments; an archived track refuses those with 409
+            `track-archived` too.
     TrackCoordinator:
       type: object
       description: |
@@ -2318,11 +2624,16 @@ components:
         - `TRACK_COORDINATOR_REMOVED`: details `user`;
         - `TRACK_MENTOR_ADDED`: details `user`; the user was named a mentor of the track;
         - `TRACK_MENTOR_REMOVED`: details `user`; the user was removed as a mentor of the track;
-        - `TRACK_STUDENT_ENROLLED`: details `user`, `startDate`; the user was enrolled on the track;
+        - `TRACK_STUDENT_ENROLLED`: details `user`, `startDate`, and `cohort` when the user was enrolled into one; the
+          user was enrolled on the track;
         - `TRACK_ENROLLMENT_MENTOR_ASSIGNED`: details `user`, `mentor`; the mentor was assigned to the enrollment of
           the student `user` on the track;
         - `TRACK_ENROLLMENT_MENTOR_REMOVED`: details `user`, `mentor`; the mentor was removed from the enrollment of
-          the student `user` on the track.
+          the student `user` on the track;
+        - `TRACK_COHORT_CREATED`: details `cohort`, `startDate`; the cohort was created on the track;
+        - `TRACK_COHORT_DELETED`: details `cohort`, `startDate`; the cohort was deleted;
+        - `TRACK_ENROLLMENT_COHORT_CHANGED`: details `user`, `cohortChange`; the enrollment of the student `user` on
+          the track was put into a cohort, moved to another or taken out.
       enum:
         - TRACK_CREATED
         - TRACK_UPDATED
@@ -2335,6 +2646,9 @@ components:
         - TRACK_STUDENT_ENROLLED
         - TRACK_ENROLLMENT_MENTOR_ASSIGNED
         - TRACK_ENROLLMENT_MENTOR_REMOVED
+        - TRACK_COHORT_CREATED
+        - TRACK_COHORT_DELETED
+        - TRACK_ENROLLMENT_COHORT_CHANGED
     TrackHistoryEntry:
       type: object
       description: |
@@ -2375,10 +2689,16 @@ components:
         startDate:
           type: string
           format: date
-          description: The start date of the enrollment.
+          description: The start date of the enrollment, or of the cohort created or deleted.
         mentor:
           $ref: '#/components/schemas/HistoryActor'
           description: The mentor assigned or removed, with their name as it is now.
+        cohort:
+          $ref: '#/components/schemas/CohortReference'
+          description: |
+            The cohort created or deleted, or the cohort the student was enrolled into, with its name at that moment.
+        cohortChange:
+          $ref: '#/components/schemas/CohortChange'
     TrackField:
       type: string
       enum: [code, name]
@@ -2438,7 +2758,7 @@ components:
       enum: [ACTIVE]
     EnrollmentCreate:
       type: object
-      description: The student to enroll and the start date; both must be sent.
+      description: The student to enroll and the start date, both of which must be sent, and optionally a cohort.
       additionalProperties: false
       required: [studentId, startDate]
       properties:
@@ -2451,6 +2771,10 @@ components:
           format: date
           description: Any date, past or future.
           examples: ['2026-09-01']
+        cohortId:
+          type: string
+          format: uuid
+          description: A cohort of the track to enroll into; without it the enrollment is in no cohort.
     EnrolledStudent:
       type: object
       description: |
@@ -2480,7 +2804,7 @@ components:
       type: object
       description: An enrollment as the enrollments of its track show it.
       additionalProperties: false
-      required: [id, student, startDate, status, mentors]
+      required: [id, student, startDate, status, cohort, mentors]
       properties:
         id:
           type: string
@@ -2493,6 +2817,11 @@ components:
           examples: ['2026-09-01']
         status:
           $ref: '#/components/schemas/EnrollmentStatus'
+        cohort:
+          description: The cohort the enrollment is in, with its name as it is now; `null` for none.
+          oneOf:
+            - $ref: '#/components/schemas/CohortReference'
+            - type: 'null'
         mentors:
           type: array
           description: Every mentor of the enrollment, sorted by name (case-insensitive), then by email; may be empty.
@@ -2707,6 +3036,139 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MentoredEnrollment'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
+    CohortReference:
+      type: object
+      description: |
+        A cohort with its name: in a history as it was at the moment of the change, elsewhere as it is now. A cohort in
+        a history may since have been deleted.
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          examples: [Spring 2026]
+    CohortChange:
+      type: object
+      description: |
+        The cohorts of an enrollment before and after a change, each with its name at that moment: `from` is `null`
+        when the enrollment was put into a cohort from none, `to` is `null` when it was taken out.
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from:
+          oneOf:
+            - $ref: '#/components/schemas/CohortReference'
+            - type: 'null'
+        to:
+          oneOf:
+            - $ref: '#/components/schemas/CohortReference'
+            - type: 'null'
+    Cohort:
+      type: object
+      description: A cohort of a track, an intake.
+      additionalProperties: false
+      required: [id, name, startDate, enrollmentCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          examples: [Spring 2026]
+        startDate:
+          type: string
+          format: date
+          description: Any date; it need not match the start dates of the cohort's enrollments.
+          examples: ['2026-03-01']
+        enrollmentCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: The number of active enrollments in the cohort, whatever the marks of their students.
+    CohortList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cohort'
+    CohortCreate:
+      type: object
+      description: A new cohort; the name and the start date must be sent.
+      additionalProperties: false
+      required: [name, startDate]
+      properties:
+        name:
+          type: string
+          description: Trimmed; 1 to 100 characters after trimming.
+          examples: [Spring 2026]
+        startDate:
+          type: string
+          format: date
+          description: Any date, past or future.
+          examples: ['2026-03-01']
+        enrollmentIds:
+          type: array
+          description: The enrollments of the track to put into the cohort; may be empty or left out.
+          items:
+            type: string
+            format: uuid
+    CohortEnrollmentsAddition:
+      type: object
+      description: The enrollments to add to a cohort.
+      additionalProperties: false
+      required: [enrollmentIds]
+      properties:
+        enrollmentIds:
+          type: array
+          description: The enrollments of the track to put into the cohort; at least one.
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+    CohortCandidate:
+      type: object
+      description: An active enrollment of the track that is not in the cohort it is listed for.
+      additionalProperties: false
+      required: [id, student, cohort]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The enrollment's id.
+        student:
+          $ref: '#/components/schemas/EnrolledStudent'
+        cohort:
+          description: The cohort the enrollment is in now; `null` for none.
+          oneOf:
+            - $ref: '#/components/schemas/CohortReference'
+            - type: 'null'
+    CohortCandidatePage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CohortCandidate'
         page:
           type: integer
           format: int32

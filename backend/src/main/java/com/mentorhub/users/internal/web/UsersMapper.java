@@ -2,6 +2,8 @@ package com.mentorhub.users.internal.web;
 
 import com.mentorhub.api.model.AccessStatus;
 import com.mentorhub.api.model.BootstrapChanges;
+import com.mentorhub.api.model.CohortChange;
+import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.DisableReason;
 import com.mentorhub.api.model.HistoryAction;
 import com.mentorhub.api.model.HistoryActor;
@@ -193,8 +195,16 @@ final class UsersMapper {
                 dto.setUser(historyActor(entry.person()));
                 dto.setTrack(trackReference(track));
             }
+            case UserChange.CohortChanged(var track, var from, var to) -> {
+                dto.setTrack(trackReference(track));
+                dto.setCohortChange(new CohortChange(cohortReference(from), cohortReference(to)));
+            }
         }
         return dto;
+    }
+
+    private static @Nullable CohortReference cohortReference(UserChange.@Nullable CohortRef cohort) {
+        return cohort == null ? null : new CohortReference(cohort.id(), cohort.name());
     }
 
     private static TrackReference trackReference(HistoryTrack track) {

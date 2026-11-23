@@ -1,6 +1,8 @@
 package com.mentorhub.tracks.internal.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.mentorhub.api.model.CohortChange;
+import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.HistoryActor;
 import com.mentorhub.api.model.TrackChange;
 import com.mentorhub.api.model.TrackHistoryEntry;
@@ -33,4 +35,10 @@ abstract class TrackHistoryEntryJsonMixin {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract @Nullable HistoryActor getMentor();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable CohortReference getCohort();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract @Nullable CohortChange getCohortChange();
 }

@@ -84,6 +84,8 @@ export function describeEntry(entry: HistoryEntry): string {
       return `Assigned as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
     case 'USER_STUDENT_REMOVED':
       return `Removed as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
+    case 'USER_COHORT_CHANGED':
+      return 'Cohort changed'; // TODO(cohorts T6): real wording
     default: {
       const unreachable: never = entry.action;
       return unreachable;

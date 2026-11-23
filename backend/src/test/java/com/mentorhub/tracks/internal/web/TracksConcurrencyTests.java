@@ -113,6 +113,19 @@ class TracksConcurrencyTests {
         assertThat(trackActions()).containsExactly("TRACK_ARCHIVED");
     }
 
+    @Test
+    @DisplayName("TRK-5.4 A change at the moment of archiving is never stored on an archived track (cohort)")
+    void creatingACohortAtTheMomentOfArchivingIsNeverStoredOnAnArchivedTrack() throws Exception {
+        MvcTestResult change = archivedFirst(() -> send(
+                HttpMethod.POST, path + "/cohorts", "{\"name\": \"Spring\", \"startDate\": \"2026-03-01\"}", "boris"));
+
+        assertProblem(change, HttpStatus.CONFLICT, TRACK_ARCHIVED);
+        MvcTestResult after = send(HttpMethod.GET, path + "/cohorts", "", "anna");
+        assertThat(after).hasStatusOk();
+        assertThat(after).bodyJson().extractingPath("$.items").asArray().isEmpty();
+        assertThat(trackActions()).containsExactly("TRACK_ARCHIVED");
+    }
+
     @RepeatedTest(5)
     @DisplayName("ENR-13.6 Parallel namings of one mentor name them once")
     void parallelNamingsOfOneMentorNameThemOnce() throws Exception {

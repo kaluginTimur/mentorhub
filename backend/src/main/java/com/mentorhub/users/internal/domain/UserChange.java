@@ -245,4 +245,33 @@ public sealed interface UserChange {
             return UserAuditAction.USER_STUDENT_REMOVED;
         }
     }
+
+    /** A cohort as a user's history names it: its id, and its name at the moment of the change. */
+    record CohortRef(UUID id, String name) {
+        public CohortRef {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(name, "name");
+        }
+    }
+
+    /**
+     * The user's enrollment on the track, given with its code and name at that moment, was put into a cohort, moved
+     * to another or taken out.
+     *
+     * @param from the cohort the enrollment left; {@code null} for none
+     * @param to the cohort the enrollment joined; {@code null} for none
+     */
+    record CohortChanged(
+            HistoryTrack track,
+            @Nullable CohortRef from,
+            @Nullable CohortRef to) implements UserChange {
+        public CohortChanged {
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_COHORT_CHANGED;
+        }
+    }
 }

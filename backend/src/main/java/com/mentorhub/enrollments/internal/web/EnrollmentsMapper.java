@@ -44,6 +44,8 @@ final class EnrollmentsMapper {
                 enrolledStudent(item.student()),
                 item.startDate(),
                 EnrollmentStatus.valueOf(item.status().name()),
+                // TODO(cohorts T4): the enrollment's cohort.
+                null,
                 item.mentors().stream()
                         .map(mentor -> new EnrollmentMentor(
                                 mentor.id(),

@@ -28,6 +28,13 @@ export function describeTrackEntry(entry: TrackHistoryEntry): string {
       return `Assigned ${entry.mentor?.name ?? 'a mentor'} as a mentor of ${user}`;
     case 'TRACK_ENROLLMENT_MENTOR_REMOVED':
       return `Removed ${entry.mentor?.name ?? 'a mentor'} as a mentor of ${user}`;
+    // TODO(cohorts T6): real wording
+    case 'TRACK_COHORT_CREATED':
+      return 'Created a cohort';
+    case 'TRACK_COHORT_DELETED':
+      return 'Deleted a cohort';
+    case 'TRACK_ENROLLMENT_COHORT_CHANGED':
+      return `Changed the cohort of ${user}`;
     default: {
       const unreachable: never = entry.action;
       return unreachable;

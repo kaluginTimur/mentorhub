@@ -161,19 +161,36 @@ create table track_mentors (
     primary key (track_id, user_id)
 );
 
+-- The intakes of a track. A cohort is never moved to another track; the name, stored trimmed, is not unique.
+-- The unique (id, track_id) is the target of the enrollments' composite foreign key below.
+create table cohorts (
+    id         uuid        primary key default gen_random_uuid(),
+    track_id   uuid        not null references tracks (id) on delete restrict,
+    name       text        not null,
+    start_date date        not null,
+    created_at timestamptz not null default now(),
+    constraint cohorts_id_track_uq unique (id, track_id)
+);
+
+create index cohorts_track_idx on cohorts (track_id);
+
 create table enrollments (
     id          uuid        primary key default gen_random_uuid(),
     student_id  uuid        not null references users (id) on delete restrict,
     track_id    uuid        not null references tracks (id) on delete restrict,
+    cohort_id   uuid,
     start_date  date        not null,
     status      text        not null default 'ACTIVE' check (status in ('ACTIVE')),
     enrolled_by uuid        not null references users (id) on delete restrict,
-    created_at  timestamptz not null default now()
+    created_at  timestamptz not null default now(),
+    foreign key (cohort_id, track_id) references cohorts (id, track_id) on delete restrict
 );
 
 create unique index enrollments_active_student_uq on enrollments (student_id) where status = 'ACTIVE';
 
 create index enrollments_track_idx on enrollments (track_id);
+
+create index enrollments_cohort_idx on enrollments (cohort_id);
 
 -- Who leads which enrollment. Only an active user with the MENTOR role is assigned, which the service checks; the row
 -- stays when the user is later disabled or loses the role. The primary key decides parallel assignments.

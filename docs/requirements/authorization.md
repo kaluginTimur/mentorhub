@@ -24,8 +24,8 @@ The system SHALL grant a user exactly the permissions of the roles assigned to t
 | `USERS_INVITE` | Managing invitations |
 | `TRACKS_READ` | Viewing tracks, their coordinators, their mentors and their history |
 | `TRACKS_MANAGE` | Creating, changing, archiving and restoring tracks, listing the candidates for their coordinators, and naming and removing their coordinators |
-| `ENROLLMENTS_READ` | Viewing the enrollments of every track |
-| `ENROLLMENTS_MANAGE` | Enrolling students on any track, naming and removing its mentors, assigning and removing the mentors of its enrollments, and listing the candidates for each |
+| `ENROLLMENTS_READ` | Viewing the enrollments and the cohorts of every track |
+| `ENROLLMENTS_MANAGE` | Enrolling students on any track, naming and removing its mentors, assigning and removing the mentors of its enrollments, creating and deleting its cohorts and changing their enrollments, and listing the candidates for each |
 | `ENROLLMENTS_MANAGE_COORDINATED` | The same on a track the user coordinates |
 | `ENROLLMENTS_READ_MENTORED` | Viewing the enrollments the user is a mentor of |
 
