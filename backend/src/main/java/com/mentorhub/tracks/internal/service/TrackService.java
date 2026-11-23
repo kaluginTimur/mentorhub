@@ -419,7 +419,7 @@ public class TrackService {
             case TrackChange.CoordinatorRemoved(var userId) -> userId;
             case TrackChange.MentorAdded(var userId) -> userId;
             case TrackChange.MentorRemoved(var userId) -> userId;
-            case TrackChange.StudentEnrolled(var userId, var _) -> userId;
+            case TrackChange.StudentEnrolled(var userId, var _, var _) -> userId;
             case TrackChange.EnrollmentMentorAssigned(var userId, var _) -> userId;
             case TrackChange.EnrollmentMentorRemoved(var userId, var _) -> userId;
             case TrackChange.EnrollmentCohortChanged(var userId, var _, var _) -> userId;

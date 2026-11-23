@@ -175,9 +175,10 @@ final class UsersMapper {
             case UserChange.TrackCoordinatorRemoved(var track) -> dto.setTrack(trackReference(track));
             case UserChange.TrackMentorAdded(var track) -> dto.setTrack(trackReference(track));
             case UserChange.TrackMentorRemoved(var track) -> dto.setTrack(trackReference(track));
-            case UserChange.Enrolled(var track, var startDate) -> {
+            case UserChange.Enrolled(var track, var startDate, var cohort) -> {
                 dto.setTrack(trackReference(track));
                 dto.setStartDate(startDate);
+                dto.setCohort(cohortReference(cohort));
             }
             case UserChange.MentorAssigned(var _, var track) -> {
                 dto.setMentor(historyActor(entry.person()));

@@ -1,5 +1,9 @@
 package com.mentorhub.enrollments.internal.web;
 
+import com.mentorhub.api.model.Cohort;
+import com.mentorhub.api.model.CohortCandidate;
+import com.mentorhub.api.model.CohortCandidatePage;
+import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.EnrolledStudent;
 import com.mentorhub.api.model.EnrollmentCandidate;
 import com.mentorhub.api.model.EnrollmentCandidatePage;
@@ -15,8 +19,11 @@ import com.mentorhub.api.model.MyEnrollmentList;
 import com.mentorhub.api.model.TrackEnrollment;
 import com.mentorhub.api.model.TrackEnrollmentPage;
 import com.mentorhub.api.model.TrackReference;
+import com.mentorhub.enrollments.internal.service.CohortCandidateItem;
+import com.mentorhub.enrollments.internal.service.CohortItem;
 import com.mentorhub.enrollments.internal.service.EnrollmentPage;
 import com.mentorhub.enrollments.internal.service.MentoredEnrollmentItem;
+import com.mentorhub.enrollments.internal.service.NamedCohort;
 import com.mentorhub.enrollments.internal.service.OwnEnrollment;
 import com.mentorhub.enrollments.internal.service.TrackEnrollmentItem;
 import com.mentorhub.tracks.TrackSummary;
@@ -24,8 +31,9 @@ import com.mentorhub.users.DirectoryUser;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.UserContact;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
-/** Maps the {@code enrollments} service types to the generated contract types; enums map by constant name. */
+/** Maps the {@code enrollments} and cohorts service types to the generated contract types; enums map by constant name. */
 final class EnrollmentsMapper {
 
     private EnrollmentsMapper() {}
@@ -44,8 +52,7 @@ final class EnrollmentsMapper {
                 enrolledStudent(item.student()),
                 item.startDate(),
                 EnrollmentStatus.valueOf(item.status().name()),
-                // TODO(cohorts T4): the enrollment's cohort.
-                null,
+                cohortReference(item.cohort()),
                 item.mentors().stream()
                         .map(mentor -> new EnrollmentMentor(
                                 mentor.id(),
@@ -101,6 +108,25 @@ final class EnrollmentsMapper {
                 page.page(),
                 page.size(),
                 page.totalItems());
+    }
+
+    static Cohort cohort(CohortItem item) {
+        return new Cohort(item.id(), item.name(), item.startDate(), item.enrollmentCount());
+    }
+
+    static CohortCandidatePage cohortCandidatePage(EnrollmentPage<CohortCandidateItem> page) {
+        return new CohortCandidatePage(
+                page.items().stream()
+                        .map(item -> new CohortCandidate(
+                                item.enrollmentId(), enrolledStudent(item.student()), cohortReference(item.cohort())))
+                        .toList(),
+                page.page(),
+                page.size(),
+                page.totalItems());
+    }
+
+    private static @Nullable CohortReference cohortReference(@Nullable NamedCohort cohort) {
+        return cohort == null ? null : new CohortReference(cohort.id(), cohort.name());
     }
 
     private static EnrolledStudent enrolledStudent(DirectoryUser student) {

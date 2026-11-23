@@ -44,14 +44,20 @@ class UserDirectoryService implements UserDirectory {
     @Override
     @Transactional(readOnly = true)
     public DirectoryPage findUsers(Collection<UUID> userIds, int page, int size) {
+        return findUsers(userIds, null, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DirectoryPage findUsers(Collection<UUID> userIds, @Nullable String text, int page, int size) {
         if (userIds.isEmpty()) {
             return new DirectoryPage(List.of(), 0);
         }
         return new DirectoryPage(
-                users.findSummaryPage(userIds, size, offset(page, size)).stream()
+                users.findSummaryPage(userIds, text, size, offset(page, size)).stream()
                         .map(this::directoryUser)
                         .toList(),
-                users.countUsers(userIds));
+                users.countUsers(userIds, text));
     }
 
     @Override

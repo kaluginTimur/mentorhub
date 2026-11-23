@@ -74,7 +74,7 @@ When a feature adds or changes what a screen shows, it adds its data to the samp
 - Primary keys are `uuid` (`gen_random_uuid()`), timestamps are `timestamptz`.
 - Advisory locks (`pg_advisory_xact_lock`) use a fixed `long` key per purpose; a new lock picks a key no other lock uses (the administrator lock of the lockout rules is `ADMINISTRATORS_LOCK` in `UserRepository`). Lock order is the advisory lock first, then row locks. The class that takes a lock says in its comment which lock and in which order.
 - Parallel creates are decided by a unique index: insert with `on conflict do nothing`, then read again.
-- The database's `now()` is the one clock for expiry, status and audit. A status derived from timestamps (an invitation's) is not stored, and its list filters on the same expression.
+- The database is the one clock: `now()` for expiry and status; an audit entry takes `clock_timestamp()` at insert, so that changes serialized by a lock keep their order in the histories. A status derived from timestamps (an invitation's) is not stored, and its list filters on the same expression.
 - Row locks on a table that foreign keys reference use `for no key update`, unless a key column changes: `for update` conflicts with the `for key share` that every referencing insert takes, so two transactions that each lock a row the other's insert references deadlock (`UserRepository.lockUser` and the `audit_log` actor).
 
 ## Audit (decision 0005)

@@ -1,5 +1,6 @@
 package com.mentorhub.tracks.internal.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -107,8 +108,14 @@ public sealed interface TrackChange {
         }
     }
 
-    /** @param userId {@code users.id} of the enrolled student */
-    record StudentEnrolled(UUID userId, LocalDate startDate) implements TrackChange {
+    /**
+     * @param userId {@code users.id} of the enrolled student
+     * @param cohort the cohort the student was enrolled into; {@code null} for none, and in entries written before
+     *     cohorts
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record StudentEnrolled(
+            UUID userId, LocalDate startDate, @Nullable CohortRef cohort) implements TrackChange {
         public StudentEnrolled {
             Objects.requireNonNull(userId, "userId");
             Objects.requireNonNull(startDate, "startDate");

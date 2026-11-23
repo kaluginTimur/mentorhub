@@ -3,7 +3,7 @@
  * {@link Role}, {@link CurrentUser}, {@link CurrentUserProvider}, {@link RequirePermission},
  * {@link NoPermissionRequired}, the reads of users in {@link UserDirectory} ({@link DirectoryUser},
  * {@link DirectoryPage}, {@link UserContact}), and the entries other modules record in a user's history:
- * {@link CoordinatorHistory} and {@link UserEnrollmentHistory} ({@link HistoryTrack}).
+ * {@link CoordinatorHistory} and {@link UserEnrollmentHistory} ({@link HistoryTrack}, {@link HistoryCohort}).
  */
 @NullMarked
 package com.mentorhub.users;

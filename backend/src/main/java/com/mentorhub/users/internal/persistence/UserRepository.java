@@ -234,20 +234,25 @@ public class UserRepository {
                 .list());
     }
 
-    /** A page of the users with the given ids, sorted by name ({@link #NAME_ORDER}). */
-    public List<StoredUserSummary> findSummaryPage(Collection<UUID> userIds, int limit, long offset) {
-        return withRoleNames(
-                jdbc.sql(SUMMARY_SELECT + "where u.id = any(:ids)\n" + NAME_ORDER + "limit :limit offset :offset")
-                        .param("ids", UuidArray.of(userIds))
-                        .param("limit", limit)
-                        .param("offset", offset)
-                        .query(UserRepository::summaryWithoutRoles)
-                        .list());
+    /**
+     * A page of the users with the given ids, sorted by name ({@link #NAME_ORDER}).
+     *
+     * @param text as {@link UserSearch#text()}, or {@code null} for no search
+     */
+    public List<StoredUserSummary> findSummaryPage(
+            Collection<UUID> userIds, @Nullable String text, int limit, long offset) {
+        Map<String, Object> params = amongParams(userIds, text);
+        params.put("limit", limit);
+        params.put("offset", offset);
+        return withRoleNames(jdbc.sql(SUMMARY_SELECT + amongWhere(text) + NAME_ORDER + "limit :limit offset :offset")
+                .params(params)
+                .query(UserRepository::summaryWithoutRoles)
+                .list());
     }
 
-    public long countUsers(Collection<UUID> userIds) {
-        return jdbc.sql("select count(*) from users u where u.id = any(:ids)")
-                .param("ids", UuidArray.of(userIds))
+    public long countUsers(Collection<UUID> userIds, @Nullable String text) {
+        return jdbc.sql("select count(*) from users u\n" + amongWhere(text))
+                .params(amongParams(userIds, text))
                 .query(Long.class)
                 .single();
     }
@@ -522,6 +527,23 @@ public class UserRepository {
                 rs.getString("disabled_comment"),
                 rs.getObject("created_at", OffsetDateTime.class).toInstant(),
                 roleNames);
+    }
+
+    private static String amongWhere(@Nullable String text) {
+        String where = "where u.id = any(:ids)\n";
+        return text == null ? where : where + """
+                          and (u.email ilike :pattern escape '\\' or u.first_name ilike :pattern escape '\\'
+                               or u.last_name ilike :pattern escape '\\')
+                        """;
+    }
+
+    private static Map<String, Object> amongParams(Collection<UUID> userIds, @Nullable String text) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("ids", UuidArray.of(userIds));
+        if (text != null) {
+            params.put("pattern", LikePatterns.contains(text));
+        }
+        return params;
     }
 
     private static String activeWithRoleWhere(@Nullable String text, @Nullable Collection<UUID> amongUserIds) {

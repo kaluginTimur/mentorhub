@@ -163,8 +163,16 @@ public sealed interface UserChange {
         }
     }
 
-    /** The user was enrolled on the track, given with its code and name at that moment. */
-    record Enrolled(HistoryTrack track, LocalDate startDate) implements UserChange {
+    /**
+     * The user was enrolled on the track, given with its code and name at that moment.
+     *
+     * @param cohort the cohort the user was enrolled into; {@code null} for none, and in entries written before cohorts
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Enrolled(
+            HistoryTrack track,
+            LocalDate startDate,
+            @Nullable CohortRef cohort) implements UserChange {
         public Enrolled {
             Objects.requireNonNull(track, "track");
             Objects.requireNonNull(startDate, "startDate");

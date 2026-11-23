@@ -3,21 +3,24 @@ package com.mentorhub.enrollments.internal.persistence;
 import com.mentorhub.enrollments.internal.domain.EnrollmentStatus;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class EnrollmentRepository {
 
-    private static final String COLUMNS = "id, student_id, track_id, start_date, status";
+    private static final String COLUMNS = "id, student_id, track_id, start_date, status, cohort_id";
 
     private final JdbcClient jdbc;
 
@@ -29,17 +32,19 @@ public class EnrollmentRepository {
      * Inserts an active enrollment, unless the student has one: the unique index of one active enrollment per student
      * decides, parallel inserts included (ENR-2.6).
      *
+     * @param cohortId a cohort of the track; {@code null} for none
      * @return empty when the student already has an active enrollment
      */
     public Optional<StoredEnrollment> insertIfNoActive(
-            UUID studentId, UUID trackId, LocalDate startDate, UUID enrolledBy) {
+            UUID studentId, UUID trackId, @Nullable UUID cohortId, LocalDate startDate, UUID enrolledBy) {
         return jdbc.sql("""
-                        insert into enrollments (student_id, track_id, start_date, status, enrolled_by)
-                        values (:studentId, :trackId, :startDate, 'ACTIVE', :enrolledBy)
+                        insert into enrollments (student_id, track_id, cohort_id, start_date, status, enrolled_by)
+                        values (:studentId, :trackId, :cohortId, :startDate, 'ACTIVE', :enrolledBy)
                         on conflict do nothing
                         returning\s""" + COLUMNS)
                 .param("studentId", studentId)
                 .param("trackId", trackId)
+                .param("cohortId", cohortId, Types.OTHER)
                 .param("startDate", startDate)
                 .param("enrolledBy", enrolledBy)
                 .query(EnrollmentRepository::storedEnrollment)
@@ -53,22 +58,74 @@ public class EnrollmentRepository {
                 .optional();
     }
 
-    /** Every enrollment of the track, in any status. */
-    public List<StoredEnrollment> findByTrack(UUID trackId) {
-        return jdbc.sql("select " + COLUMNS + " from enrollments where track_id = :trackId")
-                .param("trackId", trackId)
+    /**
+     * Every enrollment of the track, in any status.
+     *
+     * @param mentorId narrows to the enrollments the user is a mentor of now; {@code null} for all
+     * @param cohortId narrows to the enrollments in the cohort; {@code null} for all
+     */
+    public List<StoredEnrollment> findByTrack(UUID trackId, @Nullable UUID mentorId, @Nullable UUID cohortId) {
+        StringBuilder sql = new StringBuilder("select " + COLUMNS + " from enrollments where track_id = :trackId");
+        Map<String, Object> params = new HashMap<>();
+        params.put("trackId", trackId);
+        if (mentorId != null) {
+            sql.append(" and id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)");
+            params.put("mentorId", mentorId);
+        }
+        if (cohortId != null) {
+            sql.append(" and cohort_id = :cohortId");
+            params.put("cohortId", cohortId);
+        }
+        return jdbc.sql(sql.toString())
+                .params(params)
                 .query(EnrollmentRepository::storedEnrollment)
                 .list();
     }
 
-    /** Every enrollment of the track, in any status, the user is a mentor of now. */
-    public List<StoredEnrollment> findByTrackAndMentor(UUID trackId, UUID mentorId) {
-        return jdbc.sql("select " + COLUMNS + " from enrollments where track_id = :trackId"
-                        + " and id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)")
-                .param("trackId", trackId)
-                .param("mentorId", mentorId)
+    /**
+     * The active enrollments of the track that are not in the excluded cohort.
+     *
+     * @param excludedCohortId {@code null} to exclude none
+     * @param withoutCohort narrows to the enrollments in no cohort
+     */
+    public List<StoredEnrollment> findActiveByTrackOutside(
+            UUID trackId, @Nullable UUID excludedCohortId, boolean withoutCohort) {
+        StringBuilder sql = new StringBuilder(
+                "select " + COLUMNS + " from enrollments where track_id = :trackId and status = 'ACTIVE'");
+        Map<String, Object> params = new HashMap<>();
+        params.put("trackId", trackId);
+        if (withoutCohort) {
+            sql.append(" and cohort_id is null");
+        } else if (excludedCohortId != null) {
+            sql.append(" and cohort_id is distinct from :cohortId");
+            params.put("cohortId", excludedCohortId);
+        }
+        return jdbc.sql(sql.toString())
+                .params(params)
                 .query(EnrollmentRepository::storedEnrollment)
                 .list();
+    }
+
+    /** The enrollments with the given ids, in any status; ids no enrollment has are left out. */
+    public List<StoredEnrollment> findAll(Collection<UUID> enrollmentIds) {
+        if (enrollmentIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("select " + COLUMNS + " from enrollments where id in (:ids)")
+                .param("ids", enrollmentIds)
+                .query(EnrollmentRepository::storedEnrollment)
+                .list();
+    }
+
+    /**
+     * Puts the enrollment into the cohort, or into none. The composite foreign key keeps the cohort one of the
+     * enrollment's track.
+     */
+    public void setCohort(UUID enrollmentId, @Nullable UUID cohortId) {
+        jdbc.sql("update enrollments set cohort_id = :cohortId where id = :id")
+                .param("cohortId", cohortId, Types.OTHER)
+                .param("id", enrollmentId)
+                .update();
     }
 
     /**
@@ -200,6 +257,7 @@ public class EnrollmentRepository {
                 rs.getObject("student_id", UUID.class),
                 rs.getObject("track_id", UUID.class),
                 rs.getObject("start_date", LocalDate.class),
-                EnrollmentStatus.valueOf(rs.getString("status")));
+                EnrollmentStatus.valueOf(rs.getString("status")),
+                rs.getObject("cohort_id", UUID.class));
     }
 }

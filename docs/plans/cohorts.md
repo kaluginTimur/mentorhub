@@ -93,7 +93,7 @@ Source: the approved mockup `.screens/cohorts/mockups/track-page-cohorts.html`, 
 | T1 Contract and migration, build green with stubs | all API scenarios | backend-dev, frontend-dev (stubs) | in review |
 | T2 Mockup of the cohorts on the track page and the dialogs | COH-8, ENR-7 | ui-designer | done |
 | T3 Red tests, backend and frontend | all new and changed scenarios | test-engineer | done |
-| T4 Cohorts backend: reading, creating, adding, taking out, deleting, candidates, enrolling into a cohort, the filter, the histories; checkpoint | COH-1 to COH-7, ENR-2.7, ENR-4.3, TRK-5.4 | backend-dev | pending |
+| T4 Cohorts backend: reading, creating, adding, taking out, deleting, candidates, enrolling into a cohort, the filter, the histories; checkpoint | COH-1 to COH-7, ENR-2.7, ENR-4.3, TRK-5.4 | backend-dev | done |
 | T5 Sample data for the cohorts | | backend-dev | pending |
 | T6 Track page: cohorts, filter, dialogs, enroll into a cohort, the histories | COH-8.1, COH-8.2, ENR-7.1, TRK-10 | frontend-dev | pending |
 
@@ -114,10 +114,12 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - T1: `EnrollmentProblems` needs the constants of `enrollment-not-eligible`, `cohort-not-empty`, `cohort-not-eligible`. A cohort name is trimmed, 1 to 100 characters. Conflict order: `track-archived` first, then `enrollment-not-eligible` / `cohort-not-empty`; in enrolling `cohort-not-eligible` is second.
 - T1: the owner deleted `V2__cohorts.sql` and moved its schema into `V1__schema.sql`; schema changes of this change go there.
 - T1 (frontend): the history texts of the four new actions are stubs marked `TODO(cohorts T6)`; `trackEnrollment()` in `features/enrollments/test-data.ts` defaults `cohort: null`.
+- T4 (for T5): audit rows take their time at insert (`clock_timestamp()`); a cohort created with members writes `TRACK_COHORT_CREATED` first, then a `TRACK_ENROLLMENT_COHORT_CHANGED` / `USER_COHORT_CHANGED` pair per member; write sample rows in that order with increasing times. Details: created/deleted `{"cohort": {id, name}, "startDate"}`; track change `{"userId", "from", "to"}`; user change `{"track": {id, code, name}, "from", "to"}`, `from`/`to` `{id, name}` or null; `TRACK_STUDENT_ENROLLED` / `USER_ENROLLED` carry `"cohort": {id, name}` only when there is one.
+- T4: `EnrollmentRepository.findByTrackAndMentor` is replaced by `findByTrack(trackId, mentorId, cohortId)`; shared checks are in `EnrollmentRules`; `users.HistoryCohort` is the one public cohort type of both history APIs.
 
 ## Red tests
 
-Commit: none yet
+Commit: 6dd4644 "test: red tests for cohorts"
 
 ## Decisions
 
@@ -136,20 +138,19 @@ Commit: none yet
 - 2026-11-24: "остальные вопросы по рекомендациям": the chosen cohort is kept in the URL and "All enrollments" clears it; no "Clear selection" in the picker; the cohort filter works on an archived track; the enroll dialog's cohort select is disabled with a hint when the track has no cohort; no limit on `enrollmentIds`.
 - 2026-11-24: The mockup approved ("утверждаю"): variant C after round 5, `.screens/cohorts/mockups/track-page-cohorts.html`. The decisions the tests and the code rely on are in What the tests rely on. On the way: "Only without cohort" in the singular ("у студента только одна активная когорта"); on a phone, the cohort actions under the dots for any cohort; a single action is a compact icon instead of a menu; the strip of the chosen cohort removed and its actions in a dots menu ("полосу убрать, а экшены над когортой спрятать под выпадайку по аналогии"); the review fixes accepted as recommended ("да, отдавай дизайнеру как предлагаешь").
 - 2026-11-24: Plan gate passed: the plan, the contract and the schema approved ("одобряю").
+- 2026-11-24: T4 approved at the checkpoint ("одобряю"); the audit clock line of `docs/development/backend.md` changed now: "вариант (a)" (an audit entry takes `clock_timestamp()` at insert, so that changes serialized by a lock keep their order).
 
 ## Handover
 
-- Waiting for: the owner's word on the commit of the red tests (the requirements, the contract, the schema, the plan, the tests, the T1 stubs and the usage record together).
-- To read: the test files: `backend/src/test/java/com/mentorhub/enrollments/internal/web/CohortsEndpointTests.java`, `CohortsConcurrencyTests.java`, `EnrollmentsEndpointTests.java` (ENR-2.7, ENR-4.3), `backend/src/test/java/com/mentorhub/tracks/internal/web/TracksConcurrencyTests.java` (TRK-5.4), `frontend/src/app/features/enrollments/track-cohorts.spec.ts`.
+- Waiting for: T5 (sample data, `backend-dev`).
+- To read: `git diff 6dd4644 -- backend` (start with `audit/internal/persistence/AuditLogRepository.java`, `enrollments/internal/service/CohortService.java` `moveInto`, `eligible`, `candidates`, `EnrollmentService.enroll`).
 - Documents changed:
-  - added `docs/requirements/cohorts.md`: the capability COH (approved).
-  - changed `docs/requirements/enrollments.md`, `tracks.md`, `audit.md`, `platform.md`, `authorization.md`, `README.md`: as approved at the requirements gate.
-  - changed `api/openapi.yaml`: the Cohorts operations, `cohortId` on the enrollments list and enrolling, `TrackEnrollment.cohort`, the history actions, three problem types (approved at the plan gate).
-  - changed `backend/src/main/resources/db/migration/V1__schema.sql`: `cohorts` and the nullable `enrollments.cohort_id` with the composite fk (approved at the plan gate).
-- State: T1, T2, T3 done. `trace`: 293 of 293 scenarios have tests. Red: 17 backend tests fail on the 501 stubs, 5 frontend tests on missing elements; no new test passes.
-- Open questions: none.
-- On approval: commit, write it into Red tests; then T4 to a fresh `backend-dev` (the T1 agent is at 167k).
-- On remarks: the tests to a fresh `test-engineer` (this one is at 168k).
+  - changed `docs/development/backend.md` (new since the last stop): Database, the clock line widened: an audit entry takes `clock_timestamp()` at insert so that changes serialized by a lock keep their order. Four answers: (1) any later change with parallel changes of one object under a lock and a test of the history order, such as the end of an enrollment; (2) taking the transaction's time and getting entries out of order, a flaky test; (3) the comment in `AuditLogRepository` is seen only by whoever opens it, and the guide said the opposite; (4) yes: the test engineer flagged it and `backend-dev` had to change the audit insert in T4.
+  - added `docs/requirements/cohorts.md`; changed `docs/requirements/enrollments.md`, `tracks.md`, `audit.md`, `platform.md`, `authorization.md`, `README.md`; changed `api/openapi.yaml`; changed `backend/src/main/resources/db/migration/V1__schema.sql`: all committed in 6dd4644, unchanged since.
+- State: T4 done: backend verification passes, every red backend test is green; no test file changed since 6dd4644. Beyond `enrollments`, T4 touched `audit` (the insert takes `clock_timestamp()` instead of the default `now()`, for every module), `tracks` and `users` (history writes, `HistoryCohort`, `UserDirectory.findUsers(ids, text, page, size)`).
+- Open questions: none. (Settled: `docs/development/backend.md` (Database) said "The database's `now()` is the one clock for expiry, status and audit", which the audit insert no longer follows. (a) change the line to say audit entries take `clock_timestamp()`, so that changes serialized by a lock keep their order (a guide change: four answers given in the relay), or (b) leave it, the comment in `AuditLogRepository` explains. Recommendation: (a); the owner chose (a).)
+- On approval: offer to commit T4 with the plan and the usage record; then T5 (sample data) to a fresh `backend-dev`, then T6 to `frontend-dev`.
+- On remarks: to a fresh `backend-dev` with the remarks and this plan's notes (this one is at 196k).
 
 ## Agents
 
@@ -165,3 +166,4 @@ Commit: none yet
 | verifier | inherited | a9aacf3b18306665f | plan: backend after removing the stale V2 | 30k |
 | verifier | inherited | a8f7020b70dcb37b7 | plan: backend after the owner's schema fix | 13k |
 | test-engineer | inherited | a63059c1288673fb1 | tests first: T3 | 168k |
+| backend-dev | inherited | a83357a9ecb52e047 | implementation: T4 | 196k |

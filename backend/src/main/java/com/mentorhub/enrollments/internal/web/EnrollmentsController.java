@@ -14,9 +14,7 @@ import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Enrollments} tag. Parameter names equal the request parameter names, because method validation reports
@@ -36,22 +34,14 @@ class EnrollmentsController implements EnrollmentsApi {
     @RequirePermission(Permission.ENROLLMENTS_READ)
     public TrackEnrollmentPage listTrackEnrollments(
             UUID id, @Nullable UUID mentor, @Nullable UUID cohortId, Integer page, Integer size) {
-        if (cohortId != null) {
-            // TODO(cohorts T4): narrow to the cohort (ENR-4).
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
-        }
-        return EnrollmentsMapper.trackEnrollmentPage(enrollments.listOfTrack(id, mentor, page, size));
+        return EnrollmentsMapper.trackEnrollmentPage(enrollments.listOfTrack(id, mentor, cohortId, page, size));
     }
 
     @Override
     @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
     public TrackEnrollment enrollStudent(UUID id, EnrollmentCreate enrollmentCreate) {
-        if (enrollmentCreate.getCohortId() != null) {
-            // TODO(cohorts T4): enroll into the cohort (ENR-2).
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
-        }
-        return EnrollmentsMapper.trackEnrollment(
-                enrollments.enroll(id, enrollmentCreate.getStudentId(), enrollmentCreate.getStartDate()));
+        return EnrollmentsMapper.trackEnrollment(enrollments.enroll(
+                id, enrollmentCreate.getStudentId(), enrollmentCreate.getStartDate(), enrollmentCreate.getCohortId()));
     }
 
     @Override
