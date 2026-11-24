@@ -13,6 +13,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideEllipsisVertical,
   lucideLoaderCircle,
   lucidePlus,
   lucideTriangleAlert,
@@ -26,6 +27,7 @@ import { HlmPopoverImports } from '@spartan-ng/helm/popover';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { Api } from '../../core/api/api';
 import { createCohort } from '../../core/api/fn/cohorts/create-cohort';
 import { addCohortEnrollments } from '../../core/api/fn/cohorts/add-cohort-enrollments';
@@ -44,7 +46,6 @@ import { TrackEnrollment } from '../../core/api/models/track-enrollment';
 import { TrackEnrollmentPage } from '../../core/api/models/track-enrollment-page';
 import { TrackStatus } from '../../core/api/models/track-status';
 import { PROBLEM, problemOf } from '../../core/problem';
-import { ActionMenu, ActionMenuItem } from '../../shared/action-menu/action-menu';
 import { DATE_FORMAT } from '../../shared/date/date-format';
 import { ConfirmDialog, ConfirmDialogData } from '../../shared/confirm-dialog/confirm-dialog';
 import { Paginator } from '../../shared/paginator/paginator';
@@ -63,6 +64,13 @@ import { EnrollStudentDialog, EnrollStudentDialogData } from './enroll-student-d
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { Email } from '../../shared/email/email';
 import { firstValueFrom } from 'rxjs';
+
+interface ActionMenuItem {
+  key: string;
+  label: string;
+  testId: string;
+  destructive?: boolean;
+}
 
 const PAGE_SIZE = 25;
 const PAGE_PARAM = 'enrollmentsPage';
@@ -99,11 +107,12 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
     AssignmentMark,
     HlmPopoverImports,
     Paginator,
-    ActionMenu,
+    HlmDropdownMenuImports,
     RouterLink,
   ],
   providers: [
     provideIcons({
+      lucideEllipsisVertical,
       lucideLoaderCircle,
       lucidePlus,
       lucideTriangleAlert,
@@ -148,13 +157,32 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                 Enroll student
               </button>
             </div>
-            <app-action-menu
-              class="md:hidden"
-              label="Track actions"
-              testId="track-actions-menu"
-              [items]="headerItems"
-              (chosen)="onHeaderAction($event)"
-            />
+            <button
+              type="button"
+              class="md:hidden inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted aria-expanded:text-foreground"
+              [hlmDropdownMenuTrigger]="headerMenu"
+              align="end"
+              aria-label="Track actions"
+              data-testid="track-actions-menu"
+            >
+              <ng-icon name="lucideEllipsisVertical" size="18" aria-hidden="true" />
+            </button>
+            <ng-template #headerMenu>
+              <hlm-dropdown-menu class="w-48">
+                @for (item of headerItems; track item.key) {
+                  <button
+                    type="button"
+                    hlmDropdownMenuItem
+                    class="min-h-11 md:min-h-8"
+                    [variant]="item.destructive ? 'destructive' : 'default'"
+                    [attr.data-testid]="item.testId"
+                    (triggered)="onHeaderAction(item.key)"
+                  >
+                    {{ item.label }}
+                  </button>
+                }
+              </hlm-dropdown-menu>
+            </ng-template>
           </div>
         }
       </div>
@@ -477,7 +505,7 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                         </td>
                         @if (canChange()) {
                           <td
-                            class="py-1 text-end align-middle max-md:absolute max-md:inset-e-0 max-md:bottom-1.5 max-md:z-20 max-md:py-0"
+                            class="py-1 text-end align-middle max-md:absolute max-md:inset-e-0 max-md:bottom-1.5 max-md:py-0"
                           >
                             @let items = rowItems().get(e.id) ?? [assignItem];
                             @if (items.length === 1) {
@@ -492,12 +520,36 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                                 <span class="sr-only">Assign mentor</span>
                               </button>
                             } @else {
-                              <app-action-menu
-                                [label]="'Actions for ' + e.student.name"
-                                testId="enrollment-actions-menu"
-                                [items]="items"
-                                (chosen)="onRowAction(e, $event)"
-                              />
+                              <button
+                                type="button"
+                                class="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted aria-expanded:text-foreground md:size-8"
+                                [hlmDropdownMenuTrigger]="rowMenu"
+                                align="end"
+                                [attr.aria-label]="'Actions for ' + e.student.name"
+                                data-testid="enrollment-actions-menu"
+                              >
+                                <ng-icon
+                                  name="lucideEllipsisVertical"
+                                  size="18"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                              <ng-template #rowMenu>
+                                <hlm-dropdown-menu class="w-48">
+                                  @for (item of items; track item.key) {
+                                    <button
+                                      type="button"
+                                      hlmDropdownMenuItem
+                                      class="min-h-11 md:min-h-8"
+                                      [variant]="item.destructive ? 'destructive' : 'default'"
+                                      [attr.data-testid]="item.testId"
+                                      (triggered)="onRowAction(e, item.key)"
+                                    >
+                                      {{ item.label }}
+                                    </button>
+                                  }
+                                </hlm-dropdown-menu>
+                              </ng-template>
                             }
                           </td>
                         }
@@ -553,13 +605,32 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
           <ng-icon name="lucideUserPlus" size="18" aria-hidden="true" />
         </button>
       } @else {
-        <app-action-menu
-          class="me-1 shrink-0"
-          [label]="'Actions for ' + c.name"
-          testId="cohort-actions-menu"
-          [items]="cohortItemsMenu"
-          (chosen)="onCohortAction(c, $event)"
-        />
+        <button
+          type="button"
+          class="me-1 shrink-0 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted aria-expanded:text-foreground md:size-8"
+          [hlmDropdownMenuTrigger]="cohortMenu"
+          align="end"
+          [attr.aria-label]="'Actions for ' + c.name"
+          data-testid="cohort-actions-menu"
+        >
+          <ng-icon name="lucideEllipsisVertical" size="18" aria-hidden="true" />
+        </button>
+        <ng-template #cohortMenu>
+          <hlm-dropdown-menu class="w-48">
+            @for (item of cohortItemsMenu; track item.key) {
+              <button
+                type="button"
+                hlmDropdownMenuItem
+                class="min-h-11 md:min-h-8"
+                [variant]="item.destructive ? 'destructive' : 'default'"
+                [attr.data-testid]="item.testId"
+                (triggered)="onCohortAction(c, item.key)"
+              >
+                {{ item.label }}
+              </button>
+            }
+          </hlm-dropdown-menu>
+        </ng-template>
       }
     </ng-template>
     <ng-template #mentorCard let-m let-e="e">
@@ -828,8 +899,9 @@ export class TrackEnrollments {
     }
   }
 
-  private candidateLoader(cohortId: string | null): CandidateLoader {
+  private candidateLoader(cohort: { id: string; name: string } | null): CandidateLoader {
     const id = this.trackId();
+    const cohortId = cohort?.id ?? null;
     return async (q, withoutCohort, page) => {
       const params = { id, q: q || undefined, withoutCohort, page, size: PICKER_PAGE_SIZE };
       try {
@@ -837,7 +909,7 @@ export class TrackEnrollments {
           ? await this.api.invoke(listCohortCandidates, { ...params, cohortId })
           : await this.api.invoke(listNewCohortCandidates, params);
       } catch (error) {
-        if (this.explainRefusal(error)) {
+        if (this.explainRefusal(error, cohort ?? undefined)) {
           return null;
         }
         throw error;
@@ -892,7 +964,7 @@ export class TrackEnrollments {
     const data: CohortStudentsDialogData = {
       mode: 'add',
       cohortName: cohort.name,
-      load: this.candidateLoader(cohort.id),
+      load: this.candidateLoader(cohort),
       save: async (value: CohortFormValue) => {
         try {
           await this.api.invoke(addCohortEnrollments, {
@@ -942,7 +1014,7 @@ export class TrackEnrollments {
         enrollmentId: e.id,
       });
     } catch (error) {
-      if (!this.explainRefusal(error) && problemOf(error)?.status !== 403) {
+      if (!this.explainRefusal(error, cohort) && problemOf(error)?.status !== 403) {
         this.say('Could not take the student out of the cohort. Try again.');
       }
       return;
@@ -1030,8 +1102,7 @@ export class TrackEnrollments {
           return false;
         }
         this.say('Student enrolled', { duration: 5000, politeness: 'polite' });
-        this.cohorts.reload();
-        this.enrollments.reload();
+        this.reload();
         this.enrolled.emit();
         return true;
       },
@@ -1105,7 +1176,7 @@ export class TrackEnrollments {
   }
 
   /** Explains a 409 and shows the cohorts and the enrollments as they are now; false for any other error. */
-  private explainRefusal(error: unknown, cohort?: Cohort): boolean {
+  private explainRefusal(error: unknown, cohort?: { id: string; name: string }): boolean {
     const problem = problemOf(error);
     const type = problem?.type;
     if (type === PROBLEM.trackArchived) {

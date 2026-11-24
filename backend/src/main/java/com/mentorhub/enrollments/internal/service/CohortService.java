@@ -22,6 +22,7 @@ import com.mentorhub.web.FieldViolation;
 import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.ValidationException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -90,22 +91,28 @@ public class CohortService {
      * creation is recorded first, then each change of an enrollment's cohort.
      *
      * @param name trimmed before it is checked and stored
-     * @throws ValidationException for {@code name}
+     * @throws ValidationException for {@code name} and {@code enrollmentIds}
      * @throws AccessDeniedException when the caller may change only the tracks they coordinate, and does not coordinate
      *     this one
      * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED} or
      *     {@link EnrollmentProblems#ENROLLMENT_NOT_ELIGIBLE}, in this order
      */
     @Transactional
-    public CohortItem create(UUID trackId, String name, LocalDate startDate, Collection<UUID> enrollmentIds) {
-        String trimmed = name(name);
+    public CohortItem create(
+            UUID trackId, String name, LocalDate startDate, Collection<? extends @Nullable UUID> enrollmentIds) {
+        List<FieldViolation> errors = new ArrayList<>();
+        String trimmed = name(name, errors);
+        List<UUID> ids = enrollmentIds(enrollmentIds, errors);
+        if (!errors.isEmpty()) {
+            throw new ValidationException(errors);
+        }
         CurrentUser caller = currentUser.currentUser();
         TrackSummary track = tracks.lockForEnrollment(trackId).orElseThrow(NotFoundException::new);
         EnrollmentRules.checkRelation(tracks, caller, trackId);
         if (track.archived()) {
             throw trackArchived();
         }
-        List<StoredEnrollment> members = eligible(trackId, enrollmentIds);
+        List<StoredEnrollment> members = eligible(trackId, ids);
         StoredCohort cohort = cohorts.insert(trackId, trimmed, startDate);
         trackHistory.recordCohortCreated(caller.id(), trackId, historyCohort(cohort), cohort.startDate());
         moveInto(caller, track, cohort, members);
@@ -142,13 +149,19 @@ public class CohortService {
      * this cohort or given twice changes nothing.
      *
      * @return the cohort after the change
+     * @throws ValidationException for {@code enrollmentIds}
      * @throws AccessDeniedException when the caller may change only the tracks they coordinate, and does not coordinate
      *     the track
      * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED} or
      *     {@link EnrollmentProblems#ENROLLMENT_NOT_ELIGIBLE}, in this order
      */
     @Transactional
-    public CohortItem add(UUID trackId, UUID cohortId, Collection<UUID> enrollmentIds) {
+    public CohortItem add(UUID trackId, UUID cohortId, Collection<? extends @Nullable UUID> enrollmentIds) {
+        List<FieldViolation> errors = new ArrayList<>();
+        List<UUID> ids = enrollmentIds(enrollmentIds, errors);
+        if (!errors.isEmpty()) {
+            throw new ValidationException(errors);
+        }
         CurrentUser caller = currentUser.currentUser();
         TrackSummary track = tracks.lockForEnrollment(trackId).orElseThrow(NotFoundException::new);
         StoredCohort cohort = cohorts.findOnTrack(trackId, cohortId).orElseThrow(NotFoundException::new);
@@ -156,7 +169,7 @@ public class CohortService {
         if (track.archived()) {
             throw trackArchived();
         }
-        moveInto(caller, track, cohort, eligible(trackId, enrollmentIds));
+        moveInto(caller, track, cohort, eligible(trackId, ids));
         return item(cohort);
     }
 
@@ -291,17 +304,24 @@ public class CohortService {
         return new CohortItem(cohort.id(), cohort.name(), cohort.startDate(), counted.enrollmentCount());
     }
 
-    private static String name(String name) {
+    private static String name(String name, List<FieldViolation> errors) {
         String trimmed = name.strip();
         int length = trimmed.codePointCount(0, trimmed.length());
         if (length == 0) {
-            throw new ValidationException(List.of(new FieldViolation("name", "must not be blank")));
-        }
-        if (length > MAX_NAME_LENGTH) {
-            throw new ValidationException(
-                    List.of(new FieldViolation("name", "must be at most " + MAX_NAME_LENGTH + " characters")));
+            errors.add(new FieldViolation("name", "must not be blank"));
+        } else if (length > MAX_NAME_LENGTH) {
+            errors.add(new FieldViolation("name", "must be at most " + MAX_NAME_LENGTH + " characters"));
         }
         return trimmed;
+    }
+
+    // Bean validation checks the list, not its items: `[null]` binds to a list containing null.
+    private static List<UUID> enrollmentIds(Collection<? extends @Nullable UUID> ids, List<FieldViolation> errors) {
+        if (ids.stream().anyMatch(Objects::isNull)) {
+            errors.add(new FieldViolation("enrollmentIds", "must not contain null"));
+            return List.of();
+        }
+        return ids.stream().map(Objects::requireNonNull).toList();
     }
 
     private static HistoryCohort historyCohort(StoredCohort cohort) {

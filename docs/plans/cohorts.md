@@ -118,10 +118,11 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - T4: `EnrollmentRepository.findByTrackAndMentor` is replaced by `findByTrack(trackId, mentorId, cohortId)`; shared checks are in `EnrollmentRules`; `users.HistoryCohort` is the one public cohort type of both history APIs.
 - T5: sample center (`db/sample/enrollments.sql`): SWE has Intake C (empty, newest), Intake B (9), Intake A (16), and Marcus Lane, Nadia Rahman, Sienna Holt in no cohort; Lucas Price moved A to B, Sienna taken out of B, "Intkae B" created and deleted; Frontend Development (archived) has an empty "Intake A"; QA, DevOps, QA Automation have none. Sign-ins: `coordinator@mentorhub.local` or `sarah.lopez@mentorhub.local` (SWE coordinators), `admin@mentorhub.local`, read-only `mentor.coordinator@mentorhub.local` (DevOps only). Candidates for a new SWE cohort: 28 with the switch off, 3 on.
 - T5 (for the test engineer, second pass): `SampleCenterDataTests` reads every user history entry but not every track history entry.
-- T6: deviations from the mockup kept for old specs (`track-enrollments*.spec.ts`): the row and cohort menus are inline lists, not overlays; "No students enrolled yet" instead of "No enrollments yet."; the shared paginator ("1–25 of N"); "—" for no mentor; "Assign mentor" moved into the row menu. Old specs do not stub `listTrackCohorts`. New: `shared/action-menu/action-menu.ts`, `features/enrollments/cohort-candidate-picker.ts`, `cohort-dialogs.ts`; `ConfirmDialog` takes optional `testIds`.
+- T6: deviations from the mockup: "No students enrolled yet" instead of "No enrollments yet."; the shared paginator ("1–25 of N"); "—" for no mentor; "Assign mentor" in the row menu. The three action menus use the Spartan dropdown menu (CDK overlay; tests query items with `document.querySelector`). New: `features/enrollments/cohort-candidate-picker.ts`, `cohort-dialogs.ts`, `shared/date-field/date-field.ts`; `ConfirmDialog` takes optional `testIds`.
 - T6: details chosen by the developer: a created cohort becomes the chosen one; the create dialog's start date starts blank, required ("Choose a start date."); the picker pages by 10; a cohort load failure shows "Could not load the cohorts." with "Try again"; an unknown `?cohort=` counts as All enrollments; success snackbars 5 s; refusal texts its own; mentor removal in the popover still shows on an archived track (unchanged).
 - T6 rework: shared `shared/date-field/date-field.ts` (`app-date-field`) used by the enroll and create-cohort dialogs; the shared dialog content scrolls (`max-h` 100dvh) and its footer is one wrapping row, for every dialog; "All enrollments" takes the total from one extra `listTrackEnrollments` (size 1) while a cohort is chosen (an API field would remove it); the student link only for users with USERS_READ; the Assign mentor icon button (`enrollment-assign-mentor`) keeps a tooltip; `TrackEnrollments` injects `CurrentUserService`.
 - T6 rounds 2-3: page scroll lock while a dialog is open is global in `frontend/src/styles/tailwind.css` (overflow hidden with a stable gutter, not a fixed body), so the sticky header stays; the loading spinner is a sticky badge in the enrollments area; at 390 px the row actions cell is layered above the following cards, and the Assign mentor icon sits bottom-right (the mockup centers it).
+- Second test pass (2026-11-24): 25 tests of details (`CohortsDetailsTests`, `track-cohorts-details.spec.ts`, two in `SampleCenterDataTests`), uncommitted; no real bug found.
 
 ## Red tests
 
@@ -148,16 +149,18 @@ Commit: 6dd4644 "test: red tests for cohorts"
 - 2026-11-24: The screen run's decisions: the two bugs fixed ("All enrollments" counts the whole track; the picker overflow); at 390 px "сделать как в макете" (buttons in one row, Cancel left); every dialog scrolls when taller than the screen, fields do not stick out ("я не могу листать поп-ап ... похоже, что это верно для всех попапов"); a track with no cohort hides the Cohort column ("колонку скрывать"); student names are links, headings bold as in the mockup; kept: header icons, the picker without one box and without a pager on one page, the X with a visible hover in the dark theme, the move list as a bordered box, "Enroll a student", the T6 deviations; Start date uses the project's own calendar; a row whose only action is Assign mentor shows an icon button instead of the dots ("заменить иконку выпадайки на кнопку Assign mentor, но сделать кнопку подходящей иконкой"; applied to any such row, including an enrollment in no cohort on a track with cohorts); no tooltips on the dots menus ("убрать всплывающие подсказки").
 - 2026-11-24: Fix rounds 2-3 ("по всем пунктам как рекомендуешь"): coordinators without USERS_READ see names as plain text; the Assign mentor icon keeps its tooltip; the picker wraps long names and emails; the empty texts placed as the mockup ("исправить как в мокапе"); a centered spinner instead of the loading bar ("заменить на крутящийся кружок в самой середине части окна энроллментов"); the open row menu covers the next card at 390 px (`.screens/img_1.png`); the header stays when a dialog opens on a scrolled page; kept: a dialog title scrolls away with tall content, the range label changes before the rows, "No students enrolled yet" and the shared paginator.
 - 2026-11-24: The spinner at the top of the list, paging jumping to the top, the status text as live content: kept ("по всем пунктам как рекомендуешь"). T5 and T6 accepted and committed ("да, коммить").
+- 2026-11-24: Review findings: all as recommended ("по всем пунктам как рекомендуешь"): 1-6 fixed, 7 needed no change (already handled), 8 at the finish stage; any 404 on take-out or a cohort's candidates is read as the cohort gone. Finding 9: the hand-rolled `shared/action-menu` had no real reason (the old specs never opened a menu); replaced by the Spartan dropdown menu ("да, заменяй на Spartan").
+- 2026-11-24: Re-review minors: 2 and 3 fixed, 4 (the three pasted menu templates) left ("по всем пунктам как рекомендуешь").
+- 2026-11-24: The duplicated `UuidArray` stays in this change; the shared helpers go to a common module in a separate change ("общий модуль сделаем отдельным изменением").
+- 2026-11-24: Owner's remark for `/usage-review`: the frontend was the pain of the process; after several mockup rounds the final screen still needed several fix rounds with both the developer and the tester.
 
 ## Handover
 
-- Waiting for: nothing; next is the second test-engineer pass (tests of details), a fresh `test-engineer`.
-- To read: the commit "feat: cohorts sample data and track page"; `git diff 8dd7040`.
-- Documents changed:
-  - changed `docs/development/backend.md`: the audit clock line (in 8dd7040).
-  - added `docs/requirements/cohorts.md`; changed `docs/requirements/enrollments.md`, `tracks.md`, `audit.md`, `platform.md`, `authorization.md`, `README.md`; changed `api/openapi.yaml`, `backend/src/main/resources/db/migration/V1__schema.sql`: committed in 6dd4644, unchanged since.
-- State: T1-T6 done and committed; frontend verification green in the developer's report (446 tests); no spec changed since 6dd4644. Screen runs under `.screens/cohorts/`.
-- Next: the second test-engineer pass (doubts to the owner, failing tests to the owning developer; note whether it found a real bug), then the review loop, then `verifier` with scope `all`.
+- Waiting for: the owner's word to commit; stage 8 done in the working tree.
+- Accepted 2026-11-24 ("принимаю, переходи к этапу 8"). The owner asked to record a visual and technical audit of the frontend: added to `docs/roadmap.md` (Next 7), with the shared backend helpers (Next 8).
+- Documents changed: changed `docs/development/backend.md` (the audit clock line, in 8dd7040; its four answers shown at stage 8); changed `docs/roadmap.md` (Cohorts deleted, items 7 and 8 added); requirements, contract and schema as committed in 6dd4644; this plan and `.screens/cohorts/` deleted.
+- Second test pass: 25 tests of details, no real bug found (counts toward removing the pass, roadmap: checks of the workflow).
+- Next: two commits on the owner's word (this plan's final state with the review fixes, then stage 8); then `/pr` and `/usage-review`.
 
 ## Agents
 
@@ -184,3 +187,15 @@ Commit: 6dd4644 "test: red tests for cohorts"
 | manual-tester | inherited | a801342f084af8fea | implementation: round 2 run | 91k |
 | manual-tester | inherited | ae37072c66960ae2e | implementation: round 3 run | 51k |
 | manual-tester | haiku | a3ad987ab84085adb | implementation: spinner steps | see usage |
+| test-engineer | inherited | a7524c66671ef6bab | review: second pass | 119k |
+| reviewer | inherited | a69c62b02b42bdc61 | review: main...HEAD | 183k |
+| api-lookup | inherited | a7de95e5f765fb371 | review: generated DTO item validation | see usage |
+| general-purpose | sonnet | a7b61102220801e58 | review: why the hand-rolled menu | 81k |
+| test-engineer | inherited | ae6c93452ba751ada | review: tests for the findings | 119k |
+| backend-dev | inherited | a19fb5e9c5df5a816 | review: fixes 3-4 | 38k |
+| frontend-dev | inherited | a72016e708c79a29f | review: fixes 1-2, Spartan menus | 61k |
+| manual-tester | haiku | a13a24a2cbd0e6e71 | review: menus | 78k |
+| reviewer | sonnet | a492b474165c9a959 | review: re-review | 43k |
+| frontend-dev | inherited | a72016e708c79a29f | review: minor fixes | 64k |
+| verifier | inherited | af1f40d5d98137641 | review: all | see usage |
+| Explore | sonnet | aa0c1b60dbe2ba3f3 | review: duplicated helpers across modules | 67k |

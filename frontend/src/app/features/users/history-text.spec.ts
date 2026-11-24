@@ -131,4 +131,53 @@ describe('describeEntry', () => {
     expect(describeEntry({ ...base, action: 'USER_ROLES_CHANGED' })).toBe('Roles changed');
     expect(describeEntry({ ...base, action: 'USER_PROFILE_UPDATED' })).toBe('Profile updated');
   });
+
+  describe('the cohorts', () => {
+    const track = { id: 't1', code: 'QA', name: 'Quality Assurance' };
+    const spring = { id: 'c1', name: 'Spring 2026' };
+    const autumn = { id: 'c2', name: 'Autumn 2026' };
+
+    it('names the cohort of an enrollment', () => {
+      const text = describeEntry({
+        ...base,
+        action: 'USER_ENROLLED',
+        track,
+        startDate: '2026-09-01',
+        cohort: spring,
+      });
+
+      expect(text).toContain('Spring 2026');
+      expect(text).toContain('QA · Quality Assurance');
+    });
+
+    it.each<[string, typeof spring | null, typeof spring | null, string[]]>([
+      ['moved', spring, autumn, ['Spring 2026', 'Autumn 2026']],
+      ['put in', null, autumn, ['Autumn 2026']],
+      ['taken out', spring, null, ['Spring 2026']],
+    ])('names the track and the cohorts when %s', (_name, from, to, names) => {
+      const text = describeEntry({
+        ...base,
+        action: 'USER_COHORT_CHANGED',
+        track,
+        cohortChange: { from, to },
+      });
+
+      expect(text).toContain('QA · Quality Assurance');
+      for (const name of names) {
+        expect(text).toContain(name);
+      }
+    });
+
+    it('tells moved, put in and taken out apart', () => {
+      const text = (from: typeof spring | null, to: typeof spring | null) =>
+        describeEntry({
+          ...base,
+          action: 'USER_COHORT_CHANGED',
+          track,
+          cohortChange: { from, to },
+        });
+
+      expect(new Set([text(spring, autumn), text(null, autumn), text(spring, null)]).size).toBe(3);
+    });
+  });
 });

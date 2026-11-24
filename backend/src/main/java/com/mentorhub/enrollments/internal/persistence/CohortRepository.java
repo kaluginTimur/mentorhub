@@ -53,8 +53,8 @@ public class CohortRepository {
             return Map.of();
         }
         return jdbc
-                .sql("select " + COLUMNS + " from cohorts c where c.id in (:ids)")
-                .param("ids", cohortIds)
+                .sql("select " + COLUMNS + " from cohorts c where c.id = any(:ids)")
+                .param("ids", UuidArray.of(cohortIds))
                 .query(CohortRepository::storedCohort)
                 .list()
                 .stream()

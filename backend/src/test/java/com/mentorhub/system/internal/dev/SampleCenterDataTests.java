@@ -73,6 +73,44 @@ class SampleCenterDataTests {
         }
     }
 
+    // Same for the tracks: an entry of the cohorts the history cannot read would vanish from the track's page.
+    @Test
+    void everyHistoryEntryOfEveryTrackIsReadable() {
+        for (UUID track : ids("tracks")) {
+            List<UUID> stored = jdbc.sql(
+                            "select id from audit_log where subject_type = 'TRACK' and subject_id = :track")
+                    .param("track", track)
+                    .query(UUID.class)
+                    .list();
+
+            assertThat(readAll("/api/v1/tracks/" + track + "/history"))
+                    .as("history of track %s", track)
+                    .containsExactlyInAnyOrderElementsOf(stored);
+        }
+    }
+
+    // The counts of the cohorts must agree with the enrollments each cohort narrows to.
+    @Test
+    void everyCohortCountMatchesItsEnrollments() {
+        for (UUID track : ids("tracks")) {
+            MvcTestResult list = mvc.get()
+                    .uri("/api/v1/tracks/" + track + "/cohorts")
+                    .header(
+                            HttpHeaders.AUTHORIZATION,
+                            issuer.token(ADMINISTRATOR)
+                                    .claim("iss", Personas.LOCAL_ISSUER)
+                                    .bearer())
+                    .exchange();
+            assertThat(list).hasStatusOk();
+            for (JsonNode cohort : JSON.readTree(content(list)).path("items")) {
+                assertThat(readAll("/api/v1/tracks/" + track + "/enrollments?cohortId="
+                                + cohort.path("id").asString()))
+                        .as("cohort %s", cohort.path("name").asString())
+                        .hasSize(cohort.path("enrollmentCount").asInt());
+            }
+        }
+    }
+
     @Test
     void theUserListReturnsEveryUser() {
         assertThat(readAll("/api/v1/users")).containsExactlyInAnyOrderElementsOf(ids("users"));
@@ -136,7 +174,7 @@ class SampleCenterDataTests {
         long total = -1;
         for (int page = 0; total < 0 || (long) page * 10 < total; page++) {
             MvcTestResult result = mvc.get()
-                    .uri(path + "?size=10&page=" + page)
+                    .uri(path + (path.contains("?") ? "&" : "?") + "size=10&page=" + page)
                     .header(
                             HttpHeaders.AUTHORIZATION,
                             issuer.token(ADMINISTRATOR)

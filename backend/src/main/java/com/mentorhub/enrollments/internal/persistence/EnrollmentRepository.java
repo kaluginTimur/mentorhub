@@ -111,8 +111,8 @@ public class EnrollmentRepository {
         if (enrollmentIds.isEmpty()) {
             return List.of();
         }
-        return jdbc.sql("select " + COLUMNS + " from enrollments where id in (:ids)")
-                .param("ids", enrollmentIds)
+        return jdbc.sql("select " + COLUMNS + " from enrollments where id = any(:ids)")
+                .param("ids", UuidArray.of(enrollmentIds))
                 .query(EnrollmentRepository::storedEnrollment)
                 .list();
     }
