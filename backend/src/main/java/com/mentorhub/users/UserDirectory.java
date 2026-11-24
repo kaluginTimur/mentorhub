@@ -21,6 +21,16 @@ public interface UserDirectory {
      */
     DirectoryPage findUsers(Collection<UUID> userIds, int page, int size);
 
+    /**
+     * A page of the users with the given ids, in any status, narrowed by a search; ids no user has are left out.
+     *
+     * @param text a trimmed, non-blank substring of the email, first or last name, matched literally and ignoring case;
+     *     {@code null} for no search
+     * @param userIds bounded by the number of users of the center
+     * @param page zero-based
+     */
+    DirectoryPage findUsers(Collection<UUID> userIds, @Nullable String text, int page, int size);
+
     /** The active users who hold the role. */
     List<DirectoryUser> findActiveUsersWithRole(Role role);
 

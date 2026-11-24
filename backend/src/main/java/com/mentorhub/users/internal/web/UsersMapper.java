@@ -2,6 +2,8 @@ package com.mentorhub.users.internal.web;
 
 import com.mentorhub.api.model.AccessStatus;
 import com.mentorhub.api.model.BootstrapChanges;
+import com.mentorhub.api.model.CohortChange;
+import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.DisableReason;
 import com.mentorhub.api.model.HistoryAction;
 import com.mentorhub.api.model.HistoryActor;
@@ -173,9 +175,10 @@ final class UsersMapper {
             case UserChange.TrackCoordinatorRemoved(var track) -> dto.setTrack(trackReference(track));
             case UserChange.TrackMentorAdded(var track) -> dto.setTrack(trackReference(track));
             case UserChange.TrackMentorRemoved(var track) -> dto.setTrack(trackReference(track));
-            case UserChange.Enrolled(var track, var startDate) -> {
+            case UserChange.Enrolled(var track, var startDate, var cohort) -> {
                 dto.setTrack(trackReference(track));
                 dto.setStartDate(startDate);
+                dto.setCohort(cohortReference(cohort));
             }
             case UserChange.MentorAssigned(var _, var track) -> {
                 dto.setMentor(historyActor(entry.person()));
@@ -193,8 +196,16 @@ final class UsersMapper {
                 dto.setUser(historyActor(entry.person()));
                 dto.setTrack(trackReference(track));
             }
+            case UserChange.CohortChanged(var track, var from, var to) -> {
+                dto.setTrack(trackReference(track));
+                dto.setCohortChange(new CohortChange(cohortReference(from), cohortReference(to)));
+            }
         }
         return dto;
+    }
+
+    private static @Nullable CohortReference cohortReference(UserChange.@Nullable CohortRef cohort) {
+        return cohort == null ? null : new CohortReference(cohort.id(), cohort.name());
     }
 
     private static TrackReference trackReference(HistoryTrack track) {

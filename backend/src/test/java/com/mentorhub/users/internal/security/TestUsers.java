@@ -22,6 +22,7 @@ public final class TestUsers {
         jdbc.sql("truncate audit_log").update();
         jdbc.sql("delete from enrollment_mentors").update();
         jdbc.sql("delete from enrollments").update();
+        jdbc.sql("delete from cohorts").update();
         jdbc.sql("delete from track_coordinators").update();
         jdbc.sql("delete from track_mentors").update();
         jdbc.sql("delete from tracks").update();

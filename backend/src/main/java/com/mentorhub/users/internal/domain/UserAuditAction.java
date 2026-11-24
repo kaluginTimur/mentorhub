@@ -19,7 +19,8 @@ public enum UserAuditAction {
     USER_MENTOR_ASSIGNED(UserChange.MentorAssigned.class),
     USER_MENTOR_REMOVED(UserChange.MentorRemoved.class),
     USER_STUDENT_ASSIGNED(UserChange.StudentAssigned.class),
-    USER_STUDENT_REMOVED(UserChange.StudentRemoved.class);
+    USER_STUDENT_REMOVED(UserChange.StudentRemoved.class),
+    USER_COHORT_CHANGED(UserChange.CohortChanged.class);
 
     public static final String SUBJECT_TYPE = "USER";
 

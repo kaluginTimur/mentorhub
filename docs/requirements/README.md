@@ -15,4 +15,5 @@ The prefix of a capability is the stable key of its ids. The order below is logi
 | [Invitation emails](invitation-emails.md) | IEM | Sending invitations by email and tracking their delivery |
 | [Tracks](tracks.md) | TRK | The tracks of the center, archiving them, their coordinators and their history |
 | [Enrollments](enrollments.md) | ENR | Enrolling a student on a track, the students of a track, a student's own enrollment, the mentors of a track and of an enrollment and the students of each, and a mentor's students |
+| [Cohorts](cohorts.md) | COH | The intakes of a track, creating them with their enrollments, adding and taking out enrollments, deleting an empty one, and their history |
 | [Development mode](development-mode.md) | DEV | What a local development run does: personas, the sample center data restored on every start, simulated failures |

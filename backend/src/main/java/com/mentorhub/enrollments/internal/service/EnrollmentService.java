@@ -1,7 +1,9 @@
 package com.mentorhub.enrollments.internal.service;
 
 import com.mentorhub.enrollments.internal.EnrollmentProblems;
+import com.mentorhub.enrollments.internal.persistence.CohortRepository;
 import com.mentorhub.enrollments.internal.persistence.EnrollmentRepository;
+import com.mentorhub.enrollments.internal.persistence.StoredCohort;
 import com.mentorhub.enrollments.internal.persistence.StoredEnrollment;
 import com.mentorhub.tracks.TrackDirectory;
 import com.mentorhub.tracks.TrackEnrollmentHistory;
@@ -10,19 +12,19 @@ import com.mentorhub.users.CurrentUser;
 import com.mentorhub.users.CurrentUserProvider;
 import com.mentorhub.users.DirectoryPage;
 import com.mentorhub.users.DirectoryUser;
+import com.mentorhub.users.HistoryCohort;
 import com.mentorhub.users.HistoryTrack;
-import com.mentorhub.users.Permission;
 import com.mentorhub.users.Role;
 import com.mentorhub.users.UserDirectory;
 import com.mentorhub.users.UserEnrollmentHistory;
 import com.mentorhub.web.ConflictException;
-import com.mentorhub.web.FieldViolation;
 import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.ValidationException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -45,10 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EnrollmentService {
 
-    static final int MAX_QUERY_LENGTH = 100;
-
     private final CurrentUserProvider currentUser;
     private final EnrollmentRepository enrollments;
+    private final CohortRepository cohorts;
     private final TrackDirectory tracks;
     private final TrackEnrollmentHistory trackHistory;
     private final UserDirectory users;
@@ -57,12 +58,14 @@ public class EnrollmentService {
     EnrollmentService(
             CurrentUserProvider currentUser,
             EnrollmentRepository enrollments,
+            CohortRepository cohorts,
             TrackDirectory tracks,
             TrackEnrollmentHistory trackHistory,
             UserDirectory users,
             UserEnrollmentHistory userHistory) {
         this.currentUser = currentUser;
         this.enrollments = enrollments;
+        this.cohorts = cohorts;
         this.tracks = tracks;
         this.trackHistory = trackHistory;
         this.users = users;
@@ -73,15 +76,16 @@ public class EnrollmentService {
      * The enrollments of an active or an archived track, sorted by the student's name, then email, then id.
      *
      * @param mentorId narrows to the enrollments the user is a mentor of (ENR-15); {@code null} for all
+     * @param cohortId narrows to the enrollments in the cohort (ENR-4); a cohort of another track, or an id no cohort
+     *     has, gives an empty page; {@code null} for all
      */
     @Transactional(readOnly = true)
-    public EnrollmentPage<TrackEnrollmentItem> listOfTrack(UUID trackId, @Nullable UUID mentorId, int page, int size) {
+    public EnrollmentPage<TrackEnrollmentItem> listOfTrack(
+            UUID trackId, @Nullable UUID mentorId, @Nullable UUID cohortId, int page, int size) {
         if (tracks.find(trackId).isEmpty()) {
             throw new NotFoundException();
         }
-        List<StoredEnrollment> ofTrack = mentorId == null
-                ? enrollments.findByTrack(trackId)
-                : enrollments.findByTrackAndMentor(trackId, mentorId);
+        List<StoredEnrollment> ofTrack = enrollments.findByTrack(trackId, mentorId, cohortId);
         // Keyed by student over every status: holds only while a student has at most one enrollment on a
         // track. Once an enrollment can end and the student return, toMap throws on the duplicate key.
         Map<UUID, StoredEnrollment> byStudent =
@@ -94,12 +98,17 @@ public class EnrollmentService {
                 enrollments.mentorIds(onPage.stream().map(StoredEnrollment::id).toList());
         List<DirectoryUser> mentors =
                 users.findUsers(mentorIds.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+        Map<UUID, StoredCohort> cohortById = cohorts.findAll(onPage.stream()
+                .map(StoredEnrollment::cohortId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
         List<TrackEnrollmentItem> items = new ArrayList<>();
         for (int i = 0; i < onPage.size(); i++) {
             StoredEnrollment enrollment = onPage.get(i);
             items.add(item(
                     enrollment,
                     students.items().get(i),
+                    namedCohort(cohortById, enrollment.cohortId()),
                     mentorsOf(mentors, mentorIds.getOrDefault(enrollment.id(), Set.of()))));
         }
         return new EnrollmentPage<>(items, page, size, students.totalItems());
@@ -116,9 +125,9 @@ public class EnrollmentService {
      */
     @Transactional(readOnly = true)
     public EnrollmentPage<DirectoryUser> candidates(UUID trackId, @Nullable String q, int page, int size) {
-        String text = searchText(q);
+        String text = EnrollmentRules.searchText(q);
         TrackSummary track = tracks.find(trackId).orElseThrow(NotFoundException::new);
-        checkRelation(currentUser.currentUser(), trackId);
+        EnrollmentRules.checkRelation(tracks, currentUser.currentUser(), trackId);
         if (track.archived()) {
             throw trackArchived();
         }
@@ -128,35 +137,50 @@ public class EnrollmentService {
     }
 
     /**
-     * Enrolls the student on the track from the start date, recorded in the track's and the student's history.
+     * Enrolls the student on the track from the start date, into the cohort if one is given, recorded in the track's
+     * and the student's history.
      *
+     * @param cohortId a cohort of the track; {@code null} for none
      * @throws AccessDeniedException when the caller may enroll only on tracks they coordinate, and does not coordinate
      *     this one
-     * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED}, {@link EnrollmentProblems#STUDENT_NOT_ELIGIBLE}
-     *     or {@link EnrollmentProblems#STUDENT_ALREADY_ENROLLED}, in this order
+     * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED}, {@link EnrollmentProblems#COHORT_NOT_ELIGIBLE},
+     *     {@link EnrollmentProblems#STUDENT_NOT_ELIGIBLE} or {@link EnrollmentProblems#STUDENT_ALREADY_ENROLLED}, in this
+     *     order
      */
     @Transactional
-    public TrackEnrollmentItem enroll(UUID trackId, UUID studentId, LocalDate startDate) {
+    public TrackEnrollmentItem enroll(UUID trackId, UUID studentId, LocalDate startDate, @Nullable UUID cohortId) {
         CurrentUser caller = currentUser.currentUser();
         TrackSummary track = tracks.lockForEnrollment(trackId).orElseThrow(NotFoundException::new);
-        checkRelation(caller, trackId);
+        EnrollmentRules.checkRelation(tracks, caller, trackId);
         if (track.archived()) {
             throw trackArchived();
         }
+        // Read under the track's lock, which deleting a cohort takes too (COH-4).
+        StoredCohort cohort = cohortId == null
+                ? null
+                : cohorts.findOnTrack(trackId, cohortId)
+                        .orElseThrow(() -> new ConflictException(
+                                EnrollmentProblems.COHORT_NOT_ELIGIBLE, "The track has no cohort with this id."));
         if (!users.isActiveWithRole(studentId, Role.STUDENT)) {
             throw new ConflictException(
                     EnrollmentProblems.STUDENT_NOT_ELIGIBLE,
                     "Only an active user with the student role can be enrolled.");
         }
         StoredEnrollment enrollment = enrollments
-                .insertIfNoActive(studentId, trackId, startDate, caller.id())
+                .insertIfNoActive(studentId, trackId, cohortId, startDate, caller.id())
                 .orElseThrow(() -> new ConflictException(
                         EnrollmentProblems.STUDENT_ALREADY_ENROLLED, "The student already has an active enrollment."));
-        trackHistory.recordStudentEnrolled(caller.id(), trackId, studentId, startDate);
+        HistoryCohort historyCohort = cohort == null ? null : new HistoryCohort(cohort.id(), cohort.name());
+        trackHistory.recordStudentEnrolled(caller.id(), trackId, studentId, startDate, historyCohort);
         userHistory.recordEnrolled(
-                caller.id(), studentId, new HistoryTrack(track.id(), track.code(), track.name()), startDate);
+                caller.id(),
+                studentId,
+                new HistoryTrack(track.id(), track.code(), track.name()),
+                startDate,
+                historyCohort);
         DirectoryUser student = users.findUsers(List.of(studentId)).getFirst();
-        return item(enrollment, student, List.of());
+        return item(
+                enrollment, student, cohort == null ? null : new NamedCohort(cohort.id(), cohort.name()), List.of());
     }
 
     /**
@@ -170,9 +194,9 @@ public class EnrollmentService {
      */
     @Transactional(readOnly = true)
     public EnrollmentPage<DirectoryUser> mentorCandidates(UUID enrollmentId, @Nullable String q, int page, int size) {
-        String text = searchText(q);
+        String text = EnrollmentRules.searchText(q);
         StoredEnrollment enrollment = enrollments.find(enrollmentId).orElseThrow(NotFoundException::new);
-        checkRelation(currentUser.currentUser(), enrollment.trackId());
+        EnrollmentRules.checkRelation(tracks, currentUser.currentUser(), enrollment.trackId());
         DirectoryPage candidates = users.findActiveUsersWithRoleAmong(
                 tracks.mentorIds(enrollment.trackId()),
                 Role.MENTOR,
@@ -199,7 +223,7 @@ public class EnrollmentService {
         StoredEnrollment enrollment = enrollments.find(enrollmentId).orElseThrow(NotFoundException::new);
         // An enrollment never changes its track, which is never deleted.
         tracks.lockForEnrollment(enrollment.trackId());
-        checkRelation(caller, enrollment.trackId());
+        EnrollmentRules.checkRelation(tracks, caller, enrollment.trackId());
         if (!enrollments.isMentor(enrollmentId, userId)) {
             if (!users.isActiveWithRole(userId, Role.MENTOR) || !tracks.isMentor(enrollment.trackId(), userId)) {
                 throw new ConflictException(
@@ -227,7 +251,7 @@ public class EnrollmentService {
     public TrackEnrollmentItem removeMentor(UUID enrollmentId, UUID userId) {
         CurrentUser caller = currentUser.currentUser();
         StoredEnrollment enrollment = enrollments.find(enrollmentId).orElseThrow(NotFoundException::new);
-        checkRelation(caller, enrollment.trackId());
+        EnrollmentRules.checkRelation(tracks, caller, enrollment.trackId());
         if (enrollments.deleteMentor(enrollmentId, userId)) {
             trackHistory.recordMentorRemoved(caller.id(), enrollment.trackId(), enrollment.studentId(), userId);
             userHistory.recordMentorRemoved(
@@ -296,9 +320,11 @@ public class EnrollmentService {
 
     private TrackEnrollmentItem item(StoredEnrollment enrollment) {
         DirectoryUser student = users.findUsers(List.of(enrollment.studentId())).getFirst();
+        UUID cohortId = enrollment.cohortId();
         return item(
                 enrollment,
                 student,
+                cohortId == null ? null : namedCohort(cohorts.findAll(List.of(cohortId)), cohortId),
                 users.findUsers(
                         enrollments.mentorIds(List.of(enrollment.id())).getOrDefault(enrollment.id(), Set.of())));
     }
@@ -310,28 +336,6 @@ public class EnrollmentService {
         return new HistoryTrack(track.id(), track.code(), track.name());
     }
 
-    /** The controller admits only callers with one of the two permissions (ENR-1). */
-    private void checkRelation(CurrentUser caller, UUID trackId) {
-        if (!caller.has(Permission.ENROLLMENTS_MANAGE) && !tracks.isCoordinator(trackId, caller.id())) {
-            throw new AccessDeniedException("Not a coordinator of the track");
-        }
-    }
-
-    private static @Nullable String searchText(@Nullable String q) {
-        if (q == null) {
-            return null;
-        }
-        String text = q.strip();
-        if (text.isEmpty()) {
-            return null;
-        }
-        if (text.codePointCount(0, text.length()) > MAX_QUERY_LENGTH) {
-            throw new ValidationException(
-                    List.of(new FieldViolation("q", "must be at most " + MAX_QUERY_LENGTH + " characters")));
-        }
-        return text;
-    }
-
     // An enrollment references its track and its student, neither of which is ever deleted.
     private static StoredEnrollment stored(@Nullable StoredEnrollment enrollment, DirectoryUser student) {
         if (enrollment == null) {
@@ -341,8 +345,24 @@ public class EnrollmentService {
     }
 
     private static TrackEnrollmentItem item(
-            StoredEnrollment enrollment, DirectoryUser student, List<DirectoryUser> mentors) {
-        return new TrackEnrollmentItem(enrollment.id(), student, enrollment.startDate(), enrollment.status(), mentors);
+            StoredEnrollment enrollment,
+            DirectoryUser student,
+            @Nullable NamedCohort cohort,
+            List<DirectoryUser> mentors) {
+        return new TrackEnrollmentItem(
+                enrollment.id(), student, enrollment.startDate(), enrollment.status(), cohort, mentors);
+    }
+
+    // An enrollment's cohort is a stored cohort: the foreign key keeps it from being deleted.
+    private static @Nullable NamedCohort namedCohort(Map<UUID, StoredCohort> cohortById, @Nullable UUID cohortId) {
+        if (cohortId == null) {
+            return null;
+        }
+        StoredCohort cohort = cohortById.get(cohortId);
+        if (cohort == null) {
+            throw new IllegalStateException("Enrollment cohort " + cohortId + " is not a stored cohort");
+        }
+        return new NamedCohort(cohort.id(), cohort.name());
     }
 
     /** Keeps the directory's order: by name, then email, then id. */
@@ -359,7 +379,6 @@ public class EnrollmentService {
     }
 
     private static ConflictException trackArchived() {
-        return new ConflictException(
-                EnrollmentProblems.TRACK_ARCHIVED, "The track is archived; restore it to enroll students.");
+        return EnrollmentRules.trackArchived("The track is archived; restore it to enroll students.");
     }
 }

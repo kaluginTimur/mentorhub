@@ -1,9 +1,11 @@
 package com.mentorhub.tracks.internal.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /** An audited change to a track; its components are the details of the audit entry (AUD-7). */
 public sealed interface TrackChange {
@@ -106,8 +108,14 @@ public sealed interface TrackChange {
         }
     }
 
-    /** @param userId {@code users.id} of the enrolled student */
-    record StudentEnrolled(UUID userId, LocalDate startDate) implements TrackChange {
+    /**
+     * @param userId {@code users.id} of the enrolled student
+     * @param cohort the cohort the student was enrolled into; {@code null} for none, and in entries written before
+     *     cohorts
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record StudentEnrolled(
+            UUID userId, LocalDate startDate, @Nullable CohortRef cohort) implements TrackChange {
         public StudentEnrolled {
             Objects.requireNonNull(userId, "userId");
             Objects.requireNonNull(startDate, "startDate");
@@ -148,6 +156,55 @@ public sealed interface TrackChange {
         @Override
         public TrackAuditAction action() {
             return TrackAuditAction.TRACK_ENROLLMENT_MENTOR_REMOVED;
+        }
+    }
+
+    /** A cohort of the track as an entry names it: its id, and its name at the moment of the change. */
+    record CohortRef(UUID id, String name) {
+        public CohortRef {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(name, "name");
+        }
+    }
+
+    record CohortCreated(CohortRef cohort, LocalDate startDate) implements TrackChange {
+        public CohortCreated {
+            Objects.requireNonNull(cohort, "cohort");
+            Objects.requireNonNull(startDate, "startDate");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_COHORT_CREATED;
+        }
+    }
+
+    record CohortDeleted(CohortRef cohort, LocalDate startDate) implements TrackChange {
+        public CohortDeleted {
+            Objects.requireNonNull(cohort, "cohort");
+            Objects.requireNonNull(startDate, "startDate");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_COHORT_DELETED;
+        }
+    }
+
+    /**
+     * @param userId {@code users.id} of the student of the enrollment
+     * @param from the cohort the enrollment left; {@code null} for none
+     * @param to the cohort the enrollment joined; {@code null} for none
+     */
+    record EnrollmentCohortChanged(
+            UUID userId, @Nullable CohortRef from, @Nullable CohortRef to) implements TrackChange {
+        public EnrollmentCohortChanged {
+            Objects.requireNonNull(userId, "userId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_ENROLLMENT_COHORT_CHANGED;
         }
     }
 }

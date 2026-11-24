@@ -4,6 +4,7 @@ import static com.mentorhub.users.internal.security.ProblemAssertions.assertProb
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import com.mentorhub.enrollments.internal.TestCohorts;
 import com.mentorhub.enrollments.internal.TestEnrollments;
 import com.mentorhub.support.EndpointTest;
 import com.mentorhub.tracks.internal.TestTracks;
@@ -42,6 +43,7 @@ class EnrollmentsEndpointTests {
     static final URI TRACK_ARCHIVED = URI.create("urn:mentorhub:problem:track-archived");
     static final URI STUDENT_NOT_ELIGIBLE = URI.create("urn:mentorhub:problem:student-not-eligible");
     static final URI STUDENT_ALREADY_ENROLLED = URI.create("urn:mentorhub:problem:student-already-enrolled");
+    static final URI COHORT_NOT_ELIGIBLE = URI.create("urn:mentorhub:problem:cohort-not-eligible");
 
     static final LocalDate START = LocalDate.of(2026, 9, 1);
 
@@ -57,6 +59,7 @@ class EnrollmentsEndpointTests {
     TestUsers users;
     TestTracks tracks;
     TestEnrollments enrollments;
+    TestCohorts cohorts;
     UUID admin;
 
     @BeforeEach
@@ -65,6 +68,7 @@ class EnrollmentsEndpointTests {
         users.deleteAll();
         tracks = new TestTracks(jdbc);
         enrollments = new TestEnrollments(jdbc);
+        cohorts = new TestCohorts(jdbc);
         admin = users.create("admin@x.test", UserStatus.ACTIVE, Role.ADMIN);
         users.link(admin, "admin");
     }
@@ -517,6 +521,132 @@ class EnrollmentsEndpointTests {
         assertThat(path(onUser.get(0), "track", "id")).isEqualTo(track.toString());
         assertThat(path(onUser.get(0), "track", "code")).isEqualTo("QA");
         assertThat(path(onUser.get(0), "track", "name")).isEqualTo("Quality Assurance");
+    }
+
+    @Test
+    @DisplayName("ENR-2.7 A student is enrolled into a cohort of the track")
+    void aStudentIsEnrolledIntoACohortOfTheTrack() {
+        UUID track = tracks.active("QA", "Quality Assurance");
+        UUID other = tracks.active("SWE", "Software Engineering");
+        UUID cohort = cohorts.create(track, "Spring", START);
+        UUID foreign = cohorts.create(other, "Foreign", START);
+        UUID first = person("first@x.test", "Fiona", "First", UserStatus.ACTIVE, Role.STUDENT);
+        UUID second = person("second@x.test", "Sean", "Second", UserStatus.ACTIVE, Role.STUDENT);
+        String path = "/api/v1/tracks/" + track + "/enrollments";
+
+        MvcTestResult created = send(HttpMethod.POST, path, enrollBody(first, cohort), "admin");
+        MvcTestResult inForeign = send(HttpMethod.POST, path, enrollBody(second, foreign), "admin");
+        MvcTestResult inUnknown = send(HttpMethod.POST, path, enrollBody(second, UUID.randomUUID()), "admin");
+
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        String id = jsonString(created, "$.id");
+        MvcTestResult narrowed = send(HttpMethod.GET, path + "?cohortId=" + cohort, "", "admin");
+        assertThat(narrowed).hasStatusOk();
+        assertThat(narrowed)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactly(id);
+        MvcTestResult list = send(HttpMethod.GET, "/api/v1/tracks/" + track + "/cohorts", "", "admin");
+        assertThat(list).bodyJson().extractingPath("$.items[0].enrollmentCount").isEqualTo(1);
+        MvcTestResult trackHistory = send(HttpMethod.GET, "/api/v1/tracks/" + track + "/history", "", "admin");
+        MvcTestResult userHistory = send(HttpMethod.GET, "/api/v1/users/" + first + "/history", "", "admin");
+        assertThat(trackHistory)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly("TRACK_STUDENT_ENROLLED");
+        List<Map<String, Object>> onTrack = entries(trackHistory, "TRACK_STUDENT_ENROLLED");
+        assertThat(path(onTrack.get(0), "cohort", "id")).isEqualTo(cohort.toString());
+        assertThat(path(onTrack.get(0), "cohort", "name")).isEqualTo("Spring");
+        assertThat(userHistory)
+                .bodyJson()
+                .extractingPath("$.items[*].action")
+                .asArray()
+                .containsExactly("USER_ENROLLED");
+        List<Map<String, Object>> onUser = entries(userHistory, "USER_ENROLLED");
+        assertThat(path(onUser.get(0), "cohort", "id")).isEqualTo(cohort.toString());
+        assertThat(path(onUser.get(0), "cohort", "name")).isEqualTo("Spring");
+        assertProblem(inForeign, HttpStatus.CONFLICT, COHORT_NOT_ELIGIBLE);
+        assertProblem(inUnknown, HttpStatus.CONFLICT, COHORT_NOT_ELIGIBLE);
+        assertThat(narrowed).bodyJson().extractingPath("$.totalItems").isEqualTo(1);
+        assertThat(send(HttpMethod.GET, path, "", "admin"))
+                .bodyJson()
+                .extractingPath("$.totalItems")
+                .isEqualTo(1);
+        MvcTestResult secondHistory = send(HttpMethod.GET, "/api/v1/users/" + second + "/history", "", "admin");
+        assertThat(secondHistory).bodyJson().extractingPath("$.items").asArray().isEmpty();
+    }
+
+    @Test
+    @DisplayName("ENR-4.3 The enrollments of a track are narrowed to one cohort")
+    void theEnrollmentsOfATrackAreNarrowedToOneCohort() {
+        UUID elsewhere = person("eva@x.test", "Eva", "Elsewhere", UserStatus.ACTIVE, Role.COORDINATOR);
+        users.link(elsewhere, "eva");
+        UUID mentor = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);
+        UUID track = tracks.active("QA", "Quality Assurance");
+        UUID other = tracks.active("SWE", "Software Engineering");
+        tracks.addCoordinator(other, elsewhere);
+        UUID firstCohort = cohorts.create(track, "First", START);
+        UUID secondCohort = cohorts.create(track, "Second", START);
+        UUID foreign = cohorts.create(other, "Foreign", START);
+        UUID e1 = enrollments.enroll(
+                person("a@x.test", "Anna", "One", UserStatus.ACTIVE, Role.STUDENT), track, admin, START);
+        UUID e2 = enrollments.enroll(
+                person("b@x.test", "Boris", "Two", UserStatus.ACTIVE, Role.STUDENT), track, admin, START);
+        UUID e3 = enrollments.enroll(
+                person("c@x.test", "Cleo", "Three", UserStatus.ACTIVE, Role.STUDENT), track, admin, START);
+        UUID e4 = enrollments.enroll(
+                person("d@x.test", "Dan", "Four", UserStatus.ACTIVE, Role.STUDENT), track, admin, START);
+        cohorts.put(e1, firstCohort);
+        cohorts.put(e2, firstCohort);
+        cohorts.put(e3, secondCohort);
+        enrollments.addMentor(e1, mentor, admin);
+        enrollments.addMentor(e3, mentor, admin);
+        String path = "/api/v1/tracks/" + track + "/enrollments";
+
+        MvcTestResult all = send(HttpMethod.GET, path, "", "eva");
+        MvcTestResult inFirst = send(HttpMethod.GET, path + "?cohortId=" + firstCohort, "", "eva");
+        MvcTestResult withMentor =
+                send(HttpMethod.GET, path + "?cohortId=" + firstCohort + "&mentor=" + mentor, "", "eva");
+        MvcTestResult inForeign = send(HttpMethod.GET, path + "?cohortId=" + foreign, "", "eva");
+        MvcTestResult inUnknown = send(HttpMethod.GET, path + "?cohortId=" + UUID.randomUUID(), "", "eva");
+
+        assertThat(all).hasStatusOk();
+        assertThat(all)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactlyInAnyOrder(e1.toString(), e2.toString(), e3.toString(), e4.toString());
+        assertThat(JsonPath.<List<String>>read(
+                        new String(all.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
+                        "$.items[?(@.id == '" + e3 + "')].cohort.name"))
+                .containsExactly("Second");
+        assertThat(JsonPath.<List<Object>>read(
+                        new String(all.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
+                        "$.items[?(@.id == '" + e4 + "')].cohort"))
+                .containsExactly((Object) null);
+        assertThat(inFirst).hasStatusOk();
+        assertThat(inFirst)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactlyInAnyOrder(e1.toString(), e2.toString());
+        assertThat(withMentor).hasStatusOk();
+        assertThat(withMentor)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactly(e1.toString());
+        assertThat(inForeign).hasStatusOk();
+        assertThat(inForeign).bodyJson().extractingPath("$.items").asArray().isEmpty();
+        assertThat(inUnknown).hasStatusOk();
+        assertThat(inUnknown).bodyJson().extractingPath("$.items").asArray().isEmpty();
+    }
+
+    private static String enrollBody(UUID student, UUID cohort) {
+        return "{\"studentId\": \"%s\", \"startDate\": \"2026-09-01\", \"cohortId\": \"%s\"}"
+                .formatted(student, cohort);
     }
 
     private UUID person(String email, String firstName, String lastName, UserStatus status, Role... roles) {

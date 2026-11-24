@@ -1,5 +1,7 @@
 package com.mentorhub.tracks.internal.web;
 
+import com.mentorhub.api.model.CohortChange;
+import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.CoordinatorCandidate;
 import com.mentorhub.api.model.CoordinatorCandidateList;
 import com.mentorhub.api.model.HistoryActor;
@@ -121,17 +123,35 @@ final class TracksMapper {
                     com.mentorhub.tracks.internal.domain.TrackChange.MentorAdded _,
                     com.mentorhub.tracks.internal.domain.TrackChange.MentorRemoved _ ->
                 dto.setUser(historyActor(item.user()));
-            case com.mentorhub.tracks.internal.domain.TrackChange.StudentEnrolled(var _, var startDate) -> {
+            case com.mentorhub.tracks.internal.domain.TrackChange.StudentEnrolled(var _, var startDate, var cohort) -> {
                 dto.setUser(historyActor(item.user()));
                 dto.setStartDate(startDate);
+                dto.setCohort(cohortReference(cohort));
             }
             case com.mentorhub.tracks.internal.domain.TrackChange.EnrollmentMentorAssigned _,
                     com.mentorhub.tracks.internal.domain.TrackChange.EnrollmentMentorRemoved _ -> {
                 dto.setUser(historyActor(item.user()));
                 dto.setMentor(historyActor(item.mentor()));
             }
+            case com.mentorhub.tracks.internal.domain.TrackChange.CohortCreated(var cohort, var startDate) -> {
+                dto.setCohort(cohortReference(cohort));
+                dto.setStartDate(startDate);
+            }
+            case com.mentorhub.tracks.internal.domain.TrackChange.CohortDeleted(var cohort, var startDate) -> {
+                dto.setCohort(cohortReference(cohort));
+                dto.setStartDate(startDate);
+            }
+            case com.mentorhub.tracks.internal.domain.TrackChange.EnrollmentCohortChanged(var _, var from, var to) -> {
+                dto.setUser(historyActor(item.user()));
+                dto.setCohortChange(new CohortChange(cohortReference(from), cohortReference(to)));
+            }
         }
         return dto;
+    }
+
+    private static @Nullable CohortReference cohortReference(
+            com.mentorhub.tracks.internal.domain.TrackChange.@Nullable CohortRef cohort) {
+        return cohort == null ? null : new CohortReference(cohort.id(), cohort.name());
     }
 
     private static @Nullable HistoryActor historyActor(@Nullable NamedUser user) {

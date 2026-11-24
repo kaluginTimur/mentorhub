@@ -26,10 +26,13 @@ public class AuditLogRepository {
         this.jsonMapper = jsonMapper;
     }
 
+    // The time of the insert, not of the transaction's start (now()): a change that waited for a lock is stored after
+    // the change it waited for, and its entry must sort after that change's entry; entries of one transaction keep
+    // their order too.
     public void insert(AuditEntry entry) {
         jdbc.sql("""
-                        insert into audit_log (actor_user_id, action, subject_type, subject_id, details)
-                        values (:actor, :action, :subjectType, :subjectId, cast(:details as jsonb))
+                        insert into audit_log (occurred_at, actor_user_id, action, subject_type, subject_id, details)
+                        values (clock_timestamp(), :actor, :action, :subjectType, :subjectId, cast(:details as jsonb))
                         """)
                 .param("actor", entry.actorUserId(), Types.OTHER)
                 .param("action", entry.action())

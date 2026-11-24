@@ -35,6 +35,7 @@ export function trackEnrollment(overrides: Partial<TrackEnrollment> = {}): Track
     startDate: '2026-09-01',
     status: 'ACTIVE',
     mentors: [],
+    cohort: null,
     ...overrides,
   };
 }

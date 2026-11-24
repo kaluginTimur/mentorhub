@@ -233,3 +233,13 @@
 .animate-mh-indeterminate {
   animation: mh-progress-indeterminate 1.4s ease-in-out infinite;
 }
+
+/*
+ * The overlay's scroll lock turns <html> into a fixed box shifted by the scroll offset, which takes the
+ * sticky top bar off the screen. Lock by hiding the overflow instead: the page keeps its offset and the bar.
+ */
+html.cdk-global-scrollblock {
+  position: static !important;
+  overflow: hidden !important;
+  scrollbar-gutter: stable;
+}
