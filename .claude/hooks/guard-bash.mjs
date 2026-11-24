@@ -129,7 +129,7 @@ if (migrations.length && MUTATES_FILE.test(command)) {
 }
 
 // playwright-cli refuses `file:` URLs unless a session starts with unrestricted file access. Only manual-tester's mockup
-// session starts so, by the one command manual-tester.md gives, and then takes only commands that look at the page, so
+// session starts so, by the one command the browser skill (.claude/skills/browser/SKILL.md) gives, and then takes only commands that look at the page, so
 // it cannot read another local file (a `.env`, `~/.ssh`) or send one out. `playwright-cli *` in settings.json allows it
 // all, so the hook accepts exact forms only; an unknown form is refused, never parsed.
 const FILE_ACCESS = /PLAYWRIGHT_MCP_ALLOW_UNRESTRICTED_FILE_ACCESS|allowUnrestrictedFileAccess|cli\.config\.json/;
@@ -137,7 +137,7 @@ const UNCLEAR_SESSION = /PLAYWRIGHT_CLI_SESSION|[$`]|\s--s|\s-s(?!=)/;
 const MOCKUP_SESSION = /\s-s=mockup(?=\s|$)/;
 const MOCKUP_COMMAND = /\s-s=mockup (close|click|hover|press|mousewheel|resize|snapshot|find|screenshot|reload|set-color-scheme)(\s|$)/;
 const MOCKUP_ONLY =
-  'Local files open only by the mockup command of manual-tester.md, exactly as written there; name a session only as ' +
+  'Local files open only by the mockup command of the browser skill, exactly as written there; name a session only as ' +
   '`-s=<name>`, with no `$`, backtick, ` -s` or ` --s` elsewhere in the command, typed text included; the mockup session ' +
   'takes only commands that look at the page. A refusal means the command is not allowed: do not rephrase it to get past this.';
 const isMockupOpen = (s) =>

@@ -3,15 +3,17 @@
 // started. Run it in the foreground: it returns once both answer, or fails within a time limit with the log's tail.
 // Each service it starts runs in its own process group, recorded under .screens/stack/ with the token of the run that
 // started it; `stop <token>` stops only the groups of that run, never a process found by name or port, so one agent
-// cannot stop a stack another agent or the owner is using. A service that already answers is used as it is. The Docker
-// services that Spring Boot starts from infra/compose.yaml stay up, as after a person's run.
+// cannot stop a stack another agent or the owner is using. A service that already answers is used as it is when it runs
+// from this checkout; `start` refuses one from another live checkout, and stops one left by a deleted worktree under
+// .claude/worktrees/, the only service it stops without having started it. The Docker services that Spring Boot starts
+// from infra/compose.yaml stay up, as after a person's run.
 //
 //   node scripts/stack.mjs start          start what is not running, wait until both answer, print the run's token
 //   node scripts/stack.mjs status         whether each answers, which run started it, or which checkout it runs from
 //   node scripts/stack.mjs stop <token>   stop what the run with that token started
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, uptime } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -113,22 +115,80 @@ function tail(s, lines = 30) {
   return existsSync(logFile(s)) ? log(s).split('\n').slice(-lines).join('\n') : '(no log)';
 }
 
-// The working directory of the process listening on the service's port, when lsof can tell.
-function checkout(s) {
+// The process listening on the service's port and its working directory, when lsof can tell.
+function listener(s) {
   try {
     const pid = execFileSync('lsof', ['-wnP', `-iTCP:${s.port}`, '-sTCP:LISTEN', '-t'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\n')[0].trim();
     const out = execFileSync('lsof', ['-wa', '-p', pid, '-d', 'cwd', '-Fn'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return out.split('\n').find((l) => l.startsWith('n'))?.slice(1) ?? null;
+    const cwd = out.split('\n').find((l) => l.startsWith('n'))?.slice(1);
+    return cwd ? { pid: Number(pid), cwd } : null;
   } catch {
     return null;
   }
 }
 
+// Where a running service comes from. Worktrees under .claude/worktrees/ lie inside this checkout's folder but are
+// other checkouts. A deleted one (lsof marks the directory "(deleted)") serves code nobody can be working on.
 function origin(s) {
-  const cwd = checkout(s);
-  if (cwd === null) return 'checkout unknown';
-  if (cwd === root || cwd.startsWith(root + path.sep)) return `runs from this checkout (${cwd})`;
-  return `runs from ANOTHER checkout, ${cwd}: it does not serve this checkout's code`;
+  const found = listener(s);
+  if (found === null) return { kind: 'unknown', text: 'checkout unknown: check that it serves this checkout' };
+  const cwd = found.cwd.replace(/ \(deleted\)$/, '');
+  const worktrees = path.join(root, '.claude', 'worktrees') + path.sep;
+  const inside = cwd === root || cwd.startsWith(root + path.sep);
+  if (inside && !cwd.startsWith(worktrees)) return { kind: 'this', text: `runs from this checkout (${cwd})` };
+  // The path exactly as lsof gave it: a live folder whose name ends in " (deleted)" exists, a removed one does not.
+  if (cwd.startsWith(worktrees) && !existsSync(found.cwd)) {
+    return { kind: 'deleted', text: `runs from a deleted worktree, ${cwd}`, pid: found.pid, cwd };
+  }
+  return { kind: 'other', text: `runs from ANOTHER checkout, ${cwd}: it does not serve this checkout's code` };
+}
+
+function groupOf(pid) {
+  try {
+    return Number(execFileSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' }).trim()) || null;
+  } catch {
+    return null;
+  }
+}
+
+// The working directory of a process, as the kernel gives it: a removed one ends in " (deleted)".
+function cwdOf(pid) {
+  try {
+    return readlinkSync(`/proc/${pid}/cwd`);
+  } catch {
+    return null;
+  }
+}
+
+// Stops a service left running by a deleted worktree, and waits until its port is free. Its whole process group only
+// when every member runs from that worktree (a server started by stack.mjs or a terminal has a group of its own; one
+// started from a script or an IDE may share the group with unrelated processes); otherwise the listener alone. Never
+// group 0 or 1, nor this script's own group.
+async function stopDeleted(s, { pid, cwd }) {
+  const pgid = groupOf(pid);
+  let members = [];
+  try {
+    members = execFileSync('ps', ['-o', 'pid=', '-g', String(pgid)], { encoding: 'utf8' }).split('\n').map((l) => l.trim()).filter(Boolean);
+  } catch {
+    // The group is gone, or ps cannot list it: signal the listener alone.
+  }
+  const fromWorktree = (p) => {
+    const dir = cwdOf(p)?.replace(/ \(deleted\)$/, '');
+    return dir !== undefined && (dir === cwd || dir.startsWith(cwd + path.sep));
+  };
+  const whole = pgid !== null && pgid > 1 && pgid !== groupOf(process.pid) && members.length > 0 && members.every(fromWorktree);
+  const signal = (sig) => {
+    try {
+      process.kill(whole ? -pgid : pid, sig);
+    } catch {
+      // Already gone.
+    }
+  };
+  signal('SIGTERM');
+  for (let i = 0; i < 40 && listener(s) !== null; i++) await sleep(500);
+  if (listener(s) !== null) signal('SIGKILL');
+  for (let i = 0; i < 10 && listener(s) !== null; i++) await sleep(500);
+  return listener(s) === null;
 }
 
 function launch(s, token) {
@@ -201,8 +261,20 @@ async function start() {
       console.error(`${s.name}: started by run ${state.token}, but its last build failed. Last lines of ${rel(logFile(s))}:\n${tail(s)}`);
       process.exit(1);
     }
-    if (await answers(s)) {
-      console.log(`${s.name}: already running, ${state ? `started by run ${state.token}` : origin(s)}; ${s.url}`);
+    const up = await answers(s);
+    const from = !state && up ? origin(s) : null;
+    if (from?.kind === 'deleted') {
+      console.log(`${s.name}: ${from.text}; stopping it`);
+      if (!(await stopDeleted(s, from))) {
+        console.error(`${s.name}: could not stop the service of the deleted worktree on port ${s.port}. A broken environment: report it with this output.`);
+        process.exit(1);
+      }
+    } else if (from?.kind === 'other') {
+      console.error(`${s.name}: ${from.text}. Ask the owner to stop it, or to run against that checkout; do not stop it yourself.`);
+      process.exit(1);
+    }
+    if (from?.kind !== 'deleted' && up) {
+      console.log(`${s.name}: already running, ${state ? `started by run ${state.token}` : from.text}; ${s.url}`);
     } else if (state) {
       console.log(`${s.name}: started by run ${state.token}, still starting; log ${rel(logFile(s))}`);
       waiting.push(s);
@@ -250,7 +322,7 @@ async function status() {
   for (const s of SERVICES) {
     const up = await answers(s);
     const state = owned(s);
-    const who = state ? `started by run ${state.token} (process group ${state.pgid})` : up ? origin(s) : null;
+    const who = state ? `started by run ${state.token} (process group ${state.pgid})` : up ? origin(s).text : null;
     console.log(`${s.name}: ${up ? 'answers' : 'does not answer'}${who ? `, ${who}` : ''}; ${s.url}`);
   }
 }

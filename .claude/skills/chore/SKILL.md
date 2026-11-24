@@ -19,6 +19,7 @@ Lead the change `$change` from its brief to a verified branch: the path **A chan
 - A screen with a real layout choice gets a mockup by `ui-designer` first, as **Plan** in `/feature` says, before `frontend-dev` builds it.
 - A detail a user sees gets an ordinary test without an id when something can break it. When screens change, the user looks at them on the sample center before the review. When the user asks for a first look, run `manual-tester` before that, as **When the frontend is green** in `/feature` says.
 - A passage added to a guide or widened needs the four answers of the **Guides** section of `docs/README.md`: write them into the handover and show them to the user. Remove a passage the user does not agree with.
+- A migration (one that changes no requirement, such as an index): ask the user before it is written whether it is a new one or goes into one already in main, which needs their word (the backend guide), and record the answer.
 - Record the user's decisions in the brief, in their words. What you inferred stays out of that list.
 
 ## When the path is wrong
