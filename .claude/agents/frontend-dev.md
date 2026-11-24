@@ -5,6 +5,8 @@ model: sonnet
 effort: medium
 permissionMode: acceptEdits
 color: orange
+skills:
+  - browser
 experimental:
   cacheTtl: 1h
 hooks:
@@ -29,6 +31,7 @@ Read the plan named in the brief (`docs/plans/<change>.md`), the requirements it
 - Build the screens with the page patterns from the UI guidelines, with every state: loading, empty, error, and each role's view where it differs.
 - Requirements say what matters, not every detail. Choose the rest from the guidelines and existing screens, and list it in your report.
 - Accessibility to the level the frontend guide requires.
+- When the checks pass, look at each changed screen in the browser as the preloaded skill `browser` says: on the sample center, in the states and at the widths the plan names, and against the mockup when there is one. Fix what you see before your report, and name in it what you looked at and the screenshots. If the sample data does not have the screen's states yet, say so at the top of the report.
 - Iterate on the **Verification** section of the frontend guide until every check passes, fixing your own errors. Run its commands exactly as written (other forms do not match the permission rules and stall). If after several honest attempts something is still red, report it instead of weakening tests or lint rules.
 
 A task given without a plan (bug fix, refactoring, a detail of a screen), with or without a brief in `docs/plans/`, is the same work on a smaller scale.
