@@ -317,11 +317,15 @@ public class CohortService {
 
     // Bean validation checks the list, not its items: `[null]` binds to a list containing null.
     private static List<UUID> enrollmentIds(Collection<? extends @Nullable UUID> ids, List<FieldViolation> errors) {
-        if (ids.stream().anyMatch(Objects::isNull)) {
-            errors.add(new FieldViolation("enrollmentIds", "must not contain null"));
-            return List.of();
+        List<UUID> result = new ArrayList<>(ids.size());
+        for (@Nullable UUID id : ids) {
+            if (id == null) {
+                errors.add(new FieldViolation("enrollmentIds", "must not contain null"));
+                return List.of();
+            }
+            result.add(id);
         }
-        return ids.stream().map(Objects::requireNonNull).toList();
+        return List.copyOf(result);
     }
 
     private static HistoryCohort historyCohort(StoredCohort cohort) {
