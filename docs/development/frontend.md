@@ -60,6 +60,7 @@ Sign-in is OIDC Authorization Code + PKCE through `angular-auth-oidc-client`. Co
 - Tailwind CSS v4 and Spartan UI (owned Helm primitives in `frontend/src/app/shared/ui/`); theme tokens are in `frontend/src/styles/tailwind.css` (decision 0007).
 - Components take colors, typography and shapes only from semantic theme tokens (`bg-background`, `text-foreground`, `bg-primary`, `text-mh-link`, `font-display`, ...). No literal colors or `font-family` in components: themes and brand palette stay a token change.
 - Screens follow `docs/ui/guidelines.md`.
+- A popover that can be open while the page scrolls uses the scroll strategy in `frontend/src/app/shared/popover/` and stays below the site bar.
 
 ## Tests
 
