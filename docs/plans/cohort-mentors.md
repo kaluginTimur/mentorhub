@@ -83,7 +83,7 @@ From the approved mockup (`.screens/cohort-mentors/mockups/track-cohorts.html`, 
 |---|---|---|---|
 | 1. Contract and migration (plan gate) | all | backend-dev | done |
 | 2. Red tests, backend and frontend | all new and changed | test-engineer | done |
-| 3. Backend (checkpoint: backend green) | COH-1.2, 1.3, 2.4, 4.3, 4.4, 5.2, 7.2, 9.x, 10.1; ENR-4.4, 5.4, 9.5, 10.1, 11.3, 13.8, 13.9, 15.4; TRK-5.4 | backend-dev | pending |
+| 3. Backend (checkpoint: backend green) | COH-1.2, 1.3, 2.4, 4.3, 4.4, 5.2, 7.2, 9.x, 10.1; ENR-4.4, 5.4, 9.5, 10.1, 11.3, 13.8, 13.9, 15.4; TRK-5.4 | backend-dev | done |
 | 4. Sample data: mentors of the sample center's cohorts, one led both directly and through the cohort | (screens) | backend-dev | pending |
 | 5. Frontend, after 4: cohorts with mentors, assign and remove, deletion confirmation, through-cohort marks in the enrollments, the mentor's students and My students, refusals | COH-8, COH-8.2, ENR-7, ENR-7.1, ENR-12 | frontend-dev | pending |
 
@@ -102,6 +102,10 @@ Status: `pending`, `in progress`, `in review`, `done`. Name a task "checkpoint" 
 - Task 2: the frontend compiles again: `track-history-text.ts` and `users/history-text.ts` have texts for the four cohort mentor actions ("Assigned <mentor> as a mentor of the cohort <cohort>", "Assigned as a mentor of the cohort <cohort> on <track>", and the Removed pair).
 - Task 5: AUD-7 says the enrollment mentor entries say "directly"; the existing history texts of `ENROLLMENT_MENTOR_*` actions do not yet. Task 5 adds the word, with the specs that assert those texts.
 - Red state at the commit: backend tests of the change red; frontend 10 of 487 red, all in `my-students-page.spec.ts` (1), `track-cohort-mentors.spec.ts` (6), `track-enrollments-through-cohort.spec.ts` (3); lint, format and build pass.
+- Task 3: leading is derived in `EnrollmentRepository` (`LED_BY`, used by the `mentor` filter and `findLedBy`; `countActiveLed` counts distinct active enrollments over direct and cohort mentors) and `EnrollmentService.leadingMentors` (`throughCohort` unless also direct); `existActiveLedOnTrack` stays direct-only for `mentor-leads-enrollments`. Cohort mentor changes take the track row lock `lockForEnrollment`. The `tracks` module checks cohorts through the existing port `ActiveEnrollments.leadsCohortOnTrack`.
+- Task 3: deleting a cohort writes the `TRACK_COHORT_MENTOR_REMOVED` entries before `TRACK_COHORT_DELETED`. Detail texts: `mentor-not-eligible` "Only active users with the mentor role who are mentors of the track can be assigned."; `mentor-leads-cohorts` "The mentor is a mentor of cohorts of the track; remove them from those cohorts first."
+- Task 4: the rows go in the enrollments module's script in `backend/src/main/resources/db/sample/`, with audit entries by `insert … select`: `TRACK_COHORT_MENTOR_ASSIGNED` (details `cohort {id, name}`, `mentorId`, as `TrackChange.CohortMentorAssigned`) and `USER_COHORT_MENTOR_ASSIGNED` (details `cohort`, `track`, as `UserChange.CohortMentorAssigned`). One mentor led both directly and through the cohort.
+- Task 5: leading through a cohort applies only to active enrollments (today all of them: `EnrollmentStatus` has only `ACTIVE`).
 
 ## Red tests
 
@@ -141,15 +145,16 @@ Commit: the first commit of the branch, `test(cohort-mentors): requirements, con
 - 2026-11-26: Plan gate: "согласен, план одобряю" (agreed, the plan approved): the plan, the contract and the migration; the candidate schema split (`MentorAssignmentCandidate` for enrollment and cohort candidates, `MentorCandidate` for track candidates). The migration was appended to `V1__schema.sql` by the owner by hand.
 
 - 2026-11-26: "давай как советуешь и коммить" (do as recommended, and commit): the history texts by a fresh `frontend-dev` before the red commit; the red commit made.
+- 2026-11-26: Task 3 checkpoint: "одобряю, коммить и продолжай" (approved, commit and go on).
 
 ## Handover
 
-- Waiting for: nothing; next is task 3.
-- To read: this plan (Design, Notes for later tasks); the red commit's tests.
-- Documents changed: everything of the change is in the red commit; nothing uncommitted.
-- State: tasks 1 and 2 done; red tests committed; trace passes (312 of 312 scenarios with tests, 4 manual).
+- Waiting for: task 4 (`backend-dev`, fresh), then task 5.
+- To read: this plan (Notes for later tasks).
+- Documents changed: task 3 committed; nothing uncommitted at this point.
+- State: tasks 1 to 3 done; backend green.
 - Open questions: none.
-- Next: brief a fresh `backend-dev` for task 3 (backend, checkpoint when green), then task 4 (sample data), then `frontend-dev` for task 5.
+- Next: task 4 sample data, then a fresh `frontend-dev` for task 5.
 
 ## Agents
 
@@ -163,3 +168,4 @@ Commit: the first commit of the branch, `test(cohort-mentors): requirements, con
 | test-engineer | inherited | a17952dec50a4abfa | tests: first pass | 230k |
 | frontend-dev | inherited | affe2cf0229ae2078 | implementation: history texts of the new audit actions | 55k |
 | test-engineer | inherited | a5887e53ebded0c2d | implementation: lint fix in a red spec | 28k |
+| backend-dev | inherited | a4c3d2e5ad2b3510d | implementation: task 3 backend | 151k |

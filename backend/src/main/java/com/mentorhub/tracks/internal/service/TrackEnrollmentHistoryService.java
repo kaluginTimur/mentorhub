@@ -62,6 +62,18 @@ class TrackEnrollmentHistoryService implements TrackEnrollmentHistory {
                 new TrackChange.EnrollmentCohortChanged(studentId, cohortRef(from), cohortRef(to)));
     }
 
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordCohortMentorAssigned(UUID actorUserId, UUID trackId, HistoryCohort cohort, UUID mentorId) {
+        auditTrail.record(actorUserId, trackId, new TrackChange.CohortMentorAssigned(ref(cohort), mentorId));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordCohortMentorRemoved(UUID actorUserId, UUID trackId, HistoryCohort cohort, UUID mentorId) {
+        auditTrail.record(actorUserId, trackId, new TrackChange.CohortMentorRemoved(ref(cohort), mentorId));
+    }
+
     private static TrackChange.CohortRef ref(HistoryCohort cohort) {
         return new TrackChange.CohortRef(cohort.id(), cohort.name());
     }

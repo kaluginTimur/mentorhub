@@ -15,9 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The {@code Cohorts} tag. Parameter names equal the request parameter names, because method validation reports
@@ -80,24 +78,22 @@ class CohortsController implements CohortsApi {
         return EnrollmentsMapper.cohortCandidatePage(cohorts.candidates(id, cohortId, q, withoutCohort, page, size));
     }
 
-    // Stubs until the mentors of a cohort are implemented (cohort-mentors task 3).
-
     @Override
     @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
     public Cohort assignCohortMentors(UUID id, UUID cohortId, CohortMentorsAssignment cohortMentorsAssignment) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+        return EnrollmentsMapper.cohort(cohorts.assignMentors(id, cohortId, cohortMentorsAssignment.getUserIds()));
     }
 
     @Override
     @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
     public Cohort removeCohortMentor(UUID id, UUID cohortId, UUID userId) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+        return EnrollmentsMapper.cohort(cohorts.removeMentor(id, cohortId, userId));
     }
 
     @Override
     @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
     public MentorAssignmentCandidatePage listCohortMentorCandidates(
             UUID id, UUID cohortId, @Nullable String q, Integer page, Integer size) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+        return EnrollmentsMapper.mentorCandidatePage(cohorts.mentorCandidates(id, cohortId, q, page, size));
     }
 }

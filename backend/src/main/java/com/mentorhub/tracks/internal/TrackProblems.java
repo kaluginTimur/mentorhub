@@ -12,6 +12,7 @@ public final class TrackProblems {
 
     public static final URI MENTOR_NOT_ELIGIBLE = URI.create("urn:mentorhub:problem:mentor-not-eligible");
     public static final URI MENTOR_LEADS_ENROLLMENTS = URI.create("urn:mentorhub:problem:mentor-leads-enrollments");
+    public static final URI MENTOR_LEADS_COHORTS = URI.create("urn:mentorhub:problem:mentor-leads-cohorts");
 
     private TrackProblems() {}
 }

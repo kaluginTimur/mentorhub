@@ -22,6 +22,15 @@ public class EnrollmentRepository {
 
     private static final String COLUMNS = "id, student_id, track_id, start_date, status, cohort_id";
 
+    /**
+     * The enrollments {@code :mentorId} leads: those they are a mentor of, and the active ones in a cohort they are a
+     * mentor of (COH-9). For a query over {@code enrollments} without an alias.
+     */
+    private static final String LED_BY = """
+            (id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)
+             or (status = 'ACTIVE'
+                 and cohort_id in (select cohort_id from cohort_mentors where mentor_id = :mentorId)))""";
+
     private final JdbcClient jdbc;
 
     EnrollmentRepository(JdbcClient jdbc) {
@@ -61,7 +70,8 @@ public class EnrollmentRepository {
     /**
      * Every enrollment of the track, in any status.
      *
-     * @param mentorId narrows to the enrollments the user is a mentor of now; {@code null} for all
+     * @param mentorId narrows to the enrollments the user leads now, as a mentor of the enrollment or, for an active
+     *     one, of its cohort; {@code null} for all
      * @param cohortId narrows to the enrollments in the cohort; {@code null} for all
      */
     public List<StoredEnrollment> findByTrack(UUID trackId, @Nullable UUID mentorId, @Nullable UUID cohortId) {
@@ -69,7 +79,7 @@ public class EnrollmentRepository {
         Map<String, Object> params = new HashMap<>();
         params.put("trackId", trackId);
         if (mentorId != null) {
-            sql.append(" and id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)");
+            sql.append(" and " + LED_BY);
             params.put("mentorId", mentorId);
         }
         if (cohortId != null) {
@@ -129,8 +139,8 @@ public class EnrollmentRepository {
     }
 
     /**
-     * The number of active enrollments each user is a mentor of, per track; a user who leads none on a track is left
-     * out of it, and so is a track without any.
+     * The number of active enrollments each user leads, as a mentor of the enrollment or of its cohort and each once,
+     * per track; a user who leads none on a track is left out of it, and so is a track without any.
      */
     public Map<UUID, Map<UUID, Integer>> countActiveLed(Collection<UUID> trackIds) {
         if (trackIds.isEmpty()) {
@@ -139,11 +149,14 @@ public class EnrollmentRepository {
         record Row(UUID trackId, UUID mentorId, int count) {}
         return jdbc
                 .sql("""
-                        select e.track_id, m.mentor_id, count(*) as led
+                        select e.track_id, l.mentor_id, count(distinct e.id) as led
                         from enrollments e
-                        join enrollment_mentors m on m.enrollment_id = e.id
+                        join (select enrollment_id, null::uuid as cohort_id, mentor_id from enrollment_mentors
+                              union all
+                              select null::uuid, cohort_id, mentor_id from cohort_mentors) l
+                            on l.enrollment_id = e.id or l.cohort_id = e.cohort_id
                         where e.track_id in (:ids) and e.status = 'ACTIVE'
-                        group by e.track_id, m.mentor_id""")
+                        group by e.track_id, l.mentor_id""")
                 .param("ids", trackIds)
                 .query((rs, rowNum) -> new Row(
                         rs.getObject("track_id", UUID.class), rs.getObject("mentor_id", UUID.class), rs.getInt("led")))
@@ -161,12 +174,16 @@ public class EnrollmentRepository {
                 .list();
     }
 
-    /** Every enrollment, in any status, the user is a mentor of now. */
-    public List<StoredEnrollment> findByMentor(UUID mentorId) {
-        return jdbc.sql("select " + COLUMNS + " from enrollments"
-                        + " where id in (select enrollment_id from enrollment_mentors where mentor_id = :mentorId)")
+    /**
+     * Every enrollment the user leads now: those they are a mentor of, in any status, and the active ones in a cohort
+     * they are a mentor of, each once.
+     */
+    public List<LedEnrollment> findLedBy(UUID mentorId) {
+        return jdbc.sql("select " + COLUMNS + ", exists (select 1 from enrollment_mentors m"
+                        + " where m.enrollment_id = enrollments.id and m.mentor_id = :mentorId) as direct"
+                        + " from enrollments where " + LED_BY)
                 .param("mentorId", mentorId)
-                .query(EnrollmentRepository::storedEnrollment)
+                .query((rs, rowNum) -> new LedEnrollment(storedEnrollment(rs, rowNum), rs.getBoolean("direct")))
                 .list();
     }
 

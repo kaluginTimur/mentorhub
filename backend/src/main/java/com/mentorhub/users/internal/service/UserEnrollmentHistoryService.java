@@ -56,4 +56,22 @@ class UserEnrollmentHistoryService implements UserEnrollmentHistory {
         auditTrail.record(actorUserId, studentId, new UserChange.MentorRemoved(mentorId, track));
         auditTrail.record(actorUserId, mentorId, new UserChange.StudentRemoved(studentId, track));
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordCohortMentorAssigned(UUID actorUserId, UUID mentorId, HistoryCohort cohort, HistoryTrack track) {
+        auditTrail.record(
+                actorUserId,
+                mentorId,
+                new UserChange.CohortMentorAssigned(new UserChange.CohortRef(cohort.id(), cohort.name()), track));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordCohortMentorRemoved(UUID actorUserId, UUID mentorId, HistoryCohort cohort, HistoryTrack track) {
+        auditTrail.record(
+                actorUserId,
+                mentorId,
+                new UserChange.CohortMentorRemoved(new UserChange.CohortRef(cohort.id(), cohort.name()), track));
+    }
 }

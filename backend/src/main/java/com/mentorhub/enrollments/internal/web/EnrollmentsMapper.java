@@ -3,6 +3,7 @@ package com.mentorhub.enrollments.internal.web;
 import com.mentorhub.api.model.Cohort;
 import com.mentorhub.api.model.CohortCandidate;
 import com.mentorhub.api.model.CohortCandidatePage;
+import com.mentorhub.api.model.CohortMentor;
 import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.EnrolledStudent;
 import com.mentorhub.api.model.EnrollmentCandidate;
@@ -22,6 +23,7 @@ import com.mentorhub.api.model.TrackReference;
 import com.mentorhub.enrollments.internal.service.CohortCandidateItem;
 import com.mentorhub.enrollments.internal.service.CohortItem;
 import com.mentorhub.enrollments.internal.service.EnrollmentPage;
+import com.mentorhub.enrollments.internal.service.MentorCandidateItem;
 import com.mentorhub.enrollments.internal.service.MentoredEnrollmentItem;
 import com.mentorhub.enrollments.internal.service.NamedCohort;
 import com.mentorhub.enrollments.internal.service.OwnEnrollment;
@@ -55,21 +57,24 @@ final class EnrollmentsMapper {
                 cohortReference(item.cohort()),
                 item.mentors().stream()
                         .map(mentor -> new EnrollmentMentor(
-                                mentor.id(),
-                                mentor.name(),
-                                mentor.email(),
-                                mentor.disabled(),
-                                mentor.roles().contains(Role.MENTOR),
-                                // Placeholder until the mentors of a cohort are implemented (cohort-mentors task 3).
-                                false))
+                                mentor.user().id(),
+                                mentor.user().name(),
+                                mentor.user().email(),
+                                mentor.user().disabled(),
+                                mentor.user().roles().contains(Role.MENTOR),
+                                mentor.throughCohort()))
                         .toList());
     }
 
-    static MentorAssignmentCandidatePage mentorCandidatePage(EnrollmentPage<DirectoryUser> page) {
+    static MentorAssignmentCandidatePage mentorCandidatePage(EnrollmentPage<MentorCandidateItem> page) {
         return new MentorAssignmentCandidatePage(
                 page.items().stream()
-                        // Placeholder counts until the candidates' load is implemented (cohort-mentors task 3).
-                        .map(user -> new MentorAssignmentCandidate(user.id(), user.name(), user.email(), 0, 0))
+                        .map(item -> new MentorAssignmentCandidate(
+                                item.user().id(),
+                                item.user().name(),
+                                item.user().email(),
+                                item.students(),
+                                item.cohorts()))
                         .toList(),
                 page.page(),
                 page.size(),
@@ -107,9 +112,8 @@ final class EnrollmentsMapper {
                                 trackReference(item.track()),
                                 item.startDate(),
                                 EnrollmentStatus.valueOf(item.status().name()),
-                                // Placeholders until the mentors of a cohort are implemented (cohort-mentors task 3).
-                                null,
-                                false))
+                                cohortReference(item.cohort()),
+                                item.throughCohort()))
                         .toList(),
                 page.page(),
                 page.size(),
@@ -117,8 +121,19 @@ final class EnrollmentsMapper {
     }
 
     static Cohort cohort(CohortItem item) {
-        // Placeholder mentors until the mentors of a cohort are implemented (cohort-mentors task 3).
-        return new Cohort(item.id(), item.name(), item.startDate(), item.enrollmentCount(), List.of());
+        return new Cohort(
+                item.id(),
+                item.name(),
+                item.startDate(),
+                item.enrollmentCount(),
+                item.mentors().stream()
+                        .map(mentor -> new CohortMentor(
+                                mentor.id(),
+                                mentor.name(),
+                                mentor.email(),
+                                mentor.disabled(),
+                                mentor.roles().contains(Role.MENTOR)))
+                        .toList());
     }
 
     static CohortCandidatePage cohortCandidatePage(EnrollmentPage<CohortCandidateItem> page) {

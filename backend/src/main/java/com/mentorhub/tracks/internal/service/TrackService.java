@@ -284,7 +284,8 @@ public class TrackService {
      * nothing.
      *
      * @throws AccessDeniedException when the caller may not enroll on the track (ENR-1)
-     * @throws ConflictException {@link TrackProblems#TRACK_ARCHIVED} or {@link TrackProblems#MENTOR_LEADS_ENROLLMENTS}
+     * @throws ConflictException {@link TrackProblems#TRACK_ARCHIVED}, {@link TrackProblems#MENTOR_LEADS_ENROLLMENTS} or
+     *     {@link TrackProblems#MENTOR_LEADS_COHORTS}, in this order
      */
     @Transactional
     public TrackDetails removeMentor(UUID trackId, UUID userId) {
@@ -296,6 +297,11 @@ public class TrackService {
             throw new ConflictException(
                     TrackProblems.MENTOR_LEADS_ENROLLMENTS,
                     "The mentor leads active enrollments on the track; remove them from those enrollments first.");
+        }
+        if (activeEnrollments.leadsCohortOnTrack(trackId, userId)) {
+            throw new ConflictException(
+                    TrackProblems.MENTOR_LEADS_COHORTS,
+                    "The mentor is a mentor of cohorts of the track; remove them from those cohorts first.");
         }
         if (tracks.removeMentor(trackId, userId) > 0) {
             UUID actor = actor();

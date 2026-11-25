@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Records in a track's history that a student was enrolled on it, that a mentor was assigned to or removed from an
- * enrollment on it, and the changes of its cohorts and of the cohorts of its enrollments. The {@code tracks} module owns these entries and shows them in the track's history; the module that
+ * enrollment or a cohort on it, and the changes of its cohorts and of the cohorts of its enrollments. The {@code tracks} module owns these entries and shows them in the track's history; the module that
  * enrolls calls it.
  */
 public interface TrackEnrollmentHistory {
@@ -66,4 +66,21 @@ public interface TrackEnrollmentHistory {
      */
     void recordEnrollmentCohortChanged(
             UUID actorUserId, UUID trackId, UUID studentId, @Nullable HistoryCohort from, @Nullable HistoryCohort to);
+
+    /**
+     * Records that the mentor was assigned as a mentor of the cohort of the track, in the caller's transaction.
+     *
+     * @param actorUserId {@code users.id} of who assigned the mentor
+     * @throws org.springframework.transaction.IllegalTransactionStateException without an active transaction
+     */
+    void recordCohortMentorAssigned(UUID actorUserId, UUID trackId, HistoryCohort cohort, UUID mentorId);
+
+    /**
+     * Records that the mentor was removed as a mentor of the cohort of the track, or the cohort deleted, in the
+     * caller's transaction.
+     *
+     * @param actorUserId {@code users.id} of who removed the mentor or deleted the cohort
+     * @throws org.springframework.transaction.IllegalTransactionStateException without an active transaction
+     */
+    void recordCohortMentorRemoved(UUID actorUserId, UUID trackId, HistoryCohort cohort, UUID mentorId);
 }
