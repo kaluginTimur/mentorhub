@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -100,6 +101,15 @@ class UserDirectoryService implements UserDirectory {
     @Transactional(readOnly = true)
     public boolean isActiveWithRole(UUID userId, Role role) {
         return users.isActiveWithRole(userId, role);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<UUID> activeWithRole(Collection<UUID> userIds, Role role) {
+        if (userIds.isEmpty()) {
+            return Set.of();
+        }
+        return users.activeWithRole(userIds, role);
     }
 
     @Override

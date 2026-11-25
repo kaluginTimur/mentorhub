@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -322,6 +323,19 @@ public class UserRepository {
                 .param("role", role.name())
                 .query(Boolean.class)
                 .single();
+    }
+
+    /** The ids among the given ones of the active users who hold the role. */
+    public Set<UUID> activeWithRole(Collection<UUID> userIds, Role role) {
+        return Set.copyOf(jdbc.sql("""
+                        select u.id from users u
+                        where u.id = any(:ids) and u.status = 'ACTIVE'
+                          and exists (select 1 from user_roles ur where ur.user_id = u.id and ur.role = :role)
+                        """)
+                .param("ids", UuidArray.of(userIds))
+                .param("role", role.name())
+                .query(UUID.class)
+                .list());
     }
 
     public Optional<LinkedUser> findLinkedUser(String issuer, String subject) {

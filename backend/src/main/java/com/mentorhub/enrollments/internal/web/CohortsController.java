@@ -6,6 +6,8 @@ import com.mentorhub.api.model.CohortCandidatePage;
 import com.mentorhub.api.model.CohortCreate;
 import com.mentorhub.api.model.CohortEnrollmentsAddition;
 import com.mentorhub.api.model.CohortList;
+import com.mentorhub.api.model.CohortMentorsAssignment;
+import com.mentorhub.api.model.MentorAssignmentCandidatePage;
 import com.mentorhub.enrollments.internal.service.CohortService;
 import com.mentorhub.users.Permission;
 import com.mentorhub.users.RequirePermission;
@@ -74,5 +76,24 @@ class CohortsController implements CohortsApi {
     public CohortCandidatePage listCohortCandidates(
             UUID id, UUID cohortId, @Nullable String q, Boolean withoutCohort, Integer page, Integer size) {
         return EnrollmentsMapper.cohortCandidatePage(cohorts.candidates(id, cohortId, q, withoutCohort, page, size));
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public Cohort assignCohortMentors(UUID id, UUID cohortId, CohortMentorsAssignment cohortMentorsAssignment) {
+        return EnrollmentsMapper.cohort(cohorts.assignMentors(id, cohortId, cohortMentorsAssignment.getUserIds()));
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public Cohort removeCohortMentor(UUID id, UUID cohortId, UUID userId) {
+        return EnrollmentsMapper.cohort(cohorts.removeMentor(id, cohortId, userId));
+    }
+
+    @Override
+    @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
+    public MentorAssignmentCandidatePage listCohortMentorCandidates(
+            UUID id, UUID cohortId, @Nullable String q, Integer page, Integer size) {
+        return EnrollmentsMapper.mentorCandidatePage(cohorts.mentorCandidates(id, cohortId, q, page, size));
     }
 }

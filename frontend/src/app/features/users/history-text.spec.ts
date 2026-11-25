@@ -180,4 +180,39 @@ describe('describeEntry', () => {
       expect(new Set([text(spring, autumn), text(null, autumn), text(spring, null)]).size).toBe(3);
     });
   });
+
+  describe('the mentors', () => {
+    const track = { id: 't1', code: 'QA', name: 'Quality Assurance' };
+    const spring = { id: 'c1', name: 'Spring 2026' };
+
+    it('names the cohort and the track of a cohort mentor assigned or removed, told apart', () => {
+      const entry = { ...base, track, cohort: spring };
+      const assigned = describeEntry({ ...entry, action: 'USER_COHORT_MENTOR_ASSIGNED' });
+      const removed = describeEntry({ ...entry, action: 'USER_COHORT_MENTOR_REMOVED' });
+
+      for (const text of [assigned, removed]) {
+        expect(text).toContain('Spring 2026');
+        expect(text).toContain('QA · Quality Assurance');
+      }
+      expect(assigned).not.toBe(removed);
+    });
+
+    it('tells a direct assignment from a cohort one', () => {
+      const direct = describeEntry({
+        ...base,
+        action: 'USER_STUDENT_ASSIGNED',
+        track,
+        user: { id: 's1', name: 'Sam Student' },
+      });
+      const viaCohort = describeEntry({
+        ...base,
+        action: 'USER_COHORT_MENTOR_ASSIGNED',
+        track,
+        cohort: spring,
+      });
+
+      expect(direct).toContain('directly');
+      expect(viaCohort).not.toContain('directly');
+    });
+  });
 });

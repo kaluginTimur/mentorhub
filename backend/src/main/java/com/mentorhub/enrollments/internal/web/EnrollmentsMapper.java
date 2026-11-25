@@ -3,6 +3,7 @@ package com.mentorhub.enrollments.internal.web;
 import com.mentorhub.api.model.Cohort;
 import com.mentorhub.api.model.CohortCandidate;
 import com.mentorhub.api.model.CohortCandidatePage;
+import com.mentorhub.api.model.CohortMentor;
 import com.mentorhub.api.model.CohortReference;
 import com.mentorhub.api.model.EnrolledStudent;
 import com.mentorhub.api.model.EnrollmentCandidate;
@@ -10,8 +11,8 @@ import com.mentorhub.api.model.EnrollmentCandidatePage;
 import com.mentorhub.api.model.EnrollmentContact;
 import com.mentorhub.api.model.EnrollmentMentor;
 import com.mentorhub.api.model.EnrollmentStatus;
-import com.mentorhub.api.model.MentorCandidate;
-import com.mentorhub.api.model.MentorCandidatePage;
+import com.mentorhub.api.model.MentorAssignmentCandidate;
+import com.mentorhub.api.model.MentorAssignmentCandidatePage;
 import com.mentorhub.api.model.MentoredEnrollment;
 import com.mentorhub.api.model.MentoredEnrollmentPage;
 import com.mentorhub.api.model.MyEnrollment;
@@ -22,6 +23,7 @@ import com.mentorhub.api.model.TrackReference;
 import com.mentorhub.enrollments.internal.service.CohortCandidateItem;
 import com.mentorhub.enrollments.internal.service.CohortItem;
 import com.mentorhub.enrollments.internal.service.EnrollmentPage;
+import com.mentorhub.enrollments.internal.service.MentorCandidateItem;
 import com.mentorhub.enrollments.internal.service.MentoredEnrollmentItem;
 import com.mentorhub.enrollments.internal.service.NamedCohort;
 import com.mentorhub.enrollments.internal.service.OwnEnrollment;
@@ -55,18 +57,24 @@ final class EnrollmentsMapper {
                 cohortReference(item.cohort()),
                 item.mentors().stream()
                         .map(mentor -> new EnrollmentMentor(
-                                mentor.id(),
-                                mentor.name(),
-                                mentor.email(),
-                                mentor.disabled(),
-                                mentor.roles().contains(Role.MENTOR)))
+                                mentor.user().id(),
+                                mentor.user().name(),
+                                mentor.user().email(),
+                                mentor.user().disabled(),
+                                mentor.user().roles().contains(Role.MENTOR),
+                                mentor.throughCohort()))
                         .toList());
     }
 
-    static MentorCandidatePage mentorCandidatePage(EnrollmentPage<DirectoryUser> page) {
-        return new MentorCandidatePage(
+    static MentorAssignmentCandidatePage mentorCandidatePage(EnrollmentPage<MentorCandidateItem> page) {
+        return new MentorAssignmentCandidatePage(
                 page.items().stream()
-                        .map(user -> new MentorCandidate(user.id(), user.name(), user.email()))
+                        .map(item -> new MentorAssignmentCandidate(
+                                item.user().id(),
+                                item.user().name(),
+                                item.user().email(),
+                                item.students(),
+                                item.cohorts()))
                         .toList(),
                 page.page(),
                 page.size(),
@@ -103,7 +111,9 @@ final class EnrollmentsMapper {
                                 enrolledStudent(item.student()),
                                 trackReference(item.track()),
                                 item.startDate(),
-                                EnrollmentStatus.valueOf(item.status().name())))
+                                EnrollmentStatus.valueOf(item.status().name()),
+                                cohortReference(item.cohort()),
+                                item.throughCohort()))
                         .toList(),
                 page.page(),
                 page.size(),
@@ -111,7 +121,19 @@ final class EnrollmentsMapper {
     }
 
     static Cohort cohort(CohortItem item) {
-        return new Cohort(item.id(), item.name(), item.startDate(), item.enrollmentCount());
+        return new Cohort(
+                item.id(),
+                item.name(),
+                item.startDate(),
+                item.enrollmentCount(),
+                item.mentors().stream()
+                        .map(mentor -> new CohortMentor(
+                                mentor.id(),
+                                mentor.name(),
+                                mentor.email(),
+                                mentor.disabled(),
+                                mentor.roles().contains(Role.MENTOR)))
+                        .toList());
     }
 
     static CohortCandidatePage cohortCandidatePage(EnrollmentPage<CohortCandidateItem> page) {

@@ -18,7 +18,9 @@ public enum TrackAuditAction {
     TRACK_ENROLLMENT_MENTOR_REMOVED(TrackChange.EnrollmentMentorRemoved.class),
     TRACK_COHORT_CREATED(TrackChange.CohortCreated.class),
     TRACK_COHORT_DELETED(TrackChange.CohortDeleted.class),
-    TRACK_ENROLLMENT_COHORT_CHANGED(TrackChange.EnrollmentCohortChanged.class);
+    TRACK_ENROLLMENT_COHORT_CHANGED(TrackChange.EnrollmentCohortChanged.class),
+    TRACK_COHORT_MENTOR_ASSIGNED(TrackChange.CohortMentorAssigned.class),
+    TRACK_COHORT_MENTOR_REMOVED(TrackChange.CohortMentorRemoved.class);
 
     public static final String SUBJECT_TYPE = "TRACK";
 

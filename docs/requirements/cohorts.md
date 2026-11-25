@@ -2,13 +2,13 @@
 
 ## Purpose
 
-The intakes of a track. A cohort is one intake on a track: students who start and study together. It belongs to one track and has a name and a start date. An enrollment (ENR) is in at most one cohort of its track, or in none, since a cohort is optional. A coordinator of the track, or an administrator, creates a cohort together with its enrollments, adds enrollments to it later, moves one from another cohort or takes it out, and deletes a cohort that has none; whoever reads the enrollments of a track sees its cohorts, how many students each has and which enrollments are in it. Tracks are described by tracks (TRK), enrollments and who may change them by enrollments (ENR), roles and permissions by authorization (PERM), recorded changes by audit (AUD). The API contract holds the fields, limits and response shapes.
+The intakes of a track. A cohort is one intake on a track: students who start and study together. It belongs to one track and has a name and a start date. An enrollment (ENR) is in at most one cohort of its track, or in none, since a cohort is optional. A coordinator of the track, or an administrator, creates a cohort together with its enrollments, adds enrollments to it later, moves one from another cohort or takes it out, assigns among the mentors of the track the mentors of a cohort, who lead every student in it as long as the student is in it, and deletes a cohort that has no enrollment; whoever reads the enrollments of a track sees its cohorts, how many students each has, its mentors and which enrollments are in it. Tracks are described by tracks (TRK), enrollments and who may change them by enrollments (ENR), roles and permissions by authorization (PERM), recorded changes by audit (AUD). The API contract holds the fields, limits and response shapes.
 
 ## Requirements
 
 ### COH-1 Who may do what
 
-The system SHALL require `ENROLLMENTS_READ` to read the cohorts of a track. Creating and deleting a cohort, adding enrollments to it and taking one out, and listing the candidates for it SHALL need what changing the enrollments of the track needs: `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` together with being a coordinator of the track at the time of the request (ENR-1, decision 0004). A cohort addressed through a track it does not belong to is not found (PLT-10). The track tells the caller whether they may change its cohorts, by the permission and the relation alone, whatever its status.
+The system SHALL require `ENROLLMENTS_READ` to read the cohorts of a track. Creating and deleting a cohort, adding enrollments to it and taking one out, assigning and removing its mentors, and listing the candidates for its enrollments and for its mentors SHALL need what changing the enrollments of the track needs: `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` together with being a coordinator of the track at the time of the request (ENR-1, decision 0004). A cohort addressed through a track it does not belong to is not found (PLT-10). The track tells the caller whether they may change its cohorts, by the permission and the relation alone, whatever its status.
 
 #### COH-1.1 Reading the cohorts of a track needs ENROLLMENTS_READ
 
@@ -18,16 +18,16 @@ The system SHALL require `ENROLLMENTS_READ` to read the cohorts of a track. Crea
 
 #### COH-1.2 A coordinator changes the cohorts only of a track they coordinate
 
-- GIVEN an active track with an empty cohort and a cohort with an enrollment, an enrollment of the track in no cohort, a coordinator of another track only, and a coordinator who has been removed from the track
-- WHEN each coordinator creates a cohort on the track, lists the candidates for a new cohort and for the empty cohort, adds the enrollment to it, takes the enrollment out of the other cohort, and deletes the empty cohort
+- GIVEN an active track with an empty cohort and a cohort with an enrollment and a mentor, an enrollment of the track in no cohort, an active mentor of the track with the mentor role, a coordinator of another track only, and a coordinator who has been removed from the track
+- WHEN each coordinator creates a cohort on the track, lists the candidates for a new cohort and for the empty cohort, adds the enrollment to it, takes the enrollment out of the other cohort, lists the candidates for the mentors of the empty cohort, assigns the mentor of the track to it, removes the mentor of the other cohort, and deletes the empty cohort
 - THEN each response is 403 `forbidden`
 - AND the track does not tell either coordinator that they may change its cohorts
-- AND the cohorts and the enrollments are unchanged and nothing is recorded
+- AND the cohorts, their mentors and the enrollments are unchanged and nothing is recorded
 
 #### COH-1.3 An unknown track or cohort is not found
 
 - GIVEN an administrator, a coordinator of a track with a cohort, a cohort of another track, and ids that no track and no cohort have
-- WHEN each lists the cohorts of the unknown track, creates one on it and lists the candidates for a new cohort of it, and, for the unknown cohort and for the cohort of the other track addressed through the first track, lists its candidates, adds an enrollment to it, takes one out of it and deletes it
+- WHEN each lists the cohorts of the unknown track, creates one on it and lists the candidates for a new cohort of it, and, for the unknown cohort and for the cohort of the other track addressed through the first track, lists its candidates, adds an enrollment to it, takes one out of it, lists the candidates for its mentors, assigns a mentor to it, removes one from it and deletes it
 - THEN each response is 404 `not-found`
 
 ### COH-2 Creating a cohort
@@ -57,10 +57,10 @@ The system SHALL let a caller who may (COH-1) create a cohort on an active track
 
 #### COH-2.4 The cohorts of an archived track cannot be changed
 
-- GIVEN an archived track with an empty cohort
-- WHEN an administrator creates a cohort on it, lists the candidates for a new cohort and for the cohort, adds an enrollment id to it, takes an enrollment id out of it, and deletes it
+- GIVEN an archived track with a cohort with no enrollment and a mentor, and another mentor of the track
+- WHEN an administrator creates a cohort on it, lists the candidates for a new cohort and for the cohort, adds an enrollment id to it, takes an enrollment id out of it, lists the candidates for its mentors, assigns the other mentor to it, assigns its mentor again, removes its mentor, and deletes it
 - THEN each response is 409 `track-archived`
-- AND the track keeps its one cohort and nothing is recorded
+- AND the track keeps its one cohort with its one mentor and nothing is recorded
 
 ### COH-3 The enrollments of a cohort
 
@@ -89,7 +89,7 @@ The system SHALL let a caller who may (COH-1) add to a cohort of an active track
 
 ### COH-4 Deleting a cohort
 
-The system SHALL let a caller who may (COH-1) delete a cohort of an active track that has no enrollment; a cohort with one is 409 `cohort-not-empty`. A deleted cohort is gone, and its entries in the histories stay. A deletion and a change of the cohort's enrollments, enrolling into it (ENR-2) included, take effect one after another, so no enrollment is ever left in a deleted cohort: an addition to a deleted cohort is 404 `not-found`, and an enrollment into it 409 `cohort-not-eligible`. The deletion is audited (COH-7).
+The system SHALL let a caller who may (COH-1) delete a cohort of an active track that has no enrollment, whether or not it has mentors; a cohort with an enrollment is 409 `cohort-not-empty`. A deleted cohort is gone with its mentors, and its entries in the histories stay. A deletion and a change of the cohort's mentors take effect one after another too: an assignment to a deleted cohort is 404 `not-found`. A deletion and a change of the cohort's enrollments, enrolling into it (ENR-2) included, take effect one after another, so no enrollment is ever left in a deleted cohort: an addition to a deleted cohort is 404 `not-found`, and an enrollment into it 409 `cohort-not-eligible`. The deletion, and the removal of each of its mentors with it, are audited (COH-7).
 
 #### COH-4.1 Only an empty cohort is deleted
 
@@ -105,15 +105,36 @@ The system SHALL let a caller who may (COH-1) delete a cohort of an active track
 - THEN either the cohort is deleted and the addition answered 404 `not-found`, or the enrollment is in the cohort and the deletion answered 409 `cohort-not-empty`
 - AND no response is 500
 
+#### COH-4.3 A cohort with mentors and no enrollment is deleted with its mentors
+
+- GIVEN an active track with a cohort with no enrollment and two mentors
+- WHEN a coordinator of the track deletes the cohort
+- THEN the cohort is deleted
+- AND the track's history has the deletion and the removal of each mentor, and each mentor's history has their removal
+
+#### COH-4.4 A deletion at the moment of an assignment of a mentor never leaves a mentor of a deleted cohort
+
+- GIVEN an active track with a cohort with no enrollment, and an active mentor of the track who is not its mentor
+- WHEN one administrator deletes the cohort while another assigns the mentor to it, at the same moment
+- THEN either the cohort is deleted and the assignment answered 404 `not-found`, or the mentor is assigned and then removed with the deletion, each recorded once
+- AND no response is 500
+
 ### COH-5 The cohorts of a track
 
-The system SHALL return, for a caller with `ENROLLMENTS_READ`, the cohorts of an active or an archived track, newest start date first and then by name, each with its name, its start date and the number of active enrollments in it. The list is not paged. The enrollments of a track have each its cohort, and may be narrowed to one cohort (ENR-4).
+The system SHALL return, for a caller with `ENROLLMENTS_READ`, the cohorts of an active or an archived track, newest start date first and then by name, each with its name, its start date, the number of active enrollments in it and its mentors with their names and emails, a mentor marked when disabled or no longer holding the mentor role. The list is not paged. The enrollments of a track have each its cohort, and may be narrowed to one cohort (ENR-4).
 
 #### COH-5.1 The cohorts are listed newest first with their numbers of students
 
 - GIVEN a track with three cohorts: the oldest with two enrollments, one of them of a student since disabled, and two of a later start date, `B` with one enrollment and `A` with none
 - WHEN a coordinator of another track lists the cohorts of the track
 - THEN the three are listed `A`, `B` and the oldest, with 0, 1 and 2 enrollments
+
+#### COH-5.2 The mentors of a cohort are listed with their marks
+
+- GIVEN a cohort with three mentors: one active with the mentor role, one since disabled, and one whose mentor role has since been removed
+- WHEN a coordinator of another track lists the cohorts of its track
+- THEN the cohort has all three mentors
+- AND only the second is marked disabled and only the third is marked as without the mentor role
 
 ### COH-6 The candidates for a cohort
 
@@ -135,7 +156,7 @@ The system SHALL let a caller who may change the cohorts of a track (COH-1) list
 
 ### COH-7 The history of cohorts
 
-The system SHALL record the creation and the deletion of a cohort in the history of its track (TRK-7), and every change of an enrollment's cohort, by creating a cohort, adding to it or taking out of it, in the history of the track and of the student (USR-10), as the catalog of audited actions says (AUD-7).
+The system SHALL record the creation and the deletion of a cohort in the history of its track (TRK-7), every change of an enrollment's cohort, by creating a cohort, adding to it or taking out of it, in the history of the track and of the student (USR-10), and the assignment and removal of a mentor of a cohort, by deleting the cohort too, in the history of the track and of the mentor, not of the students of the cohort, as the catalog of audited actions says (AUD-7).
 
 #### COH-7.1 Cohorts and their enrollments show in the track's and the student's history
 
@@ -144,9 +165,17 @@ The system SHALL record the creation and the deletion of a cohort in the history
 - THEN the track's history has, each with the coordinator as the actor: the creation of each cohort with its name and start date, the student added to the first cohort, moved from the first to the second, taken out of the second, and the deletion of the first
 - AND the student's history has the three changes of the cohort, each with the cohorts' names and the track with the code and the name it had then
 
+#### COH-7.2 Assigning and removing a mentor of a cohort show in two histories
+
+- GIVEN a cohort with a student's enrollment, and a mentor assigned to it and later removed from it by a coordinator, after which the cohort's track's code and name were changed
+- WHEN an administrator reads the history of the track, of the mentor and of the student
+- THEN the track's history has an entry of the assignment and one of the removal, each with the coordinator as the actor, the cohort's name and the mentor
+- AND the mentor's history has the two entries, each with the cohort's name and the track with the code and the name it had then
+- AND the student's history has neither
+
 ### COH-8 Cohorts on the track page
 
-The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_READ`, the cohorts of the track with their names, start dates and numbers of students (COH-5), and SHALL say when the track has no cohort yet; choosing a cohort narrows the enrollments of the track to it (ENR-7). To a user who may change the cohorts of the track (COH-1) it SHALL offer, only on an active track, "Create cohort" in a dialog with the name, the start date and a choice of enrollments among the candidates with their search, their current cohorts and the narrowing to those in no cohort, on by default (COH-6); on each cohort the addition of enrollments in the same choice; on each enrollment in a cohort its taking out after a confirmation; and on an empty cohort its deletion after a confirmation.
+The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_READ`, the cohorts of the track with their names, start dates, numbers of students and mentors with their marks (COH-5), and SHALL say when the track has no cohort yet and when a cohort has no mentor; choosing a cohort narrows the enrollments of the track to it (ENR-7). To a user who may change the cohorts of the track (COH-1) it SHALL offer, only on an active track, "Create cohort" in a dialog with the name, the start date and a choice of enrollments among the candidates with their search, their current cohorts and the narrowing to those in no cohort, on by default (COH-6); on each cohort the addition of enrollments in the same choice; on each enrollment in a cohort its taking out after a confirmation; on each cohort the assignment of mentors, in a dialog that offers a choice of several among the candidates with their search and the number of students and of cohorts each leads on the track (COH-10) and assigns them at once, and the removal of a mentor after a confirmation; and on a cohort with no enrollment its deletion after a confirmation that says when its mentors are removed with it.
 
 #### COH-8.1 Moving an enrollment from another cohort is confirmed
 
@@ -157,22 +186,78 @@ The client SHALL show on the track page (TRK-10), to a user with `ENROLLMENTS_RE
 
 #### COH-8.2 A refused change of cohorts is explained and the track reloaded
 
-- GIVEN the server refuses the creation, the deletion or a change of the enrollments of a cohort, or its candidates, with 404 `not-found` for the cohort or 409 `track-archived`, `enrollment-not-eligible` or `cohort-not-empty`
+- GIVEN the server refuses the creation, the deletion or a change of the enrollments or of the mentors of a cohort, or the candidates for either, with 404 `not-found` for the cohort or 409 `track-archived`, `enrollment-not-eligible`, `mentor-not-eligible` or `cohort-not-empty`
 - WHEN the client receives it
 - THEN a message explains the refusal
 - AND the cohorts and the enrollments of the track are shown as they are now
+
+### COH-9 Mentors of a cohort
+
+The system SHALL let a caller who may (COH-1) assign as mentors of a cohort of an active track one or more users at once, each an active user who holds the mentor role and is a mentor of the track (ENR-13), and remove any one mentor of it. Assigning no user is 400 `validation-failed`. Assigning is all or nothing: when any user given is not eligible, the whole request is 409 `mentor-not-eligible` and nothing is stored. A mentor of a cohort leads every active enrollment in the cohort at the time of the request, as a mentor of that enrollment does (ENR-9): an enrollment added to the cohort is led by its mentors at once, and one taken out or moved to another cohort no longer is. A cohort may have any number of mentors, and a user may be a mentor of any number of cohorts, on any track they are a mentor of; a user who is also a mentor of an enrollment in the cohort leads it once. Any eligible user is assigned, a student of the cohort and the caller included. When a mentor is later disabled or loses the mentor role, the assignment stays and grants nothing. Assigning a mentor already assigned, even one no longer eligible, or a user given twice, assigns and records them once at most; removing a user who is not a mentor of the cohort or an id no user has changes and records nothing. On an archived track every assignment and removal, even one that would change nothing, and listing the candidates are 409 `track-archived` (COH-2.4). Parallel requests never end in a server error. Each change is audited (COH-7).
+
+#### COH-9.1 A coordinator assigns and removes the mentors of a cohort on their track
+
+- GIVEN a cohort on an active track, a coordinator of the track, an active user with the mentor role who is a mentor of the track, and a mentor of the cohort who has since been disabled
+- WHEN the coordinator assigns the user and another such mentor of the track at once, and removes the disabled mentor
+- THEN the cohorts of the track list the cohort with the two users as its only mentors
+
+#### COH-9.2 Only an active mentor of the track with the mentor role is assigned
+
+- GIVEN a cohort on an active track, a mentor of the track who has since been disabled, a mentor of the track whose mentor role has since been removed, an active user with the mentor role who is not a mentor of the track, and an id that no user has
+- WHEN an administrator assigns each as a mentor of the cohort
+- THEN each response is 409 `mentor-not-eligible`
+- AND the cohort has no new mentor and nothing is recorded
+
+#### COH-9.3 A repeated assignment or removal records nothing
+
+- GIVEN a cohort with a mentor and a mentor who has since lost the mentor role
+- WHEN an administrator assigns each of them again, removes a user who is not a mentor of the cohort, and removes an id that no user has, then assigns in one request the first mentor, a new eligible mentor of the track and the new one again
+- THEN each response is a success, and the cohort has its two mentors and the new one
+- AND only the assignment of the new mentor is recorded, once
+
+#### COH-9.4 Parallel assignments of one mentor assign them once
+
+- GIVEN a cohort and two active mentors of its track with the mentor role
+- WHEN two administrators assign mentors of the cohort at the same moment, one the first user, the other both users
+- THEN both responses are a success, never 500
+- AND each user is a mentor of the cohort once, with one entry in each history
+
+#### COH-9.5 Assigning several mentors is all or nothing
+
+- GIVEN a cohort on an active track, an active mentor of the track with the mentor role, and an active user with the mentor role who is not a mentor of the track
+- WHEN an administrator assigns the two users at once, and then assigns no user
+- THEN the first response is 409 `mentor-not-eligible` and the second 400 `validation-failed`
+- AND the cohort has no mentor and nothing is recorded
+
+### COH-10 The candidates for the mentors of a cohort
+
+The system SHALL let a caller who may assign the mentors of a cohort (COH-1) list the candidates for them without `USERS_READ`: the active users with the mentor role who are mentors of the cohort's track and not its mentors, a mentor of an enrollment in the cohort included, each with their name and email, the number of active enrollments on the track they lead (ENR-15) and the number of cohorts of the track they are a mentor of, ordered by name, a page at a time (PLT-3), and narrowed by a search for a part of the name or the email.
+
+#### COH-10.1 The candidates are the eligible mentors of the track not yet assigned
+
+- GIVEN a cohort with a mentor, a coordinator of its track without `USERS_READ`, another active mentor of the track with the mentor role, an active mentor of an enrollment in the cohort with the mentor role, a mentor of the track who has since been disabled, a mentor of the track whose mentor role has since been removed, and an active user with the mentor role who is not a mentor of the track
+- WHEN the coordinator lists the candidates for the mentors of the cohort
+- THEN only the other active mentor of the track and the mentor of the enrollment are listed
+
+#### COH-10.2 The candidates have the students and the cohorts they lead on the track
+
+- GIVEN a cohort of an active track; a candidate for its mentors who is a mentor of another cohort of the track with two enrollments, a mentor of the first of them and of an enrollment of the track in no cohort, and a mentor of an enrollment and of a cohort on another track; and a candidate who leads nothing
+- WHEN an administrator lists the candidates for the mentors of the cohort
+- THEN the first candidate has 3 students and 1 cohort, and the second 0 and 0
 
 ## Known limitations
 
 - A cohort cannot be renamed and its start date cannot be changed: a mistaken one is deleted once empty and created again.
 - The enrollments of a track cannot be narrowed to those in no cohort; only the choice of the candidates for a cohort can (COH-6).
-- A student does not see their cohort, and a mentor does not see the cohorts of the students they lead.
+- A student does not see their cohort.
 - A coordinator removed from the track, or losing the role, at the moment they change its cohorts may still do it; the entry names that coordinator as the actor.
+- A user assigned as a mentor of a cohort at the moment an administrator disables them or removes their mentor role may keep an assignment that is already marked (COH-5).
 
 ## Out of scope
 
 - Renaming a cohort and changing its start date, the enrollments of a track narrowed to those in no cohort, and the cohort in a student's own enrollment (ENR-5): a change that follows this one.
-- Mentors of a cohort, and groups inside a cohort.
+- Groups inside a cohort.
+- What happens to the mentors of a cohort when its enrollments end: decided with the end of an enrollment.
 - How many students of a cohort have finished, and a cohort that ends; they come with the end of an enrollment.
 - Taking several enrollments out of a cohort at once.
 - A page of one cohort and a history of its own.

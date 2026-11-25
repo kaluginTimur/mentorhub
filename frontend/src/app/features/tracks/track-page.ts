@@ -497,6 +497,11 @@ export class TrackPage {
         'That mentor still leads active enrollments on this track, so they cannot be removed. The track is shown as it is now.',
         { politeness: 'assertive' },
       );
+    } else if (type === PROBLEM.mentorLeadsCohorts) {
+      this.say(
+        'That mentor is a mentor of cohorts of this track, so they cannot be removed. Remove them from those cohorts first. The track, its cohorts and its enrollments are shown as they are now.',
+        { politeness: 'assertive' },
+      );
     } else if (type === PROBLEM.coordinatorNotEligible) {
       this.say(
         'That user is no longer eligible: they must be active and hold the coordinator role.',

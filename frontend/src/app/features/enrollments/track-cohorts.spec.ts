@@ -59,6 +59,7 @@ const cohort = (overrides: Partial<Cohort> = {}): Cohort => ({
   name: 'Spring 2026',
   startDate: '2026-03-01',
   enrollmentCount: 1,
+  mentors: [],
   ...overrides,
 });
 

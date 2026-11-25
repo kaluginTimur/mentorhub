@@ -4,6 +4,7 @@ import static com.mentorhub.users.internal.security.ProblemAssertions.assertProb
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import com.mentorhub.enrollments.internal.TestCohorts;
 import com.mentorhub.enrollments.internal.TestEnrollments;
 import com.mentorhub.support.EndpointTest;
 import com.mentorhub.tracks.internal.TestTracks;
@@ -333,16 +334,25 @@ class EnrollmentMentorsEndpointTests {
         for (UUID mentor : List.of(assigned, candidate, disabled, withoutRole)) {
             tracks.addMentor(track, mentor);
         }
+        UUID viaCohort = person("zed@x.test", "Zed", "Cohort", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(track, viaCohort);
+        UUID cohort = new TestCohorts(jdbc).create(track, "Spring", START);
         UUID enrollment = enrollments.enroll(student, track, admin, START);
+        new TestCohorts(jdbc).put(enrollment, cohort);
+        new TestCohorts(jdbc).addMentor(cohort, viaCohort, admin);
         enrollments.addMentor(enrollment, assigned, admin);
 
         MvcTestResult result = send(HttpMethod.GET, candidatesPath(enrollment), "", "clara");
 
         assertThat(result).hasStatusOk();
-        assertThat(result).bodyJson().extractingPath("$.items[*].id").asArray().containsExactly(candidate.toString());
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.items[*].id")
+                .asArray()
+                .containsExactly(candidate.toString(), viaCohort.toString());
         assertThat(result).bodyJson().extractingPath("$.items[0].name").isEqualTo("Mia Mentor");
         assertThat(result).bodyJson().extractingPath("$.items[0].email").isEqualTo("mia@x.test");
-        assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(1);
+        assertThat(result).bodyJson().extractingPath("$.totalItems").isEqualTo(2);
     }
 
     @Test

@@ -9,7 +9,9 @@
 --                                              student and the mentor in this order, with the number of the mentor
 --                                              assignment; 9a00 a cohort created and 9b00 a cohort deleted, with
 --                                              the number of the cohort; 9c00 and 9d00 a change of an enrollment's
---                                              cohort, about the track and the student, with the number of the change
+--                                              cohort, about the track and the student, with the number of the change;
+--                                              9e00 and 9f00 a mentor of a cohort assigned, 9e01 and 9f01 removed,
+--                                              about the track and the mentor, with the number of the assignment
 --   cohorts      00000000-0000-4000-9900-...   1 to 99
 --
 -- Every enrollment is one the application could have recorded: the student was active with the student role, the
@@ -186,10 +188,12 @@ from enrollments e
 -- and Ruby Hughes since disabled and Helen Park without the student role; he was removed from Mia Foster. Alma
 -- Admin-Mentor leads four, Milo Mentor-Coordinator none. The Student persona has four mentors and is shown two: Dan
 -- Disabled was disabled and Thomas Grant lost the mentor role afterwards, so they are marked on the track page. Paul
--- Becker was disabled afterwards too. On Software Engineering every count of students shows: Mark Mentor more than a
--- scroll of them, Paul Becker one, Daniel Kim two with Alexandra Konstantinopoulou and her long email, Konstantin
--- Vasilenko two with Zoe Palmer since disabled, Thomas Grant two after losing the role. Olivia Hayes had Daniel Kim
--- until he was removed, and has no mentor now, nor do Mia Foster and Grace Morgan.
+-- Becker was disabled afterwards too. On Software Engineering every count of students shows, with the students of the
+-- mentors' cohorts (below): Mark Mentor more than a scroll of them, Paul Becker the students of Intake A, Noah Bennett
+-- among them, Daniel Kim two with Alexandra Konstantinopoulou and her long email, Konstantin Vasilenko the students of
+-- Intake A and two of Intake B with Zoe Palmer since disabled, Thomas Grant two and the rest of Intake A after losing
+-- the role. Olivia Hayes had Daniel Kim until he was removed, and has no mentor now, nor do Mia Foster and Grace
+-- Morgan.
 with assignment (enrollment, mentor, assigned_by, assigned_ago, removed_by, removed_ago) as (
     select e,
            'mentor@mentorhub.local',
@@ -358,6 +362,98 @@ select ('00000000-0000-4000-9' || case when subject.k = 0 then 'c' else 'd' end 
            when 0 then jsonb_build_object('userId', c.student_id, 'from', c.from_ref, 'to', c.to_ref)
            else jsonb_build_object('track', track.reference, 'from', c.from_ref, 'to', c.to_ref) end
 from resolved c
+         cross join (values (0), (1)) as subject (k)
+         join audit_log created
+              on created.subject_type = 'TRACK' and created.subject_id = c.track_id
+                  and created.action = 'TRACK_CREATED'
+         cross join lateral (
+    select jsonb_build_object(
+                   'id', c.track_id,
+                   'code', coalesce((select ch ->> 'newValue'
+                                     from audit_log u
+                                              cross join jsonb_array_elements(u.details -> 'changes') ch
+                                     where u.subject_type = 'TRACK' and u.subject_id = c.track_id
+                                       and u.action = 'TRACK_UPDATED' and ch ->> 'field' = 'code'
+                                       and u.occurred_at < c.occurred_at
+                                     order by u.occurred_at desc
+                                     limit 1), created.details ->> 'code'),
+                   'name', coalesce((select ch ->> 'newValue'
+                                     from audit_log u
+                                              cross join jsonb_array_elements(u.details -> 'changes') ch
+                                     where u.subject_type = 'TRACK' and u.subject_id = c.track_id
+                                       and u.action = 'TRACK_UPDATED' and ch ->> 'field' = 'name'
+                                       and u.occurred_at < c.occurred_at
+                                     order by u.occurred_at desc
+                                     limit 1), created.details ->> 'name')) as reference) track;
+
+-- The mentors of the cohorts (COH-9), assigned and removed as the mentors of the tracks are. Every mentor was assigned
+-- while active with the mentor role and a mentor of the track, after the cohort was created, by a coordinator of the
+-- track, and removed by one. Intake A of Software Engineering has six, more than its row holds, among them Thomas
+-- Grant, who lost the mentor role afterwards, and Paul Becker, disabled afterwards, both marked; Mark Mentor leads its
+-- students both directly and through the cohort. Intake B has two: Sarah Lopez, who also leads five of its students
+-- directly, and Alma Admin-Mentor, who leads most of her students only through Intake A and Intake B, Ethan Reed among
+-- them, and Penelope Ross and Rafael Santos both ways; Daniel Kim was assigned to it and removed a week later. Intake
+-- C and the cohort of Frontend Development have none. Daniel Kim and Victor Novak are mentors of no cohort, so the
+-- students they lead stay two and none.
+with assignment (n, cohort, mentor, assigned_by, assigned_ago, removed_by, removed_ago) as (
+    values (1, 1, 'admin.mentor@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '97 days', null,
+            null::interval),
+           (2, 1, 'konstantin.vasilenko@mentoring-staff.northbridge-training-academy.example.com',
+            'coordinator@mentorhub.local', interval '27 days' - interval '1 minute', null, null),
+           (3, 1, 'mentor@mentorhub.local', 'coordinator@mentorhub.local', interval '134 days', null, null),
+           (4, 1, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '27 days', null, null),
+           (5, 1, 'thomas.grant@example.com', 'coordinator@mentorhub.local', interval '98 days', null, null),
+           (6, 3, 'admin.mentor@mentorhub.local', 'coordinator@mentorhub.local', interval '26 days', null, null),
+           (7, 3, 'sarah.lopez@mentorhub.local', 'coordinator@mentorhub.local', interval '29 days' - interval '1 minute',
+            null, null),
+           (8, 1, 'paul.becker@mentorhub.local', 'coordinator@mentorhub.local', interval '133 days', null, null),
+           (9, 3, 'daniel.kim@mentorhub.local', 'sarah.lopez@mentorhub.local', interval '28 days',
+            'coordinator@mentorhub.local', interval '21 days')),
+     resolved as (
+         select a.n,
+                c.id                    as cohort_id,
+                c.name                  as cohort_name,
+                c.track_id,
+                mentor.id               as mentor_id,
+                assigned_by.id          as assigned_by,
+                now() - a.assigned_ago  as assigned_at,
+                removed_by.id           as removed_by,
+                now() - a.removed_ago   as removed_at
+         from assignment a
+                  join cohorts c on c.id = ('00000000-0000-4000-9900-' || lpad(a.cohort::text, 12, '0'))::uuid
+                  join users mentor on mentor.email = a.mentor
+                  join users assigned_by on assigned_by.email = a.assigned_by
+                  left join users removed_by on removed_by.email = a.removed_by),
+     mentors as (
+         insert into cohort_mentors (cohort_id, mentor_id, assigned_at, assigned_by)
+             select cohort_id, mentor_id, assigned_at, assigned_by
+             from resolved
+             where removed_at is null),
+     event as (
+         select n, cohort_id, cohort_name, track_id, mentor_id, false as removed, assigned_at as occurred_at,
+                assigned_by as actor
+         from resolved
+         union all
+         select n, cohort_id, cohort_name, track_id, mentor_id, true, removed_at, removed_by
+         from resolved
+         where removed_at is not null)
+-- Each assignment and removal in the histories of the track and the mentor, with the track as it was at that moment.
+insert
+into audit_log (id, occurred_at, actor_user_id, action, subject_type, subject_id, details)
+select ('00000000-0000-4000-9' || case when subject.k = 0 then 'e' else 'f' end || '0'
+            || case when c.removed then '1' else '0' end || '-' || lpad(c.n::text, 12, '0'))::uuid,
+       c.occurred_at,
+       c.actor,
+       case subject.k when 0 then 'TRACK' else 'USER' end || '_COHORT_MENTOR_'
+           || case when c.removed then 'REMOVED' else 'ASSIGNED' end,
+       case subject.k when 0 then 'TRACK' else 'USER' end,
+       case subject.k when 0 then c.track_id else c.mentor_id end,
+       case subject.k
+           when 0 then jsonb_build_object('cohort', jsonb_build_object('id', c.cohort_id, 'name', c.cohort_name),
+                                          'mentorId', c.mentor_id)
+           else jsonb_build_object('cohort', jsonb_build_object('id', c.cohort_id, 'name', c.cohort_name),
+                                   'track', track.reference) end
+from event c
          cross join (values (0), (1)) as subject (k)
          join audit_log created
               on created.subject_type = 'TRACK' and created.subject_id = c.track_id

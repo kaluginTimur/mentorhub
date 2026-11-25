@@ -1,8 +1,10 @@
 package com.mentorhub.enrollments.internal.service;
 
 import com.mentorhub.enrollments.internal.EnrollmentProblems;
+import com.mentorhub.enrollments.internal.domain.EnrollmentStatus;
 import com.mentorhub.enrollments.internal.persistence.CohortRepository;
 import com.mentorhub.enrollments.internal.persistence.EnrollmentRepository;
+import com.mentorhub.enrollments.internal.persistence.LedEnrollment;
 import com.mentorhub.enrollments.internal.persistence.StoredCohort;
 import com.mentorhub.enrollments.internal.persistence.StoredEnrollment;
 import com.mentorhub.tracks.TrackDirectory;
@@ -22,6 +24,8 @@ import com.mentorhub.web.NotFoundException;
 import com.mentorhub.web.ValidationException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +41,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Enrollments (ENR). The controller checks the permission; this service checks, in order, the request, the track or the
  * enrollment (404), the relation for a caller who may enroll only on the tracks they coordinate (403), then the
- * conflicts (409). The mentors of an enrollment are managed under the same relation to the enrollment's track.
+ * conflicts (409). The mentors of an enrollment are managed under the same relation to the enrollment's track. The
+ * mentors who lead an enrollment are its own and, while it is active, those of its cohort (COH-9), derived at each
+ * read.
  *
  * <p>Enrolling and assigning a mentor of an enrollment lock the track's row first
  * ({@link TrackDirectory#lockForEnrollment}), so enrolling on a track and archiving it, or assigning a mentor and
@@ -54,6 +60,7 @@ public class EnrollmentService {
     private final TrackEnrollmentHistory trackHistory;
     private final UserDirectory users;
     private final UserEnrollmentHistory userHistory;
+    private final MentorLoads loads;
 
     EnrollmentService(
             CurrentUserProvider currentUser,
@@ -62,7 +69,9 @@ public class EnrollmentService {
             TrackDirectory tracks,
             TrackEnrollmentHistory trackHistory,
             UserDirectory users,
-            UserEnrollmentHistory userHistory) {
+            UserEnrollmentHistory userHistory,
+            MentorLoads loads) {
+        this.loads = loads;
         this.currentUser = currentUser;
         this.enrollments = enrollments;
         this.cohorts = cohorts;
@@ -75,7 +84,7 @@ public class EnrollmentService {
     /**
      * The enrollments of an active or an archived track, sorted by the student's name, then email, then id.
      *
-     * @param mentorId narrows to the enrollments the user is a mentor of (ENR-15); {@code null} for all
+     * @param mentorId narrows to the enrollments the user leads (ENR-15); {@code null} for all
      * @param cohortId narrows to the enrollments in the cohort (ENR-4); a cohort of another track, or an id no cohort
      *     has, gives an empty page; {@code null} for all
      */
@@ -94,10 +103,7 @@ public class EnrollmentService {
         List<StoredEnrollment> onPage = students.items().stream()
                 .map(student -> stored(byStudent.get(student.id()), student))
                 .toList();
-        Map<UUID, Set<UUID>> mentorIds =
-                enrollments.mentorIds(onPage.stream().map(StoredEnrollment::id).toList());
-        List<DirectoryUser> mentors =
-                users.findUsers(mentorIds.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+        Map<UUID, List<LeadingMentor>> mentors = leadingMentors(onPage);
         Map<UUID, StoredCohort> cohortById = cohorts.findAll(onPage.stream()
                 .map(StoredEnrollment::cohortId)
                 .filter(Objects::nonNull)
@@ -109,7 +115,7 @@ public class EnrollmentService {
                     enrollment,
                     students.items().get(i),
                     namedCohort(cohortById, enrollment.cohortId()),
-                    mentorsOf(mentors, mentorIds.getOrDefault(enrollment.id(), Set.of()))));
+                    mentors.getOrDefault(enrollment.id(), List.of())));
         }
         return new EnrollmentPage<>(items, page, size, students.totalItems());
     }
@@ -178,14 +184,12 @@ public class EnrollmentService {
                 new HistoryTrack(track.id(), track.code(), track.name()),
                 startDate,
                 historyCohort);
-        DirectoryUser student = users.findUsers(List.of(studentId)).getFirst();
-        return item(
-                enrollment, student, cohort == null ? null : new NamedCohort(cohort.id(), cohort.name()), List.of());
+        return item(enrollment);
     }
 
     /**
      * The active users with the mentor role who are mentors of the enrollment's track and not mentors of the
-     * enrollment.
+     * enrollment, a mentor of its cohort included, each with what they lead on the track.
      *
      * @param q searched in the email, first and last name after trimming; blank means no search
      * @throws ValidationException for {@code q}
@@ -193,7 +197,8 @@ public class EnrollmentService {
      *     the enrollment's track
      */
     @Transactional(readOnly = true)
-    public EnrollmentPage<DirectoryUser> mentorCandidates(UUID enrollmentId, @Nullable String q, int page, int size) {
+    public EnrollmentPage<MentorCandidateItem> mentorCandidates(
+            UUID enrollmentId, @Nullable String q, int page, int size) {
         String text = EnrollmentRules.searchText(q);
         StoredEnrollment enrollment = enrollments.find(enrollmentId).orElseThrow(NotFoundException::new);
         EnrollmentRules.checkRelation(tracks, currentUser.currentUser(), enrollment.trackId());
@@ -204,7 +209,7 @@ public class EnrollmentService {
                 enrollments.mentorIds(List.of(enrollmentId)).getOrDefault(enrollmentId, Set.of()),
                 page,
                 size);
-        return new EnrollmentPage<>(candidates.items(), page, size, candidates.totalItems());
+        return loads.page(enrollment.trackId(), candidates, page, size);
     }
 
     /**
@@ -260,7 +265,10 @@ public class EnrollmentService {
         return item(enrollment);
     }
 
-    /** The caller's own enrollments, newest first, with the coordinators and the mentors to contact. */
+    /**
+     * The caller's own enrollments, newest first, with the coordinators and the mentors to contact: those of the
+     * enrollment and of its cohort, each once.
+     */
     @Transactional(readOnly = true)
     public List<OwnEnrollment> mine() {
         List<StoredEnrollment> own =
@@ -269,8 +277,7 @@ public class EnrollmentService {
             return List.of();
         }
         Map<UUID, TrackSummary> trackById = tracksOf(own);
-        Map<UUID, Set<UUID>> mentorIds =
-                enrollments.mentorIds(own.stream().map(StoredEnrollment::id).toList());
+        Map<UUID, List<LeadingMentor>> mentors = leadingMentors(own);
         return own.stream()
                 .map(enrollment -> new OwnEnrollment(
                         enrollment.id(),
@@ -279,36 +286,48 @@ public class EnrollmentService {
                         enrollment.status(),
                         users.findActiveContactsWithRole(tracks.coordinatorIds(enrollment.trackId()), Role.COORDINATOR),
                         users.findActiveContactsWithRole(
-                                mentorIds.getOrDefault(enrollment.id(), Set.of()), Role.MENTOR)))
+                                mentors.getOrDefault(enrollment.id(), List.of()).stream()
+                                        .map(mentor -> mentor.user().id())
+                                        .toList(),
+                                Role.MENTOR)))
                 .toList();
     }
 
     /**
-     * The enrollments the caller is a mentor of now, in any status, sorted by the student's name, then email, then id.
-     * The controller checks the permission; the relation is the filter itself (ENR-11).
+     * The enrollments the caller leads now, as a mentor of the enrollment or of its cohort, each once, sorted by the
+     * student's name, then email, then id. The controller checks the permission; the relation is the filter itself
+     * (ENR-11).
      */
     @Transactional(readOnly = true)
     public EnrollmentPage<MentoredEnrollmentItem> mentored(int page, int size) {
         // Keyed by student: holds only while a student has at most one enrollment. Once an enrollment can end and
         // the student return, toMap throws on the duplicate key.
-        Map<UUID, StoredEnrollment> byStudent = enrollments
-                .findByMentor(currentUser.currentUser().id())
+        Map<UUID, LedEnrollment> byStudent = enrollments
+                .findLedBy(currentUser.currentUser().id())
                 .stream()
-                .collect(Collectors.toMap(StoredEnrollment::studentId, Function.identity()));
+                .collect(Collectors.toMap(led -> led.enrollment().studentId(), Function.identity()));
         DirectoryPage students = users.findUsers(byStudent.keySet(), page, size);
-        List<StoredEnrollment> onPage = students.items().stream()
-                .map(student -> stored(byStudent.get(student.id()), student))
+        List<LedEnrollment> onPage = students.items().stream()
+                .map(student -> led(byStudent.get(student.id()), student))
                 .toList();
-        Map<UUID, TrackSummary> trackById = tracksOf(onPage);
+        List<StoredEnrollment> stored =
+                onPage.stream().map(LedEnrollment::enrollment).toList();
+        Map<UUID, TrackSummary> trackById = tracksOf(stored);
+        Map<UUID, StoredCohort> cohortById = cohorts.findAll(stored.stream()
+                .map(StoredEnrollment::cohortId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
         List<MentoredEnrollmentItem> items = new ArrayList<>();
         for (int i = 0; i < onPage.size(); i++) {
-            StoredEnrollment enrollment = onPage.get(i);
+            StoredEnrollment enrollment = stored.get(i);
             items.add(new MentoredEnrollmentItem(
                     enrollment.id(),
                     students.items().get(i),
                     track(trackById, enrollment.trackId()),
                     enrollment.startDate(),
-                    enrollment.status()));
+                    enrollment.status(),
+                    namedCohort(cohortById, enrollment.cohortId()),
+                    !onPage.get(i).direct()));
         }
         return new EnrollmentPage<>(items, page, size, students.totalItems());
     }
@@ -325,8 +344,44 @@ public class EnrollmentService {
                 enrollment,
                 student,
                 cohortId == null ? null : namedCohort(cohorts.findAll(List.of(cohortId)), cohortId),
-                users.findUsers(
-                        enrollments.mentorIds(List.of(enrollment.id())).getOrDefault(enrollment.id(), Set.of())));
+                leadingMentors(List.of(enrollment)).getOrDefault(enrollment.id(), List.of()));
+    }
+
+    /**
+     * The mentors who lead each enrollment, in the directory's order: by name, then email, then id. An enrollment
+     * without one is left out.
+     */
+    private Map<UUID, List<LeadingMentor>> leadingMentors(List<StoredEnrollment> list) {
+        Map<UUID, Set<UUID>> direct =
+                enrollments.mentorIds(list.stream().map(StoredEnrollment::id).toList());
+        Map<UUID, Set<UUID>> ofCohort = cohorts.mentorIds(list.stream()
+                .filter(enrollment -> enrollment.status() == EnrollmentStatus.ACTIVE)
+                .map(StoredEnrollment::cohortId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        Set<UUID> all = new HashSet<>();
+        direct.values().forEach(all::addAll);
+        ofCohort.values().forEach(all::addAll);
+        if (all.isEmpty()) {
+            return Map.of();
+        }
+        List<DirectoryUser> mentors = users.findUsers(all);
+        Map<UUID, List<LeadingMentor>> result = new HashMap<>();
+        for (StoredEnrollment enrollment : list) {
+            Set<UUID> own = direct.getOrDefault(enrollment.id(), Set.of());
+            UUID cohortId = enrollment.cohortId();
+            Set<UUID> throughCohort = cohortId == null || enrollment.status() != EnrollmentStatus.ACTIVE
+                    ? Set.of()
+                    : ofCohort.getOrDefault(cohortId, Set.of());
+            List<LeadingMentor> leading = mentors.stream()
+                    .filter(mentor -> own.contains(mentor.id()) || throughCohort.contains(mentor.id()))
+                    .map(mentor -> new LeadingMentor(mentor, !own.contains(mentor.id())))
+                    .toList();
+            if (!leading.isEmpty()) {
+                result.put(enrollment.id(), leading);
+            }
+        }
+        return result;
     }
 
     // An enrollment references its track, which is never deleted.
@@ -334,6 +389,14 @@ public class EnrollmentService {
         TrackSummary track = tracks.find(trackId)
                 .orElseThrow(() -> new IllegalStateException("Enrollment track " + trackId + " is not a stored track"));
         return new HistoryTrack(track.id(), track.code(), track.name());
+    }
+
+    // An enrollment references its track and its student, neither of which is ever deleted.
+    private static LedEnrollment led(@Nullable LedEnrollment enrollment, DirectoryUser student) {
+        if (enrollment == null) {
+            throw new IllegalStateException("No enrollment of student " + student.id());
+        }
+        return enrollment;
     }
 
     // An enrollment references its track and its student, neither of which is ever deleted.
@@ -348,7 +411,7 @@ public class EnrollmentService {
             StoredEnrollment enrollment,
             DirectoryUser student,
             @Nullable NamedCohort cohort,
-            List<DirectoryUser> mentors) {
+            List<LeadingMentor> mentors) {
         return new TrackEnrollmentItem(
                 enrollment.id(), student, enrollment.startDate(), enrollment.status(), cohort, mentors);
     }
@@ -363,11 +426,6 @@ public class EnrollmentService {
             throw new IllegalStateException("Enrollment cohort " + cohortId + " is not a stored cohort");
         }
         return new NamedCohort(cohort.id(), cohort.name());
-    }
-
-    /** Keeps the directory's order: by name, then email, then id. */
-    private static List<DirectoryUser> mentorsOf(List<DirectoryUser> mentors, Set<UUID> ids) {
-        return mentors.stream().filter(mentor -> ids.contains(mentor.id())).toList();
     }
 
     private static TrackSummary track(Map<UUID, TrackSummary> trackById, UUID trackId) {

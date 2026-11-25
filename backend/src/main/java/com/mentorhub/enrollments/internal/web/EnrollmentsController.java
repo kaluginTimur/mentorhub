@@ -3,7 +3,7 @@ package com.mentorhub.enrollments.internal.web;
 import com.mentorhub.api.EnrollmentsApi;
 import com.mentorhub.api.model.EnrollmentCandidatePage;
 import com.mentorhub.api.model.EnrollmentCreate;
-import com.mentorhub.api.model.MentorCandidatePage;
+import com.mentorhub.api.model.MentorAssignmentCandidatePage;
 import com.mentorhub.api.model.MentoredEnrollmentPage;
 import com.mentorhub.api.model.MyEnrollmentList;
 import com.mentorhub.api.model.TrackEnrollment;
@@ -58,7 +58,7 @@ class EnrollmentsController implements EnrollmentsApi {
 
     @Override
     @RequirePermission({Permission.ENROLLMENTS_MANAGE, Permission.ENROLLMENTS_MANAGE_COORDINATED})
-    public MentorCandidatePage listMentorCandidates(UUID id, @Nullable String q, Integer page, Integer size) {
+    public MentorAssignmentCandidatePage listMentorCandidates(UUID id, @Nullable String q, Integer page, Integer size) {
         return EnrollmentsMapper.mentorCandidatePage(enrollments.mentorCandidates(id, q, page, size));
     }
 

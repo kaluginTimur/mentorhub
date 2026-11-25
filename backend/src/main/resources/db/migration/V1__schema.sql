@@ -203,3 +203,17 @@ create table enrollment_mentors (
 );
 
 create index enrollment_mentors_mentor_idx on enrollment_mentors (mentor_id);
+
+-- Who leads every active enrollment of a cohort, at the time of each request; never copied into enrollment_mentors.
+-- Only an active user with the MENTOR role who is a mentor of the cohort's track is assigned, which the service checks;
+-- the row stays when the user is later disabled or loses the role. The primary key decides parallel assignments.
+-- Deleting a cohort removes its rows in the service, which audits each.
+create table cohort_mentors (
+    cohort_id   uuid        not null references cohorts (id) on delete restrict,
+    mentor_id   uuid        not null references users (id) on delete restrict,
+    assigned_at timestamptz not null default now(),
+    assigned_by uuid        not null references users (id) on delete restrict,
+    primary key (cohort_id, mentor_id)
+);
+
+create index cohort_mentors_mentor_idx on cohort_mentors (mentor_id);

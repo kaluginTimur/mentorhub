@@ -10,7 +10,8 @@ import {
   untracked,
 } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideChevronUp } from '@ng-icons/lucide';
+import { lucideChevronUp, lucideUsers } from '@ng-icons/lucide';
+import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { Api } from '../../core/api/api';
 import { listTrackEnrollments } from '../../core/api/fn/enrollments/list-track-enrollments';
@@ -30,8 +31,8 @@ const LONG_LIST = 8;
  */
 @Component({
   selector: 'app-mentor-students',
-  imports: [DatePipe, NgIcon, HlmButton, Avatar, Email, AssignmentMark],
-  providers: [provideIcons({ lucideChevronUp })],
+  imports: [DatePipe, NgIcon, HlmButton, HlmBadge, Avatar, Email, AssignmentMark],
+  providers: [provideIcons({ lucideChevronUp, lucideUsers })],
   host: { class: 'block' },
   template: `
     <div
@@ -122,7 +123,8 @@ const LONG_LIST = 8;
                       />
                       <span class="min-w-0">
                         <span class="font-medium break-words">{{ e.student.name }}</span>
-                        @if (e.student.disabled || !e.student.studentRole) {
+                        @let through = throughCohort(e);
+                        @if (e.student.disabled || !e.student.studentRole || through) {
                           <span
                             class="inline-flex flex-wrap items-center gap-1.5 align-middle max-sm:mt-0.5 max-sm:flex sm:ml-1.5"
                           >
@@ -131,6 +133,12 @@ const LONG_LIST = 8;
                             }
                             @if (!e.student.studentRole) {
                               <app-assignment-mark label="No student role" />
+                            }
+                            @if (through) {
+                              <span hlmBadge variant="outline" class="border-input text-foreground">
+                                <ng-icon name="lucideUsers" aria-hidden="true" />
+                                Through {{ through }}
+                              </span>
                             }
                           </span>
                         }
@@ -197,6 +205,12 @@ export class MentorStudents {
         void this.load();
       });
     });
+  }
+
+  /** The cohort's name when the mentor leads the enrollment only through its cohort (ENR-7). */
+  protected throughCohort(e: TrackEnrollment): string | null {
+    const mine = e.mentors.find((m) => m.id === this.mentorId());
+    return mine?.throughCohort && e.cohort ? e.cohort.name : null;
   }
 
   /** Shows the students as they are now; the list on screen stays until the answer comes. */

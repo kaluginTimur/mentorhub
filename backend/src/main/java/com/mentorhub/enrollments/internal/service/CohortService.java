@@ -13,8 +13,10 @@ import com.mentorhub.tracks.TrackSummary;
 import com.mentorhub.users.CurrentUser;
 import com.mentorhub.users.CurrentUserProvider;
 import com.mentorhub.users.DirectoryPage;
+import com.mentorhub.users.DirectoryUser;
 import com.mentorhub.users.HistoryCohort;
 import com.mentorhub.users.HistoryTrack;
+import com.mentorhub.users.Role;
 import com.mentorhub.users.UserDirectory;
 import com.mentorhub.users.UserEnrollmentHistory;
 import com.mentorhub.web.ConflictException;
@@ -24,6 +26,7 @@ import com.mentorhub.web.ValidationException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Every change first locks the track's row ({@link TrackDirectory#lockForEnrollment}), the lock that archiving and
  * enrolling take too, and only then reads the cohort and the enrollments it checks. So changes of the cohorts of one
- * track, deletions and enrolling into a cohort included, and its archiving run one after another (COH-3.3, COH-4.2,
- * TRK-5.4); no other lock is taken.
+ * track, deletions and enrolling into a cohort included, the changes of the mentors of its cohorts and of the track, and
+ * its archiving run one after another (COH-3.3, COH-4.2, COH-4.4, ENR-13.9, TRK-5.4); no other lock is taken.
  */
 @Service
 public class CohortService {
@@ -59,6 +62,7 @@ public class CohortService {
     private final TrackEnrollmentHistory trackHistory;
     private final UserDirectory users;
     private final UserEnrollmentHistory userHistory;
+    private final MentorLoads loads;
 
     CohortService(
             CurrentUserProvider currentUser,
@@ -67,7 +71,9 @@ public class CohortService {
             TrackDirectory tracks,
             TrackEnrollmentHistory trackHistory,
             UserDirectory users,
-            UserEnrollmentHistory userHistory) {
+            UserEnrollmentHistory userHistory,
+            MentorLoads loads) {
+        this.loads = loads;
         this.currentUser = currentUser;
         this.cohorts = cohorts;
         this.enrollments = enrollments;
@@ -77,13 +83,35 @@ public class CohortService {
         this.userHistory = userHistory;
     }
 
-    /** The cohorts of an active or an archived track, newest start date first, then by name, then by id. */
+    /**
+     * The cohorts of an active or an archived track, newest start date first, then by name, then by id, each with its
+     * mentors.
+     */
     @Transactional(readOnly = true)
     public List<CohortItem> list(UUID trackId) {
         if (tracks.find(trackId).isEmpty()) {
             throw new NotFoundException();
         }
-        return cohorts.findByTrack(trackId).stream().map(CohortService::item).toList();
+        List<CountedCohort> counted = cohorts.findByTrack(trackId);
+        Map<UUID, Set<UUID>> mentorIds =
+                cohorts.mentorIds(counted.stream().map(c -> c.cohort().id()).toList());
+        Set<UUID> all = new HashSet<>();
+        mentorIds.values().forEach(all::addAll);
+        List<DirectoryUser> mentors = all.isEmpty() ? List.of() : users.findUsers(all);
+        return counted.stream()
+                .map(c -> {
+                    StoredCohort cohort = c.cohort();
+                    Set<UUID> ids = mentorIds.getOrDefault(cohort.id(), Set.of());
+                    return new CohortItem(
+                            cohort.id(),
+                            cohort.name(),
+                            cohort.startDate(),
+                            c.enrollmentCount(),
+                            mentors.stream()
+                                    .filter(mentor -> ids.contains(mentor.id()))
+                                    .toList());
+                })
+                .toList();
     }
 
     /**
@@ -102,7 +130,7 @@ public class CohortService {
             UUID trackId, String name, LocalDate startDate, Collection<? extends @Nullable UUID> enrollmentIds) {
         List<FieldViolation> errors = new ArrayList<>();
         String trimmed = name(name, errors);
-        List<UUID> ids = enrollmentIds(enrollmentIds, errors);
+        List<UUID> ids = ids("enrollmentIds", enrollmentIds, errors);
         if (!errors.isEmpty()) {
             throw new ValidationException(errors);
         }
@@ -120,7 +148,8 @@ public class CohortService {
     }
 
     /**
-     * Deletes a cohort that has no enrollment; its entries in the histories stay.
+     * Deletes a cohort that has no enrollment, with its mentors, each removal recorded in the track's and the mentor's
+     * history before the deletion; its entries in the histories stay.
      *
      * @throws AccessDeniedException when the caller may change only the tracks they coordinate, and does not coordinate
      *     the track
@@ -140,6 +169,10 @@ public class CohortService {
             throw new ConflictException(
                     EnrollmentProblems.COHORT_NOT_EMPTY, "The cohort has enrollments; take them out first.");
         }
+        HistoryCohort named = historyCohort(cohort);
+        for (UUID mentorId : cohorts.deleteMentors(cohortId)) {
+            recordMentorRemoved(caller, track, named, mentorId);
+        }
         cohorts.delete(cohortId);
         trackHistory.recordCohortDeleted(caller.id(), trackId, historyCohort(cohort), cohort.startDate());
     }
@@ -158,7 +191,7 @@ public class CohortService {
     @Transactional
     public CohortItem add(UUID trackId, UUID cohortId, Collection<? extends @Nullable UUID> enrollmentIds) {
         List<FieldViolation> errors = new ArrayList<>();
-        List<UUID> ids = enrollmentIds(enrollmentIds, errors);
+        List<UUID> ids = ids("enrollmentIds", enrollmentIds, errors);
         if (!errors.isEmpty()) {
             throw new ValidationException(errors);
         }
@@ -244,6 +277,119 @@ public class CohortService {
         return new EnrollmentPage<>(items, page, size, students.totalItems());
     }
 
+    /**
+     * Assigns the users as mentors of the cohort, all or nothing: a user who is a mentor of the cohort, even one no
+     * longer eligible, or given twice, changes nothing; each other must be an active user with the mentor role who is a
+     * mentor of the track. Parallel assignments are decided by the primary key, and only the one that inserts records
+     * (COH-9.4).
+     *
+     * @return the cohort after the change
+     * @throws ValidationException for {@code userIds}
+     * @throws AccessDeniedException when the caller may change only the tracks they coordinate, and does not coordinate
+     *     the track
+     * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED} or {@link EnrollmentProblems#MENTOR_NOT_ELIGIBLE},
+     *     in this order
+     */
+    @Transactional
+    public CohortItem assignMentors(UUID trackId, UUID cohortId, Collection<? extends @Nullable UUID> userIds) {
+        List<FieldViolation> errors = new ArrayList<>();
+        List<UUID> ids = ids("userIds", userIds, errors);
+        if (!errors.isEmpty()) {
+            throw new ValidationException(errors);
+        }
+        CurrentUser caller = currentUser.currentUser();
+        TrackSummary track = tracks.lockForEnrollment(trackId).orElseThrow(NotFoundException::new);
+        StoredCohort cohort = cohorts.findOnTrack(trackId, cohortId).orElseThrow(NotFoundException::new);
+        EnrollmentRules.checkRelation(tracks, caller, trackId);
+        if (track.archived()) {
+            throw trackArchived();
+        }
+        Set<UUID> current = cohorts.mentorIds(List.of(cohortId)).getOrDefault(cohortId, Set.of());
+        List<UUID> added = new LinkedHashSet<>(ids)
+                .stream().filter(id -> !current.contains(id)).toList();
+        if (!added.isEmpty() && !allEligibleMentors(trackId, added)) {
+            throw new ConflictException(
+                    EnrollmentProblems.MENTOR_NOT_ELIGIBLE,
+                    "Only active users with the mentor role who are mentors of the track can be assigned.");
+        }
+        HistoryCohort named = historyCohort(cohort);
+        HistoryTrack historyTrack = historyTrack(track);
+        for (UUID userId : added) {
+            if (cohorts.insertMentor(cohortId, userId, caller.id())) {
+                trackHistory.recordCohortMentorAssigned(caller.id(), trackId, named, userId);
+                userHistory.recordCohortMentorAssigned(caller.id(), userId, named, historyTrack);
+            }
+        }
+        return item(cohort);
+    }
+
+    /** Whether every user is an active user with the mentor role and a mentor of the track. */
+    private boolean allEligibleMentors(UUID trackId, List<UUID> userIds) {
+        return users.activeWithRole(userIds, Role.MENTOR).containsAll(userIds)
+                && tracks.mentorIds(trackId).containsAll(userIds);
+    }
+
+    /**
+     * Removes the user as a mentor of the cohort; a user who is not one, or an id no user has, changes and records
+     * nothing. A mentor of an enrollment in the cohort stays its mentor.
+     *
+     * @return the cohort after the change
+     * @throws AccessDeniedException when the caller may change only the tracks they coordinate, and does not coordinate
+     *     the track
+     * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED}
+     */
+    @Transactional
+    public CohortItem removeMentor(UUID trackId, UUID cohortId, UUID userId) {
+        CurrentUser caller = currentUser.currentUser();
+        TrackSummary track = tracks.lockForEnrollment(trackId).orElseThrow(NotFoundException::new);
+        StoredCohort cohort = cohorts.findOnTrack(trackId, cohortId).orElseThrow(NotFoundException::new);
+        EnrollmentRules.checkRelation(tracks, caller, trackId);
+        if (track.archived()) {
+            throw trackArchived();
+        }
+        if (cohorts.deleteMentor(cohortId, userId)) {
+            recordMentorRemoved(caller, track, historyCohort(cohort), userId);
+        }
+        return item(cohort);
+    }
+
+    /**
+     * The active users with the mentor role who are mentors of the track and not mentors of the cohort, a mentor of an
+     * enrollment in it included, each with what they lead on the track, sorted by name, then email, then id.
+     *
+     * @param q searched in the email, first and last name after trimming; blank means no search
+     * @throws ValidationException for {@code q}
+     * @throws AccessDeniedException when the caller may change only the tracks they coordinate, and does not coordinate
+     *     the track
+     * @throws ConflictException {@link EnrollmentProblems#TRACK_ARCHIVED}
+     */
+    @Transactional(readOnly = true)
+    public EnrollmentPage<MentorCandidateItem> mentorCandidates(
+            UUID trackId, UUID cohortId, @Nullable String q, int page, int size) {
+        String text = EnrollmentRules.searchText(q);
+        TrackSummary track = tracks.find(trackId).orElseThrow(NotFoundException::new);
+        if (cohorts.findOnTrack(trackId, cohortId).isEmpty()) {
+            throw new NotFoundException();
+        }
+        EnrollmentRules.checkRelation(tracks, currentUser.currentUser(), trackId);
+        if (track.archived()) {
+            throw trackArchived();
+        }
+        DirectoryPage candidates = users.findActiveUsersWithRoleAmong(
+                tracks.mentorIds(trackId),
+                Role.MENTOR,
+                text,
+                cohorts.mentorIds(List.of(cohortId)).getOrDefault(cohortId, Set.of()),
+                page,
+                size);
+        return loads.page(trackId, candidates, page, size);
+    }
+
+    private void recordMentorRemoved(CurrentUser caller, TrackSummary track, HistoryCohort cohort, UUID mentorId) {
+        trackHistory.recordCohortMentorRemoved(caller.id(), track.id(), cohort, mentorId);
+        userHistory.recordCohortMentorRemoved(caller.id(), mentorId, cohort, historyTrack(track));
+    }
+
     /** Each id once, in the order given; every one must be an active enrollment of the track. */
     private List<StoredEnrollment> eligible(UUID trackId, Collection<UUID> enrollmentIds) {
         Set<UUID> ids = new LinkedHashSet<>(enrollmentIds);
@@ -291,17 +437,20 @@ public class CohortService {
             @Nullable HistoryCohort from,
             @Nullable HistoryCohort to) {
         trackHistory.recordEnrollmentCohortChanged(caller.id(), track.id(), studentId, from, to);
-        userHistory.recordCohortChanged(
-                caller.id(), studentId, new HistoryTrack(track.id(), track.code(), track.name()), from, to);
+        userHistory.recordCohortChanged(caller.id(), studentId, historyTrack(track), from, to);
     }
 
     private CohortItem item(StoredCohort cohort) {
-        return new CohortItem(cohort.id(), cohort.name(), cohort.startDate(), cohorts.countActive(cohort.id()));
+        return new CohortItem(
+                cohort.id(),
+                cohort.name(),
+                cohort.startDate(),
+                cohorts.countActive(cohort.id()),
+                users.findUsers(cohorts.mentorIds(List.of(cohort.id())).getOrDefault(cohort.id(), Set.of())));
     }
 
-    private static CohortItem item(CountedCohort counted) {
-        StoredCohort cohort = counted.cohort();
-        return new CohortItem(cohort.id(), cohort.name(), cohort.startDate(), counted.enrollmentCount());
+    private static HistoryTrack historyTrack(TrackSummary track) {
+        return new HistoryTrack(track.id(), track.code(), track.name());
     }
 
     private static String name(String name, List<FieldViolation> errors) {
@@ -316,11 +465,11 @@ public class CohortService {
     }
 
     // Bean validation checks the list, not its items: `[null]` binds to a list containing null.
-    private static List<UUID> enrollmentIds(Collection<? extends @Nullable UUID> ids, List<FieldViolation> errors) {
+    private static List<UUID> ids(String field, Collection<? extends @Nullable UUID> ids, List<FieldViolation> errors) {
         List<UUID> result = new ArrayList<>(ids.size());
         for (@Nullable UUID id : ids) {
             if (id == null) {
-                errors.add(new FieldViolation("enrollmentIds", "must not contain null"));
+                errors.add(new FieldViolation(field, "must not contain null"));
                 return List.of();
             }
             result.add(id);

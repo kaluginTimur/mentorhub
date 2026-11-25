@@ -82,7 +82,7 @@ The system SHALL return a track, for a caller with `TRACKS_READ`, with its code,
 
 ### TRK-5 Changing, archiving and restoring a track
 
-The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name of an active track, each independently, archive an active track and restore an archived one. Archiving a track that has an active enrollment (ENR-2) is 409 `track-has-active-enrollments`. An archived track is read-only until restored: every change except restoring and archiving it again is 409 `track-archived`, even one that would change nothing, and so is listing the candidates for its coordinators; it keeps its coordinators and its mentors (ENR-13). Changes of one track, its mentors, its cohorts (COH-2, COH-3) and enrollments on it, and its archiving take effect one after another, so no change is ever stored on an archived track and an archived track never has an active enrollment. On an active track, a request that changes nothing, and archiving an archived track, answer with the track and record nothing (AUD-4). Each change is audited (AUD-7).
+The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name of an active track, each independently, archive an active track and restore an archived one. Archiving a track that has an active enrollment (ENR-2) is 409 `track-has-active-enrollments`. An archived track is read-only until restored: every change except restoring and archiving it again is 409 `track-archived`, even one that would change nothing, and so is listing the candidates for its coordinators; it keeps its coordinators and its mentors (ENR-13). Changes of one track, its mentors, its cohorts and their mentors (COH-2, COH-3, COH-9) and enrollments on it, and its archiving take effect one after another, so no change is ever stored on an archived track and an archived track never has an active enrollment. On an active track, a request that changes nothing, and archiving an archived track, answer with the track and record nothing (AUD-4). Each change is audited (AUD-7).
 
 #### TRK-5.1 An archived track keeps its coordinators and mentors and is restored with them
 
@@ -107,8 +107,8 @@ The system SHALL let a caller with `TRACKS_MANAGE` change the code and the name 
 
 #### TRK-5.4 A change at the moment of archiving is never stored on an archived track
 
-- GIVEN an active track and an active user with the coordinator and the mentor roles
-- WHEN an administrator archives the track while another changes its name, names the user a coordinator, names the user a mentor, or creates a cohort on it, at the same moment
+- GIVEN an active track with a cohort and a mentor, and an active user with the coordinator and the mentor roles
+- WHEN an administrator archives the track while another changes its name, names the user a coordinator, names the user a mentor, creates a cohort on it, or assigns its mentor to the cohort, at the same moment
 - THEN the change is either stored before the archiving with its entry, or answered 409 `track-archived` and not stored
 - AND no response is 500
 
@@ -197,7 +197,7 @@ The client SHALL show a track's code, name, status, coordinators and mentors wit
 - When two administrators change the same track at the same moment, the last save of the code or the name wins; each change is still audited.
 - A history page can hold fewer entries than its size, and its total counts entries that are left out (AUD-6).
 - A user named a coordinator at the moment another administrator disables them or removes their coordinator role may keep an assignment that is already marked (TRK-4).
-- A caller with `TRACKS_READ`, a coordinator included, sees the names and emails of the coordinators and the mentors and the history of every track, with the students enrolled on it, the mentors named to it (ENR-6) and the cohorts with the students added to them and taken out (COH-7), without `USERS_READ`, and how many students each mentor leads on it (ENR-15) without `ENROLLMENTS_READ`, and a caller with `USERS_READ` sees in a user's history the tracks they coordinated or were a mentor of without `TRACKS_READ`.
+- A caller with `TRACKS_READ`, a coordinator included, sees the names and emails of the coordinators and the mentors and the history of every track, with the students enrolled on it, the mentors named to it (ENR-6) and the cohorts with the students added to them and taken out and their mentors (COH-7), without `USERS_READ`, and how many students each mentor leads on it (ENR-15) without `ENROLLMENTS_READ`, and a caller with `USERS_READ` sees in a user's history the tracks they coordinated or were a mentor of without `TRACKS_READ`.
 
 ## Out of scope
 

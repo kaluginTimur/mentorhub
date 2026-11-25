@@ -33,4 +33,14 @@ public final class TestCohorts {
                 .param("enrollment", enrollmentId)
                 .update();
     }
+
+    /** Makes the user a mentor of the cohort; the track's mentors are not checked. */
+    public void addMentor(UUID cohortId, UUID mentorId, UUID assignedBy) {
+        jdbc.sql(
+                        "insert into cohort_mentors (cohort_id, mentor_id, assigned_by) values (:cohort, :mentor, :assignedBy)")
+                .param("cohort", cohortId)
+                .param("mentor", mentorId)
+                .param("assignedBy", assignedBy)
+                .update();
+    }
 }

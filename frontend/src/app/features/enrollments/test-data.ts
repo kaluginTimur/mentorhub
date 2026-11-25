@@ -1,7 +1,9 @@
+import { CohortMentor } from '../../core/api/models/cohort-mentor';
 import { EnrolledStudent } from '../../core/api/models/enrolled-student';
 import { EnrollmentCandidate } from '../../core/api/models/enrollment-candidate';
 import { EnrollmentContact } from '../../core/api/models/enrollment-contact';
 import { EnrollmentMentor } from '../../core/api/models/enrollment-mentor';
+import { MentorAssignmentCandidate } from '../../core/api/models/mentor-assignment-candidate';
 import { MentorCandidate } from '../../core/api/models/mentor-candidate';
 import { MentoredEnrollment } from '../../core/api/models/mentored-enrollment';
 import { MentoredEnrollmentPage } from '../../core/api/models/mentored-enrollment-page';
@@ -106,6 +108,7 @@ export function enrollmentMentor(overrides: Partial<EnrollmentMentor> = {}): Enr
     email: 'mia@example.com',
     disabled: false,
     mentorRole: true,
+    throughCohort: false,
     ...overrides,
   };
 }
@@ -128,6 +131,8 @@ export function mentoredEnrollment(
     track: { id: TRACK_ID, code: 'QA', name: 'Quality Assurance' },
     startDate: '2026-09-01',
     status: 'ACTIVE',
+    cohort: null,
+    throughCohort: false,
     ...overrides,
   };
 }
@@ -149,6 +154,30 @@ export function mentorUser(overrides: Partial<MeUser> = {}): MeUser {
     phone: null,
     roles: ['MENTOR'],
     permissions: ['ENROLLMENTS_READ_MENTORED'],
+    ...overrides,
+  };
+}
+
+export function cohortMentor(overrides: Partial<CohortMentor> = {}): CohortMentor {
+  return {
+    id: MENTOR_ID,
+    name: 'Mia Mentor',
+    email: 'mia@example.com',
+    disabled: false,
+    mentorRole: true,
+    ...overrides,
+  };
+}
+
+export function mentorAssignmentCandidate(
+  overrides: Partial<MentorAssignmentCandidate> = {},
+): MentorAssignmentCandidate {
+  return {
+    id: CANDIDATE_MENTOR_ID,
+    name: 'Omar Candidate',
+    email: 'omar@example.com',
+    students: 0,
+    cohorts: 0,
     ...overrides,
   };
 }

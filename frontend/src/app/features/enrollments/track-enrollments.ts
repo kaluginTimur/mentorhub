@@ -24,6 +24,7 @@ import {
 } from '@ng-icons/lucide';
 import type { BrnOverlayState } from '@spartan-ng/brain/overlay';
 import { HlmPopoverImports } from '@spartan-ng/helm/popover';
+import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
@@ -31,6 +32,9 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { Api } from '../../core/api/api';
 import { createCohort } from '../../core/api/fn/cohorts/create-cohort';
 import { addCohortEnrollments } from '../../core/api/fn/cohorts/add-cohort-enrollments';
+import { assignCohortMentors } from '../../core/api/fn/cohorts/assign-cohort-mentors';
+import { listCohortMentorCandidates } from '../../core/api/fn/cohorts/list-cohort-mentor-candidates';
+import { removeCohortMentor } from '../../core/api/fn/cohorts/remove-cohort-mentor';
 import { deleteCohort } from '../../core/api/fn/cohorts/delete-cohort';
 import { listCohortCandidates } from '../../core/api/fn/cohorts/list-cohort-candidates';
 import { listNewCohortCandidates } from '../../core/api/fn/cohorts/list-new-cohort-candidates';
@@ -41,6 +45,7 @@ import { enrollStudent } from '../../core/api/fn/enrollments/enroll-student';
 import { listEnrollmentCandidates } from '../../core/api/fn/enrollments/list-enrollment-candidates';
 import { listTrackEnrollments } from '../../core/api/fn/enrollments/list-track-enrollments';
 import { Cohort } from '../../core/api/models/cohort';
+import { CohortMentor } from '../../core/api/models/cohort-mentor';
 import { EnrollmentMentor } from '../../core/api/models/enrollment-mentor';
 import { TrackEnrollment } from '../../core/api/models/track-enrollment';
 import { TrackEnrollmentPage } from '../../core/api/models/track-enrollment-page';
@@ -51,8 +56,19 @@ import { ConfirmDialog, ConfirmDialogData } from '../../shared/confirm-dialog/co
 import { Paginator } from '../../shared/paginator/paginator';
 import { ScrollIntoViewOnChange } from '../../shared/scroll/scroll-into-view-on-change';
 import { ToastService } from '../../shared/toast/toast.service';
+import { BelowHeaderScrolls } from '../../shared/popover/below-header-scroll';
 import { AssignmentMark } from '../tracks/assignment-mark';
+import {
+  AssignCohortMentorsDialog,
+  AssignCohortMentorsDialogData,
+} from './assign-cohort-mentors-dialog';
 import { AssignMentorDialog, AssignMentorResult } from './assign-mentor-dialog';
+import {
+  CohortMentorsButton,
+  CohortMentorsLine,
+  REMOVE_MENTOR_BUTTON_CLASS,
+} from './cohort-mentors';
+import { activeFirst, isInactive, mentorsText } from './cohort-mentors-text';
 import { CandidateLoader, PICKER_PAGE_SIZE } from './cohort-candidate-picker';
 import {
   CohortFormErrors,
@@ -83,8 +99,14 @@ const HEADER_ITEMS: ActionMenuItem[] = [
 ];
 const COHORT_ITEMS: ActionMenuItem[] = [
   { key: 'add', label: 'Add students', testId: 'cohort-menu-add-students' },
-  { key: 'delete', label: 'Delete', testId: 'cohort-menu-delete', destructive: true },
+  { key: 'mentors', label: 'Assign mentors', testId: 'cohort-menu-assign-mentors' },
 ];
+const DELETE_ITEM: ActionMenuItem = {
+  key: 'delete',
+  label: 'Delete',
+  testId: 'cohort-menu-delete',
+  destructive: true,
+};
 const ASSIGN_ITEM: ActionMenuItem = {
   key: 'assign',
   label: 'Assign mentor',
@@ -105,6 +127,9 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
     HlmButton,
     HlmCardImports,
     AssignmentMark,
+    CohortMentorsButton,
+    CohortMentorsLine,
+    HlmBadge,
     HlmPopoverImports,
     Paginator,
     HlmDropdownMenuImports,
@@ -132,7 +157,7 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
       <div hlmCardHeader class="items-center">
         <h2 hlmCardTitle class="font-bold">Enrollments</h2>
         @if (canChange()) {
-          <div hlmCardAction class="flex items-center gap-2 self-center">
+          <div hlmCardAction class="row-span-1 flex items-center gap-2 self-center">
             <div class="hidden items-center gap-2 md:flex">
               <button
                 hlmBtn
@@ -213,48 +238,65 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
               <h3 class="mb-2 text-sm font-bold">Cohorts</h3>
               <ul class="flex flex-col gap-1">
                 <li [class]="rowFrame(selectedCohort() === null)">
-                  <button
-                    type="button"
-                    data-testid="cohort-all"
-                    class="flex min-w-0 flex-1 flex-col rounded-md px-2.5 py-2 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    [attr.aria-current]="selectedCohort() === null ? 'true' : null"
-                    (click)="choose(null)"
-                  >
-                    <span class="font-semibold">
-                      @if (selectedCohort() === null) {
-                        <span aria-hidden="true">✓ </span>
-                      }
-                      All enrollments
-                    </span>
-                    <span class="text-xs" [class]="subtle(selectedCohort() === null)">{{
-                      studentsText(totalEnrollments())
-                    }}</span>
-                  </button>
+                  <div class="flex items-center">
+                    <button
+                      type="button"
+                      data-testid="cohort-all"
+                      class="flex min-w-0 flex-1 flex-col rounded-md px-2.5 py-2 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      [attr.aria-current]="selectedCohort() === null ? 'true' : null"
+                      (click)="choose(null)"
+                    >
+                      <span class="font-semibold">
+                        @if (selectedCohort() === null) {
+                          <span aria-hidden="true">✓ </span>
+                        }
+                        All enrollments
+                      </span>
+                      <span class="text-xs" [class]="subtle(selectedCohort() === null)">{{
+                        studentsText(totalEnrollments())
+                      }}</span>
+                    </button>
+                  </div>
                 </li>
                 @for (c of cohortItems(); track c.id) {
                   @let on = selectedCohort()?.id === c.id;
                   <li [class]="rowFrame(on)">
-                    <button
-                      type="button"
-                      data-testid="cohort-item"
-                      class="flex min-w-0 flex-1 flex-col rounded-md px-2.5 py-2 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                      [attr.data-cohort-id]="c.id"
-                      [attr.aria-current]="on ? 'true' : null"
-                      (click)="choose(c.id)"
-                    >
-                      <span class="font-semibold break-words">
-                        @if (on) {
-                          <span aria-hidden="true">✓ </span>
-                        }
-                        {{ c.name }}
-                      </span>
-                      <span class="text-xs" [class]="subtle(on)"
-                        >Starts {{ c.startDate | date: dateFormat }} ·
-                        {{ studentsText(c.enrollmentCount) }}</span
+                    <div class="flex items-center">
+                      <button
+                        type="button"
+                        data-testid="cohort-item"
+                        class="flex min-w-0 flex-1 flex-col rounded-md px-2.5 py-2 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                        [attr.data-cohort-id]="c.id"
+                        [attr.aria-current]="on ? 'true' : null"
+                        (click)="choose(c.id)"
                       >
-                    </button>
-                    @if (on && canChange()) {
-                      <ng-container *ngTemplateOutlet="cohortActions; context: { $implicit: c }" />
+                        <span class="font-semibold break-words">
+                          @if (on) {
+                            <span aria-hidden="true">✓ </span>
+                          }
+                          {{ c.name }}
+                        </span>
+                        <span class="text-xs" [class]="subtle(on)"
+                          >Starts {{ c.startDate | date: dateFormat }} ·
+                          {{ studentsText(c.enrollmentCount) }}</span
+                        >
+                      </button>
+                      @if (on && canChange()) {
+                        <ng-container
+                          *ngTemplateOutlet="cohortActions; context: { $implicit: c }"
+                        />
+                      }
+                    </div>
+                    @if (c.mentors.length > 0) {
+                      <app-cohort-mentors-button
+                        class="ms-1.5 me-2"
+                        [cohort]="c"
+                        [onItem]="on"
+                        [canRemove]="canChange()"
+                        (remove)="removeCohortMentorDialog(c, $event)"
+                      />
+                    } @else {
+                      <span class="block px-3.5 pb-2 text-xs" [class]="subtle(on)">No mentors</span>
                     }
                   </li>
                 }
@@ -315,6 +357,13 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                 }
               </div>
             }
+            @if (selectedCohort(); as c) {
+              <app-cohort-mentors-line
+                [cohort]="c"
+                [canRemove]="canChange()"
+                (remove)="removeCohortMentorDialog(c, $event)"
+              />
+            }
             @if (loaded(); as page) {
               @if (page.items.length > 0) {
                 <table class="w-full text-sm md:table-fixed max-md:block">
@@ -357,12 +406,12 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                               @if (canOpenUsers()) {
                                 <a
                                   data-testid="student-link"
-                                  class="font-medium break-words text-mh-link hover:text-mh-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                  class="font-medium wrap-anywhere text-mh-link hover:text-mh-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                   [routerLink]="['/users', e.student.id]"
                                   >{{ e.student.name }}</a
                                 >
                               } @else {
-                                <span class="font-medium break-words">{{ e.student.name }}</span>
+                                <span class="font-medium wrap-anywhere">{{ e.student.name }}</span>
                               }
                               @if (e.student.disabled) {
                                 <app-assignment-mark label="Disabled" />
@@ -403,9 +452,10 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                         }
                         <td class="py-2.5 pe-3 align-middle max-md:py-0">
                           <div
+                            #mg
                             role="group"
                             aria-label="Mentors"
-                            class="relative flex min-w-0 items-center gap-2 text-sm text-muted-foreground"
+                            class="relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground"
                           >
                             @let ms = ordered(e.mentors);
                             @if (ms.length > 0) {
@@ -414,6 +464,8 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                                 ms.length > 1 ? 'Mentors:' : 'Mentor:'
                               }}</span>
                               <hlm-popover
+                                [scrollStrategy]="scrolls.for(e.id + ':first')"
+                                [attachTo]="mg"
                                 class="min-w-0"
                                 align="start"
                                 sideOffset="6"
@@ -423,7 +475,7 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                                 <button
                                   hlmPopoverTrigger
                                   type="button"
-                                  class="relative flex max-w-full min-w-0 items-center gap-1 rounded-sm text-start hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none after:pointer-events-none after:absolute after:bottom-full after:left-0 after:z-20 after:mb-1.5 after:rounded-md after:bg-foreground after:px-2 after:py-1 after:text-xs after:font-normal after:whitespace-nowrap after:text-background after:opacity-0 after:transition-opacity after:content-[attr(data-tip)] data-[open=true]:after:invisible"
+                                  class="relative flex max-w-full min-w-0 items-center gap-2 rounded-sm text-start hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none after:pointer-events-none after:absolute after:bottom-full after:left-0 after:z-20 after:mb-1.5 after:rounded-md after:bg-foreground after:px-2 after:py-1 after:text-xs after:font-normal after:whitespace-nowrap after:text-background after:opacity-0 after:transition-opacity after:content-[attr(data-tip)] data-[open=true]:after:invisible"
                                   [class]="
                                     isMarked(first)
                                       ? 'text-muted-foreground hover:text-foreground hover:after:opacity-100 focus-visible:after:opacity-100'
@@ -433,7 +485,7 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                                   [attr.aria-label]="mentorLabel(first)"
                                   [attr.data-open]="popoverState(e.id, first.id) === 'open'"
                                 >
-                                  <span class="truncate">{{ first.name }}</span>
+                                  <span>{{ first.name }}</span>
                                   @if (isMarked(first)) {
                                     <ng-icon
                                       name="lucideTriangleAlert"
@@ -442,9 +494,21 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                                       aria-hidden="true"
                                     />
                                   }
+                                  @if (first.throughCohort) {
+                                    <span
+                                      class="inline-flex shrink-0 items-center"
+                                      title="Through cohort"
+                                      aria-hidden="true"
+                                      ><ng-icon name="lucideUsers" size="14"
+                                    /></span>
+                                  }
                                   <span class="sr-only">{{ markText(first) }}</span>
                                 </button>
-                                <hlm-popover-content *hlmPopoverPortal class="w-72 p-3">
+                                <hlm-popover-content
+                                  *hlmPopoverPortal
+                                  class="max-h-[inherit] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto p-3"
+                                  [attr.aria-label]="'Mentors of ' + e.student.name"
+                                >
                                   <ng-container
                                     *ngTemplateOutlet="
                                       mentorCard;
@@ -455,6 +519,8 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                               </hlm-popover>
                               @if (ms.length > 1) {
                                 <hlm-popover
+                                  [scrollStrategy]="scrolls.for(e.id + ':more')"
+                                  [attachTo]="mg"
                                   align="start"
                                   sideOffset="6"
                                   [state]="popoverState(e.id, '+')"
@@ -483,7 +549,11 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                                       />
                                     }
                                   </button>
-                                  <hlm-popover-content *hlmPopoverPortal class="w-72 divide-y p-3">
+                                  <hlm-popover-content
+                                    *hlmPopoverPortal
+                                    class="max-h-[inherit] w-72 max-w-[calc(100vw-2rem)] divide-y overflow-y-auto p-3"
+                                    [attr.aria-label]="'Mentors of ' + e.student.name"
+                                  >
                                     @for (m of ms.slice(1); track m.id) {
                                       <div class="py-2 first:pt-0 last:pb-0">
                                         <ng-container
@@ -505,7 +575,7 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
                         </td>
                         @if (canChange()) {
                           <td
-                            class="py-1 text-end align-middle max-md:absolute max-md:inset-e-0 max-md:bottom-1.5 max-md:py-0"
+                            class="py-1 text-end align-middle max-md:absolute max-md:inset-e-0 max-md:top-1/2 max-md:-translate-y-1/2 max-md:py-0"
                           >
                             @let items = rowItems().get(e.id) ?? [assignItem];
                             @if (items.length === 1) {
@@ -593,45 +663,32 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
       </div>
     </div>
     <ng-template #cohortActions let-c>
-      @if (c.enrollmentCount > 0) {
-        <button
-          type="button"
-          data-testid="cohort-add-students"
-          class="group/tip relative me-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md outline-none hover:bg-card hover:text-card-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:size-9 after:pointer-events-none after:absolute after:end-0 after:bottom-full after:z-20 after:mb-1.5 after:rounded-md after:bg-foreground after:px-2 after:py-1 after:text-xs after:font-normal after:whitespace-nowrap after:text-background after:opacity-0 after:transition-opacity after:content-[attr(data-tip)] hover:after:opacity-100 focus-visible:after:opacity-100"
-          [attr.aria-label]="'Add students to ' + c.name"
-          [attr.data-tip]="'Add students to ' + c.name"
-          (click)="addStudentsDialog(c)"
-        >
-          <ng-icon name="lucideUserPlus" size="18" aria-hidden="true" />
-        </button>
-      } @else {
-        <button
-          type="button"
-          class="me-1 shrink-0 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted aria-expanded:text-foreground md:size-8"
-          [hlmDropdownMenuTrigger]="cohortMenu"
-          align="end"
-          [attr.aria-label]="'Actions for ' + c.name"
-          data-testid="cohort-actions-menu"
-        >
-          <ng-icon name="lucideEllipsisVertical" size="18" aria-hidden="true" />
-        </button>
-        <ng-template #cohortMenu>
-          <hlm-dropdown-menu class="w-48">
-            @for (item of cohortItemsMenu; track item.key) {
-              <button
-                type="button"
-                hlmDropdownMenuItem
-                class="min-h-11 md:min-h-8"
-                [variant]="item.destructive ? 'destructive' : 'default'"
-                [attr.data-testid]="item.testId"
-                (triggered)="onCohortAction(c, item.key)"
-              >
-                {{ item.label }}
-              </button>
-            }
-          </hlm-dropdown-menu>
-        </ng-template>
-      }
+      <button
+        type="button"
+        class="me-1 shrink-0 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted aria-expanded:text-foreground md:size-8"
+        [hlmDropdownMenuTrigger]="cohortMenu"
+        align="end"
+        [attr.aria-label]="'Actions for ' + c.name"
+        data-testid="cohort-actions-menu"
+      >
+        <ng-icon name="lucideEllipsisVertical" size="18" aria-hidden="true" />
+      </button>
+      <ng-template #cohortMenu>
+        <hlm-dropdown-menu class="w-48">
+          @for (item of cohortMenuItems(c); track item.key) {
+            <button
+              type="button"
+              hlmDropdownMenuItem
+              class="min-h-11 md:min-h-8"
+              [variant]="item.destructive ? 'destructive' : 'default'"
+              [attr.data-testid]="item.testId"
+              (triggered)="onCohortAction(c, item.key)"
+            >
+              {{ item.label }}
+            </button>
+          }
+        </hlm-dropdown-menu>
+      </ng-template>
     </ng-template>
     <ng-template #mentorCard let-m let-e="e">
       <div class="flex items-center justify-between gap-3">
@@ -640,7 +697,7 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
           <span class="font-mono text-xs break-all text-muted-foreground"
             ><app-email [value]="m.email"
           /></span>
-          @if (isMarked(m)) {
+          @if (isMarked(m) || m.throughCohort) {
             <div class="flex flex-wrap gap-1.5 pt-1">
               @if (m.disabled) {
                 <app-assignment-mark label="Disabled" />
@@ -648,18 +705,24 @@ const studentsText = (n: number) => `${n} ${n === 1 ? 'student' : 'students'}`;
               @if (!m.mentorRole) {
                 <app-assignment-mark label="No mentor role" />
               }
+              @if (m.throughCohort) {
+                <span hlmBadge variant="outline" class="border-input text-foreground">
+                  <ng-icon name="lucideUsers" aria-hidden="true" />
+                  Through cohort
+                </span>
+              }
             </div>
           }
         </div>
-        @if (canEnroll()) {
+        @if (canEnroll() && !m.throughCohort) {
           <button
             hlmBtn
             variant="outline"
             size="icon-sm"
             type="button"
             [attr.aria-label]="'Remove ' + m.name"
-            class="relative shrink-0 border-destructive/40 bg-card text-destructive hover:bg-destructive/10 hover:text-mh-destructive-hover-foreground dark:border-destructive/50 dark:bg-card dark:hover:bg-destructive/20 after:pointer-events-none after:absolute after:right-0 after:bottom-full after:z-20 after:mb-1.5 after:rounded-md after:bg-foreground after:px-2 after:py-1 after:text-xs after:font-normal after:text-background after:opacity-0 after:transition-opacity after:content-['Remove'] hover:after:opacity-100 focus-visible:after:opacity-100"
-            (click)="closePopovers(); removeMentor(e.id, e.student.name, m)"
+            [class]="removeClass"
+            (click)="closePopovers(); removeMentor(e, m)"
           >
             <ng-icon name="lucideUserMinus" aria-hidden="true" />
             <span class="sr-only">Remove</span>
@@ -685,12 +748,13 @@ export class TrackEnrollments {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly currentUser = inject(CurrentUserService);
+  protected readonly scrolls = new BelowHeaderScrolls();
   /** The user page needs USERS_READ: without it the name stays plain text. */
   protected readonly canOpenUsers = computed(() => this.currentUser.hasPermission('USERS_READ'));
 
   protected readonly PAGE_SIZE = PAGE_SIZE;
   protected readonly headerItems = HEADER_ITEMS;
-  protected readonly cohortItemsMenu = COHORT_ITEMS;
+  protected readonly removeClass = REMOVE_MENTOR_BUTTON_CLASS;
   protected readonly assignItem = ASSIGN_ITEM;
   protected readonly studentsText = studentsText;
 
@@ -701,6 +765,7 @@ export class TrackEnrollments {
     this.allTotal.reload();
   }
 
+  /** The track says whether the caller may change. */
   protected readonly canChange = computed(
     () => this.canEnroll() && this.trackStatus() === 'ACTIVE',
   );
@@ -792,7 +857,7 @@ export class TrackEnrollments {
   });
 
   protected rowFrame(on: boolean): string {
-    return `flex items-center rounded-lg border ${
+    return `rounded-lg border ${
       on
         ? 'border-primary border-s-4 bg-accent text-accent-foreground'
         : 'border-transparent hover:bg-muted/60'
@@ -856,7 +921,7 @@ export class TrackEnrollments {
   }
 
   protected mentorLabel(m: EnrollmentMentor): string {
-    return `${m.name}${this.markText(m)}`;
+    return `${m.name}${this.markText(m)}${m.throughCohort ? ', through cohort' : ''}`;
   }
 
   protected onPage(index: number): void {
@@ -883,9 +948,15 @@ export class TrackEnrollments {
     }
   }
 
+  protected cohortMenuItems(cohort: Cohort): ActionMenuItem[] {
+    return cohort.enrollmentCount === 0 ? [...COHORT_ITEMS, DELETE_ITEM] : COHORT_ITEMS;
+  }
+
   protected onCohortAction(cohort: Cohort, key: string): void {
     if (key === 'add') {
       this.addStudentsDialog(cohort);
+    } else if (key === 'mentors') {
+      this.assignMentorsDialog(cohort);
     } else {
       void this.deleteCohortDialog(cohort);
     }
@@ -1026,12 +1097,110 @@ export class TrackEnrollments {
     this.afterChange(null);
   }
 
+  private deletionText(cohort: Cohort): string {
+    const mentors = activeFirst(cohort.mentors);
+    if (mentors.length === 0) {
+      return 'The cohort has no students. Its entries in the history stay.';
+    }
+    const names = mentors.map((m) => m.name).join(', ');
+    return `The cohort has no students. Its ${mentorsText(mentors.length)}, ${names}, ${mentors.length === 1 ? 'is' : 'are'} removed with it. Its entries in the history stay.`;
+  }
+
+  protected assignMentorsDialog(cohort: Cohort): void {
+    const id = this.trackId();
+    const data: AssignCohortMentorsDialogData = {
+      cohortName: cohort.name,
+      load: async (q, page) => {
+        try {
+          return await this.api.invoke(listCohortMentorCandidates, {
+            id,
+            cohortId: cohort.id,
+            q: q || undefined,
+            page,
+            size: PICKER_PAGE_SIZE,
+          });
+        } catch (error) {
+          if (this.explainRefusal(error, cohort)) {
+            return null;
+          }
+          throw error;
+        }
+      },
+      save: async (userIds) => {
+        try {
+          await this.api.invoke(assignCohortMentors, {
+            id,
+            cohortId: cohort.id,
+            body: { userIds },
+          });
+        } catch (error) {
+          if (this.explainRefusal(error, cohort)) {
+            return true;
+          }
+          if (problemOf(error)?.status !== 403) {
+            this.say('Could not assign the mentors. Try again.');
+          }
+          return false;
+        }
+        this.say(`${mentorsText(userIds.length)} assigned to ${cohort.name}`, {
+          duration: 5000,
+          politeness: 'polite',
+        });
+        this.afterMentorsChange();
+        return true;
+      },
+    };
+    this.dialog.open(AssignCohortMentorsDialog, {
+      contentClass: 'sm:max-w-[560px]',
+      context: data,
+    });
+  }
+
+  protected async removeCohortMentorDialog(cohort: Cohort, mentor: CohortMentor): Promise<void> {
+    const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialog, {
+      contentClass: 'sm:max-w-[420px]',
+      context: {
+        title: `Remove ${mentor.name} as a mentor of ${cohort.name}?`,
+        text: `They stop leading the students of ${cohort.name} through the cohort. A student they lead through their own enrollment stays with them. They can be assigned again later.`,
+        confirmLabel: 'Remove',
+        destructive: true,
+      },
+    });
+    if (!(await firstValueFrom(ref.closed$))) {
+      return;
+    }
+    try {
+      await this.api.invoke(removeCohortMentor, {
+        id: this.trackId(),
+        cohortId: cohort.id,
+        userId: mentor.id,
+      });
+    } catch (error) {
+      if (!this.explainRefusal(error, cohort) && problemOf(error)?.status !== 403) {
+        this.say('Could not remove the mentor. Try again.');
+      }
+      return;
+    }
+    this.say(`${mentor.name} removed as a mentor of ${cohort.name}`, {
+      duration: 5000,
+      politeness: 'polite',
+    });
+    this.afterMentorsChange();
+  }
+
+  /** The mentors of a cohort changed: the cohorts and the through-cohort marks, and the history. */
+  private afterMentorsChange(): void {
+    this.cohorts.reload();
+    this.enrollments.reload();
+    this.enrolled.emit();
+  }
+
   private async deleteCohortDialog(cohort: Cohort): Promise<void> {
     const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialog, {
       contentClass: 'sm:max-w-[420px]',
       context: {
         title: `Delete ${cohort.name}?`,
-        text: 'The cohort has no students. Its entries in the history stay.',
+        text: this.deletionText(cohort),
         confirmLabel: 'Delete',
         destructive: true,
         testIds: { dialog: 'delete-cohort-dialog', confirm: 'delete-cohort-confirm' },
@@ -1130,16 +1299,22 @@ export class TrackEnrollments {
     }
   }
 
-  protected async removeMentor(
-    enrollmentId: string,
-    studentName: string,
-    mentor: EnrollmentMentor,
-  ): Promise<void> {
+  protected async removeMentor(e: TrackEnrollment, mentor: EnrollmentMentor): Promise<void> {
+    const enrollmentId = e.id;
+    const studentName = e.student.name;
+    const through = e.cohort
+      ? this.cohortItems()
+          .find((c) => c.id === e.cohort?.id)
+          ?.mentors.some((m) => m.id === mentor.id && !isInactive(m))
+      : false;
     const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialog, {
       contentClass: 'sm:max-w-[420px]',
       context: {
         title: `Remove ${mentor.name} as a mentor of ${studentName}?`,
-        text: 'They stop being a mentor of this student. They can be assigned again later.',
+        text:
+          through && e.cohort
+            ? `They stop being a mentor of this student, but still lead ${studentName} through ${e.cohort.name}. They can be assigned again later.`
+            : 'They stop being a mentor of this student. They can be assigned again later.',
         confirmLabel: 'Remove',
         destructive: true,
       },
@@ -1203,6 +1378,11 @@ export class TrackEnrollments {
     } else if (type === PROBLEM.cohortNotEmpty) {
       this.say(
         `${cohort?.name ?? 'The cohort'} cannot be deleted: a student was added to it. The cohorts are shown as they are now.`,
+        { politeness: 'assertive' },
+      );
+    } else if (type === PROBLEM.mentorNotEligible) {
+      this.say(
+        'That user can no longer be assigned: they must be active, hold the mentor role and be a mentor of this track. No mentor was assigned. The cohorts are shown as they are now.',
         { politeness: 'assertive' },
       );
     } else if (problem?.status === 404 && cohort) {

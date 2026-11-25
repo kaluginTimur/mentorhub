@@ -2,6 +2,7 @@ package com.mentorhub.users;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -61,6 +62,9 @@ public interface UserDirectory {
 
     /** Whether the id is an active user who holds the role; {@code false} for an id no user has. */
     boolean isActiveWithRole(UUID userId, Role role);
+
+    /** The ids among the given ones of the active users who hold the role; ids no user has are left out. */
+    Set<UUID> activeWithRole(Collection<UUID> userIds, Role role);
 
     /** The contacts of the users with the given ids who are active and hold the role. */
     List<UserContact> findActiveContactsWithRole(Collection<UUID> userIds, Role role);

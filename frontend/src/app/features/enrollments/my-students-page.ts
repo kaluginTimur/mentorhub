@@ -2,6 +2,9 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, linkedSignal, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideUsers } from '@ng-icons/lucide';
+import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { Api } from '../../core/api/api';
 import { listMyStudents } from '../../core/api/fn/enrollments/list-my-students';
@@ -19,7 +22,18 @@ const PAGE_SIZE = 25;
 /** The enrollments a mentor leads (ENR-12). */
 @Component({
   selector: 'app-my-students-page',
-  imports: [DatePipe, Email, HlmCardImports, Loading, Unavailable, Paginator, AssignmentMark],
+  imports: [
+    DatePipe,
+    Email,
+    HlmBadge,
+    HlmCardImports,
+    NgIcon,
+    Loading,
+    Unavailable,
+    Paginator,
+    AssignmentMark,
+  ],
+  providers: [provideIcons({ lucideUsers })],
   template: `
     @if (students.error()) {
       <app-unavailable (retry)="students.reload()" />
@@ -65,11 +79,24 @@ const PAGE_SIZE = 25;
                             @if (!e.student.studentRole) {
                               <app-assignment-mark label="No student role" />
                             }
+                            @if (e.throughCohort && e.cohort) {
+                              <span hlmBadge variant="outline" class="border-input text-foreground">
+                                <ng-icon name="lucideUsers" aria-hidden="true" />
+                                Through {{ e.cohort.name }}
+                              </span>
+                            }
                           </div>
                           <span class="block font-mono text-xs text-muted-foreground"
                             ><app-email [value]="e.student.email"
                           /></span>
                         </div>
+                        @if (e.cohort) {
+                          <span
+                            data-testid="my-student-cohort"
+                            class="shrink-0 text-sm break-words sm:w-40"
+                            ><span class="sr-only">Cohort: </span>{{ e.cohort.name }}</span
+                          >
+                        }
                         <div class="flex shrink-0 flex-col items-end gap-1 text-sm">
                           <span class="break-words">{{ label(e.track) }}</span>
                           <span class="text-muted-foreground">

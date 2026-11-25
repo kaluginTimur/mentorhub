@@ -116,4 +116,41 @@ describe('describeTrackEntry', () => {
       expect(new Set([text(spring, autumn), text(null, autumn), text(spring, null)]).size).toBe(3);
     });
   });
+
+  describe('the mentors', () => {
+    const spring = { id: 'c1', name: 'Spring 2026' };
+    const mia = { id: 'm1', name: 'Mia Mentor' };
+    const sam = { id: 's1', name: 'Sam Student' };
+
+    it('names the mentor and the cohort of an assignment and of a removal, told apart', () => {
+      const entry = { ...base, mentor: mia, cohort: spring };
+      const assigned = describeTrackEntry({ ...entry, action: 'TRACK_COHORT_MENTOR_ASSIGNED' });
+      const removed = describeTrackEntry({ ...entry, action: 'TRACK_COHORT_MENTOR_REMOVED' });
+
+      for (const text of [assigned, removed]) {
+        expect(text).toContain('Mia Mentor');
+        expect(text).toContain('Spring 2026');
+      }
+      expect(assigned).not.toBe(removed);
+    });
+
+    it('tells a direct assignment from a cohort one', () => {
+      const direct = describeTrackEntry({
+        ...base,
+        action: 'TRACK_ENROLLMENT_MENTOR_ASSIGNED',
+        mentor: mia,
+        user: sam,
+      });
+      const viaCohort = describeTrackEntry({
+        ...base,
+        action: 'TRACK_COHORT_MENTOR_ASSIGNED',
+        mentor: mia,
+        cohort: spring,
+      });
+
+      expect(direct).toContain('directly');
+      expect(direct).toContain('Sam Student');
+      expect(viaCohort).not.toContain('directly');
+    });
+  });
 });

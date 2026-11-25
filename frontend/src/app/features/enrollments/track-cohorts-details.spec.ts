@@ -63,6 +63,7 @@ const cohort = (overrides: Partial<Cohort> = {}): Cohort => ({
   name: 'Spring 2026',
   startDate: '2026-03-01',
   enrollmentCount: 1,
+  mentors: [],
   ...overrides,
 });
 
@@ -260,10 +261,7 @@ describe('details of the cohorts on the track page', () => {
     await vi.waitFor(() => expect(allById('cohort-item')).toHaveLength(2));
     item(SPRING)?.click();
     await settle();
-    await vi.waitFor(() => expect(byId('cohort-add-students')).not.toBeNull());
-
-    byId('cohort-add-students')?.click();
-    await settle();
+    await openAddStudentsItem(settle);
 
     await vi.waitFor(() => expect(byId('add-students-dialog')).not.toBeNull());
     expect(byId('add-students-submit')?.getAttribute('aria-disabled')).toBe('true');
@@ -349,13 +347,24 @@ describe('details of the cohorts on the track page', () => {
     await settle();
   }
 
+  async function openAddStudentsItem(settle: () => Promise<void>) {
+    await vi.waitFor(() => expect(byId('cohort-actions-menu')).not.toBeNull());
+    byId('cohort-actions-menu')?.click();
+    await settle();
+    const addStudents = () =>
+      [...document.querySelectorAll<HTMLElement>('[role=menuitem]')].find(
+        (i) => i.textContent?.trim() === 'Add students',
+      );
+    await vi.waitFor(() => expect(addStudents()).toBeDefined());
+    addStudents()?.click();
+    await settle();
+  }
+
   async function openAddStudents(settle: () => Promise<void>) {
     await vi.waitFor(() => expect(allById('cohort-item')).toHaveLength(2));
     item(SPRING)?.click();
     await settle();
-    await vi.waitFor(() => expect(byId('cohort-add-students')).not.toBeNull());
-    byId('cohort-add-students')?.click();
-    await settle();
+    await openAddStudentsItem(settle);
   }
 
   const refusals: [string, number, string][] = [

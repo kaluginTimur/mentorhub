@@ -23,10 +23,11 @@ import { HlmLabel } from '@spartan-ng/helm/label';
 import { Api } from '../../core/api/api';
 import { assignEnrollmentMentor } from '../../core/api/fn/enrollments/assign-enrollment-mentor';
 import { listMentorCandidates } from '../../core/api/fn/enrollments/list-mentor-candidates';
-import { MentorCandidate } from '../../core/api/models/mentor-candidate';
-import { MentorCandidatePage } from '../../core/api/models/mentor-candidate-page';
+import { MentorAssignmentCandidate } from '../../core/api/models/mentor-assignment-candidate';
+import { MentorAssignmentCandidatePage } from '../../core/api/models/mentor-assignment-candidate-page';
 import { PROBLEM, problemOf } from '../../core/problem';
 import { Email } from '../../shared/email/email';
+import { loadText } from './cohort-mentors-text';
 
 const SEARCH_LIMIT = 100;
 const SEARCH_DELAY = 300;
@@ -94,11 +95,19 @@ export type AssignMentorResult = true | 'refused';
                   <div hlmAutocompleteList class="max-h-56">
                     @for (c of page.items; track c.id) {
                       <hlm-autocomplete-item [value]="c" class="items-start">
-                        <span class="flex min-w-0 flex-col">
-                          <span class="font-medium break-words">{{ c.name }}</span>
-                          <span class="font-mono text-xs text-muted-foreground"
-                            ><app-email [value]="c.email"
-                          /></span>
+                        <span
+                          class="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3"
+                        >
+                          <span class="flex min-w-0 flex-1 flex-col">
+                            <span class="font-medium break-words">{{ c.name }}</span>
+                            <span class="font-mono text-xs text-muted-foreground"
+                              ><app-email [value]="c.email"
+                            /></span>
+                          </span>
+                          <span
+                            class="text-xs text-muted-foreground sm:text-end sm:whitespace-nowrap"
+                            >{{ loadOf(c) }}</span
+                          >
                         </span>
                       </hlm-autocomplete-item>
                     }
@@ -182,16 +191,19 @@ export class AssignMentorDialog {
   private readonly pending = inject(PendingTasks);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  protected readonly loadOf = loadText;
   protected readonly panelState = signal<BrnOverlayState | null>(null);
-  protected readonly candidateName = (c: MentorCandidate) => c.name;
-  protected readonly sameCandidate = (a: MentorCandidate, b: MentorCandidate | null | undefined) =>
-    a.id === b?.id;
+  protected readonly candidateName = (c: MentorAssignmentCandidate) => c.name;
+  protected readonly sameCandidate = (
+    a: MentorAssignmentCandidate,
+    b: MentorAssignmentCandidate | null | undefined,
+  ) => a.id === b?.id;
   /** The search applied to the list: it follows the text 300 ms after typing stops. */
   protected readonly term = signal('');
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
   private releaseSearch: (() => void) | undefined;
 
-  protected readonly selected = signal<MentorCandidate | null>(null);
+  protected readonly selected = signal<MentorAssignmentCandidate | null>(null);
   protected readonly saving = signal(false);
   protected readonly saveFailed = signal(false);
   private readonly submitted = signal(false);
@@ -199,7 +211,7 @@ export class AssignMentorDialog {
 
   protected readonly candidates = resource({
     params: () => this.term(),
-    loader: async ({ params }): Promise<MentorCandidatePage> => {
+    loader: async ({ params }): Promise<MentorAssignmentCandidatePage> => {
       try {
         return await this.api.invoke(listMentorCandidates, {
           id: this.data.enrollmentId,
@@ -218,8 +230,8 @@ export class AssignMentorDialog {
   protected readonly failed = computed(() => !!this.candidates.error());
   /** The last loaded page: it stays on screen while the next one loads. */
   protected readonly loaded = linkedSignal<
-    MentorCandidatePage | undefined,
-    MentorCandidatePage | null
+    MentorAssignmentCandidatePage | undefined,
+    MentorAssignmentCandidatePage | null
   >({
     source: () => (this.candidates.hasValue() ? this.candidates.value() : undefined),
     computation: (page, previous) => page ?? previous?.value ?? null,
@@ -246,7 +258,7 @@ export class AssignMentorDialog {
     }, SEARCH_DELAY);
   }
 
-  protected onChoose(candidate: MentorCandidate | null | undefined): void {
+  protected onChoose(candidate: MentorAssignmentCandidate | null | undefined): void {
     this.selected.set(candidate ?? null);
     this.saveFailed.set(false);
     if (!candidate) {

@@ -145,6 +145,14 @@ final class TracksMapper {
                 dto.setUser(historyActor(item.user()));
                 dto.setCohortChange(new CohortChange(cohortReference(from), cohortReference(to)));
             }
+            case com.mentorhub.tracks.internal.domain.TrackChange.CohortMentorAssigned(var cohort, var _) -> {
+                dto.setCohort(cohortReference(cohort));
+                dto.setMentor(historyActor(item.mentor()));
+            }
+            case com.mentorhub.tracks.internal.domain.TrackChange.CohortMentorRemoved(var cohort, var _) -> {
+                dto.setCohort(cohortReference(cohort));
+                dto.setMentor(historyActor(item.mentor()));
+            }
         }
         return dto;
     }
