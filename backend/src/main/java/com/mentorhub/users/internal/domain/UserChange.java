@@ -282,4 +282,33 @@ public sealed interface UserChange {
             return UserAuditAction.USER_COHORT_CHANGED;
         }
     }
+
+    /** The user was assigned as a mentor of the cohort of the track, both given with their names at that moment. */
+    record CohortMentorAssigned(CohortRef cohort, HistoryTrack track) implements UserChange {
+        public CohortMentorAssigned {
+            Objects.requireNonNull(cohort, "cohort");
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_COHORT_MENTOR_ASSIGNED;
+        }
+    }
+
+    /**
+     * The user was removed as a mentor of the cohort of the track, or the cohort was deleted, both given with their
+     * names at that moment.
+     */
+    record CohortMentorRemoved(CohortRef cohort, HistoryTrack track) implements UserChange {
+        public CohortMentorRemoved {
+            Objects.requireNonNull(cohort, "cohort");
+            Objects.requireNonNull(track, "track");
+        }
+
+        @Override
+        public UserAuditAction action() {
+            return UserAuditAction.USER_COHORT_MENTOR_REMOVED;
+        }
+    }
 }

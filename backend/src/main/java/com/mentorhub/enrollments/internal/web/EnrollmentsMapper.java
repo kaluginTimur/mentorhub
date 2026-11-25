@@ -10,8 +10,8 @@ import com.mentorhub.api.model.EnrollmentCandidatePage;
 import com.mentorhub.api.model.EnrollmentContact;
 import com.mentorhub.api.model.EnrollmentMentor;
 import com.mentorhub.api.model.EnrollmentStatus;
-import com.mentorhub.api.model.MentorCandidate;
-import com.mentorhub.api.model.MentorCandidatePage;
+import com.mentorhub.api.model.MentorAssignmentCandidate;
+import com.mentorhub.api.model.MentorAssignmentCandidatePage;
 import com.mentorhub.api.model.MentoredEnrollment;
 import com.mentorhub.api.model.MentoredEnrollmentPage;
 import com.mentorhub.api.model.MyEnrollment;
@@ -59,14 +59,17 @@ final class EnrollmentsMapper {
                                 mentor.name(),
                                 mentor.email(),
                                 mentor.disabled(),
-                                mentor.roles().contains(Role.MENTOR)))
+                                mentor.roles().contains(Role.MENTOR),
+                                // Placeholder until the mentors of a cohort are implemented (cohort-mentors task 3).
+                                false))
                         .toList());
     }
 
-    static MentorCandidatePage mentorCandidatePage(EnrollmentPage<DirectoryUser> page) {
-        return new MentorCandidatePage(
+    static MentorAssignmentCandidatePage mentorCandidatePage(EnrollmentPage<DirectoryUser> page) {
+        return new MentorAssignmentCandidatePage(
                 page.items().stream()
-                        .map(user -> new MentorCandidate(user.id(), user.name(), user.email()))
+                        // Placeholder counts until the candidates' load is implemented (cohort-mentors task 3).
+                        .map(user -> new MentorAssignmentCandidate(user.id(), user.name(), user.email(), 0, 0))
                         .toList(),
                 page.page(),
                 page.size(),
@@ -103,7 +106,10 @@ final class EnrollmentsMapper {
                                 enrolledStudent(item.student()),
                                 trackReference(item.track()),
                                 item.startDate(),
-                                EnrollmentStatus.valueOf(item.status().name())))
+                                EnrollmentStatus.valueOf(item.status().name()),
+                                // Placeholders until the mentors of a cohort are implemented (cohort-mentors task 3).
+                                null,
+                                false))
                         .toList(),
                 page.page(),
                 page.size(),
@@ -111,7 +117,8 @@ final class EnrollmentsMapper {
     }
 
     static Cohort cohort(CohortItem item) {
-        return new Cohort(item.id(), item.name(), item.startDate(), item.enrollmentCount());
+        // Placeholder mentors until the mentors of a cohort are implemented (cohort-mentors task 3).
+        return new Cohort(item.id(), item.name(), item.startDate(), item.enrollmentCount(), List.of());
     }
 
     static CohortCandidatePage cohortCandidatePage(EnrollmentPage<CohortCandidateItem> page) {

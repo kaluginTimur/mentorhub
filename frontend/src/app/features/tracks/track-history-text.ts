@@ -28,6 +28,10 @@ export function describeTrackEntry(entry: TrackHistoryEntry): string {
       return `Assigned ${entry.mentor?.name ?? 'a mentor'} as a mentor of ${user}`;
     case 'TRACK_ENROLLMENT_MENTOR_REMOVED':
       return `Removed ${entry.mentor?.name ?? 'a mentor'} as a mentor of ${user}`;
+    case 'TRACK_COHORT_MENTOR_ASSIGNED':
+      return `Assigned ${entry.mentor?.name ?? 'a mentor'} as a mentor of the cohort ${entry.cohort?.name ?? ''}`;
+    case 'TRACK_COHORT_MENTOR_REMOVED':
+      return `Removed ${entry.mentor?.name ?? 'a mentor'} as a mentor of the cohort ${entry.cohort?.name ?? ''}`;
     case 'TRACK_COHORT_CREATED':
       return `Created the cohort ${entry.cohort?.name ?? ''}${entry.startDate ? `, starting ${formatCalendarDate(entry.startDate)}` : ''}`;
     case 'TRACK_COHORT_DELETED':

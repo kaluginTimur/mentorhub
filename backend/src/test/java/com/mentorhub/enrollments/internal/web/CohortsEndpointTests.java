@@ -116,6 +116,11 @@ class CohortsEndpointTests {
         cohorts.put(inCohort, full);
         UUID free = enrollments.enroll(
                 person("b@x.test", "Boris", "Free", UserStatus.ACTIVE, Role.STUDENT), track, admin, START);
+        UUID ledMentor = person("m0@x.test", "Mia", "Led", UserStatus.ACTIVE, Role.MENTOR);
+        UUID newMentor = person("m1@x.test", "Max", "New", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(track, ledMentor);
+        tracks.addMentor(track, newMentor);
+        cohorts.addMentor(full, ledMentor, admin);
         String base = "/api/v1/tracks/" + track;
 
         for (String caller : List.of("eva", "rita")) {
@@ -140,6 +145,18 @@ class CohortsEndpointTests {
                     HttpStatus.FORBIDDEN,
                     Problems.FORBIDDEN);
             assertProblem(
+                    send(HttpMethod.GET, base + "/cohorts/" + empty + "/mentor-candidates", "", caller),
+                    HttpStatus.FORBIDDEN,
+                    Problems.FORBIDDEN);
+            assertProblem(
+                    send(HttpMethod.POST, base + "/cohorts/" + empty + "/mentors", assignment(newMentor), caller),
+                    HttpStatus.FORBIDDEN,
+                    Problems.FORBIDDEN);
+            assertProblem(
+                    send(HttpMethod.DELETE, base + "/cohorts/" + full + "/mentors/" + ledMentor, "", caller),
+                    HttpStatus.FORBIDDEN,
+                    Problems.FORBIDDEN);
+            assertProblem(
                     send(HttpMethod.DELETE, base + "/cohorts/" + empty, "", caller),
                     HttpStatus.FORBIDDEN,
                     Problems.FORBIDDEN);
@@ -155,6 +172,10 @@ class CohortsEndpointTests {
                 .containsExactly(1);
         assertThat(ids(list, "$.items[?(@.id == '" + empty + "')].enrollmentCount"))
                 .containsExactly(0);
+        assertThat(ids(list, "$.items[?(@.id == '" + full + "')].mentors[*].id"))
+                .containsExactly(ledMentor.toString());
+        assertThat(ids(list, "$.items[?(@.id == '" + empty + "')].mentors[*].id"))
+                .isEmpty();
         assertThat(cohortOf(track, free)).isNull();
         assertThat(users.count("audit_log")).isZero();
     }
@@ -184,6 +205,9 @@ class CohortsEndpointTests {
                 assertNotFound(send(HttpMethod.GET, path + "/candidates", "", caller));
                 assertNotFound(send(HttpMethod.POST, path + "/enrollments", addition(someEnrollment), caller));
                 assertNotFound(send(HttpMethod.DELETE, path + "/enrollments/" + someEnrollment, "", caller));
+                assertNotFound(send(HttpMethod.GET, path + "/mentor-candidates", "", caller));
+                assertNotFound(send(HttpMethod.POST, path + "/mentors", assignment(UUID.randomUUID()), caller));
+                assertNotFound(send(HttpMethod.DELETE, path + "/mentors/" + UUID.randomUUID(), "", caller));
                 assertNotFound(send(HttpMethod.DELETE, path, "", caller));
             }
         }
@@ -278,6 +302,11 @@ class CohortsEndpointTests {
     void theCohortsOfAnArchivedTrackCannotBeChanged() {
         UUID track = tracks.archived("QA", "Quality Assurance");
         UUID cohort = cohorts.create(track, "Spring", START);
+        UUID ledMentor = person("m0@x.test", "Mia", "Led", UserStatus.ACTIVE, Role.MENTOR);
+        UUID otherMentor = person("m1@x.test", "Max", "Other", UserStatus.ACTIVE, Role.MENTOR);
+        tracks.addMentor(track, ledMentor);
+        tracks.addMentor(track, otherMentor);
+        cohorts.addMentor(cohort, ledMentor, admin);
         String base = "/api/v1/tracks/" + track;
         UUID someEnrollment = UUID.randomUUID();
 
@@ -300,11 +329,28 @@ class CohortsEndpointTests {
                 HttpStatus.CONFLICT,
                 TRACK_ARCHIVED);
         assertProblem(
+                send(HttpMethod.GET, base + "/cohorts/" + cohort + "/mentor-candidates", "", "admin"),
+                HttpStatus.CONFLICT,
+                TRACK_ARCHIVED);
+        assertProblem(
+                send(HttpMethod.POST, base + "/cohorts/" + cohort + "/mentors", assignment(otherMentor), "admin"),
+                HttpStatus.CONFLICT,
+                TRACK_ARCHIVED);
+        assertProblem(
+                send(HttpMethod.POST, base + "/cohorts/" + cohort + "/mentors", assignment(ledMentor), "admin"),
+                HttpStatus.CONFLICT,
+                TRACK_ARCHIVED);
+        assertProblem(
+                send(HttpMethod.DELETE, base + "/cohorts/" + cohort + "/mentors/" + ledMentor, "", "admin"),
+                HttpStatus.CONFLICT,
+                TRACK_ARCHIVED);
+        assertProblem(
                 send(HttpMethod.DELETE, base + "/cohorts/" + cohort, "", "admin"), HttpStatus.CONFLICT, TRACK_ARCHIVED);
 
         MvcTestResult list = send(HttpMethod.GET, base + "/cohorts", "", "admin");
         assertThat(list).hasStatusOk();
         assertThat(ids(list, "$.items[*].id")).containsExactly(cohort.toString());
+        assertThat(ids(list, "$.items[0].mentors[*].id")).containsExactly(ledMentor.toString());
         assertThat(users.count("audit_log")).isZero();
     }
 
@@ -585,6 +631,10 @@ class CohortsEndpointTests {
     private static String newCohort(String name, List<UUID> enrollmentIds) {
         return "{\"name\": \"%s\", \"startDate\": \"2026-03-01\", \"enrollmentIds\": %s}"
                 .formatted(name, idArray(enrollmentIds));
+    }
+
+    private static String assignment(UUID... userIds) {
+        return "{\"userIds\": %s}".formatted(idArray(List.of(userIds)));
     }
 
     private static String addition(UUID... enrollmentIds) {

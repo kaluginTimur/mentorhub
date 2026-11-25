@@ -96,11 +96,11 @@ paths:
     get:
       tags: [Enrollments]
       operationId: listMyStudents
-      summary: Page of the enrollments the caller is a mentor of
+      summary: Page of the enrollments the caller leads
       description: |
-        Requires `ENROLLMENTS_READ_MENTORED`. Only the enrollments the caller is a mentor of at the time of the
-        request, none of anyone else's; empty for a caller who leads no enrollment. Sorted by the student's name
-        (case-insensitive), then by the student's email, then by id.
+        Requires `ENROLLMENTS_READ_MENTORED`. Only the active enrollments the caller leads at the time of the request,
+        as a mentor of the enrollment or of its cohort, each once, none of anyone else's; empty for a caller who leads
+        no enrollment. Sorted by the student's name (case-insensitive), then by the student's email, then by id.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -973,7 +973,8 @@ paths:
       description: |
         Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
         time of the request. Any mentor can be removed, also one who is disabled or no longer has the `MENTOR` role,
-        unless they are a mentor of an active enrollment on the track: 409 `mentor-leads-enrollments`. Removing a user
+        unless they are a mentor of an active enrollment on the track: 409 `mentor-leads-enrollments`, or else a
+        mentor of a cohort of the track, with enrollments or without: 409 `mentor-leads-cohorts`. Removing a user
         who is not a mentor of the track, or an id no user has, changes nothing and responds 200; on an archived track
         it is 409 `track-archived` like any change. Checked in this order: the permission (403), the parameters (400),
         the track (404), the relation (403 `forbidden`), then the conflicts (409) in the order the response lists
@@ -1012,9 +1013,9 @@ paths:
         - name: mentor
           in: query
           description: |
-            Narrows the page to the enrollments the user is a mentor of, each still with all its mentors; the order
-            and the paging are unchanged. An id no user has, or of a user who is a mentor of no enrollment on the
-            track, gives an empty page, not an error.
+            Narrows the page to the enrollments the user leads, as a mentor of the enrollment or of its cohort, each
+            still with all its mentors; the order and the paging are unchanged. An id no user has, or of a user who
+            leads no enrollment on the track, gives an empty page, not an error.
           schema:
             type: string
             format: uuid
@@ -1186,11 +1187,12 @@ paths:
     delete:
       tags: [Cohorts]
       operationId: deleteCohort
-      summary: Delete an empty cohort of an active track
+      summary: Delete a cohort without enrollments of an active track
       description: |
         Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
-        time of the request. Only a cohort without enrollments is deleted; its entries in the histories stay. A cohort
-        of another track is not found. Checked in this order: the permission (403), the parameters (400), the track
+        time of the request. Only a cohort without enrollments is deleted, whether or not it has mentors; its mentors
+        are removed with it, each recorded as a removal. Its entries in the histories stay. A cohort of another track
+        is not found. Checked in this order: the permission (403), the parameters (400), the track
         and the cohort (404), the relation (403 `forbidden`), then the conflicts (409) in the order the response lists
         them.
       parameters:
@@ -1265,6 +1267,124 @@ paths:
       responses:
         '204':
           description: The enrollment is in no cohort, or was not in this one
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/cohorts/{cohortId}/mentors:
+    post:
+      tags: [Cohorts]
+      operationId: assignCohortMentors
+      summary: Assign users as mentors of a cohort of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. A mentor of a cohort leads every active enrollment in it at the time of each request,
+        enrollments added later included, without being a mentor of those enrollments. All or nothing: each user given
+        must be an active user with the `MENTOR` role who is a mentor of the track, a student of the cohort and the
+        caller included, or nothing is stored: 409 `mentor-not-eligible`; a disabled user, a user without the role, a
+        user who is not a mentor of the track and an id no user has are refused alike. A user who is already a mentor
+        of the cohort, even one no longer eligible (disabled or without the role), or an id given twice, changes
+        nothing more. A cohort of another track, or one deleted meanwhile, is not found. Checked in this order: the
+        permission (403), the request (400), the track and the cohort (404), the relation (403 `forbidden`), then the
+        conflicts (409) in the order the response lists them.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CohortMentorsAssignment'
+      responses:
+        '200':
+          description: The cohort after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cohort'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/CohortMentorConflict'
+  /api/v1/tracks/{id}/cohorts/{cohortId}/mentors/{userId}:
+    delete:
+      tags: [Cohorts]
+      operationId: removeCohortMentor
+      summary: Remove a mentor of a cohort of an active track
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request. Any mentor of the cohort can be removed, also one who is disabled or no longer has the
+        `MENTOR` role; a mentor of an enrollment in the cohort stays its mentor. Removing a user who is not a mentor of
+        the cohort, or an id no user has, changes nothing and responds 200; on an archived track it is 409
+        `track-archived` like any change. A cohort of another track is not found. Checked in this order: the
+        permission (403), the parameters (400), the track and the cohort (404), the relation (403 `forbidden`), its
+        status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+        - $ref: '#/components/parameters/MentorUserId'
+      responses:
+        '200':
+          description: The cohort after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cohort'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackArchived'
+  /api/v1/tracks/{id}/cohorts/{cohortId}/mentor-candidates:
+    get:
+      tags: [Cohorts]
+      operationId: listCohortMentorCandidates
+      summary: Page of the users who may be assigned as mentors of a cohort
+      description: |
+        Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the track at the
+        time of the request; `USERS_READ` is not needed. The active users with the `MENTOR` role who are mentors of
+        the track and not mentors of the cohort, a mentor of an enrollment in the cohort included, each with what they
+        lead on the track, sorted by name (case-insensitive), then by email, then by id. A cohort of another track is
+        not found. An archived track has no candidates to offer until it is restored: 409 `track-archived`. Checked in
+        this order: the permission (403), the request (400), the track and the cohort (404), the relation (403
+        `forbidden`), its status (409).
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - $ref: '#/components/parameters/CohortId'
+        - name: q
+          in: query
+          description: |
+            Case-insensitive substring of the email, first name or last name, after trimming;
+            `%`, `_` and `\` match themselves. At most 100 characters after trimming.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorAssignmentCandidatePage'
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
@@ -1375,8 +1495,9 @@ paths:
       description: |
         Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
         track at the time of the request; `USERS_READ` is not needed. The active users with the `MENTOR` role who are
-        mentors of the enrollment's track and not mentors of the enrollment, sorted by name (case-insensitive), then by
-        email, then by id. Checked in this order: the permission (403), the request (400), the enrollment (404), the
+        mentors of the enrollment's track and not mentors of the enrollment, a mentor of its cohort included, each with
+        what they lead on the track, sorted by name (case-insensitive), then by email, then by id. Checked in this
+        order: the permission (403), the request (400), the enrollment (404), the
         relation (403 `forbidden`).
       parameters:
         - $ref: '#/components/parameters/EnrollmentId'
@@ -1395,7 +1516,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MentorCandidatePage'
+                $ref: '#/components/schemas/MentorAssignmentCandidatePage'
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
@@ -1416,7 +1537,8 @@ paths:
         student's status or roles; a disabled user, a user without the role, a user who is not a mentor of the track
         and an id no user has are refused alike with 409 `mentor-not-eligible`. Assigning a mentor of
         the enrollment again changes nothing and responds 200, even when they are no longer eligible (disabled or
-        without the role). The operation has no request body. Checked in this order: the permission (403), the
+        without the role). A mentor of the enrollment's cohort is assigned directly, as any other user. The operation
+        has no request body. Checked in this order: the permission (403), the
         parameters (400), the enrollment (404), the relation (403 `forbidden`), the eligibility (409).
       parameters:
         - $ref: '#/components/parameters/EnrollmentId'
@@ -1446,7 +1568,8 @@ paths:
         Requires `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and being a coordinator of the enrollment's
         track at the time of the request. Any mentor can be removed, also one who is disabled or no longer has the
         `MENTOR` role. Removing a user who is not a mentor of the enrollment, or an id no user has, changes nothing and
-        responds 200. Checked in this order: the permission (403), the parameters (400), the enrollment (404), the
+        responds 200; so does removing a mentor of the enrollment's cohort who is not a mentor of the enrollment
+        itself, who still leads it through the cohort. Checked in this order: the permission (403), the parameters (400), the enrollment (404), the
         relation (403 `forbidden`).
       parameters:
         - $ref: '#/components/parameters/EnrollmentId'
@@ -1709,7 +1832,10 @@ components:
         The mentor was not removed; nothing was changed. Problem type is one of, checked in this order:
         - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
         - `urn:mentorhub:problem:mentor-leads-enrollments`: the user is a mentor of an active enrollment on the track;
-          removed from those enrollments first, they can be removed from the track.
+          removed from those enrollments first, they can be removed from the track;
+        - `urn:mentorhub:problem:mentor-leads-cohorts`: the user is a mentor of no active enrollment on the track but
+          of a cohort of it, with enrollments or without; removed from those cohorts first, they can be removed from
+          the track.
       content:
         application/problem+json:
           schema:
@@ -1750,6 +1876,16 @@ components:
         - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
         - `urn:mentorhub:problem:cohort-not-empty`: an enrollment is in the cohort; taken out first, the cohort can be
           deleted.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    CohortMentorConflict:
+      description: |
+        No mentor was assigned; nothing was changed. Problem type is one of, checked in this order:
+        - `urn:mentorhub:problem:track-archived`: the track is archived and read-only until restored;
+        - `urn:mentorhub:problem:mentor-not-eligible`: an id given is not a mentor of the cohort and no active user
+          with the `MENTOR` role who is a mentor of the track has it.
       content:
         application/problem+json:
           schema:
@@ -1877,6 +2013,7 @@ components:
         `urn:mentorhub:problem:coordinator-not-eligible`, `urn:mentorhub:problem:track-has-active-enrollments`,
         `urn:mentorhub:problem:student-not-eligible`, `urn:mentorhub:problem:student-already-enrolled`,
         `urn:mentorhub:problem:mentor-not-eligible`, `urn:mentorhub:problem:mentor-leads-enrollments`,
+        `urn:mentorhub:problem:mentor-leads-cohorts`,
         `urn:mentorhub:problem:enrollment-not-eligible`, `urn:mentorhub:problem:cohort-not-empty`,
         `urn:mentorhub:problem:cohort-not-eligible`.
         Other errors use `about:blank`.
@@ -2109,7 +2246,11 @@ components:
         - `USER_STUDENT_REMOVED`: details `user`, `track`; the user was removed as a mentor of the enrollment of the
           student `user` on the track;
         - `USER_COHORT_CHANGED`: details `track`, `cohortChange`; the user's enrollment on the track was put into a
-          cohort, moved to another or taken out.
+          cohort, moved to another or taken out;
+        - `USER_COHORT_MENTOR_ASSIGNED`: details `cohort`, `track`; the user was assigned as a mentor of the cohort of
+          the track;
+        - `USER_COHORT_MENTOR_REMOVED`: details `cohort`, `track`; the user was removed as a mentor of the cohort of
+          the track, or the cohort was deleted.
       enum:
         - USER_DISABLED
         - USER_ENABLED
@@ -2127,6 +2268,8 @@ components:
         - USER_STUDENT_ASSIGNED
         - USER_STUDENT_REMOVED
         - USER_COHORT_CHANGED
+        - USER_COHORT_MENTOR_ASSIGNED
+        - USER_COHORT_MENTOR_REMOVED
     HistoryActor:
       type: object
       additionalProperties: false
@@ -2193,7 +2336,9 @@ components:
           description: The mentor assigned or removed, with their name as it is now.
         cohort:
           $ref: '#/components/schemas/CohortReference'
-          description: The cohort the user was enrolled into, with its name at that moment.
+          description: |
+            The cohort the user was enrolled into, or was assigned to or removed from as a mentor, with its name at
+            that moment.
         cohortChange:
           $ref: '#/components/schemas/CohortChange'
     ProfileField:
@@ -2517,8 +2662,8 @@ components:
             `ENROLLMENTS_MANAGE`, or `ENROLLMENTS_MANAGE_COORDINATED` and are a coordinator of the track. Whatever the
             status: an archived track still refuses enrolling and any change to its mentors with 409 `track-archived`.
             The same check allows assigning and removing the mentors of the track's enrollments, and creating and
-            deleting its cohorts and changing their enrollments; an archived track refuses those with 409
-            `track-archived` too.
+            deleting its cohorts and changing their enrollments and their mentors; an archived track refuses those
+            with 409 `track-archived` too.
     TrackCoordinator:
       type: object
       description: |
@@ -2548,7 +2693,7 @@ components:
       type: object
       description: |
         A mentor of a track. While the user is disabled or does not hold the `MENTOR` role, they are not assigned to
-        the track's enrollments; they stay a mentor of the track until removed.
+        the track's enrollments or cohorts; they stay a mentor of the track until removed.
       additionalProperties: false
       required: [id, name, email, disabled, mentorRole, students]
       properties:
@@ -2574,9 +2719,9 @@ components:
           format: int32
           minimum: 0
           description: |
-            The number of active enrollments on the track the user is a mentor of, whatever the marks of their
-            students. Needs no `ENROLLMENTS_READ`; listing those enrollments does (`listTrackEnrollments` with
-            `mentor`).
+            The number of active enrollments on the track the user leads, as a mentor of the enrollment or of its
+            cohort, each counted once, whatever the marks of their students. Needs no `ENROLLMENTS_READ`; listing
+            those enrollments does (`listTrackEnrollments` with `mentor`).
     TrackList:
       type: object
       additionalProperties: false
@@ -2633,7 +2778,10 @@ components:
         - `TRACK_COHORT_CREATED`: details `cohort`, `startDate`; the cohort was created on the track;
         - `TRACK_COHORT_DELETED`: details `cohort`, `startDate`; the cohort was deleted;
         - `TRACK_ENROLLMENT_COHORT_CHANGED`: details `user`, `cohortChange`; the enrollment of the student `user` on
-          the track was put into a cohort, moved to another or taken out.
+          the track was put into a cohort, moved to another or taken out;
+        - `TRACK_COHORT_MENTOR_ASSIGNED`: details `cohort`, `mentor`; the mentor was assigned to the cohort;
+        - `TRACK_COHORT_MENTOR_REMOVED`: details `cohort`, `mentor`; the mentor was removed from the cohort, or the
+          cohort was deleted.
       enum:
         - TRACK_CREATED
         - TRACK_UPDATED
@@ -2649,6 +2797,8 @@ components:
         - TRACK_COHORT_CREATED
         - TRACK_COHORT_DELETED
         - TRACK_ENROLLMENT_COHORT_CHANGED
+        - TRACK_COHORT_MENTOR_ASSIGNED
+        - TRACK_COHORT_MENTOR_REMOVED
     TrackHistoryEntry:
       type: object
       description: |
@@ -2696,7 +2846,8 @@ components:
         cohort:
           $ref: '#/components/schemas/CohortReference'
           description: |
-            The cohort created or deleted, or the cohort the student was enrolled into, with its name at that moment.
+            The cohort created or deleted, the cohort the student was enrolled into, or the cohort the mentor was
+            assigned to or removed from, with its name at that moment.
         cohortChange:
           $ref: '#/components/schemas/CohortChange'
     TrackField:
@@ -2824,16 +2975,18 @@ components:
             - type: 'null'
         mentors:
           type: array
-          description: Every mentor of the enrollment, sorted by name (case-insensitive), then by email; may be empty.
+          description: |
+            Every mentor who leads the enrollment, of the enrollment and of its cohort, each once, sorted by name
+            (case-insensitive), then by email; may be empty.
           items:
             $ref: '#/components/schemas/EnrollmentMentor'
     EnrollmentMentor:
       type: object
       description: |
-        A mentor of an enrollment. The assignment grants nothing while the user is disabled or does not hold the
-        `MENTOR` role; it stays until it is removed.
+        A mentor who leads an enrollment, as a mentor of the enrollment or of its cohort. The assignment grants nothing
+        while the user is disabled or does not hold the `MENTOR` role; it stays until it is removed.
       additionalProperties: false
-      required: [id, name, email, disabled, mentorRole]
+      required: [id, name, email, disabled, mentorRole, throughCohort]
       properties:
         id:
           type: string
@@ -2852,6 +3005,11 @@ components:
         mentorRole:
           type: boolean
           description: The user holds the `MENTOR` role.
+        throughCohort:
+          type: boolean
+          description: |
+            The user leads the enrollment only as a mentor of its cohort, not as a mentor of the enrollment itself; so
+            they are not removed from it with `removeEnrollmentMentor`.
     TrackEnrollmentPage:
       type: object
       additionalProperties: false
@@ -2913,8 +3071,7 @@ components:
     MentorCandidate:
       type: object
       description: |
-        An active user with the `MENTOR` role who is not a mentor of the track, or of the enrollment, it is listed for;
-        for an enrollment, also a mentor of its track.
+        An active user with the `MENTOR` role who is not a mentor of the track it is listed for.
       additionalProperties: false
       required: [id, name, email]
       properties:
@@ -2949,11 +3106,62 @@ components:
           type: integer
           format: int64
           description: The number of matching items on all pages.
+    MentorAssignmentCandidate:
+      type: object
+      description: |
+        An active user with the `MENTOR` role who is a mentor of the track and not a mentor of the enrollment, or of
+        the cohort, it is listed for, with what they lead on the track.
+      additionalProperties: false
+      required: [id, name, email, students, cohorts]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+        students:
+          type: integer
+          format: int32
+          minimum: 0
+          description: |
+            The number of active enrollments on the track the user leads, as `TrackMentor.students` counts them.
+        cohorts:
+          type: integer
+          format: int32
+          minimum: 0
+          description: The number of cohorts of the track the user is a mentor of, with enrollments or without.
+    MentorAssignmentCandidatePage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MentorAssignmentCandidate'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number.
+        size:
+          type: integer
+          format: int32
+          description: The requested page size.
+        totalItems:
+          type: integer
+          format: int64
+          description: The number of matching items on all pages.
     EnrollmentContact:
       type: object
       description: |
         A person the student of an enrollment contacts: a coordinator of the enrollment's track who is active and holds
-        the `COORDINATOR` role, or a mentor of the enrollment who is active and holds the `MENTOR` role.
+        the `COORDINATOR` role, or a mentor of the enrollment or of its cohort who is active and holds the `MENTOR`
+        role.
       additionalProperties: false
       required: [name, email, phone]
       properties:
@@ -2994,8 +3202,8 @@ components:
         mentors:
           type: array
           description: |
-            The mentors of the enrollment who are active and hold the `MENTOR` role, sorted by name (case-insensitive),
-            then by email; may be empty.
+            The mentors who lead the enrollment, of the enrollment and of its cohort, each once, who are active and
+            hold the `MENTOR` role, sorted by name (case-insensitive), then by email; may be empty.
           items:
             $ref: '#/components/schemas/EnrollmentContact'
     MyEnrollmentList:
@@ -3009,9 +3217,9 @@ components:
             $ref: '#/components/schemas/MyEnrollment'
     MentoredEnrollment:
       type: object
-      description: An enrollment the caller is a mentor of.
+      description: An enrollment the caller leads, as a mentor of the enrollment or of its cohort.
       additionalProperties: false
-      required: [id, student, track, startDate, status]
+      required: [id, student, track, startDate, status, cohort, throughCohort]
       properties:
         id:
           type: string
@@ -3027,6 +3235,14 @@ components:
           examples: ['2026-09-01']
         status:
           $ref: '#/components/schemas/EnrollmentStatus'
+        cohort:
+          description: The cohort the enrollment is in, with its name as it is now; `null` for none.
+          oneOf:
+            - $ref: '#/components/schemas/CohortReference'
+            - type: 'null'
+        throughCohort:
+          type: boolean
+          description: The caller leads the enrollment only as a mentor of its cohort, not of the enrollment itself.
     MentoredEnrollmentPage:
       type: object
       additionalProperties: false
@@ -3082,7 +3298,7 @@ components:
       type: object
       description: A cohort of a track, an intake.
       additionalProperties: false
-      required: [id, name, startDate, enrollmentCount]
+      required: [id, name, startDate, enrollmentCount, mentors]
       properties:
         id:
           type: string
@@ -3100,6 +3316,38 @@ components:
           format: int32
           minimum: 0
           description: The number of active enrollments in the cohort, whatever the marks of their students.
+        mentors:
+          type: array
+          description: |
+            The mentors of the cohort, who lead each of its active enrollments, sorted by name (case-insensitive), then
+            by email; may be empty.
+          items:
+            $ref: '#/components/schemas/CohortMentor'
+    CohortMentor:
+      type: object
+      description: |
+        A mentor of a cohort. The assignment grants nothing while the user is disabled or does not hold the `MENTOR`
+        role; it stays until it is removed.
+      additionalProperties: false
+      required: [id, name, email, disabled, mentorRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The user's id.
+        name:
+          type: string
+          description: First and last name joined by a space, or the email when both are missing.
+          examples: [Anna Petrova]
+        email:
+          type: string
+          examples: [anna@example.com]
+        disabled:
+          type: boolean
+          description: The user is disabled.
+        mentorRole:
+          type: boolean
+          description: The user holds the `MENTOR` role.
     CohortList:
       type: object
       additionalProperties: false
@@ -3181,3 +3429,16 @@ components:
           type: integer
           format: int64
           description: The number of matching items on all pages.
+    CohortMentorsAssignment:
+      type: object
+      description: The users to assign as mentors of a cohort.
+      additionalProperties: false
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          description: The mentors of the track to assign; at least one.
+          minItems: 1
+          items:
+            type: string
+            format: uuid

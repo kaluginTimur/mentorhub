@@ -200,6 +200,14 @@ final class UsersMapper {
                 dto.setTrack(trackReference(track));
                 dto.setCohortChange(new CohortChange(cohortReference(from), cohortReference(to)));
             }
+            case UserChange.CohortMentorAssigned(var cohort, var track) -> {
+                dto.setCohort(cohortReference(cohort));
+                dto.setTrack(trackReference(track));
+            }
+            case UserChange.CohortMentorRemoved(var cohort, var track) -> {
+                dto.setCohort(cohortReference(cohort));
+                dto.setTrack(trackReference(track));
+            }
         }
         return dto;
     }

@@ -142,8 +142,8 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 | `USER_TRACK_MENTOR_REMOVED` | user | Written with `TRACK_MENTOR_REMOVED`, about the removed user | the person who removed | the track, with its code and name at that moment |
 | `TRACK_STUDENT_ENROLLED` | track | A coordinator of the track or an administrator enrolls a student on it | the person who enrolled | the student and the start date, and the cohort with its name when enrolled into one |
 | `USER_ENROLLED` | user | Written with `TRACK_STUDENT_ENROLLED`, about the enrolled student | the person who enrolled | the track, with its code and name at that moment, and the start date, and the cohort with its name when enrolled into one |
-| `TRACK_ENROLLMENT_MENTOR_ASSIGNED` | track | A coordinator of the track or an administrator assigns a user who is not yet a mentor of an enrollment on it | the person who assigned | the student and the mentor |
-| `TRACK_ENROLLMENT_MENTOR_REMOVED` | track | A coordinator of the track or an administrator removes a mentor of an enrollment on it | the person who removed | the student and the mentor |
+| `TRACK_ENROLLMENT_MENTOR_ASSIGNED` | track | A coordinator of the track or an administrator assigns a user who is not yet a mentor of an enrollment on it, directly (ENR-9) | the person who assigned | the student and the mentor |
+| `TRACK_ENROLLMENT_MENTOR_REMOVED` | track | A coordinator of the track or an administrator removes a mentor of an enrollment on it, assigned directly | the person who removed | the student and the mentor |
 | `USER_MENTOR_ASSIGNED` | user | Written with `TRACK_ENROLLMENT_MENTOR_ASSIGNED`, about the student | the person who assigned | the mentor, and the track with its code and name at that moment |
 | `USER_MENTOR_REMOVED` | user | Written with `TRACK_ENROLLMENT_MENTOR_REMOVED`, about the student | the person who removed | the mentor, and the track with its code and name at that moment |
 | `USER_STUDENT_ASSIGNED` | user | Written with `TRACK_ENROLLMENT_MENTOR_ASSIGNED`, about the mentor | the person who assigned | the student, and the track with its code and name at that moment |
@@ -152,6 +152,10 @@ The system SHALL write exactly the entries of the catalog below, at the moment, 
 | `TRACK_COHORT_DELETED` | track | A coordinator of the track or an administrator deletes a cohort of it | the person who deleted | the cohort's name and start date |
 | `TRACK_ENROLLMENT_COHORT_CHANGED` | track | An enrollment on the track is put into a cohort, moved to another or taken out: by creating a cohort, adding to one or taking out of one, not by enrolling | the person who changed it | the student, and the cohort left and the cohort joined, each with its name at that moment, or none |
 | `USER_COHORT_CHANGED` | user | Written with `TRACK_ENROLLMENT_COHORT_CHANGED`, about the student | the person who changed it | the track with its code and name at that moment, and the cohort left and the cohort joined, each with its name at that moment, or none |
+| `TRACK_COHORT_MENTOR_ASSIGNED` | track | A coordinator of the track or an administrator assigns a user who is not yet a mentor of that cohort | the person who assigned | the cohort with its name at that moment, and the mentor |
+| `TRACK_COHORT_MENTOR_REMOVED` | track | A coordinator of the track or an administrator removes a mentor of a cohort of the track, or deletes a cohort that has mentors, once for each | the person who removed or deleted | the cohort with its name at that moment, and the mentor |
+| `USER_COHORT_MENTOR_ASSIGNED` | user | Written with `TRACK_COHORT_MENTOR_ASSIGNED`, about the mentor | the person who assigned | the cohort with its name, and the track with its code and name, at that moment |
+| `USER_COHORT_MENTOR_REMOVED` | user | Written with `TRACK_COHORT_MENTOR_REMOVED`, about the mentor | the person who removed or deleted | the cohort with its name, and the track with its code and name, at that moment |
 
 #### AUD-7.1 The administrator bootstrap is audited without an actor
 

@@ -207,4 +207,30 @@ public sealed interface TrackChange {
             return TrackAuditAction.TRACK_ENROLLMENT_COHORT_CHANGED;
         }
     }
+
+    /** @param mentorId {@code users.id} of the mentor assigned to the cohort */
+    record CohortMentorAssigned(CohortRef cohort, UUID mentorId) implements TrackChange {
+        public CohortMentorAssigned {
+            Objects.requireNonNull(cohort, "cohort");
+            Objects.requireNonNull(mentorId, "mentorId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_COHORT_MENTOR_ASSIGNED;
+        }
+    }
+
+    /** @param mentorId {@code users.id} of the mentor removed from the cohort, or removed with its deletion */
+    record CohortMentorRemoved(CohortRef cohort, UUID mentorId) implements TrackChange {
+        public CohortMentorRemoved {
+            Objects.requireNonNull(cohort, "cohort");
+            Objects.requireNonNull(mentorId, "mentorId");
+        }
+
+        @Override
+        public TrackAuditAction action() {
+            return TrackAuditAction.TRACK_COHORT_MENTOR_REMOVED;
+        }
+    }
 }

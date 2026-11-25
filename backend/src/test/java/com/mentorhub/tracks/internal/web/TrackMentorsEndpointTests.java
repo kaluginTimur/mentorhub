@@ -205,7 +205,7 @@ class TrackMentorsEndpointTests {
     }
 
     @Test
-    @DisplayName("ENR-13.4 A mentor who leads a student on the track is not removed")
+    @DisplayName("ENR-13.4 A mentor of an enrollment on the track is not removed")
     void aMentorWhoLeadsAStudentOnTheTrackIsNotRemoved() {
         UUID track = tracks.active("QA", "Quality Assurance");
         UUID mentor = person("mia@x.test", "Mia", "Mentor", UserStatus.ACTIVE, Role.MENTOR);

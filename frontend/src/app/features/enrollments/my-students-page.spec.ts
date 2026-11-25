@@ -98,6 +98,37 @@ describe('MyStudentsPage', () => {
     expect(withoutRole?.textContent).not.toContain('Disabled');
   });
 
+  it('shows the cohort of each student and marks one led only through the cohort', async () => {
+    api.resolve(
+      listMyStudents,
+      mentoredEnrollmentPage([
+        mentoredEnrollment({ cohort: { id: 'c1', name: 'Spring 2026' }, throughCohort: false }),
+        mentoredEnrollment({
+          id: 'e2',
+          student: enrolledStudent({ id: 's2', name: 'Dina Direct', email: 'dina@example.com' }),
+          cohort: { id: 'c1', name: 'Spring 2026' },
+          throughCohort: true,
+        }),
+        mentoredEnrollment({
+          id: 'e3',
+          student: enrolledStudent({ id: 's3', name: 'Rick Rootless', email: 'rick@example.com' }),
+          cohort: null,
+        }),
+      ]),
+    );
+
+    const { element } = await open();
+
+    await vi.waitFor(() => expect(element.textContent).toContain('Sam Student'));
+    const direct = rowOf(element, 'Sam Student');
+    const through = rowOf(element, 'Dina Direct');
+    const none = rowOf(element, 'Rick Rootless');
+    expect(direct?.textContent).toContain('Spring 2026');
+    expect(direct?.textContent).not.toContain('Through Spring 2026');
+    expect(through?.textContent).toContain('Through Spring 2026');
+    expect(none?.textContent).not.toContain('Spring 2026');
+  });
+
   it('says when the user leads no student yet', async () => {
     api.resolve(listMyStudents, mentoredEnrollmentPage([]));
 

@@ -4,6 +4,7 @@ import static com.mentorhub.users.internal.security.ProblemAssertions.assertProb
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import com.mentorhub.enrollments.internal.TestCohorts;
 import com.mentorhub.support.EndpointTest;
 import com.mentorhub.tracks.internal.TestTracks;
 import com.mentorhub.users.Role;
@@ -123,6 +124,29 @@ class TracksConcurrencyTests {
         MvcTestResult after = send(HttpMethod.GET, path + "/cohorts", "", "anna");
         assertThat(after).hasStatusOk();
         assertThat(after).bodyJson().extractingPath("$.items").asArray().isEmpty();
+        assertThat(trackActions()).containsExactly("TRACK_ARCHIVED");
+    }
+
+    @Test
+    @DisplayName("TRK-5.4 A change at the moment of archiving is never stored on an archived track (cohort mentor)")
+    void assigningACohortMentorAtTheMomentOfArchivingIsNeverStoredOnAnArchivedTrack() throws Exception {
+        tracks.addMentor(track, coordinator);
+        UUID cohort = new TestCohorts(jdbc).create(track, "Spring", java.time.LocalDate.of(2026, 3, 1));
+
+        MvcTestResult change = archivedFirst(() -> send(
+                HttpMethod.POST,
+                path + "/cohorts/" + cohort + "/mentors",
+                "{\"userIds\": [\"%s\"]}".formatted(coordinator),
+                "boris"));
+
+        assertProblem(change, HttpStatus.CONFLICT, TRACK_ARCHIVED);
+        MvcTestResult after = send(HttpMethod.GET, path + "/cohorts", "", "anna");
+        assertThat(after).hasStatusOk();
+        assertThat(after)
+                .bodyJson()
+                .extractingPath("$.items[0].mentors")
+                .asArray()
+                .isEmpty();
         assertThat(trackActions()).containsExactly("TRACK_ARCHIVED");
     }
 

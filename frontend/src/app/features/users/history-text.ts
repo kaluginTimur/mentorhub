@@ -84,6 +84,10 @@ export function describeEntry(entry: HistoryEntry): string {
       return `Assigned as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
     case 'USER_STUDENT_REMOVED':
       return `Removed as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
+    case 'USER_COHORT_MENTOR_ASSIGNED':
+      return `Assigned as a mentor of the cohort ${entry.cohort?.name ?? ''} on ${trackName(entry)}`;
+    case 'USER_COHORT_MENTOR_REMOVED':
+      return `Removed as a mentor of the cohort ${entry.cohort?.name ?? ''} on ${trackName(entry)}`;
     case 'USER_COHORT_CHANGED': {
       const { from, to } = entry.cohortChange ?? { from: null, to: null };
       if (from && to) {
