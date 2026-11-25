@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { CohortCandidate } from '../../core/api/models/cohort-candidate';
 import { CohortCandidatePage } from '../../core/api/models/cohort-candidate-page';
@@ -30,7 +31,7 @@ export type CandidateLoader = (
 /** The students to put into a cohort: search, the "Only without cohort" switch, paging, choice across pages (COH-8). */
 @Component({
   selector: 'app-cohort-candidate-picker',
-  imports: [HlmInput, HlmButton, AssignmentMark],
+  imports: [HlmInput, HlmButton, HlmCheckbox, AssignmentMark],
   host: { class: 'block min-w-0', 'data-testid': 'candidate-picker' },
   template: `
     <div class="flex min-w-0 flex-col gap-3">
@@ -96,16 +97,16 @@ export type CandidateLoader = (
               @for (c of page.items; track c.id) {
                 <li>
                   <label
+                    [for]="'candidate-' + c.id"
                     class="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 ps-3 pe-4 py-2 hover:bg-muted/60 has-[:focus-visible]:bg-muted/60"
                   >
-                    <input
-                      type="checkbox"
-                      class="size-5 shrink-0 accent-primary"
+                    <hlm-checkbox
+                      [inputId]="'candidate-' + c.id"
                       data-testid="candidate-checkbox"
                       [attr.data-enrollment-id]="c.id"
-                      [attr.aria-label]="'Choose ' + c.student.name"
+                      [aria-label]="'Choose ' + c.student.name"
                       [checked]="isChosen(c.id)"
-                      (change)="toggled.emit(c)"
+                      (checkedChange)="toggled.emit(c)"
                     />
                     <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span class="flex flex-wrap items-center gap-x-2 gap-y-1">

@@ -189,6 +189,7 @@ describe('the mentors of a cohort on the track page', () => {
 
   it('offers a reader the mentors and no way to change them', async () => {
     me.set(enrollmentsAdmin({ permissions: ['ENROLLMENTS_READ'] }));
+    api.resolve(getTrack, track({ canEnroll: false }));
     const { element, settle } = await open();
     await chooseCohort(element, 'Spring 2026', settle);
 

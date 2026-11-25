@@ -98,9 +98,10 @@ paths:
       operationId: listMyStudents
       summary: Page of the enrollments the caller leads
       description: |
-        Requires `ENROLLMENTS_READ_MENTORED`. Only the active enrollments the caller leads at the time of the request,
-        as a mentor of the enrollment or of its cohort, each once, none of anyone else's; empty for a caller who leads
-        no enrollment. Sorted by the student's name (case-insensitive), then by the student's email, then by id.
+        Requires `ENROLLMENTS_READ_MENTORED`. Only the enrollments the caller leads at the time of the request: those
+        the caller is a mentor of, and the active enrollments in a cohort the caller is a mentor of; each once, none of
+        anyone else's; empty for a caller who leads no enrollment. Sorted by the student's name (case-insensitive),
+        then by the student's email, then by id.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'

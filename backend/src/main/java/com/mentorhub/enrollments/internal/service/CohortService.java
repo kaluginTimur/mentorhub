@@ -307,12 +307,10 @@ public class CohortService {
         Set<UUID> current = cohorts.mentorIds(List.of(cohortId)).getOrDefault(cohortId, Set.of());
         List<UUID> added = new LinkedHashSet<>(ids)
                 .stream().filter(id -> !current.contains(id)).toList();
-        for (UUID userId : added) {
-            if (!users.isActiveWithRole(userId, Role.MENTOR) || !tracks.isMentor(trackId, userId)) {
-                throw new ConflictException(
-                        EnrollmentProblems.MENTOR_NOT_ELIGIBLE,
-                        "Only active users with the mentor role who are mentors of the track can be assigned.");
-            }
+        if (!added.isEmpty() && !allEligibleMentors(trackId, added)) {
+            throw new ConflictException(
+                    EnrollmentProblems.MENTOR_NOT_ELIGIBLE,
+                    "Only active users with the mentor role who are mentors of the track can be assigned.");
         }
         HistoryCohort named = historyCohort(cohort);
         HistoryTrack historyTrack = historyTrack(track);
@@ -323,6 +321,12 @@ public class CohortService {
             }
         }
         return item(cohort);
+    }
+
+    /** Whether every user is an active user with the mentor role and a mentor of the track. */
+    private boolean allEligibleMentors(UUID trackId, List<UUID> userIds) {
+        return users.activeWithRole(userIds, Role.MENTOR).containsAll(userIds)
+                && tracks.mentorIds(trackId).containsAll(userIds);
     }
 
     /**

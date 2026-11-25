@@ -77,13 +77,13 @@ export function describeEntry(entry: HistoryEntry): string {
     case 'USER_ENROLLED':
       return `Enrolled on ${trackName(entry)}${entry.startDate ? ` from ${formatCalendarDate(entry.startDate)}` : ''}${entry.cohort ? `, into the cohort ${entry.cohort.name}` : ''}`;
     case 'USER_MENTOR_ASSIGNED':
-      return `${entry.mentor?.name ?? 'A mentor'} assigned as a mentor on ${trackName(entry)}`;
+      return `${entry.mentor?.name ?? 'A mentor'} assigned directly as a mentor on ${trackName(entry)}`;
     case 'USER_MENTOR_REMOVED':
-      return `${entry.mentor?.name ?? 'A mentor'} removed as a mentor on ${trackName(entry)}`;
+      return `${entry.mentor?.name ?? 'A mentor'} removed directly as a mentor on ${trackName(entry)}`;
     case 'USER_STUDENT_ASSIGNED':
-      return `Assigned as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
+      return `Assigned directly as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
     case 'USER_STUDENT_REMOVED':
-      return `Removed as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
+      return `Removed directly as a mentor of ${entry.user?.name ?? 'a student'} on ${trackName(entry)}`;
     case 'USER_COHORT_MENTOR_ASSIGNED':
       return `Assigned as a mentor of the cohort ${entry.cohort?.name ?? ''} on ${trackName(entry)}`;
     case 'USER_COHORT_MENTOR_REMOVED':
